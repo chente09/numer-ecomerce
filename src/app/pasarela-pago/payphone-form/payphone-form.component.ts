@@ -44,39 +44,35 @@ export class PayphoneFormComponent implements AfterViewInit {
   }
 
   crearBoton() {
-    if (typeof (window as any).PPaymentButtonBox !== 'undefined') {
-      const total = this.amount; 
-      // ✅ Calculamos los valores correctamente
-      const amountWithTax = Math.round(total / 1.15); // 💵 Base imponible (sin IVA)
-    const tax = total - amountWithTax;              // 💵 IVA calculado (15% del base)
-    const amountWithoutTax = 0;                       
+    const esperarRender = setInterval(() => {
+      const target = document.getElementById('pp-button');
+      if (target && typeof (window as any).PPaymentButtonBox !== 'undefined') {
+        clearInterval(esperarRender);
   
-    console.log('✅ Desglose para PayPhone → Total:', total, 'Base:', amountWithTax, 'IVA:', tax);
+        const total = this.amount;
+        const amountWithTax = Math.round(total / 1.15);
+        const tax = total - amountWithTax;
   
-      // @ts-ignore
-      new PPaymentButtonBox({
-        token: this.token,
-        storeId: this.storeId,
-        clientTransactionId: this.clientTransactionId,
-        amount: total,
-        amountWithTax: amountWithTax,
-        amountWithoutTax: amountWithoutTax,
-        tax: tax,
-        service: 0,
-        tip: 0,
-        currency: 'USD',
-        reference: this.reference,
-        lang: 'es',
-        defaultMethod: 'card',
-        timeZone: -5,
-        lat: '-0.2299',
-        lng: '-78.5249',
-  
-
-      }).render('pp-button');
-    } else {
-      console.error('❌ No se pudo cargar PPaymentButtonBox');
-    }
+        new (window as any).PPaymentButtonBox({
+          token: this.token,
+          storeId: this.storeId,
+          clientTransactionId: this.clientTransactionId,
+          amount: total,
+          amountWithTax,
+          amountWithoutTax: 0,
+          tax,
+          service: 0,
+          tip: 0,
+          currency: 'USD',
+          reference: this.reference,
+          lang: 'es',
+          defaultMethod: 'card',
+          timeZone: -5,
+          lat: '-0.2299',
+          lng: '-78.5249',
+        }).render('pp-button');
+      }
+    }, 300);
   }
   
   
