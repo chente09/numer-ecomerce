@@ -36,8 +36,13 @@
                     <a routerLink="/">NUMER</a>
                 </div>
 
+                <!-- Mobile Menu Toggle -->
+                <div nz-col class="mobile-menu-toggle" (click)="toggleMobileMenu()">
+                    <i nz-icon [nzType]="mobileMenuOpen ? 'close' : 'menu'"></i>
+                </div>
+
                 <!-- Navigation -->
-                <div nz-col nzFlex="auto">
+                <div nz-col nzFlex="auto" class="nav-container" [class.mobile-menu-open]="mobileMenuOpen">
                     <ul nz-menu nzMode="horizontal" class="nav-menu">
                         <li nz-menu-item *ngFor="let item of navItems">
                             <a [routerLink]="item.link">{{ item.label }}</a>
@@ -46,14 +51,14 @@
                 </div>
 
                 <!-- Icons -->
-                <div nz-col>
+                <div nz-col class="header-icons-container">
                     <div class="header-icons">
                         <a class="icon-link">
                             <i nz-icon nzType="search" nzTheme="outline"></i>
                         </a>
                         <a class="icon-link">
                             <nz-badge [nzCount]="cartCount">
-                                <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
+                                <i nz-icon nzType="shopping-cart" nzTheme="outline" style="font-size: 20px;"></i>
                             </nz-badge>
                         </a>
                     </div>

@@ -1,0 +1,131 @@
+.site-footer {
+    background-color: #000;
+    color: #fff;
+    padding: 60px 0 30px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+.footer-main {
+    margin-bottom: 40px;
+}
+
+.footer-column {
+    margin-bottom: 20px;
+}
+
+.footer-title {
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}
+
+.footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    li {
+        margin-bottom: 10px;
+
+        a {
+            color: #ccc;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+
+            &:hover {
+                color: white;
+            }
+        }
+    }
+}
+
+.newsletter-text {
+    color: #ccc;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.newsletter-form {
+    margin-top: 15px;
+}
+
+.footer-social {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+
+    .social-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #333;
+        color: white;
+        margin: 0 8px;
+        transition: all 0.3s ease;
+
+        &:hover {
+            background-color: #1890ff;
+            transform: translateY(-3px);
+        }
+
+        i {
+            font-size: 18px;
+        }
+    }
+}
+
+.footer-bottom {
+    padding-top: 20px;
+    border-top: 1px solid #333;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+
+    .copyright {
+        color: #777;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    .footer-bottom-links {
+        a {
+            color: #777;
+            font-size: 14px;
+            margin-left: 15px;
+            text-decoration: none;
+            transition: color 0.3s ease;
+
+            &:hover {
+                color: white;
+            }
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+
+        .footer-bottom-links {
+            margin-top: 10px;
+
+            a {
+                margin: 0 8px;
+            }
+        }
+    }
+}

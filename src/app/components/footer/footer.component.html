@@ -1,1 +1,76 @@
-<p>footer works!</p>
+<footer class="site-footer">
+    <div class="container">
+        <div class="footer-main">
+            <div nz-row [nzGutter]="[24, 32]">
+                <!-- Shop Column -->
+                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                    <div class="footer-column">
+                        <h3 class="footer-title">Tienda</h3>
+                        <ul class="footer-links">
+                            <li *ngFor="let link of shopLinks">
+                                <a [routerLink]="link.link">{{ link.label }}</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Support Column -->
+                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                    <div class="footer-column">
+                        <h3 class="footer-title">Soporte</h3>
+                        <ul class="footer-links">
+                            <li *ngFor="let link of supportLinks">
+                                <a [routerLink]="link.link">{{ link.label }}</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Company Column -->
+                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                    <div class="footer-column">
+                        <h3 class="footer-title">Empresa</h3>
+                        <ul class="footer-links">
+                            <li *ngFor="let link of companyLinks">
+                                <a [routerLink]="link.link">{{ link.label }}</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Newsletter Column -->
+                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                    <div class="footer-column">
+                        <h3 class="footer-title">Conéctate</h3>
+                        <p class="newsletter-text">Suscríbete para recibir actualizaciones, acceso a ofertas exclusivas y más.</p>
+                        <div class="newsletter-form">
+                            <nz-input-group [nzAddOnAfter]="subscribeButton">
+                                <input type="email" nz-input placeholder="Email Address" />
+                            </nz-input-group>
+                            <ng-template #subscribeButton>
+                                <button nz-button nzType="primary">Subscribe</button>
+                            </ng-template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-social">
+            <a *ngFor="let social of socialLinks" [href]="social.link" target="_blank" class="social-link">
+                <i nz-icon [nzType]="social.icon" nzTheme="fill"></i>
+            </a>
+        </div>
+
+        <div class="footer-bottom">
+            <div class="copyright">
+                &copy; {{ currentYear }} Numer - Todos los derechos reservados
+            </div>
+            <div class="footer-bottom-links">
+                <a routerLink="/privacy">Politicas de Privacidad</a>
+                <a routerLink="/terms">Terminos y Condiciones</a>
+                <a routerLink="/sitemap">Mapa del Sitio</a>
+            </div>
+        </div>
+    </div>
+</footer>

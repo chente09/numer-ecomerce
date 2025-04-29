@@ -25,7 +25,8 @@ import { NzMenuModule } from 'ng-zorro-antd/menu';
 })
 export class NavBarComponent {
 
-  cartCount = 0;
+  mobileMenuOpen = false;
+  cartCount = 1;
 
   // Menú de navegación principal
   navItems = [
@@ -41,6 +42,10 @@ export class NavBarComponent {
   ];
 
   selectedLanguage = this.languages[0];
+
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen = !this.mobileMenuOpen;
+  }
 
   changeLanguage(language: any): void {
     this.selectedLanguage = language;
