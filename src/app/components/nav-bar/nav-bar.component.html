@@ -1,0 +1,64 @@
+<header>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container">
+            <div nz-row nzJustify="space-between" nzAlign="middle">
+                <div nz-col>
+                    <a nz-dropdown [nzDropdownMenu]="languageMenu" class="language-selector"
+                        [nzPlacement]="'bottomLeft'">
+                        {{ selectedLanguage.name }} <i nz-icon nzType="down"></i>
+                    </a>
+                    <nz-dropdown-menu #languageMenu="nzDropdownMenu">
+                        <ul nz-menu>
+                            <li nz-menu-item *ngFor="let lang of languages" (click)="changeLanguage(lang)">
+                                {{ lang.name }}
+                            </li>
+                        </ul>
+                    </nz-dropdown-menu>
+                </div>
+                <div nz-col>
+                    <div class="top-links">
+                        <a href="#">Encontrar un Distribuidor</a>
+                        <a href="#">Servicio al Cliente</a>
+                        <a href="#">Mi Cuenta</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Header -->
+    <div class="main-header">
+        <div class="container">
+            <div nz-row nzJustify="space-between" nzAlign="middle">
+                <!-- Logo -->
+                <div nz-col class="logo">
+                    <a routerLink="/">NUMER</a>
+                </div>
+
+                <!-- Navigation -->
+                <div nz-col nzFlex="auto">
+                    <ul nz-menu nzMode="horizontal" class="nav-menu">
+                        <li nz-menu-item *ngFor="let item of navItems">
+                            <a [routerLink]="item.link">{{ item.label }}</a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Icons -->
+                <div nz-col>
+                    <div class="header-icons">
+                        <a class="icon-link">
+                            <i nz-icon nzType="search" nzTheme="outline"></i>
+                        </a>
+                        <a class="icon-link">
+                            <nz-badge [nzCount]="cartCount">
+                                <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
+                            </nz-badge>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
