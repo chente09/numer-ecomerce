@@ -1,1 +1,9 @@
-<p>CUERPO</p>
+<section class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">{{ heroTitle }}</h1>
+        <p class="hero-subtitle">{{ heroSubtitle }}</p>
+        <a [routerLink]="ctaLink" nz-button nzType="primary" nzSize="large" class="hero-cta">
+            {{ ctaText }}
+        </a>
+    </div>
+</section>
