@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NzDropDownModule, NzPlacementType } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -23,10 +23,10 @@ import { NzMenuModule } from 'ng-zorro-antd/menu';
   templateUrl: './nav-bar.component.html',
   styleUrl: './nav-bar.component.css'
 })
-export class NavBarComponent {
-
+export class NavBarComponent implements OnInit {
   mobileMenuOpen = false;
   cartCount = 1;
+  isScrolled = false;
 
   // Menú de navegación principal
   navItems = [
@@ -42,6 +42,16 @@ export class NavBarComponent {
   ];
 
   selectedLanguage = this.languages[0];
+
+  @HostListener('window:scroll', [])
+  onWindowScroll() {
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    this.isScrolled = scrollPosition > 50;
+  }
+
+  ngOnInit(): void {
+    this.onWindowScroll(); // Para manejar el estado inicial
+  }
 
   toggleMobileMenu(): void {
     this.mobileMenuOpen = !this.mobileMenuOpen;

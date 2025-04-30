@@ -1,69 +1,69 @@
-<header>
-    <!-- Top Bar -->
-    <div class="top-bar">
-        <div class="container">
-            <div nz-row nzJustify="space-between" nzAlign="middle">
-                <div nz-col>
-                    <a nz-dropdown [nzDropdownMenu]="languageMenu" class="language-selector"
-                        [nzPlacement]="'bottomLeft'">
-                        {{ selectedLanguage.name }} <i nz-icon nzType="down"></i>
-                    </a>
-                    <nz-dropdown-menu #languageMenu="nzDropdownMenu">
-                        <ul nz-menu>
-                            <li nz-menu-item *ngFor="let lang of languages" (click)="changeLanguage(lang)">
-                                {{ lang.name }}
-                            </li>
-                        </ul>
-                    </nz-dropdown-menu>
-                </div>
-                <div nz-col>
-                    <div class="top-links">
-                        <a href="#">Encontrar un Distribuidor</a>
-                        <a href="#">Servicio al Cliente</a>
-                        <a href="#">Mi Cuenta</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Header -->
-    <div class="main-header">
-        <div class="container">
-            <div nz-row nzJustify="space-between" nzAlign="middle">
-                <!-- Logo -->
-                <div nz-col class="logo">
-                    <a routerLink="/">NUMER</a>
-                </div>
-
-                <!-- Mobile Menu Toggle -->
-                <div nz-col class="mobile-menu-toggle" (click)="toggleMobileMenu()">
-                    <i nz-icon [nzType]="mobileMenuOpen ? 'close' : 'menu'"></i>
-                </div>
-
-                <!-- Navigation -->
-                <div nz-col nzFlex="auto" class="nav-container" [class.mobile-menu-open]="mobileMenuOpen">
-                    <ul nz-menu nzMode="horizontal" class="nav-menu">
-                        <li nz-menu-item *ngFor="let item of navItems">
-                            <a [routerLink]="item.link">{{ item.label }}</a>
+<!-- Top Bar -->
+<div class="top-bar" [class.scrolled]="isScrolled">
+    <div class="container">
+        <div nz-row nzJustify="space-between" nzAlign="middle">
+            <div nz-col>
+                <a nz-dropdown [nzDropdownMenu]="languageMenu" class="language-selector"
+                    [nzPlacement]="'bottomLeft'">
+                    {{ selectedLanguage.name }} <i nz-icon nzType="down"></i>
+                </a>
+                <nz-dropdown-menu #languageMenu="nzDropdownMenu">
+                    <ul nz-menu>
+                        <li nz-menu-item *ngFor="let lang of languages" (click)="changeLanguage(lang)">
+                            {{ lang.name }}
                         </li>
                     </ul>
-                </div>
-
-                <!-- Icons -->
-                <div nz-col class="header-icons-container">
-                    <div class="header-icons">
-                        <a class="icon-link">
-                            <i nz-icon nzType="search" nzTheme="outline"></i>
-                        </a>
-                        <a class="icon-link">
-                            <nz-badge [nzCount]="cartCount">
-                                <i nz-icon nzType="shopping-cart" nzTheme="outline" routerLink="/carrito" style="font-size: 20px;"></i>
-                            </nz-badge>
-                        </a>
-                    </div>
+                </nz-dropdown-menu>
+            </div>
+            <div nz-col>
+                <div class="top-links">
+                    <a href="#">Encontrar un Distribuidor</a>
+                    <a href="#">Servicio al Cliente</a>
                 </div>
             </div>
         </div>
     </div>
-</header>
+</div>
+
+<!-- Main Header -->
+<div class="main-header" [class.scrolled]="isScrolled">
+    <div class="container">
+        <div nz-row nzJustify="space-between" nzAlign="middle">
+            <!-- Logo -->
+            <div nz-col class="logo">
+                <a routerLink="/welcome">NUMER</a>
+            </div>
+
+            <!-- Mobile Menu Toggle -->
+            <div nz-col class="mobile-menu-toggle" (click)="toggleMobileMenu()">
+                <i nz-icon [nzType]="mobileMenuOpen ? 'close' : 'menu'"></i>
+            </div>
+
+            <!-- Navigation -->
+            <div nz-col nzFlex="auto" class="nav-container" [class.mobile-menu-open]="mobileMenuOpen">
+                <ul nz-menu nzMode="horizontal" class="nav-menu">
+                    <li nz-menu-item *ngFor="let item of navItems">
+                        <a [routerLink]="item.link">{{ item.label }}</a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Icons -->
+            <div nz-col class="header-icons-container">
+                <div class="header-icons">
+                    <a class="icon-link">
+                        <i nz-icon nzType="search" nzTheme="outline"></i>
+                    </a>
+                    <a class="icon-link">
+                        <nz-badge [nzCount]="cartCount">
+                            <i nz-icon nzType="shopping-cart" nzTheme="outline" routerLink="/carrito" style="font-size: 20px;"></i>
+                        </nz-badge>
+                    </a>
+                    <a class="icon-link">
+                        <i nz-icon nzType="user" nzTheme="outline"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

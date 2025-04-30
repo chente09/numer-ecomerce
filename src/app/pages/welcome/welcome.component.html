@@ -7,3 +7,68 @@
         </a>
     </div>
 </section>
+
+<!-- En welcome.component.html -->
+<section class="categories-section">
+    <div class="container">
+        <h2 class="section-title">Comprar por Categoría</h2>
+
+        <div *ngIf="loading" class="loading-container">
+            <nz-spin nzSize="large"></nz-spin>
+        </div>
+
+        <div *ngIf="!loading" nz-row [nzGutter]="[24, 24]">
+            <div *ngFor="let category of categories" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-card class="category-card" nzBorderless="true">
+                    <div class="card-cover" [style.background-image]="'url(' + category.imageUrl + ')'">
+                        <div class="card-overlay">
+                            <h3 class="category-name" nz-typography nzEllipsis style="color: aliceblue;">{{
+                                category.name }}</h3>
+                        </div>
+                    </div>
+                    <a [routerLink]="['/shop', category.slug]" nz-button nzType="default" nzBlock>
+                        Comprar {{ category.name }}
+                    </a>
+                </nz-card>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products Section (nueva) -->
+<section class="featured-products-section">
+    <div class="container">
+        <h2 class="section-title">Productos Destacados</h2>
+        
+        <div *ngIf="productsLoading" class="loading-container">
+            <nz-spin nzSize="large"></nz-spin>
+        </div>
+        
+        <div *ngIf="!productsLoading" nz-row [nzGutter]="[24, 24]">
+            <div *ngFor="let product of featuredProducts" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-card class="product-card" nzBorderless="true">
+                    <div class="product-image">
+                        <img [src]="product.imageUrl" [alt]="product.name">
+                        <nz-tag *ngIf="product.isNew" nzColor="#52c41a" class="product-tag">Nuevo</nz-tag>
+                        <nz-tag *ngIf="product.isBestSeller" nzColor="#ff4d4f" class="product-tag">Más Vendido</nz-tag>
+                    </div>
+                    <div class="product-details">
+                        <h3 class="product-name">{{ product.name }}</h3>
+                        <p class="product-price">${{ product.price.toFixed(2) }}</p>
+                        <div class="product-actions">
+                            <a [routerLink]="['/products', product.id]" nz-button nzType="default" nzBlock>
+                                Ver Detalles
+                            </a>
+                        </div>
+                    </div>
+                </nz-card>
+            </div>
+        </div>
+        
+        <div class="view-all-container">
+            <a routerLink="/products" nz-button nzType="default" nzSize="large">
+                Ver Todos los Productos
+            </a>
+        </div>
+    </div>
+</section>
