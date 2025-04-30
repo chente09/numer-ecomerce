@@ -16,9 +16,9 @@ export class PayphoneFormComponent implements AfterViewInit {
   reference = '';
   clientTransactionId = '';
 
-  token = 'za5oHaelhnn1_A1nRaDFx3dQkDVFrxQRpXI3gToaE37jk6t8SWH48kyxEYugfg2RF3FiMU9WISHDSzSgOocQFWBCWiPBEWIHWIY3lHI63DhYk4QEIT8Jbv27mI91YOtwCGYeF--xp2-QMsO3uxC3kDbovh9k-28GaeNA7iHnm3-Tll0LmCafLZ3fTYfcuG3l6medVtcWfG41SfTkzNhv0WvbpbAM5y-zYOAdID1CnEE1srSfY--SSP7wCDxXpVkrkEVmTHo-2Z_KL_2ALpl8-i7x485RbAQtlGGRwUsIZT_Z6igtfBiHNzv3JGX33hWXOFML_g';
+  token = 'ygIAzZKO9TjlLdqu1uX761lplNaS6lFjzRwUgFYRMa3FLXpnsP1XX9Io9qul_LXionVyE_HlAuRDZB_FT1-tSRlIIBTqm-wkjszuaHskDcEgVlX8WzF0-lty_pHeZap2VLK0n7iUsyj784Tx6CUyywV88-Gme_vGYh46PcVdK079xLFPHYQjYkvo5CwoXhtJ6VG6V1bgHi4SxHoKrslislcxEPFpuYvZL8FbYTjoRfDQDCoBBUDfEDPGJWSZaxg7YYgjCqivJ62DCCOlO52N6XC9QFb3Nh5JVIYIOhRgjpOVJIHrOxXbQm7buq7J9Wgt8y8XCkdIYuhIz4cmUE5FaHHvdew';
   
-  storeId = 'cd3d7025-400d-4e42-a279-b389277fcf0e';
+  storeId = '063c6737-d0fb-4fe1-949a-57cd26c2de47';
 
   constructor(private route: ActivatedRoute, private cartService: CartService) {}
 

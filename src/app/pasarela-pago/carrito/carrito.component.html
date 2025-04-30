@@ -1,0 +1,21 @@
+<div class="container mt-4">
+    <h2>Carrito de compras</h2>
+    <hr>
+    <div class="mb-3">
+        <input [(ngModel)]="nombreProducto" class="form-control mb-2" placeholder="Nombre del producto" required>
+        <input [(ngModel)]="precioProducto" class="form-control mb-2" type="number" placeholder="Precio del producto (USD)" required>
+        <button class="btn btn-primary" (click)="agregarProducto()" [disabled]="!nombreProducto || !precioProducto || precioProducto <= 0">
+          Agregar producto
+        </button>
+      </div>
+      
+    <ul class="list-group">
+      <li *ngFor="let p of productos" class="list-group-item">
+        {{ p.nombre }} - {{ p.precio | currency:'USD' }}
+      </li>
+    </ul>
+    <hr>
+    <h4>Total: {{ total | currency:'USD' }}</h4>
+    <button class="btn btn-success" (click)="irAPagar()" [disabled]="total <= 0">Pagar</button>
+    <div id="pp-button"></div>
+  </div>
