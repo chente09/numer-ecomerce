@@ -33,13 +33,41 @@ export class CategoryService {
     },
     {
       id: 3,
-      name: 'Senderismo',
+      name: 'Senderismo y Trekking',
       description: 'Bastones de Trekking, Linternas Frontales, Tiendas de Campaña y más',
       imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
       slug: 'hiking'
     },
     {
       id: 4,
+      name: 'Urbano Casual',
+      description: 'Chaquetas, Pantalones, Capas Base y más',
+      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
+      slug: 'apparel'
+    },
+    {
+      id: 5,
+      name: 'Ciclismo de Ruta',
+      description: 'Arneses, Protección, Mosquetones y más',
+      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
+      slug: 'climbing'
+    },
+    {
+      id: 6,
+      name: 'Táctico',
+      description: 'Cascos, Ropa, Accesorios y más',
+      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
+      slug: 'skiing'
+    },
+    {
+      id: 7,
+      name: 'Trail Running y Training',
+      description: 'Bastones de Trekking, Linternas Frontales, Tiendas de Campaña y más',
+      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
+      slug: 'hiking'
+    },
+    {
+      id: 8,
       name: 'Ropa',
       description: 'Chaquetas, Pantalones, Capas Base y más',
       imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',

@@ -30,7 +30,7 @@ export class NavBarComponent implements OnInit {
 
   // Menú de navegación principal
   navItems = [
-    { label: 'Nosotros', link: '/about' },
+    { label: 'Nosotros', link: '/nosotros' },
     { label: 'Productos', link: '/products' },
     { label: 'Reseñas', link: '/stories' }
   ];

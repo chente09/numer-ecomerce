@@ -1,1 +1,17 @@
-<p>nosotros works!</p>
+<section class="story-section">
+    <div class="container">
+        <div nz-row nzJustify="center">
+            <div nz-col nzXs="24" nzSm="20" nzMd="16" nzLg="12">
+                <div class="story-content">
+                    <h2 class="section-title">{{ storyTitle }}</h2>
+                    <p class="story-text">{{ storyContent }}</p>
+                    <div class="story-cta">
+                        <a [routerLink]="ctaLink" nz-button nzType="default" nzSize="large">
+                            {{ ctaText }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
