@@ -32,13 +32,13 @@ export class NavBarComponent implements OnInit {
   navItems = [
     { label: 'Nosotros', link: '/about' },
     { label: 'Productos', link: '/products' },
-    { label: 'Historias', link: '/stories' }
+    { label: 'Reseñas', link: '/stories' }
   ];
 
   // Menú de idiomas
   languages = [
-    { code: 'en_US', name: 'United States (EN)' },
     { code: 'es_ES', name: 'Ecuador (ES)' },
+    { code: 'en_US', name: 'United States (EN)' },
   ];
 
   selectedLanguage = this.languages[0];
