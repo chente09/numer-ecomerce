@@ -1,23 +1,14 @@
-.story-section {
-    padding: 80px 0;
-    background-color: black;
-    background-image: url('/assets/images/story-bg.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    position: relative;
-
-    &:before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(255, 255, 255, 0.85);
-    }
+/* Variables globales */
+:root {
+    --primary-color: #000000;
+    --secondary-color: #f5f5f5;
+    --accent-color: #e0e0e0;
+    --text-color: #333333;
+    --light-text: #ffffff;
+    --spacing-unit: 8px;
 }
 
+/* General Styles */
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -26,15 +17,63 @@
     z-index: 2;
 }
 
-.story-content {
+.text-center {
     text-align: center;
 }
 
 .section-title {
     font-size: 32px;
+    font-weight: 600;
+    margin-bottom: calc(var(--spacing-unit) * 3);
+    letter-spacing: 0.5px;
+}
+
+/* Hero Section */
+.hero-section {
+    padding: 120px 0 80px;
+    background-color: var(--primary-color);
+    color: var(--light-text);
+    text-align: center;
+    position: relative;
+}
+
+.hero-title {
+    font-size: 48px;
     font-weight: 700;
-    margin-bottom: 30px;
-    text-transform: uppercase;
+    margin-bottom: calc(var(--spacing-unit) * 2);
+    letter-spacing: 1px;
+}
+
+.hero-subtitle {
+    font-size: 18px;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Story Section */
+.story-section {
+    padding: 80px 0;
+    background-color: white;
+    background-image: url('https://i.postimg.cc/d3wwjMbv/Logo-Numer-negro-letras.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    position: relative;
+}
+
+.story-section:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.85);
+}
+
+.story-content {
+    text-align: center;
 }
 
 .story-text {
@@ -43,6 +82,130 @@
     margin-bottom: 30px;
 }
 
-.story-cta {
-    margin-top: 20px;
+/* Mission & Vision Section */
+.mission-vision-section {
+    padding: 80px 0;
+    background-color: var(--secondary-color);
+}
+
+.content-box {
+    padding: 40px;
+    height: 100%;
+    background-color: white;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.content-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+}
+
+.mission-box,
+.vision-box {
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-divider {
+    width: 80px;
+    height: 2px;
+    background-color: var(--primary-color);
+    margin: 16px 0 24px;
+}
+
+.content-text {
+    font-size: 16px;
+    line-height: 1.6;
+    flex-grow: 1;
+}
+
+/* Values Section */
+.values-section {
+    padding: 80px 0;
+    background-color: white;
+}
+
+.value-card {
+    height: 100%;
+    transition: transform 0.3s ease;
+    border: none;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.value-card:hover {
+    transform: translateY(-5px);
+}
+
+.value-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+}
+
+.value-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-color);
+}
+
+/* Call to Action Section */
+.cta-section {
+    padding: 80px 0;
+    background-color: var(--primary-color);
+    color: var(--light-text);
+    text-align: center;
+}
+
+.cta-title {
+    font-size: 32px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.cta-text {
+    font-size: 18px;
+    margin-bottom: 32px;
+    opacity: 0.9;
+}
+
+.cta-button {
+    margin-top: 24px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 80px 0 60px;
+    }
+
+    .hero-title {
+        font-size: 36px;
+    }
+
+    .section-title {
+        font-size: 28px;
+    }
+
+    .content-box {
+        padding: 30px;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-title {
+        font-size: 32px;
+    }
+
+    .section-title {
+        font-size: 24px;
+    }
+
+    .story-text,
+    .content-text {
+        font-size: 16px;
+    }
 }

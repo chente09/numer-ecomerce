@@ -40,7 +40,7 @@ export class CategoryService {
     },
     {
       id: 4,
-      name: 'Urbano Casual',
+      name: 'Urbano & Casual',
       description: 'Chaquetas, Pantalones, Capas Base y más',
       imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
       slug: 'apparel'
@@ -68,7 +68,7 @@ export class CategoryService {
     },
     {
       id: 8,
-      name: 'Ropa',
+      name: 'Moto Cross',
       description: 'Chaquetas, Pantalones, Capas Base y más',
       imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
       slug: 'apparel'
