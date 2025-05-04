@@ -1,46 +1,61 @@
-<div class="container mt-5" *ngIf="detalle">
-  <h2 class="text-center mb-4">Estado de tu Pago</h2>
 
-  <div class="alert text-center" [ngClass]="{
-    'alert-success': estado === 'aprobado',
-    'alert-warning': estado === 'cancelado',
-    'alert-danger': estado === 'error'
-  }">
-    <strong>{{ mensaje }}</strong>
-  </div>
+<!-- Estado de carga -->
+<div *ngIf="loading" class="loading">
+  <p>Cargando estado de la transacción...</p>
+</div>
 
-  <!-- ✅ Solo mostrar recibo si el pago fue aprobado -->
-  <div *ngIf="estado === 'aprobado'" id="ticket" class="card p-4 shadow-sm mt-4" style="max-width: 600px; margin: auto;">
-    <h4 class="text-center mb-3">🏷️ Recibo de Compra</h4>
+<!-- Mensaje de cancelación (sin botón) -->
+<div *ngIf="resultado && isCanceled()" class="error canceled-msg">
+  <h2>Pago Cancelado</h2>
+  <p>La transacción ha sido cancelada y no se ha realizado ningún cargo.</p>
+</div>
 
-    <p><strong>Referencia:</strong> {{ detalle.reference }}</p>
-    <p><strong>Número de Transacción:</strong> {{ detalle.transactionId }}</p>
-    <p><strong>Fecha:</strong> {{ detalle.date | date:'medium' }}</p>
-    <hr>
-    <p><strong>Monto Pagado:</strong> {{ detalle.amount / 100 | currency:'USD' }}</p>
-    <p><strong>Estado:</strong> 
-      <span class="text-success">{{ detalle.transactionStatus }}</span>
-    </p>
-    <hr>
-    <p><strong>Tarjeta:</strong> {{ detalle.cardBrand }} (****{{ detalle.lastDigits }})</p>
-    <p><strong>Nombre:</strong> {{ detalle.optionalParameter4 || 'No disponible' }}</p>
+<!-- Ticket completo (solo si NO está cancelado) -->
+<div *ngIf="resultado && !isCanceled()" class="card" id="ticket">
+  <h2>Ticket de Pago</h2>
+  <dl>
+    <dt>Estado:</dt>
+    <dd>{{ friendlyStatus }}</dd>
+    <dt>ID Transacción:</dt>
+    <dd>{{ resultado.transactionId }}</dd>
+    <dt>ID Cliente:</dt>
+    <dd>{{ resultado.clientTransactionId }}</dd>
+    <dt>Código de Autorización:</dt>
+    <dd>{{ resultado.authorizationCode }}</dd>
+    <dt>Monto:</dt>
+    <dd>{{ (resultado.amount/100) | currency:currencyCode:'symbol':'1.2-2' }}</dd>
+    <dt>Moneda:</dt>
+    <dd>{{ resultado.currency }}</dd>
+    <dt>Referencia:</dt>
+    <dd>{{ resultado.reference }}</dd>
+    <dt>Fecha:</dt>
+    <dd>{{ resultado.date | date:'medium' }}</dd>
+    <dt>Email:</dt>
+    <dd>{{ resultado.email }}</dd>
+    <dt>Teléfono:</dt>
+    <dd>{{ resultado.phoneNumber }}</dd>
+    <dt>Documento:</dt>
+    <dd>{{ resultado.document }}</dd>
+    <dt>Marca de Tarjeta:</dt>
+    <dd>{{ resultado.cardBrand }}</dd>
+    <dt>Tipo de Tarjeta:</dt>
+    <dd>{{ resultado.cardType }}</dd>
+    <dt>Últimos Dígitos:</dt>
+    <dd>{{ resultado.lastDigits }}</dd>
+    <dt>Comercio:</dt>
+    <dd>{{ resultado.storeName }}</dd>
+    <dt>Nota Extra:</dt>
+    <dd>{{ resultado.optionalParameter3 }}</dd>
+    <dt>Nombre Cliente:</dt>
+    <dd>{{ resultado.optionalParameter4 }}</dd>
+  </dl>
 
-    <div class="text-center mt-4">
-      <button class="btn btn-success" (click)="imprimirTicket()"> Imprimir Ticket</button>
-    </div>
-  </div>
+  <!-- Botón solo para tickets aprobados/fallidos -->
+  <button class="print-btn" (click)="printTicket()">Imprimir Ticket</button>
+</div>
 
-  <!-- ⚠️ Mostrar mensaje específico cuando fue cancelado -->
-  <div *ngIf="estado === 'cancelado'" class="text-center mt-5">
-    <p class="text-danger fs-5">La transacción fue cancelada. No se ha generado ningún cobro.</p>
-  </div>
-
-  <!-- ⚠️ Mostrar mensaje específico cuando hay error -->
-  <div *ngIf="estado === 'error'" class="text-center mt-5">
-    <p class="text-danger fs-5">No se pudo confirmar el estado del pago. Intenta más tarde.</p>
-  </div>
-
-  <div class="text-center mt-4">
-    <a routerLink="/welcome" class="btn btn-primary"> Volver al Inicio</a>
-  </div>
+<!-- Error genérico -->
+<div *ngIf="error" class="error">
+  <h2>Error al confirmar el pago</h2>
+  <pre>{{ error | json }}</pre>
 </div>
