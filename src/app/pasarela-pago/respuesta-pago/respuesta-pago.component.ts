@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-respuesta-pago',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   templateUrl: './respuesta-pago.component.html',
   styleUrl: './respuesta-pago.component.css'
 })
@@ -27,7 +27,7 @@ export class RespuestaPagoComponent implements OnInit{
       const clientTxId = params['clientTransactionId'] || '';
 
       this.http.post<any>(
-        'https://functions-payphone.netlify.app/.netlify/functions/confirmacion',
+        'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
         { id, clientTxId }
       ).subscribe({
         next: res => {

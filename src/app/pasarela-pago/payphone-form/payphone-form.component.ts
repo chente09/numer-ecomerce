@@ -22,7 +22,7 @@ export class PayphoneFormComponent implements AfterViewInit {
       const total = this.cartService.getTotal();
       const amount = Math.round(total * 100);
   
-      this.http.post('', {
+      this.http.post('https://backend-numer.netlify.app/.netlify/functions/payphone', {
         amount,
         reference: params['referencia'] || 'Compra desde carrito CMG'
       }).subscribe((data: any) => {
