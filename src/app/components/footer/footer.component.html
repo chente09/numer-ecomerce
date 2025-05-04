@@ -45,7 +45,7 @@
                         <p class="newsletter-text">Suscríbete para recibir actualizaciones, acceso a ofertas exclusivas y más.</p>
                         <div class="newsletter-form">
                             <nz-input-group [nzAddOnAfter]="subscribeButton">
-                                <input type="email" nz-input placeholder="Email Address" />
+                                <input type="email" nz-input placeholder="Correo Electronico" />
                             </nz-input-group>
                             <ng-template #subscribeButton>
                                 <button nz-button nzType="primary">Subscribe</button>
@@ -58,11 +58,9 @@
 
         <div class="footer-social">
             <a *ngFor="let social of socialLinks" [href]="social.link" target="_blank" class="social-link">
-                <i nz-icon [nzType]="social.icon" nzTheme="fill"></i>
+              <i *ngIf="!social.icon.startsWith('bi')" nz-icon [nzType]="social.icon" nzTheme="fill"></i>
+              <i *ngIf="social.icon.startsWith('bi')" [class]="social.icon"></i>
             </a>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-strava" viewBox="0 0 16 16">
-                <path d="M6.731 0 2 9.125h2.788L6.73 5.497l1.93 3.628h2.766zm4.694 9.125-1.372 2.756L8.66 9.125H6.547L10.053 16l3.484-6.875z"/>
-            </svg>
         </div>
 
         <div class="footer-bottom">

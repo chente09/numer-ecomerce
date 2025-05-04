@@ -48,9 +48,10 @@ export class FooterComponent {
   ];
   
   socialLinks = [
-    { label: 'Instagram', icon: 'instagram', link: 'https://www.instagram.com/numer.ec?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==' },
-    { label: 'Facebook', icon: 'facebook', link: 'https://www.facebook.com/profile.php?id=100063864286282&locale=es_LA' },
-    { label: 'YouTube', icon: 'youtube', link: 'https://youtube.com/user/blackdiamondequipment' }
+    { label: 'Instagram', icon: 'instagram', link: 'https://www.instagram.com/numer.ec' },
+    { label: 'Facebook', icon: 'facebook', link: 'https://www.facebook.com' },
+    { label: 'YouTube', icon: 'youtube', link: 'https://youtube.com/user/blackdiamondequipment' },
+    { label: 'Strava', icon: 'bi bi-strava', link: 'https://www.strava.com' }
   ];
 
 }

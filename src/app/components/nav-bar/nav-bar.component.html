@@ -3,8 +3,7 @@
     <div class="container">
         <div nz-row nzJustify="space-between" nzAlign="middle">
             <div nz-col>
-                <a nz-dropdown [nzDropdownMenu]="languageMenu" class="language-selector"
-                    [nzPlacement]="'bottomLeft'">
+                <a nz-dropdown [nzDropdownMenu]="languageMenu" class="language-selector" nzPlacement="bottomLeft">
                     {{ selectedLanguage.name }} <i nz-icon nzType="down"></i>
                 </a>
                 <nz-dropdown-menu #languageMenu="nzDropdownMenu">
@@ -30,7 +29,10 @@
         <div nz-row nzJustify="space-between" nzAlign="middle">
             <!-- Logo -->
             <div nz-col class="logo">
-                <a routerLink="/welcome"><img src="https://i.postimg.cc/d3wwjMbv/Logo-Numer-negro-letras.png" alt="logo numer" style="width: 200px;"></a>
+                <a routerLink="/welcome">
+                    <img src="https://i.postimg.cc/d3wwjMbv/Logo-Numer-negro-letras.png" alt="logo numer"
+                        style="width: 200px;">
+                </a>
             </div>
 
             <!-- Mobile Menu Toggle -->
@@ -42,7 +44,12 @@
             <div nz-col nzFlex="auto" class="nav-container" [class.mobile-menu-open]="mobileMenuOpen">
                 <ul nz-menu nzMode="horizontal" class="nav-menu">
                     <li nz-menu-item *ngFor="let item of navItems">
-                        <a [routerLink]="item.link">{{ item.label }}</a>
+                        <a [routerLink]="item.link" 
+                           routerLinkActive="active"
+                           [routerLinkActiveOptions]="{exact: true}"
+                           (click)="closeMenuOnMobile()">
+                           {{ item.label }}
+                        </a>
                     </li>
                 </ul>
             </div>
@@ -53,9 +60,9 @@
                     <a class="icon-link">
                         <i nz-icon nzType="search" nzTheme="outline"></i>
                     </a>
-                    <a class="icon-link">
+                    <a class="icon-link" routerLink="/carrito">
                         <nz-badge [nzCount]="cartCount">
-                            <i nz-icon nzType="shopping-cart" nzTheme="outline" routerLink="/carrito" style="font-size: 20px;"></i>
+                            <i nz-icon nzType="shopping-cart" nzTheme="outline" style="font-size: 20px;"></i>
                         </nz-badge>
                     </a>
                     <a class="icon-link">

@@ -10,5 +10,5 @@ export const routes: Routes = [
     { path: 'carrito', component: CarritoComponent },
     { path: 'pago', component: PayphoneFormComponent },
     { path: 'respuesta-pago', component: RespuestaPagoComponent },
-    { path: 'nosotros', component: NosotrosComponent },
+    { path: 'nosotros', component: NosotrosComponent, pathMatch: 'full' },
 ];

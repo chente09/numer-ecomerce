@@ -3,13 +3,15 @@ import { CommonModule } from '@angular/common';
 import { NzDropDownModule, NzPlacementType } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
-import { RouterLink } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterModule } from '@angular/router';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { filter } from 'rxjs';
 
 @Component({
   selector: 'app-nav-bar',
+  standalone: true,
   imports: [
     CommonModule,
     NzDropDownModule,
@@ -18,22 +20,17 @@ import { NzMenuModule } from 'ng-zorro-antd/menu';
     RouterLink,
     NzGridModule,
     NzButtonModule,
-    NzMenuModule
+    NzMenuModule,
+    RouterModule
   ],
   templateUrl: './nav-bar.component.html',
   styleUrl: './nav-bar.component.css'
 })
-export class NavBarComponent implements OnInit {
+export class NavBarComponent {
   mobileMenuOpen = false;
   cartCount = 1;
   isScrolled = false;
-
-  // Menú de navegación principal
-  navItems = [
-    { label: 'Nosotros', link: '/nosotros' },
-    { label: 'Productos', link: '/products' },
-    { label: 'Reseñas', link: '/stories' }
-  ];
+  selectedLanguage = { name: 'Ecuador (ES)' };
 
   // Menú de idiomas
   languages = [
@@ -41,23 +38,34 @@ export class NavBarComponent implements OnInit {
     { code: 'en_US', name: 'United States (EN)' },
   ];
 
-  selectedLanguage = this.languages[0];
+  // Menú de navegación principal
+  navItems = [
+    { label: 'NOSOTROS', link: '/nosotros' },
+    { label: 'PRODUCTOS', link: '/productos' },
+    { label: 'RESEÑAS', link: '/resenas' }
+  ]; 
 
-  @HostListener('window:scroll', [])
-  onWindowScroll() {
-    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    this.isScrolled = scrollPosition > 50;
+  constructor(private router: Router) {
+    // Escuchar eventos de scroll
+    window.addEventListener('scroll', () => {
+      this.isScrolled = window.scrollY > 50;
+    });
   }
 
-  ngOnInit(): void {
-    this.onWindowScroll(); // Para manejar el estado inicial
-  }
 
-  toggleMobileMenu(): void {
+  toggleMobileMenu() {
     this.mobileMenuOpen = !this.mobileMenuOpen;
   }
 
   changeLanguage(language: any): void {
     this.selectedLanguage = language;
   }
+
+  // Cerrar menú al hacer clic en un enlace en móvil
+  closeMenuOnMobile() {
+    if (window.innerWidth <= 768) {
+      this.mobileMenuOpen = false;
+    }
+  }
+  
 }
