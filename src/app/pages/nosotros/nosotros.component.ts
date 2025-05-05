@@ -5,6 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-nosotros',
@@ -14,7 +15,8 @@ import { NzDividerModule } from 'ng-zorro-antd/divider';
     NzButtonModule,
     NzGridModule,
     NzDividerModule,
-    NzCardModule
+    NzCardModule,
+    NzIconModule
   ],
   templateUrl: './nosotros.component.html',
   styleUrl: './nosotros.component.css'
@@ -36,20 +38,24 @@ export class NosotrosComponent {
   values = [
     {
       title: 'Calidad',
-      description: 'Cada prenda es elaborada con materiales premium y procesos rigurosos para garantizar durabilidad y rendimiento.'
+      description: 'Cada prenda es elaborada con materiales premium y procesos rigurosos para garantizar durabilidad y rendimiento.',
+      icon: 'bi bi-check-circle'
     },
     {
       title: 'Innovación',
-      description: 'Constantemente exploramos nuevas tecnologías y diseños para mejorar la experiencia de nuestros usuarios.'
+      description: 'Constantemente exploramos nuevas tecnologías y diseños para mejorar la experiencia de nuestros usuarios.',
+      icon: 'bi bi-lightbulb'
     },
     {
       title: 'Sostenibilidad',
-      description: 'Nos comprometemos a minimizar nuestro impacto ambiental en cada etapa del proceso productivo.'
+      description: 'Nos comprometemos a minimizar nuestro impacto ambiental en cada etapa del proceso productivo.',
+      icon: 'bi bi-recycle'
     },
     {
       title: 'Comunidad',
-      description: 'Creamos más que productos; construimos una comunidad de exploradores y amantes del aire libre.'
+      description: 'Creamos más que productos; construimos una comunidad de exploradores y amantes del aire libre.',
+      icon: 'bi bi-people'
     }
-  ];
+  ];  
 
 }

@@ -40,7 +40,7 @@ export class FooterComponent {
   ];
   
   companyLinks = [
-    { label: 'Sobre Nosotros', link: '/about' },
+    { label: 'Sobre Nosotros', link: '/nosotros' },
     { label: 'Sostenibilidad', link: '/sustainability' },
     { label: 'Carreras', link: '/careers' },
     { label: 'Embajadores', link: '/ambassadors' },

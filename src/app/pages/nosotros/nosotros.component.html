@@ -3,8 +3,7 @@
     <div class="container">
         <div nz-row nzJustify="center">
             <div nz-col nzXs="24" nzMd="20" nzLg="16">
-                <h1 class="hero-title">Sobre NUMER</h1>
-                <p class="hero-subtitle">Creando prendas para quienes no se detienen</p>
+                <p class="hero-subtitle">Creamos prendas para quienes no se detienen</p>
             </div>
         </div>
     </div>
@@ -14,10 +13,14 @@
 <section class="story-section">
     <div class="container">
         <div nz-row nzJustify="center">
-            <div nz-col nzXs="24" nzSm="20" nzMd="16" nzLg="12">
+            <div nz-col nzXs="24" nzSm="20" nzMd="16" nzLg="24">
                 <div class="story-content">
                     <h2 class="section-title">{{ storyTitle }}</h2>
                     <p class="story-text">{{ storyContent }}</p>
+                    <div class="story-footer">
+                        <p class="story-signoff">¡Nos vemos afuera!</p>
+                        <p class="story-author">Christian Esparza<br><span>Fundador – NUMER</span></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -50,12 +53,17 @@
 </section>
 
 <!-- Values Section (opcional pero recomendado) -->
+<!-- Values Section -->
 <section class="values-section">
     <div class="container">
         <h2 class="section-title text-center">Nuestros Valores</h2>
         <div nz-row [nzGutter]="[24, 24]">
             <div *ngFor="let value of values" nz-col nzXs="24" nzSm="12" nzMd="6">
                 <nz-card class="value-card">
+                    <div class="icon-wrapper">
+                        <i *ngIf="!value.icon.startsWith('bi')"  nz-icon [nzType]="value.icon" ></i>
+                        <i *ngIf="value.icon.startsWith('bi')" [class]="value.icon"></i>
+                    </div>
                     <h3 class="value-title">{{ value.title }}</h3>
                     <p class="value-text">{{ value.description }}</p>
                 </nz-card>
@@ -64,6 +72,7 @@
     </div>
 </section>
 
+
 <!-- Call to Action -->
 <section class="cta-section">
     <div class="container">
@@ -71,11 +80,7 @@
             <div nz-col nzXs="24" nzSm="18" nzMd="12" class="text-center">
                 <h2 class="cta-title">Descubre Nuestra Colección</h2>
                 <p class="cta-text">Experimenta la calidad y el diseño que define a NUMER</p>
-                <div class="cta-button">
-                    <a [routerLink]="ctaLink" nz-button  nzSize="large">
-                        {{ ctaText }}
-                    </a>
-                </div>
+                <a [routerLink]="ctaLink" class="cta-button">{{ ctaText }}</a>
             </div>
         </div>
     </div>

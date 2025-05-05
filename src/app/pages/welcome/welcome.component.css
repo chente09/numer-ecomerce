@@ -10,16 +10,10 @@
     background-image: url('https://i.gifer.com/5yc.gif');
     background-size: cover;
     background-position: center;
-    /* Mejor que 'initial' para responsividad */
     background-repeat: no-repeat;
     background-attachment: scroll;
-    /* Cambiado para mejor soporte móvil */
-
-    /* Mejores prácticas para Safari iOS */
     -webkit-background-size: cover;
     -webkit-touch-callout: none;
-
-    /* Optimización de rendimiento */
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
 
@@ -31,7 +25,6 @@
         width: 100%;
         height: 100%;
         background: rgba(0, 0, 0, 0.1);
-        /* Fix para Safari */
         -webkit-backdrop-filter: blur(0px);
         backdrop-filter: blur(0px);
     }
@@ -117,7 +110,6 @@
 .hero-content {
     text-align: center;
     max-width: 800px;
-    padding: 0 20px;
     position: relative;
     z-index: 2;
 }
@@ -127,12 +119,14 @@
 .hero-title {
     font-size: 48px;
     font-weight: 700;
+    padding-top: 15%;
     margin-bottom: 20px;
     color: whitesmoke;
     text-transform: uppercase;
 
     @media (max-width: 768px) {
         font-size: 36px;
+        padding-top: 0;
     }
 }
 
@@ -146,13 +140,11 @@
 }
 
 .hero-cta {
-    background-color: white;
-    color: black;
+    background-color: black;
+    color: white;
     border: none;
     text-transform: uppercase;
     font-weight: 500;
-    height: auto;
-    padding: 12px 30px;
 
     &:hover {
         background-color: #f0f0f0;
@@ -160,10 +152,138 @@
     }
 }
 
+/* Sección de Ofertas Limitadas con Countdown */
+.limited-offers-section {
+    padding: 40px 0;
+    background-color: black;
+}
+
+.offer-card {
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #e8e8e8;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    height: 100%;
+}
+
+.offer-image {
+    height: 240px;
+    position: relative;
+    overflow: hidden;
+}
+
+.offer-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.5s ease;
+}
+
+.offer-card:hover .offer-image img {
+    transform: scale(1.05);
+}
+
+.discount-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background-color: #ff4d4f;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.offer-details {
+    padding: 8px;
+}
+
+.offer-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.offer-price {
+    margin-bottom: 10px;
+}
+
+.original-price {
+    text-decoration: line-through;
+    color: #999;
+    margin-right: 10px;
+    font-size: 16px;
+}
+
+.current-price {
+    color: #ff4d4f;
+    font-weight: 600;
+    font-size: 20px;
+}
+
+.countdown-timer {
+    margin-bottom: 10px;
+    padding: 8px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.countdown-label {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #666;
+}
+
+.countdown-digits {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.digit-group {
+    text-align: center;
+}
+
+.digit {
+    background-color: #333;
+    color: white;
+    font-size: 20px;
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 5px;
+    min-width: 40px;
+    display: inline-block;
+}
+
+.digit-label {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+}
+
+.digit-separator {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+}
+
+.offer-cta {
+    margin-top: 5px;
+    background-color: #ff4d4f;
+    border-color: #ff4d4f;
+    font-weight: 600;
+}
+
+.offer-cta:hover {
+    background-color: #ff7875;
+    border-color: #ff7875;
+}
+
 /* Categorías */
 
 .categories-section {
-    padding: 60px 0;
+    padding: 20px 0;
     background-color: white;
 }
 
@@ -171,7 +291,8 @@
     text-align: center;
     font-size: 32px;
     font-weight: 700;
-    margin-bottom: 40px;
+    margin-top: 20px;
+    margin-bottom: 20px;
     text-transform: uppercase;
 }
 
@@ -235,10 +356,221 @@
     margin-bottom: 0;
 }
 
+/* ESTILOS DE IMG DIVIDIDAS*/
+.limited-genero-section {
+    padding: 0px;
+}
+
+/* Vistas responsive */
+.desktop-view {
+    display: none;
+}
+
+.mobile-view {
+    display: block;
+}
+
+/* Contenedor para vista lado a lado con división diagonal */
+.side-by-side-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Productos en la vista de escritorio */
+.product-left,
+.product-right {
+    position: absolute;
+    height: 100%;
+    width: 50%;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.product-left {
+    left: 0;
+    clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
+    width: 53.5%;
+    /* Ligeramente más ancho para el efecto diagonal */
+    z-index: 1;
+}
+
+.product-right {
+    right: 0;
+    clip-path: polygon(15% 0, 100% 0, 100% 100%, 0 100%);
+    width: 53.5%;
+    /* Ligeramente más ancho para el efecto diagonal */
+}
+
+/* Tarjeta de producto - Versión móvil */
+.product-card-container {
+    overflow: hidden;
+    height: 600px;
+    position: relative;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+
+/* Secciones de producto */
+.product-section {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-position: center;
+    display: flex;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+/* Para versión móvil, posicionamos absolutamente */
+.mobile-view .product-section {
+    position: absolute;
+    height: 53.5%;
+}
+
+/* Overlay para mejorar contraste del texto */
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.311);
+    z-index: 1;
+}
+
+/* Producto superior */
+.top-product {
+    top: 0;
+    clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+    height: 52%;
+}
+
+/* Producto inferior */
+.bottom-product {
+    bottom: 0;
+    clip-path: polygon(0 15%, 100% 0, 100% 100%, 0 100%);
+    height: 52%;
+}
+
+/* Título del producto */
+.product-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: white;
+    align-self: flex-end;
+    z-index: 2;
+    position: relative;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-right: 40%;
+    margin-left: 1%;
+}
+
+/* Estilos para la versión de ng-zorro */
+:host ::ng-deep .ant-card-body {
+    padding: 0;
+    height: 100%;
+    position: relative;
+}
+
+/* Hover effects */
+.product-section:hover,
+.product-left:hover,
+.product-right:hover {
+    transform: scale(1.03);
+    cursor: pointer;
+}
+
+/* Estilos responsivos */
+@media (min-width: 601px) {
+    .desktop-view {
+        display: block;
+    }
+
+    .mobile-view {
+        display: none;
+    }
+
+    .side-by-side-container {
+        height: 550px;
+    }
+}
+
+@media (max-width: 600px) {
+    .product-card-container {
+        height: 500px;
+    }
+
+    .product-title {
+        font-size: 3rem;
+    }
+
+}
+
+@media (max-width: 767px) {
+    .product-card-container {
+        height: 450px;
+    }
+
+    .product-title {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 575px) {
+    .product-card-container {
+        height: 400px;
+    }
+
+    .product-title {
+        font-size: 2rem;
+    }
+
+    .diagonal-divider {
+        height: 30px;
+    }
+}
+
+
 /* Featured Products Section */
 .featured-products-section {
-    padding: 60px 0;
-    background-color: #f5f5f5;
+    padding: 20px 0;
+    background-color: white;
+}
+
+.featured-products-container {
+    overflow-x: auto;
+    /* Permite el desplazamiento horizontal */
+    padding-bottom: 20px;
+    /* Espacio para el scroll */
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    /* Cambiamos a flex para alinear horizontalmente */
+    flex-wrap: nowrap;
+    /* Evita que se envuelvan a la siguiente línea */
+    gap: 24px;
+    /* Espacio entre tarjetas */
+    padding: 0 16px;
+    /* Padding para no pegarse a los bordes */
+}
+
+/* Ocultar scrollbar en algunos navegadores */
+.featured-products-section::-webkit-scrollbar {
+    display: none;
+}
+
+.featured-products-section {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .view-all-container {
@@ -248,37 +580,39 @@
 
 /* Product Card Styles */
 .product-card {
+    min-width: 250px;
     height: 100%;
     transition: transform 0.3s ease;
     border-radius: 8px;
     overflow: hidden;
-    
+    flex-shrink: 0;
+
     &:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        
+
         .product-name {
-            color: #1890ff;
+            color: rgb(79, 85, 59);
         }
     }
 }
 
 .product-image {
     height: 250px;
-    background-color: #f5f5f5;
+    background-color: #e8e8e8;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
     overflow: hidden;
-    
+
     img {
         max-width: 100%;
         max-height: 100%;
         object-fit: contain;
         transition: transform 0.3s ease;
     }
-    
+
     &:hover img {
         transform: scale(1.05);
     }
@@ -305,7 +639,7 @@
 
 .product-price {
     font-size: 16px;
-    color: #333;
+    color: rgb(79, 85, 59);
     margin-bottom: 12px;
     font-weight: 600;
 }
@@ -319,14 +653,620 @@
     .featured-products-section {
         padding: 40px 0;
     }
-    
+
     .product-image {
         height: 200px;
+    }
+
+    .product-card {
+        min-width: 200px;
     }
 }
 
 @media (max-width: 576px) {
     .product-image {
         height: 180px;
+    }
+
+    .product-card {
+        min-width: 180px;
+    }
+}
+
+
+/* Sección de Testimonios */
+.testimonials-section {
+    padding: 20px 0;
+    background-color: black;
+}
+
+[nz-carousel-content] {
+    height: 70px;
+}
+
+.testimonial-slide {
+    padding: 20px;
+}
+
+.testimonial-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    text-align: center;
+}
+
+.testimonial-rating {
+    margin-bottom: 15px;
+}
+
+.star-icon {
+    color: #f7ca18;
+    font-size: 20px;
+    margin: 0 2px;
+}
+
+.testimonial-text {
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    font-style: italic;
+    color: #555;
+}
+
+.testimonial-author {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.author-info {
+    text-align: left;
+    margin-left: 15px;
+}
+
+.author-info h4 {
+    margin-bottom: 2px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.author-info span {
+    font-size: 14px;
+    color: #888;
+}
+
+/* Sección de Beneficios */
+.benefits-section {
+    padding: 20px 0;
+    background-color: black;
+}
+
+.benefit-card {
+    text-align: center;
+    padding: 30px 20px;
+    border-radius: 8px;
+    background-color: white;
+    border: 1px solid #e8e8e8;
+    height: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.benefit-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+.benefit-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: black;
+}
+
+.benefit-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.benefit-description {
+    color: #666;
+    line-height: 1.6;
+}
+
+/* Sección de Tendencias y Novedades */
+.trends-section {
+    padding: 30px;
+    background-color: white;
+}
+
+.trend-product-card {
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: white;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.trend-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.trend-product-image {
+    height: 200px;
+    position: relative;
+    overflow: hidden;
+}
+
+.trend-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.5s ease;
+}
+
+.trend-product-card:hover .trend-product-image img {
+    transform: scale(1.05);
+}
+
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: black;
+}
+
+.trend-product-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: black;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.trend-product-badge.new {
+    background-color: rgb(104, 116, 67);
+}
+
+.trend-product-badge.sale {
+    background-color: #ff4d4f;
+}
+
+.trend-product-details {
+    padding: 15px;
+}
+
+.trend-product-name {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.trend-product-price {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.trend-product-actions {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Sección de Newsletter */
+.newsletter-section {
+    padding: 60px 0;
+    background-color: black;
+    color: white;
+}
+
+.newsletter-container {
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.newsletter-title {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: white;
+}
+
+.newsletter-description {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 0;
+}
+
+.newsletter-form {
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .newsletter-content {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+}
+
+/* Sección de Instagram / Social Media Feed */
+.instagram-section {
+    padding: 60px 0;
+    background-color: #f9f9f9;
+}
+
+.instagram-subtitle {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #666;
+    font-size: 16px;
+}
+
+.instagram-post {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.instagram-image {
+    position: relative;
+    padding-top: 100%;
+    /* Aspect ratio 1:1 */
+}
+
+.instagram-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.instagram-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.instagram-post:hover .instagram-overlay {
+    opacity: 1;
+}
+
+.instagram-post:hover .instagram-image img {
+    transform: scale(1.05);
+}
+
+.instagram-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.instagram-stats .likes,
+.instagram-stats .comments {
+    margin: 0 10px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.instagram-stats i {
+    margin-right: 5px;
+}
+
+.instagram-cta {
+    text-align: center;
+    margin-top: 30px;
+}
+
+/* Estilos para el modal de Instagram */
+:host ::ng-deep .ant-modal-content {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+:host ::ng-deep .ant-modal-body {
+    padding: 0;
+}
+
+.instagram-modal-content {
+    display: flex;
+    height: 80vh;
+    max-height: 600px;
+}
+
+.modal-image-container {
+    flex: 1.2;
+    background-color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-image-container img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.modal-interaction {
+    flex: 0.8;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #efefef;
+    background-color: #fff;
+}
+
+.post-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid #efefef;
+    display: flex;
+    align-items: center;
+}
+
+.post-user {
+    display: flex;
+    align-items: center;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+}
+
+.username {
+    font-weight: 600;
+    margin-right: 5px;
+}
+
+.post-caption {
+    padding: 14px 16px;
+    border-bottom: 1px solid #efefef;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.post-comments {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px;
+}
+
+.comment {
+    margin-bottom: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.post-actions {
+    padding: 8px 16px;
+    border-top: 1px solid #efefef;
+}
+
+.action-buttons {
+    display: flex;
+    margin-bottom: 8px;
+}
+
+.action-buttons button {
+    padding: 8px;
+    font-size: 24px;
+}
+
+.likes-count {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.comment-input {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-top: 1px solid #efefef;
+}
+
+.comment-input input {
+    flex: 1;
+    border: none;
+    padding: 8px 0;
+    outline: none;
+}
+
+.comment-input button {
+    color: #0095f6;
+    font-weight: 600;
+}
+
+.comment-input button:disabled {
+    color: #b3dbff;
+}
+
+.liked {
+    color: #ed4956;
+}
+
+/* Estilos responsivos para el modal */
+@media (max-width: 768px) {
+    .instagram-modal-content {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .modal-image-container {
+        height: 300px;
+    }
+
+    .modal-interaction {
+        border-left: none;
+        border-top: 1px solid #efefef;
+    }
+
+    .post-comments {
+        max-height: 200px;
+    }
+}
+
+
+
+/* Media queries para las nuevas secciones */
+@media (max-width: 768px) {
+    .section-title {
+        font-size: 28px;
+    }
+
+    .benefit-card {
+        margin-bottom: 20px;
+    }
+
+    .offer-image,
+    .trend-product-image {
+        height: 180px;
+    }
+
+    .countdown-digits {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .digit-group {
+        margin: 5px;
+    }
+
+    .digit {
+        font-size: 16px;
+        min-width: 32px;
+        padding: 6px;
+    }
+
+    .newsletter-form {
+        flex-direction: column;
+    }
+
+    .app-image {
+        margin-bottom: 30px;
+    }
+}
+
+@media (max-width: 576px) {
+    .section-title {
+        font-size: 24px;
+    }
+
+    .benefit-icon {
+        font-size: 36px;
+    }
+
+    .benefit-title {
+        font-size: 18px;
+    }
+
+    .offer-image,
+    .trend-product-image {
+        height: 150px;
+    }
+
+    .brand-logo {
+        width: 70px;
+    }
+
+    .brands-row {
+        height: 100px;
+    }
+
+    .app-title {
+        font-size: 28px;
+    }
+}
+
+/* Formato para el footer */
+.navbar {
+    background-color: #000;
+    color: #fff;
+    padding: 80px 0;
+    width: 100%;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+.nav-items {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.nav-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 0 15px;
+    cursor: pointer;
+    width: 25%;
+}
+
+.icon-container {
+    margin-right: 10px;
+}
+
+.icon {
+    font-size: 45px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.title {
+    margin: 0 0 10px 0;
+    font-size: 25px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.description {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.arrow {
+    display: inline-block;
+    margin-left: 5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .nav-items {
+        flex-direction: column;
+    }
+
+    .nav-item {
+        width: 100%;
+        margin-bottom: 20px;
     }
 }

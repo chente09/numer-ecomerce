@@ -38,7 +38,24 @@ export class ProductService {
     },
     {
       id: 3,
-      name: 'Distance Carbon Z Trekking Poles',
+      name: 'Z-Pole Carbon 100',
+      price: 189.95,
+      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
+      category: 'hiking',
+      description: 'Our lightest, most packable Z-Pole built for mountain athletes and adventures.'
+    },
+    {
+      id: 4,
+      name: 'Spot 400 Headlamp',
+      price: 49.95,
+      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
+      category: 'equipment',
+      description: 'Compact, powerful headlamp for all-around use.',
+      isNew: true
+    },
+    {
+      id: 3,
+      name: 'Z-Pole Carbon 100',
       price: 189.95,
       imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
       category: 'hiking',
