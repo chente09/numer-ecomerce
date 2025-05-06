@@ -12,12 +12,13 @@
 }
 
 .section-title {
-    font-size: 32px;
+    font-size: 34px;
     font-weight: 600;
     margin-bottom: calc(8px * 3);
     margin-top: calc(8px * 3);
     letter-spacing: 0.5px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    letter-spacing: 2px;
 }
 
 /* Hero Section */
@@ -86,7 +87,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(255, 255, 255, 0.804);
+    background-color: rgba(255, 255, 255, 0.947);
     z-index: 1;
 }
 
@@ -96,9 +97,9 @@
 }
 
 .story-text {
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1.8;
-    color: #333;
+    color:black;
     text-align: justify;
     text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.5);
 }

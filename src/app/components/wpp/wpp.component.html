@@ -1,0 +1,84 @@
+<!-- Componente de WhatsApp para E-commerce -->
+<div class="whatsapp-button">
+    <!-- Botón principal con popover -->
+    <button 
+        class="whatsapp-btn" 
+        nz-popover
+        [nzPopoverTitle]="popoverTitle"
+        [nzPopoverContent]="contentTemplate"
+        [nzPopoverTrigger]="'click'"
+        [nzPopoverPlacement]="'topRight'"
+        (mouseenter)="showTooltip = true"
+        (mouseleave)="showTooltip = false">
+        <nz-icon class="whatsapp-icon" nzType="whats-app" nzTheme="outline"></nz-icon>
+        <span *ngIf="hasNewNotifications" class="notification-badge">{{ notificationCount }}</span>
+    </button>
+
+    <!-- Tooltip personalizado según hora del día -->
+    <span class="whatsapp-tooltip" [class.visible]="showTooltip">
+        {{ tooltipMessage }}
+    </span>
+
+    <!-- Título del popover -->
+    <ng-template #popoverTitle>
+        <div class="popover-title">
+            <nz-icon nzType="shop" nzTheme="outline"></nz-icon>
+            <span>Numer</span>
+        </div>
+    </ng-template>
+
+    <!-- Contenido del popover -->
+    <ng-template #contentTemplate>
+        <div class="quick-options">
+            <p class="greeting">¡Hola! ¿En qué podemos ayudarte?</p>
+            
+            <!-- Opciones rápidas para consultas de moda -->
+            <div class="options-container">
+                <button 
+                    class="quick-option-btn"
+                    (click)="redirectToWhatsAppWithMessage('Hola, me interesan las promociones actuales de la tienda.')">
+                    <nz-icon nzType="tag" nzTheme="outline"></nz-icon>
+                    <span>Promociones</span>
+                </button>
+                
+                <button 
+                    class="quick-option-btn"
+                    (click)="redirectToWhatsAppWithMessage('Hola, quisiera información sobre las nuevas colecciones.')">
+                    <nz-icon nzType="skin" nzTheme="outline"></nz-icon>
+                    <span>Nuevas colecciones</span>
+                </button>
+                
+                <button 
+                    class="quick-option-btn"
+                    (click)="redirectToWhatsAppWithMessage('Hola, necesito ayuda con las tallas de sus prendas.')">
+                    <nz-icon nzType="scissor" nzTheme="outline"></nz-icon>
+                    <span>Tallas</span>
+                </button>
+                
+                <button 
+                    class="quick-option-btn"
+                    (click)="redirectToWhatsAppWithMessage('Hola, ¿qué métodos de pago aceptan?')">
+                    <nz-icon nzType="credit-card" nzTheme="outline"></nz-icon>
+                    <span>Formas de pago</span>
+                </button>
+            </div>
+
+            <!-- Sección de mensaje personalizado -->
+            <div class="custom-message">
+                <input 
+                    nz-input 
+                    [(ngModel)]="customMessage" 
+                    placeholder="Escribe tu mensaje personalizado..."
+                    class="custom-input" />
+                <button 
+                    nz-button 
+                    [nzType]="'primary'"
+                    class="send-btn"
+                    [disabled]="!customMessage.trim()"
+                    (click)="redirectToWhatsAppWithMessage(customMessage)">
+                    <nz-icon nzType="send" nzTheme="outline"></nz-icon>
+                </button>
+            </div>
+        </div>
+    </ng-template>
+</div>

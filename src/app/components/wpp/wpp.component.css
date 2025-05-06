@@ -1,0 +1,267 @@
+/* Animación de pulso para el botón */
+@keyframes whatsapp-pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(37, 211, 102, 0.3);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 20px rgba(37, 211, 102, 0.5);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(37, 211, 102, 0.3);
+    }
+}
+
+/* Animación para la entrada del tooltip */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Animación para las notificaciones */
+@keyframes popIn {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Contenedor principal del botón */
+.whatsapp-button {
+    position: fixed;
+    bottom: 45px;
+    right: 45px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: 'Arial', sans-serif;
+}
+
+/* Estilo del botón */
+.whatsapp-btn {
+    background-color: #25d366;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    width: 60px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    animation: whatsapp-pulse 2s infinite;
+    outline: none;
+    padding: 0;
+}
+
+/* Hover del botón */
+.whatsapp-btn:hover {
+    background-color: #1ebe57;
+    box-shadow: 0 8px 25px rgba(37, 211, 102, 0.4);
+    transform: scale(1.1) translateY(-3px);
+    animation: none;
+}
+
+/* Estilo para el ícono */
+.whatsapp-icon {
+    font-size: 28px;
+    color: white;
+    transition: transform 0.3s ease;
+}
+
+/* Rotación del ícono al hacer hover */
+.whatsapp-btn:hover .whatsapp-icon {
+    transform: rotate(10deg);
+}
+
+/* Estilo activo al hacer clic */
+.whatsapp-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Tooltip informativo */
+.whatsapp-tooltip {
+    position: absolute;
+    top: -92px;
+    background-color: #333;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    white-space: pre-line; /* Esta es la propiedad clave */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center; /* Para centrar el texto */
+    min-width: 160px; /* Dar un ancho mínimo para mejorar la apariencia */
+}
+
+/* Mostrar tooltip */
+.whatsapp-tooltip.visible {
+    opacity: 1;
+    animation: fadeIn 0.3s forwards;
+}
+
+/* Flecha del tooltip */
+.whatsapp-tooltip:after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    margin-left: -8px;
+    border-width: 8px 8px 0;
+    border-style: solid;
+    border-color: #333 transparent transparent;
+}
+
+/* Indicador de notificación */
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #ff4040;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    animation: popIn 0.3s forwards;
+}
+
+/* Estilos para el popover */
+.popover-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.popover-title i, .popover-title span[nz-icon] {
+    color: #25d366;
+}
+
+.quick-options {
+    width: 300px;
+    padding: 8px 0;
+}
+
+.greeting {
+    font-size: 14px;
+    margin-bottom: 16px;
+    color: #555;
+    text-align: center;
+}
+
+.options-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.quick-option-btn {
+    background-color: #f5f5f5;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: 70px;
+}
+
+.quick-option-btn:hover {
+    background-color: #e8e8e8;
+    transform: translateY(-2px);
+    border-color: #d9d9d9;
+}
+
+.quick-option-btn nz-icon {
+    font-size: 20px;
+    color: #25d366;
+}
+
+.quick-option-btn span:not([nz-icon]) {
+    font-size: 12px;
+    color: #555;
+}
+
+.custom-message {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.custom-input {
+    flex: 1;
+    border-radius: 20px;
+}
+
+.send-btn {
+    background-color: #25d366;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.send-btn:hover {
+    background-color: #1ebe57;
+}
+
+.send-btn[disabled] {
+    background-color: #b8e6cb;
+    cursor: not-allowed;
+}
+
+/* Media query para dispositivos móviles */
+@media (max-width: 768px) {
+    .whatsapp-button {
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    .whatsapp-btn {
+        width: 55px;
+        height: 55px;
+    }
+    
+    .whatsapp-icon {
+        font-size: 24px;
+    }
+
+    .quick-options {
+        width: 260px;
+    }
+    
+    .options-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .quick-option-btn {
+        height: 55px;
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 12px;
+        padding: 8px 12px;
+    }
+}
