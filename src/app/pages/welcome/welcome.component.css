@@ -1,6 +1,5 @@
 .hero-section {
     min-height: 550px;
-    /* Altura mínima para escritorio */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -107,12 +106,7 @@
     }
 }
 
-.hero-content {
-    text-align: center;
-    max-width: 800px;
-    position: relative;
-    z-index: 2;
-}
+
 
 /* rgb(79, 85, 59) */
 
@@ -154,7 +148,7 @@
 
 /* Sección de Ofertas Limitadas con Countdown */
 .limited-offers-section {
-    padding: 40px 0;
+    padding: 2px 0;
     background-color: black;
 }
 
@@ -283,7 +277,7 @@
 /* Categorías */
 
 .categories-section {
-    padding: 20px 0;
+    padding: 12px;
     background-color: white;
 }
 
@@ -291,34 +285,27 @@
     text-align: center;
     font-size: 32px;
     font-weight: 700;
-    margin-top: 20px;
-    margin-bottom: 20px;
+    margin-top: 10px;
+    margin-bottom: 10px;
     text-transform: uppercase;
 }
 
 .loading-container {
     display: flex;
     justify-content: center;
-    padding: 40px 0;
+    padding: 40px ;
 }
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 15px;
-}
-
 
 .category-card {
     height: 100%;
 
     ::ng-deep .ant-card-body {
-        padding: 16px;
+        padding: 14px;
     }
 }
 
 .card-cover {
-    height: 250px;
+    height: 220px;
     background-size: cover;
     background-position: center;
     position: relative;
@@ -339,7 +326,7 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 20px;
+    padding: 10px;
     color: white;
     text-align: center;
 }
@@ -356,9 +343,10 @@
     margin-bottom: 0;
 }
 
+
 /* ESTILOS DE IMG DIVIDIDAS*/
 .limited-genero-section {
-    padding: 0px;
+    padding: 8px;
 }
 
 /* Vistas responsive */
@@ -776,7 +764,7 @@
 
 /* Sección de Tendencias y Novedades */
 .trends-section {
-    padding: 30px;
+    padding: 12px;
     background-color: white;
 }
 
@@ -898,7 +886,7 @@
 
 /* Sección de Instagram / Social Media Feed */
 .instagram-section {
-    padding: 60px 0;
+    padding: 20px;
     background-color: #f9f9f9;
 }
 

@@ -9,7 +9,7 @@
 </section>
 
 <!-- Sección de Ofertas Limitadas con Countdown -->
-<section class="limited-offers-section">
+<!-- <section class="limited-offers-section">
     <div class="container">
         <h2 class="section-title" style="color: aliceblue;">Ofertas por Tiempo Limitado</h2>
 
@@ -97,17 +97,17 @@
             </div>
         </div>
     </div>
-</section>
+</section> -->
 
 <section class="categories-section">
-    <div class="container">
+    <div >
         <h2 class="section-title">Comprar por Categoría</h2>
 
         <div *ngIf="loading" class="loading-container">
             <nz-spin nzSize="large"></nz-spin>
         </div>
 
-        <div *ngIf="!loading" nz-row [nzGutter]="[24, 24]">
+        <div *ngIf="!loading" nz-row [nzGutter]="[8, 8]">
             <div *ngFor="let category of categories" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
                 <nz-card class="category-card" nzBorderless="true">
                     <a [routerLink]="['/shop', category.slug]">
@@ -126,7 +126,7 @@
 </section>
 
 <section class="limited-genero-section">
-    <div class="">
+    <div >
         <!-- <h2 class="section-title" >Comprar por Género</h2> -->
         <!-- Vista para pantallas grandes (lado a lado) -->
         <div class="desktop-view">
@@ -424,7 +424,7 @@
 
 <!-- Sección de Instagram / Social Media Feed -->
 <section class="instagram-section">
-    <div class="container">
+    <div>
         <h2 class="section-title">Síguenos en Instagram</h2>
         <p class="instagram-subtitle">Comparte tus compras con nosotros &#64;numer.ec y recibe descuentos exclusivos</p>
 
