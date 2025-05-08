@@ -1,0 +1,47 @@
+<div *ngIf="product" class="product-detail">
+    <div class="product-images">
+        <div class="main-image">
+            <img [src]="product.imageUrl" alt="{{ product.name }}" class="product-image">
+            <span *ngIf="product.isNew" class="new-badge">NEW</span>
+        </div>
+    </div>
+
+    <div class="product-info">
+        <h1 class="product-name">{{ product.name }}</h1>
+
+        <div class="product-price">${{ product.price.toFixed(2) }}</div>
+
+        <div class="product-rating">
+            <div *ngFor="let star of getStarsArray(product.rating)" class="star">
+                <i class="fas" [ngClass]="star === 1 ? 'fa-star' : 'fa-star-o'"></i>
+            </div>
+        </div>
+
+        <div class="product-colors">
+            <h3>Colors</h3>
+            <div class="color-options">
+                <div *ngFor="let color of product.colors" class="color-option"
+                    [ngClass]="{'active': selectedColor === color}" [style.background-color]="color.code"
+                    (click)="selectColor(color)">
+                </div>
+            </div>
+        </div>
+
+        <div class="product-quantity">
+            <h3>Quantity</h3>
+            <div class="quantity-selector">
+                <button (click)="decreaseQuantity()" [disabled]="quantity <= 1">-</button>
+                <input type="number" [value]="quantity" readonly>
+                <button (click)="increaseQuantity()">+</button>
+            </div>
+        </div>
+
+        <button class="add-to-cart-btn">ADD TO CART</button>
+
+        <div class="product-description">
+            <h3>Description</h3>
+            <p>This {{ product.name.toLowerCase() }} is designed for outdoor enthusiasts who need quality gear for their
+                adventures. Made with premium materials for durability and comfort.</p>
+        </div>
+    </div>
+</div>

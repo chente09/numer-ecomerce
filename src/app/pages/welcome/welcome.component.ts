@@ -1,8 +1,10 @@
 import { Component, ElementRef, Input, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CategoryService, Category } from '../../services/category/category.service';
-import { ProductService, Product } from '../../services/product/product.service';
+import { ProductService, Product, Color } from '../../services/product/product.service';
+import { ScrollService } from '../../services/scroll/scroll.service';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -77,7 +79,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
 
   @ViewChild('postDetailModal') postDetailModal!: TemplateRef<any>;
   @ViewChild('commentInput') commentInput!: ElementRef;
-
+  @ViewChild('resenas') resenasElement!: ElementRef;
   // Nuevas propiedades
   private countdownSubscription: Subscription | undefined;
   emailSubscription = '';
@@ -274,7 +276,9 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   constructor(
     private categoryService: CategoryService,
     private productService: ProductService,
-    private modalService: NzModalService
+    private modalService: NzModalService,
+    private scrollService: ScrollService,
+    private route: ActivatedRoute
   ) { }
 
 
@@ -285,11 +289,43 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     this.loadInstagramFeed();
   }
 
+  ngAfterViewInit() {
+    // Manejar navegación por fragmentos
+    this.route.fragment.subscribe(fragment => {
+      if (fragment) {
+        setTimeout(() => {
+          this.scrollToSection(fragment);
+        }, 100);
+      }
+    });
+  }
+  
+  scrollToSection(sectionId: string) {
+    // Usar el servicio de scroll para navegar a la sección
+    if (sectionId === 'resenas' && this.resenasElement) {
+      this.scrollService.scrollToElement(this.resenasElement);
+      return;
+    }
+    
+    this.scrollService.scrollToElementById(sectionId);
+  }
+  
   ngOnDestroy() {
     if (this.countdownSubscription) {
       this.countdownSubscription.unsubscribe();
     }
   }
+
+  // Método para seleccionar un color de producto
+  selectColor(product: Product, color: Color): void {
+    product.imageUrl = color.imageUrl;
+  }
+
+  // Método para generar array para mostrar las estrellas de rating
+  getStarsArray(rating: number): number[] {
+    return Array(5).fill(0).map((_, i) => i < Math.floor(rating) ? 1 : 0);
+  }
+
 
   loadCategories(): void {
     this.categoryService.getCategories().subscribe(
@@ -305,16 +341,17 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   }
 
   loadFeaturedProducts(): void {
-    this.productService.getFeaturedProducts().subscribe(
-      (data) => {
-        this.featuredProducts = data;
+    this.productsLoading = true;
+    this.productService.getFeaturedProducts().subscribe({
+      next: (products) => {
+        this.featuredProducts = products;
         this.productsLoading = false;
       },
-      (error) => {
-        console.error('Error loading featured products:', error);
+      error: (error) => {
+        console.error('Error loading featured products', error);
         this.productsLoading = false;
       }
-    );
+    });
   }
 
   startCountdown() {

@@ -45,7 +45,7 @@
                 <div nz-col nzFlex="auto" class="nav-container" [class.mobile-menu-open]="mobileMenuOpen">
                     <ul nz-menu nzMode="horizontal" class="nav-menu">
                         <li nz-menu-item *ngFor="let item of navItems">
-                            <a [routerLink]="item.link" routerLinkActive="active"
+                            <a [routerLink]="item.link" [fragment]="item.fragment" routerLinkActive="active"
                                 [routerLinkActiveOptions]="{exact: true}" (click)="closeMenuOnMobile()">
                                 {{ item.label }}
                             </a>

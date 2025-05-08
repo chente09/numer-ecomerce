@@ -100,7 +100,7 @@
 </section> -->
 
 <section class="categories-section">
-    <div >
+    <div>
         <h2 class="section-title">Comprar por Categoría</h2>
 
         <div *ngIf="loading" class="loading-container">
@@ -126,7 +126,7 @@
 </section>
 
 <section class="limited-genero-section">
-    <div >
+    <div>
         <!-- <h2 class="section-title" >Comprar por Género</h2> -->
         <!-- Vista para pantallas grandes (lado a lado) -->
         <div class="desktop-view">
@@ -193,24 +193,34 @@
             <nz-spin nzSize="large"></nz-spin>
         </div>
 
-        <div *ngIf="!productsLoading" class="featured-products-container">
-            <div *ngFor="let product of featuredProducts" class="product-col">
-                <nz-card class="product-card" nzBorderless="true">
-                    <div class="product-image">
-                        <img [src]="product.imageUrl" [alt]="product.name">
-                        <nz-tag *ngIf="product.isNew" nzColor="#52c41a" class="product-tag">Nuevo</nz-tag>
-                        <nz-tag *ngIf="product.isBestSeller" nzColor="#ff4d4f" class="product-tag">Más Vendido</nz-tag>
+        <div *ngIf="!productsLoading" class="product-grid">
+            <div *ngFor="let product of featuredProducts" class="product-card-section">
+                <!-- Agregar el enlace al área de la imagen para navegar al detalle -->
+                <div class="product-image-container" [routerLink]="['/products', product.id]" style="cursor: pointer;">
+                    <img [src]="product.imageUrl" alt="{{ product.name }}" class="product-image-section">
+                    <span *ngIf="product.isNew" class="new-badge">NEW</span>
+                </div>
+
+                <div class="color-options">
+                    <div *ngFor="let color of product.colors" class="color-option"
+                        [ngClass]="{'active': product.imageUrl === color.imageUrl}"
+                        (click)="selectColor(product, color)">
+                        <img [src]="color.imageUrl" [alt]="color.name">
                     </div>
-                    <div class="product-details">
-                        <h3 class="product-name">{{ product.name }}</h3>
-                        <p class="product-price">${{ product.price.toFixed(2) }}</p>
-                        <div class="product-actions">
-                            <a [routerLink]="['/products', product.id]" nz-button nzType="default" nzBlock>
-                                Ver Detalles
-                            </a>
-                        </div>
-                    </div>
-                </nz-card>
+                </div>
+
+                <!-- También puedes hacer clic en el nombre del producto -->
+                <h3 class="product-name" [routerLink]="['/products', product.id]" style="cursor: pointer;">
+                    {{ product.name }}
+                </h3>
+                <div class="product-price">${{ product.price.toFixed(2) }}</div>
+
+                <div class="product-rating">
+                    <span *ngFor="let i of [0,1,2,3,4]">
+                        <nz-icon [nzType]="i < product.rating ? 'star' : 'star-outline'"
+                            [nzTheme]="i < product.rating ? 'fill' : 'outline'" class="star-icon-section"></nz-icon>
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -222,11 +232,11 @@
     </div>
 </section>
 
+
 <!-- Sección de Testimonios y Reseñas -->
-<section class="testimonials-section">
+<section #resenas id="resenas" class="testimonials-section">
     <div class="container">
         <h2 class="section-title" style="color: aliceblue;">Lo que dicen nuestros clientes</h2>
-
         <div class="testimonials-carousel">
             <nz-carousel nzAutoPlay>
                 <div nz-carousel-content *ngFor="let testimonial of testimonials" class="testimonial-slide">

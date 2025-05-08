@@ -19,5 +19,27 @@ import { getStorage, provideStorage } from '@angular/fire/storage';
 registerLocaleData(en);
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideZoneChangeDetection({ eventCoalescing: true }), provideRouter(routes), provideNzIcons(icons), provideNzI18n(en_US), importProvidersFrom(FormsModule), provideAnimationsAsync(), provideHttpClient(), provideFirebaseApp(() => initializeApp({ projectId: "numer-16f35", appId: "1:1010054110379:web:212389b0d3e9e17a896bee", storageBucket: "numer-16f35.firebasestorage.app", apiKey: "AIzaSyB4NSF26zLhm9qsXGrJZ6rNAUw2Z2T8k3o", authDomain: "numer-16f35.firebaseapp.com", messagingSenderId: "1010054110379", measurementId: "G-GVGLYZ4RJJ" })), provideAuth(() => getAuth()), provideAnalytics(() => getAnalytics()), ScreenTrackingService, UserTrackingService, provideFirestore(() => getFirestore()), provideStorage(() => getStorage())]
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }), 
+    provideRouter(routes), 
+    provideNzIcons(icons), 
+    provideNzI18n(en_US), 
+    importProvidersFrom(FormsModule), 
+    provideAnimationsAsync(), 
+    provideHttpClient(), 
+    provideFirebaseApp(() => initializeApp({ 
+      projectId: "numer-16f35", 
+      appId: "1:1010054110379:web:212389b0d3e9e17a896bee", 
+      storageBucket: "numer-16f35.firebasestorage.app", 
+      apiKey: "AIzaSyB4NSF26zLhm9qsXGrJZ6rNAUw2Z2T8k3o", 
+      authDomain: "numer-16f35.firebaseapp.com", 
+      messagingSenderId: "1010054110379", 
+      measurementId: "G-GVGLYZ4RJJ" })), 
+    provideAuth(() => getAuth()), 
+    provideAnalytics(() => getAnalytics()), 
+    ScreenTrackingService, 
+    UserTrackingService, 
+    provideFirestore(() => getFirestore()), 
+    provideStorage(() => getStorage())
+  ]
 };

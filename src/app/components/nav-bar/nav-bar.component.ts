@@ -40,8 +40,8 @@ export class NavBarComponent {
 
   navItems = [
     { label: 'NOSOTROS', link: '/nosotros' },
-    { label: 'PRODUCTOS', link: '/productos' },
-    { label: 'RESEÑAS', link: '/resenas' }
+    { label: 'TIENDA', link: '/productos' },
+    { label: 'RESEÑAS', link: '/welcome', fragment: 'resenas' },
   ];
 
   constructor(private router: Router) {}
@@ -73,4 +73,5 @@ export class NavBarComponent {
 
     this.lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
   }
+  
 }
