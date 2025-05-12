@@ -1,0 +1,20 @@
+/* Estilos para el componente de carga de imagen */
+:host ::ng-deep .ant-upload-select-picture-card i {
+    font-size: 32px;
+    color: #999;
+}
+
+:host ::ng-deep .ant-upload-select-picture-card .ant-upload-text {
+    margin-top: 8px;
+    color: #666;
+}
+
+:host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item {
+    width: 100px;
+    height: 100px;
+}
+
+/* Estilos para la tabla */
+:host ::ng-deep .ant-table img {
+    object-fit: cover;
+}

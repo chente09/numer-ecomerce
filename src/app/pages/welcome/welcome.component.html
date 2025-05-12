@@ -101,19 +101,21 @@
 
 <section class="categories-section">
     <div>
-        <h2 class="section-title">Comprar por Categoría</h2>
+        <h2 class="section-title" style="color: aliceblue;">Categorías</h2>
 
         <div *ngIf="loading" class="loading-container">
             <nz-spin nzSize="large"></nz-spin>
         </div>
 
         <div *ngIf="!loading" nz-row [nzGutter]="[8, 8]">
-            <div *ngFor="let category of categories" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
-                <nz-card class="category-card" nzBorderless="true">
+            <div *ngFor="let category of categories" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6"
+                [class.blur]="hoveredCategorySlug && hoveredCategorySlug !== category.slug">
+                <nz-card class="category-card" (mouseenter)="hoveredCategorySlug = category.slug"
+                    (mouseleave)="hoveredCategorySlug = null">
                     <a [routerLink]="['/shop', category.slug]">
                         <div class="card-cover" [style.background-image]="'url(' + category.imageUrl + ')'">
                             <div class="card-overlay">
-                                <h3 class="category-name" nz-typography nzEllipsis style="color: aliceblue;">
+                                <h3 class="category-name" nz-typography nzEllipsis>
                                     {{category.name }}
                                 </h3>
                             </div>
@@ -216,11 +218,9 @@
                 <div class="product-price">${{ product.price.toFixed(2) }}</div>
 
                 <div class="product-rating">
-                    <span *ngFor="let i of [0,1,2,3,4]">
-                        <nz-icon [nzType]="i < product.rating ? 'star' : 'star-outline'"
-                            [nzTheme]="i < product.rating ? 'fill' : 'outline'" class="star-icon-section"></nz-icon>
-                    </span>
+                    <nz-rate [ngModel]="product.rating" nzDisabled [nzAllowHalf]="true" class="large"></nz-rate>
                 </div>
+
             </div>
         </div>
 
@@ -242,11 +242,7 @@
                 <div nz-carousel-content *ngFor="let testimonial of testimonials" class="testimonial-slide">
                     <div class="testimonial-card">
                         <div class="testimonial-rating">
-                            <span *ngFor="let star of [1,2,3,4,5]">
-                                <nz-icon [nzType]="star <= testimonial.rating ? 'star' : 'star-outline'"
-                                    [nzTheme]="star <= testimonial.rating ? 'fill' : 'outline'"
-                                    class="star-icon"></nz-icon>
-                            </span>
+                            <nz-rate [ngModel]="testimonial.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
                         </div>
                         <p class="testimonial-text">"{{ testimonial.text }}"</p>
                         <div class="testimonial-author">

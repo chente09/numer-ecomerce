@@ -31,7 +31,7 @@
                 <!-- Logo -->
                 <div nz-col class="logo">
                     <a routerLink="/welcome">
-                        <img src="https://i.postimg.cc/d3wwjMbv/Logo-Numer-negro-letras.png" alt="logo numer"
+                        <img src="https://i.postimg.cc/Z5MYtMdF/Logo-Numer-blanco-letras.png" alt="logo numer"
                             style="width: 200px;">
                     </a>
                 </div>
@@ -47,7 +47,7 @@
                         <li nz-menu-item *ngFor="let item of navItems">
                             <a [routerLink]="item.link" [fragment]="item.fragment" routerLinkActive="active"
                                 [routerLinkActiveOptions]="{exact: true}" (click)="closeMenuOnMobile()">
-                                {{ item.label }}
+                                {{ item.label }} 
                             </a>
                         </li>
                     </ul>
@@ -60,8 +60,8 @@
                             <i nz-icon nzType="search" nzTheme="outline"></i>
                         </a>
                         <a class="icon-link" routerLink="/carrito">
-                            <nz-badge [nzCount]="cartCount">
-                                <i nz-icon nzType="shopping-cart" nzTheme="outline" style="font-size: 20px;"></i>
+                            <nz-badge [nzCount]="cartCount" >
+                                <i nz-icon nzType="shopping-cart" nzTheme="outline" style="font-size: 20px; color: aliceblue;"></i>
                             </nz-badge>
                         </a>
                         <a class="icon-link">

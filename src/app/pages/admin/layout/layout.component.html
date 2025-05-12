@@ -1,0 +1,49 @@
+<!-- admin-layout.component.html -->
+<nz-layout class="admin-layout">
+    <nz-sider class="menu-sidebar" nzCollapsible nzWidth="256px" nzBreakpoint="md" [(nzCollapsed)]="isCollapsed">
+        <div class="sidebar-logo">
+            <a href="/">
+                <img src="https://i.postimg.cc/k59SjrbJ/Logo-Numer-blanco.png" alt="logo">
+                <h1>NUMER Admin</h1>
+            </a>
+        </div>
+        <ul nz-menu nzTheme="dark" nzMode="inline" [nzInlineCollapsed]="isCollapsed">
+            <li nz-menu-item *ngFor="let item of menuItems" routerLinkActive="ant-menu-item-selected">
+                <a [routerLink]="item.path" routerLinkActive="active">
+                    <i nz-icon [nzType]="item.icon"></i>
+                    <span>{{ item.title }}</span>
+                </a>
+            </li>
+        </ul>
+    </nz-sider>
+    <nz-layout>
+        <nz-header>
+            <div class="header-trigger" (click)="isCollapsed = !isCollapsed">
+                <i class="trigger" nz-icon [nzType]="isCollapsed ? 'menu-unfold' : 'menu-fold'"></i>
+            </div>
+            <div class="header-actions">
+                <span class="header-user">
+                    <nz-avatar nzIcon="user"></nz-avatar>
+                    <span class="username">Administrador</span>
+                </span>
+                <a nz-dropdown [nzDropdownMenu]="menu">
+                    <i nz-icon nzType="more" nzTheme="outline"></i>
+                </a>
+                <nz-dropdown-menu #menu="nzDropdownMenu">
+                    <ul nz-menu>
+                        <li nz-menu-item>Mi Perfil</li>
+                        <li nz-menu-item>Configuración</li>
+                        <li nz-menu-divider></li>
+                        <li nz-menu-item>Cerrar Sesión</li>
+                    </ul>
+                </nz-dropdown-menu>
+            </div>
+        </nz-header>
+        <nz-content>
+            <div class="inner-content">
+                <router-outlet></router-outlet>
+            </div>
+        </nz-content>
+        <nz-footer>Mi Tienda Admin ©2025 Desarrollado con Angular y Ng-Zorro</nz-footer>
+    </nz-layout>
+</nz-layout>

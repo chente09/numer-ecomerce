@@ -278,7 +278,7 @@
 
 .categories-section {
     padding: 12px;
-    background-color: white;
+    background-color: black;
 }
 
 .section-title {
@@ -298,27 +298,43 @@
 
 .category-card {
     height: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative; /* importante para z-index funcionar */
+    overflow: visible;  /* permite que el contenido sobresalga */
+    z-index: 1;
 
     ::ng-deep .ant-card-body {
-        padding: 14px;
+        padding: 1px;
     }
 }
 
+.category-card:hover {
+    transform: scale(1.05);
+    background-color: #000;
+    cursor: pointer;
+    z-index: 10; 
+}
+
+.blur {
+    filter: blur(3px) brightness(0.7);
+    transition: filter 0.3s ease;
+    pointer-events: none; /* para evitar interacción con tarjetas desenfocadas */
+}
+
 .card-cover {
-    height: 220px;
+    height: 270px;
     background-size: cover;
     background-position: center;
     position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
 
-    &:before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6));
-    }
+.category-card:hover .card-cover {
+    transform: scale(1.08); /* efecto leve solo a la imagen */
+    z-index: 1; /* aseguramos que la imagen esté por encima */
+    overflow: hidden; /* ocultamos el desbordamiento */
+    background-color: #000;
 }
 
 .card-overlay {
@@ -336,6 +352,8 @@
     font-weight: 700;
     margin-bottom: 8px;
     text-transform: uppercase;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    color: aliceblue;
 }
 
 .category-description {
@@ -699,6 +717,9 @@
     }
 }
 
+.large ::ng-deep .ant-rate-star {
+        color: #000;
+}
 
 @media (max-width: 768px) {
     .product-grid {

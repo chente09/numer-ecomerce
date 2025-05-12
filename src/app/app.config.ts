@@ -15,8 +15,14 @@ import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getAnalytics, provideAnalytics, ScreenTrackingService, UserTrackingService } from '@angular/fire/analytics';
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { getStorage, provideStorage } from '@angular/fire/storage';
+import { FirebaseInitService } from './services/firebase/firebase-init.service';
 
 registerLocaleData(en);
+
+// Firebase initialization factory
+export function initializeFirebaseFactory(firebaseInitService: FirebaseInitService) {
+  return () => firebaseInitService.initializeFirebase();
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [

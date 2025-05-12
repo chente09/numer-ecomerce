@@ -19,6 +19,8 @@ import { FormsModule } from '@angular/forms';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTypographyModule } from 'ng-zorro-antd/typography';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzRateModule } from 'ng-zorro-antd/rate';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 interface InstagramComment {
   username: string;
@@ -61,7 +63,8 @@ interface ProductPair {
     NzInputModule,
     FormsModule,
     NzTypographyModule,
-    NzModalModule
+    NzModalModule,
+    NzRateModule
   ],
   standalone: true,
   templateUrl: './welcome.component.html',
@@ -72,10 +75,13 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   featuredProducts: Product[] = [];
   categoriesLoading = true;
   productsLoading = true;
+  allProducts: Product[] = [];
   loading: any;
   instagramFeed: InstagramPost[] = [];
   selectedPost: InstagramPost | null = null;
   newComment: string = '';
+
+  hoveredCategorySlug: string | null = null;
 
   @ViewChild('postDetailModal') postDetailModal!: TemplateRef<any>;
   @ViewChild('commentInput') commentInput!: ElementRef;
@@ -278,7 +284,8 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     private productService: ProductService,
     private modalService: NzModalService,
     private scrollService: ScrollService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private message: NzMessageService
   ) { }
 
 
@@ -299,17 +306,17 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       }
     });
   }
-  
+
   scrollToSection(sectionId: string) {
     // Usar el servicio de scroll para navegar a la sección
     if (sectionId === 'resenas' && this.resenasElement) {
       this.scrollService.scrollToElement(this.resenasElement);
       return;
     }
-    
+
     this.scrollService.scrollToElementById(sectionId);
   }
-  
+
   ngOnDestroy() {
     if (this.countdownSubscription) {
       this.countdownSubscription.unsubscribe();
@@ -328,27 +335,38 @@ export class WelcomeComponent implements OnInit, OnDestroy {
 
 
   loadCategories(): void {
-    this.categoryService.getCategories().subscribe(
-      (data) => {
+    this.categoryService.getCategories().subscribe({
+      next: (data) => {
         this.categories = data;
         this.categoriesLoading = false;
       },
-      (error) => {
+      error: (error) => {
         console.error('Error loading categories:', error);
         this.categoriesLoading = false;
       }
-    );
+    });
   }
 
   loadFeaturedProducts(): void {
     this.productsLoading = true;
-    this.productService.getFeaturedProducts().subscribe({
+
+    this.productService.getProducts().subscribe({
       next: (products) => {
-        this.featuredProducts = products;
+        this.allProducts = products;
+
+        // Filtrar productos destacados (ejemplo: isBestSeller o isNew)
+        this.featuredProducts = this.allProducts.filter(product =>
+          product.isBestSeller || product.isNew
+        );
+
+        // Si quieres limitar a un número específico (ej. 6 productos)
+        this.featuredProducts = this.featuredProducts.slice(0, 6);
+
         this.productsLoading = false;
       },
       error: (error) => {
-        console.error('Error loading featured products', error);
+        this.message.error('Error al cargar los productos destacados');
+        console.error('Error:', error);
         this.productsLoading = false;
       }
     });

@@ -4,14 +4,27 @@ import { CarritoComponent } from './pasarela-pago/carrito/carrito.component';
 import { RespuestaPagoComponent } from './pasarela-pago/respuesta-pago/respuesta-pago.component';
 import { NosotrosComponent } from './pages/nosotros/nosotros.component';
 import { DetalleProductoComponent } from './pages/shop/detalle-producto/detalle-producto/detalle-producto.component';
+import { WelcomeComponent } from './pages/welcome/welcome.component';
+import { LayoutComponent } from './pages/admin/layout/layout.component';
+import { ProductManagementComponent } from './pages/admin/product-management/product-management.component';
+import { CategoriasComponent } from './pages/admin/categorias/categorias.component';
 
 export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: '/welcome' },
-    { path: 'welcome', loadChildren: () => import('./pages/welcome/welcome.routes').then(m => m.WELCOME_ROUTES) },
+    { path: 'welcome', component: WelcomeComponent },
     { path: 'carrito', component: CarritoComponent },
     { path: 'pago', component: PayphoneFormComponent },
     { path: 'respuesta-pago', component: RespuestaPagoComponent },
     { path: 'nosotros', component: NosotrosComponent, pathMatch: 'full' },
     { path: 'products/:id', component: DetalleProductoComponent },
+    {
+        path: 'admin',
+        component: LayoutComponent,
+        children: [
+            { path: '', redirectTo: 'products', pathMatch: 'full' },
+            { path: 'products', component: ProductManagementComponent },
+            { path: 'categories', component: CategoriasComponent },
+        ]
+    }
 ];
 

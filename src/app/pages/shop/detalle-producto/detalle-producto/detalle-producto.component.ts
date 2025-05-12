@@ -24,11 +24,11 @@ export class DetalleProductoComponent implements OnInit {
 
   ngOnInit(): void {
     const productId = Number(this.route.snapshot.paramMap.get('id'));
-    this.productService.getProduct(productId).subscribe(
-      product => {
+    this.productService.getProductById(productId.toString()).then(
+      (product) => {
         this.product = product;
         if (product && product.colors.length > 0) {
-          this.selectedColor = product.colors[0];
+          this.selectedColor = product.colors[0]; // Selecciona el primer color por defecto
         }
       }
     );

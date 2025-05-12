@@ -1,92 +1,161 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Firestore, collection, collectionData, doc, addDoc, updateDoc, deleteDoc, getDoc, query, where } from '@angular/fire/firestore';
+import { Storage, ref, uploadBytes, getDownloadURL, deleteObject } from '@angular/fire/storage';
+import { Observable } from 'rxjs';
+import { map, shareReplay } from 'rxjs/operators';
+import { v4 as uuidv4 } from 'uuid';
 
-// models/category.model.ts
 export interface Category {
-  id: number;
+  id: string;
   name: string;
   description: string;
   imageUrl: string;
   slug: string;
 }
+
 @Injectable({
   providedIn: 'root'
 })
 export class CategoryService {
+  private collectionName = 'categories';
+  private categoriesCache$?: Observable<Category[]>;
 
-  // En un escenario real, estos datos vendrían de una API
-  private mockCategories: Category[] = [
-    {
-      id: 1,
-      name: 'Escalada',
-      description: 'Arneses, Protección, Mosquetones y más',
-      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
-      slug: 'climbing'
-    },
-    {
-      id: 2,
-      name: 'MTB',
-      description: 'Cascos, Ropa, Accesorios y más',
-      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
-      slug: 'skiing'
-    },
-    {
-      id: 3,
-      name: 'Senderismo y Trekking',
-      description: 'Bastones de Trekking, Linternas Frontales, Tiendas de Campaña y más',
-      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
-      slug: 'hiking'
-    },
-    {
-      id: 4,
-      name: 'Urbano & Casual',
-      description: 'Chaquetas, Pantalones, Capas Base y más',
-      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
-      slug: 'apparel'
-    },
-    {
-      id: 5,
-      name: 'Ciclismo de Ruta',
-      description: 'Arneses, Protección, Mosquetones y más',
-      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
-      slug: 'climbing'
-    },
-    {
-      id: 6,
-      name: 'Táctico',
-      description: 'Cascos, Ropa, Accesorios y más',
-      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
-      slug: 'skiing'
-    },
-    {
-      id: 7,
-      name: 'Trail Running y Training',
-      description: 'Bastones de Trekking, Linternas Frontales, Tiendas de Campaña y más',
-      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
-      slug: 'hiking'
-    },
-    {
-      id: 8,
-      name: 'Moto Cross',
-      description: 'Chaquetas, Pantalones, Capas Base y más',
-      imageUrl: 'https://i.postimg.cc/MKq83qgC/img5.jpg',
-      slug: 'apparel'
-    }
-    
-  ];
+  constructor(
+    private firestore: Firestore,
+    private storage: Storage
+  ) {}
 
-  constructor(private http: HttpClient) { }
-
-  // Simula obtener todas las categorías
+  // Obtener todas las categorías con caché
   getCategories(): Observable<Category[]> {
-    // En una app real, este endpoint vendría de un servicio real
-    // return this.http.get<Category[]>('api/categories');
-    return of(this.mockCategories);
+  if (!this.categoriesCache$) {
+    const categoriesRef = collection(this.firestore, this.collectionName);
+    this.categoriesCache$ = collectionData(categoriesRef, { idField: 'id' }).pipe(
+      map(data => data as Category[]),   // fuerza el tipo aquí
+      shareReplay(1)
+    );
+  }
+  return this.categoriesCache$;
+}
+
+  private invalidateCache() {
+    this.categoriesCache$ = undefined;
   }
 
-  // Simula obtener una categoría por su slug
-  getCategoryBySlug(slug: string): Observable<Category | undefined> {
-    return of(this.mockCategories.find(category => category.slug === slug));
+  // Obtener categoría por slug
+  getCategoryBySlug(slug: string): Observable<Category[]> {
+    const categoriesRef = collection(this.firestore, this.collectionName);
+    const q = query(categoriesRef, where('slug', '==', slug));
+    return collectionData(q, { idField: 'id' }) as Observable<Category[]>;
+  }
+
+  // Crear una nueva categoría
+  async createCategory(category: Omit<Category, 'id' | 'imageUrl'>, imageFile: File): Promise<string> {
+    const categoriesRef = collection(this.firestore, this.collectionName);
+    const id = uuidv4();
+    const imagePath = `categories/${id}/main.webp`;
+
+    try {
+      const imageUrl = await this.uploadImage(imagePath, imageFile);
+      const newCategory = { ...category, imageUrl };
+
+      const docRef = await addDoc(categoriesRef, newCategory);
+      this.invalidateCache();
+      return docRef.id;
+    } catch (error: any) {
+      throw new Error(`Error al crear la categoría: ${error.message}`);
+    }
+  }
+
+  // Actualizar una categoría existente
+  async updateCategory(id: string, data: Partial<Category>, imageFile?: File): Promise<void> {
+    const docRef = doc(this.firestore, `${this.collectionName}/${id}`);
+    const updatedData: Partial<Category> = { ...data };
+
+    if (imageFile) {
+      const current = await this.getCategoryById(id);
+      if (current?.imageUrl) {
+        try {
+          const oldImageRef = ref(this.storage, current.imageUrl);
+          await deleteObject(oldImageRef);
+        } catch (e) {
+          console.warn('No se pudo eliminar la imagen anterior:', e);
+        }
+      }
+
+      updatedData.imageUrl = await this.uploadImage(`categories/${id}/main.webp`, imageFile);
+    }
+
+    await updateDoc(docRef, updatedData);
+    this.invalidateCache();
+  }
+
+  // Eliminar una categoría y su imagen
+  async deleteCategory(id: string): Promise<void> {
+    const docRef = doc(this.firestore, `${this.collectionName}/${id}`);
+    const category = await this.getCategoryById(id);
+
+    if (!category) {
+      throw new Error(`La categoría con ID ${id} no existe.`);
+    }
+
+    if (category.imageUrl) {
+      try {
+        const imageRef = ref(this.storage, category.imageUrl);
+        await deleteObject(imageRef);
+      } catch (e) {
+        console.warn('No se pudo eliminar la imagen:', e);
+      }
+    }
+
+    await deleteDoc(docRef);
+    this.invalidateCache();
+  }
+
+  // Obtener categoría por ID
+  async getCategoryById(id: string): Promise<Category | undefined> {
+    const docRef = doc(this.firestore, `${this.collectionName}/${id}`);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Category;
+    }
+    return undefined;
+  }
+
+  // Subir imagen a Storage con compresión y formato .webp
+  private async uploadImage(path: string, file: File): Promise<string> {
+    const compressed = await this.compressImage(file);
+    const storageRef = ref(this.storage, path);
+    await uploadBytes(storageRef, compressed);
+    return await getDownloadURL(storageRef);
+  }
+
+  // Comprimir imagen y convertir a webp
+  private async compressImage(file: File): Promise<Blob> {
+    const img = new Image();
+    const reader = new FileReader();
+
+    return new Promise((resolve, reject) => {
+      reader.onload = () => (img.src = reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const scale = Math.min(1, MAX_WIDTH / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject('No se pudo obtener el contexto del canvas');
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject('Error al comprimir imagen')),
+          'image/webp',
+          0.8
+        );
+      };
+    });
   }
 }
