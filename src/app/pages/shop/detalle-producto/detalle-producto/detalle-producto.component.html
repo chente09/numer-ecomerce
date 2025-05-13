@@ -1,47 +1,256 @@
-<div *ngIf="product" class="product-detail">
-    <div class="product-images">
-        <div class="main-image">
-            <img [src]="product.imageUrl" alt="{{ product.name }}" class="product-image">
-            <span *ngIf="product.isNew" class="new-badge">NEW</span>
+<!-- HTML Mejorado y Traducido para el detalle de producto -->
+<div *ngIf="!product && productsLoading" class="loading-container">
+    <nz-spin nzSize="large"></nz-spin>
+</div>
+
+<div *ngIf="product" class="product-detail-container">
+    <div class="product-gallery">
+        <div class="main-image-container">
+            <img [src]="selectedVariant?.imageUrl || selectedColor?.imageUrl || product.imageUrl"
+                alt="{{ product.name }}" class="main-product-image" (click)="showImagePreview(product.imageUrl)">
+            <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
+            <span *ngIf="product.isBestSeller" class="bestseller-badge">MÁS VENDIDO</span>
+            <span *ngIf="product.activePromotion" class="sale-badge">OFERTA</span>
+        </div>
+
+        <!-- Miniaturas de colores -->
+        <div class="thumbnails-container">
+            <div *ngFor="let color of product.colors" class="thumbnail"
+                [ngClass]="{'active': selectedColor?.id === color.id}" (click)="selectColor(color)">
+                <img [src]="color.imageUrl" [alt]="color.name">
+            </div>
         </div>
     </div>
 
     <div class="product-info">
-        <h1 class="product-name">{{ product.name }}</h1>
+        <div class="product-header">
+            <div class="product-categories">
+                <!-- Categoría y/o colección -->
+                <span class="product-category">{{ categoryName || product.category }}</span>
+                <span *ngIf="product.collection" class="product-collection">{{ product.collection }}</span>
+            </div>
+            <h1 class="product-name">{{ product.name }}</h1>
+            <div class="product-rating">
+                <nz-rate [ngModel]="product.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
+                <span class="rating-count">{{ product.views }} Visitas</span>
+            </div>
 
-        <div class="product-price">${{ product.price.toFixed(2) }}</div>
+            <!-- Precio con descuento si existe -->
+            <div class="product-price-container">
+                <span *ngIf="product.originalPrice && product.originalPrice > product.price" class="original-price">${{
+                    product.originalPrice.toFixed(2) }}</span>
+                <span class="product-price">${{ product.price.toFixed(2) }}</span>
+                <span *ngIf="product.discountPercentage" class="discount-badge">-{{ product.discountPercentage
+                    }}%</span>
+            </div>
 
-        <div class="product-rating">
-            <div *ngFor="let star of getStarsArray(product.rating)" class="star">
-                <i class="fas" [ngClass]="star === 1 ? 'fa-star' : 'fa-star-o'"></i>
+            <!-- Promoción activa si existe -->
+            <div *ngIf="product.activePromotion" class="active-promotion">
+                <span class="promotion-tag">{{ product.activePromotion }}</span>
             </div>
         </div>
 
-        <div class="product-colors">
-            <h3>Colors</h3>
-            <div class="color-options">
-                <div *ngFor="let color of product.colors" class="color-option"
-                    [ngClass]="{'active': selectedColor === color}" [style.background-color]="color.code"
-                    (click)="selectColor(color)">
+        <div class="product-options">
+            <!-- Colores disponibles -->
+            <div class="option-section">
+                <h3 class="option-title">Colores</h3>
+                <div class="color-options">
+                    <div *ngFor="let color of product.colors" class="color-option"
+                        [ngClass]="{'active': selectedColor?.id === color.id, 'out-of-stock': !hasStockForColor(color)}"
+                        (click)="selectColor(color)">
+                        <div class="color-thumbnail">
+                            <img [src]="color.imageUrl" [alt]="color.name">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tallas disponibles -->
+            <div class="option-section" *ngIf="product.sizes && product.sizes.length > 0">
+                <div class="size-header">
+                    <h3 class="option-title">Talla</h3>
+                    <button class="size-guide-button" (click)="openSizeGuide()">
+                        <i nz-icon nzType="file-text" nzTheme="outline"></i> Guía de tallas
+                    </button>
+                </div>
+                <div class="size-options">
+                    <div *ngFor="let size of product.sizes" class="size-option"
+                        [ngClass]="{'active': selectedSize?.name === size.name, 'out-of-stock': !hasStockForSize(size), 'low-stock': hasLowStockForSize(size)}"
+                        (click)="selectSize(size)">
+                        <span class="size-name">{{ size.name }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de Guía de Tallas -->
+            <!-- Modal de Guía de Tallas Mejorado -->
+            <nz-modal [(nzVisible)]="showSizeGuide" nzTitle="Guía de Tallas" [nzFooter]="null"
+                (nzOnCancel)="showSizeGuide = false" nzWidth="700" nzCentered="true"
+                nzClassName="size-guide-modal-container">
+                <ng-container *nzModalContent>
+                    <div class="size-guide-content">
+                        <div class="size-guide-info">
+                            <h4>Cómo elegir tu talla correcta</h4>
+                            <p>1. Mide la circunferencia de tu pecho, cintura y cadera.</p>
+                            <p>2. Consulta la tabla para encontrar tu talla ideal.</p>
+                            <p>3. Si estás entre dos tallas, elige la mayor para un ajuste más cómodo.</p>
+                        </div>
+
+                        <!-- Tabla de tallas con scroll horizontal -->
+                        <div class="size-chart-container">
+                            <h4 class="size-guide-subtitle">Tallas disponibles</h4>
+                            <div class="size-grid-container" #gridContainer>
+                                <div *ngFor="let size of product.sizes" class="size-grid-item">
+                                    <div *ngIf="size.imageUrl" class="size-cell-image"
+                                        (click)="showImagePreview(size.imageUrl)">
+                                        <img [src]="size.imageUrl" [alt]="'Talla ' + size.name">
+                                        <div class="image-zoom-icon">
+                                            <i nz-icon nzType="zoom-in" nzTheme="outline"></i>
+                                        </div>
+                                    </div>
+                                    <span class="size-cell-name">{{ size.name }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recomendaciones adicionales -->
+                        <div class="size-guide-tips">
+                            <h4 class="size-guide-subtitle">Consejos de medición</h4>
+                            <ul>
+                                <li>Usa una cinta métrica flexible para tomar tus medidas.</li>
+                                <li>Mide sobre ropa ligera, no sobre prendas gruesas.</li>
+                                <li>Mantén la cinta métrica ajustada pero no apretada.</li>
+                                <li>Si tienes dudas, puedes contactar a nuestro servicio al cliente.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </ng-container>
+            </nz-modal>
+
+            <!-- Modal para previsualización de imágenes -->
+            <nz-modal [(nzVisible)]="showImageModal" [nzTitle]="undefined" [nzFooter]="null"
+                (nzOnCancel)="closeImagePreview()" nzWidth="auto" nzCentered="true" nzClassName="image-preview-modal">
+                <ng-container *nzModalContent>
+                    <div class="image-preview-container">
+                        <img [src]="previewImageUrl" alt="Vista ampliada" class="preview-image">
+                    </div>
+                </ng-container>
+            </nz-modal>
+
+            <!-- Selector de cantidad -->
+            <div class="option-section">
+                <h3 class="option-title">Cantidad</h3>
+                <div class="quantity-selector">
+                    <button (click)="decreaseQuantity()" class="qty-btn" [disabled]="quantity <= 1">−</button>
+                    <span class="qty-value">{{ quantity }}</span>
+                    <button (click)="increaseQuantity()" class="qty-btn" [disabled]="!canIncreaseQuantity()">+</button>
+                </div>
+
+                <!-- Mostrar disponibilidad -->
+                <div class="stock-status" *ngIf="selectedVariant">
+                    <span *ngIf="selectedVariant.stock > 10" class="in-stock">En stock</span>
+                    <span *ngIf="selectedVariant.stock > 0 && selectedVariant.stock <= 10" class="low-stock">Solo quedan
+                        {{
+                        selectedVariant.stock }}</span>
+                    <span *ngIf="selectedVariant.stock === 0" class="out-of-stock">Agotado</span>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="actions">
+                <button class="add-to-cart-btn" [disabled]="!selectedVariant || selectedVariant.stock === 0"
+                    (click)="addToCart()">
+                    {{ selectedVariant && selectedVariant.stock > 0 ? 'AÑADIR AL CARRITO' : 'AGOTADO' }}
+                </button>
+                <button class="wishlist-btn" (click)="toggleWishlist()" aria-label="Añadir a favoritos">
+                    <i nz-icon [nzType]="isInWishlist ? 'heart' : 'heart-o'"
+                        [nzTheme]="isInWishlist ? 'fill' : 'outline'" [ngClass]="{'heart-filled': isInWishlist}">
+                    </i>
+                </button>
+            </div>
+
+            <!-- SKU -->
+            <div class="product-sku">
+                <span>SKU: {{ selectedVariant?.sku || product.sku }}</span>
+            </div>
+        </div>
+
+        <!-- Pestañas de información del producto -->
+        <div class="product-details">
+            <div class="details-tabs">
+                <div class="tab-headers">
+                    <h3 class="tab-title" [ngClass]="{'active': activeTab === 'description'}"
+                        (click)="setActiveTab('description')">Descripción</h3>
+                    <h3 class="tab-title" [ngClass]="{'active': activeTab === 'details'}"
+                        (click)="setActiveTab('details')">Detalles</h3>
+                    <h3 class="tab-title" [ngClass]="{'active': activeTab === 'delivery'}"
+                        (click)="setActiveTab('delivery')">Envío y Devoluciones</h3>
+                </div>
+
+                <!-- Contenido de pestañas -->
+                <div class="tab-content" *ngIf="activeTab === 'description'">
+                    <p class="product-description">{{ product.description || 'No hay descripción disponible para este producto.'}}</p>
+                    <p *ngIf="categoryDescription" class="category-description">
+                        <strong>Acerca de {{ categoryName }}:</strong> {{ categoryDescription }}
+                    </p>
+                </div>
+
+                <div class="tab-content" *ngIf="activeTab === 'details'">
+                    <div class="product-details-info">
+                        <div class="detail-item" *ngIf="product.season">
+                            <span class="detail-label">Temporada:</span>
+                            <span class="detail-value">{{ product.season }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="product.collection">
+                            <span class="detail-label">Colección:</span>
+                            <span class="detail-value">{{ product.collection }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Colores disponibles:</span>
+                            <span class="detail-value">{{ getColorsList() }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Tallas disponibles:</span>
+                            <span class="detail-value">{{ getSizesList() }}</span>
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="product-tags" *ngIf="product.tags && product.tags.length > 0">
+                            <span class="detail-label">Etiquetas:</span>
+                            <div class="tags-container">
+                                <span class="tag" *ngFor="let tag of product.tags">{{ tag }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" *ngIf="activeTab === 'delivery'">
+                    <div class="shipping-info">
+                        <h4>Información de Envío</h4>
+                        <p>Envío estándar gratuito en todos los pedidos superiores a $50.</p>
+                        <p>Tiempo estimado de entrega: 3-5 días hábiles.</p>
+
+                        <h4>Política de Devoluciones</h4>
+                        <p>Devoluciones fáciles dentro de los 30 días posteriores a la compra.</p>
+                        <p>Los artículos deben estar sin usar y en el embalaje original.</p>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
-        <div class="product-quantity">
-            <h3>Quantity</h3>
-            <div class="quantity-selector">
-                <button (click)="decreaseQuantity()" [disabled]="quantity <= 1">-</button>
-                <input type="number" [value]="quantity" readonly>
-                <button (click)="increaseQuantity()">+</button>
+<!-- Productos relacionados - Opcional -->
+<div *ngIf="relatedProducts && relatedProducts.length > 0" class="related-products-section">
+    <h2 class="section-title">También te puede gustar</h2>
+    <div class="related-products-grid">
+        <div *ngFor="let relatedProduct of relatedProducts" class="related-product-card"
+            [routerLink]="['/products', relatedProduct.id]">
+            <div class="related-product-image">
+                <img [src]="relatedProduct.imageUrl" [alt]="relatedProduct.name">
             </div>
-        </div>
-
-        <button class="add-to-cart-btn">ADD TO CART</button>
-
-        <div class="product-description">
-            <h3>Description</h3>
-            <p>This {{ product.name.toLowerCase() }} is designed for outdoor enthusiasts who need quality gear for their
-                adventures. Made with premium materials for durability and comfort.</p>
+            <h3 class="related-product-name">{{ relatedProduct.name }}</h3>
+            <div class="related-product-price">${{ relatedProduct.price.toFixed(2) }}</div>
         </div>
     </div>
 </div>

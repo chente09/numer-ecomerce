@@ -12,7 +12,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzUploadFile } from 'ng-zorro-antd/upload';
 import { DomSanitizer } from '@angular/platform-browser';
-import { CategoryService, Category } from '../../../services/category/category.service';
+import { CategoryService, Category } from '../../../services/admin/category/category.service';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 
 @Component({

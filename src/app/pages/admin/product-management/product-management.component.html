@@ -1,111 +1,118 @@
+<!-- Layout principal -->
 <div class="product-management-container">
-    <!-- Panel de encabezado con estadísticas y botones de acción -->
-    <div class="header-panel">
-        <nz-card [nzLoading]="loadingStats">
-            <div nz-row [nzGutter]="16">
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
-                    <nz-statistic [nzValue]="productStats.totalProducts" [nzTitle]="'Total Productos'"
-                        [nzPrefix]="totalIcon">
-                    </nz-statistic>
-                    <ng-template #totalIcon><i nz-icon nzType="shopping" nzTheme="outline"></i></ng-template>
-                </div>
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
-                    <nz-statistic [nzValue]="productStats.totalStock" [nzTitle]="'Stock Total'" [nzPrefix]="stockIcon">
-                    </nz-statistic>
-                    <ng-template #stockIcon><i nz-icon nzType="database" nzTheme="outline"></i></ng-template>
-                </div>
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
-                    <nz-statistic [nzValue]="productStats.lowStockProducts" [nzTitle]="'Bajo Stock'"
-                        [nzValueStyle]="{ color: productStats.lowStockProducts > 5 ? '#faad14' : '#cf1322' }"
-                        [nzPrefix]="lowStockIcon">
-                    </nz-statistic>
-                    <ng-template #lowStockIcon><i nz-icon nzType="warning" nzTheme="outline"></i></ng-template>
-                </div>
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
-                    <nz-statistic [nzValue]="productStats.averageRating" [nzTitle]="'Rating Promedio'"
-                        [nzSuffix]="'/ 5'" [nzPrefix]="ratingIcon">
-                    </nz-statistic>
-                    <ng-template #ratingIcon><i nz-icon nzType="star" nzTheme="fill"
-                            style="color: #faad14;"></i></ng-template>
-                </div>
+    <!-- Cabecera y estadísticas -->
+    <nz-card class="mb-4">
+        <div nz-row [nzGutter]="16">
+            <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="12">
+                <h2>Gestión de Productos</h2>
+                <p>Administre su catálogo de productos, inventario y variantes</p>
             </div>
-
-            <div class="action-buttons" style="margin-top: 16px;">
+            <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="12" class="text-right">
                 <button nz-button nzType="primary" (click)="newProduct()">
-                    <i nz-icon nzType="plus"></i> Nuevo Producto
+                    <span nz-icon nzType="plus"></span>Nuevo Producto
                 </button>
-                <button nz-button nzType="default" (click)="loadProducts()">
-                    <i nz-icon nzType="reload"></i> Actualizar
+                <button nz-button nzType="default" class="ml-2" (click)="showStatsDrawer = true">
+                    <span nz-icon nzType="bar-chart"></span>Estadísticas
                 </button>
             </div>
-        </nz-card>
-    </div>
+        </div>
+    </nz-card>
 
-    <!-- Panel de filtros -->
-    <nz-card class="filter-panel" [nzTitle]="'Filtros'">
-        <form nz-form [formGroup]="filterForm" nzLayout="vertical">
+    <!-- Panel de estadísticas -->
+    <nz-card class="mb-4" [nzLoading]="loadingStats">
+        <div nz-row [nzGutter]="16">
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-statistic [nzValue]="productStats.totalProducts" [nzTitle]="'Total Productos'">
+                </nz-statistic>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-statistic [nzValue]="productStats.totalStock" [nzTitle]="'Stock Total'">
+                </nz-statistic>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-statistic [nzValue]="productStats.lowStockProducts" [nzTitle]="'Productos con Bajo Stock'">
+                </nz-statistic>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-statistic [nzValue]="productStats.averageRating" [nzTitle]="'Rating Promedio'"
+                    [nzSuffix]="suffixTpl">
+                </nz-statistic>
+                <ng-template #suffixTpl>
+                    <span nz-icon nzType="star" nzTheme="fill" style="color: #fadb14;"></span>
+                </ng-template>
+            </div>
+        </div>
+    </nz-card>
+
+    <!-- Filtros -->
+    <nz-card class="mb-4">
+        <form nz-form [formGroup]="filterForm">
             <div nz-row [nzGutter]="16">
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
+                <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="8">
                     <nz-form-item>
                         <nz-form-label>Buscar</nz-form-label>
                         <nz-form-control>
-                            <nz-input-group [nzSuffix]="searchSuffix">
-                                <input nz-input formControlName="searchQuery" placeholder="Buscar productos..." />
+                            <nz-input-group [nzSuffix]="suffixIconSearch">
+                                <input type="text" nz-input formControlName="searchQuery"
+                                    placeholder="Nombre, SKU o descripción" (keyup.enter)="onSearch()">
                             </nz-input-group>
-                            <ng-template #searchSuffix>
-                                <i nz-icon nzType="search" (click)="onSearch()"></i>
+                            <ng-template #suffixIconSearch>
+                                <span nz-icon nzType="search"></span>
                             </ng-template>
                         </nz-form-control>
                     </nz-form-item>
                 </div>
-
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
+                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
                     <nz-form-item>
-                        <nz-form-label>Categoría</nz-form-label>
+                        <nz-form-label>Categorías</nz-form-label>
                         <nz-form-control>
                             <nz-select formControlName="categories" nzMode="multiple"
-                                nzPlaceHolder="Seleccionar categorías" [nzMaxTagCount]="2">
-                                <nz-option *ngFor="let cat of categories" [nzValue]="cat.id"
-                                    [nzLabel]="cat.name"></nz-option>
+                                nzPlaceHolder="Seleccionar categorías">
+                                <nz-option *ngFor="let category of categories" [nzValue]="category.id"
+                                    [nzLabel]="category.name"></nz-option>
                             </nz-select>
                         </nz-form-control>
                     </nz-form-item>
                 </div>
-
-                <div nz-col [nzXs]="12" [nzSm]="6" [nzMd]="4" [nzLg]="3">
+                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
                     <nz-form-item>
-                        <nz-form-label>Precio Min.</nz-form-label>
+                        <nz-form-label>Ordenar por</nz-form-label>
+                        <nz-form-control>
+                            <nz-select formControlName="sortBy">
+                                <nz-option nzValue="newest" nzLabel="Más recientes"></nz-option>
+                                <nz-option nzValue="price_asc" nzLabel="Precio (menor a mayor)"></nz-option>
+                                <nz-option nzValue="price_desc" nzLabel="Precio (mayor a menor)"></nz-option>
+                                <nz-option nzValue="name_asc" nzLabel="Nombre (A-Z)"></nz-option>
+                                <nz-option nzValue="name_desc" nzLabel="Nombre (Z-A)"></nz-option>
+                                <nz-option nzValue="stock_asc" nzLabel="Stock (menor a mayor)"></nz-option>
+                                <nz-option nzValue="stock_desc" nzLabel="Stock (mayor a menor)"></nz-option>
+                            </nz-select>
+                        </nz-form-control>
+                    </nz-form-item>
+                </div>
+            </div>
+            <div nz-row [nzGutter]="16">
+                <div nz-col [nzXs]="12" [nzSm]="12" [nzMd]="6">
+                    <nz-form-item>
+                        <nz-form-label>Precio mínimo</nz-form-label>
                         <nz-form-control>
                             <nz-input-number formControlName="minPrice" [nzMin]="0" [nzStep]="1"
                                 [nzPlaceHolder]="'Min'"></nz-input-number>
                         </nz-form-control>
                     </nz-form-item>
                 </div>
-
-                <div nz-col [nzXs]="12" [nzSm]="6" [nzMd]="4" [nzLg]="3">
+                <div nz-col [nzXs]="12" [nzSm]="12" [nzMd]="6">
                     <nz-form-item>
-                        <nz-form-label>Precio Max.</nz-form-label>
+                        <nz-form-label>Precio máximo</nz-form-label>
                         <nz-form-control>
                             <nz-input-number formControlName="maxPrice" [nzMin]="0" [nzStep]="1"
                                 [nzPlaceHolder]="'Max'"></nz-input-number>
                         </nz-form-control>
                     </nz-form-item>
                 </div>
-
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8" [nzLg]="6">
-                    <nz-form-item>
-                        <nz-form-label>Ordenar Por</nz-form-label>
-                        <nz-form-control>
-                            <nz-select formControlName="sortBy" nzPlaceHolder="Ordenar por">
-                                <nz-option nzValue="newest" nzLabel="Más recientes"></nz-option>
-                                <nz-option nzValue="oldest" nzLabel="Más antiguos"></nz-option>
-                                <nz-option nzValue="priceAsc" nzLabel="Precio: menor a mayor"></nz-option>
-                                <nz-option nzValue="priceDesc" nzLabel="Precio: mayor a menor"></nz-option>
-                                <nz-option nzValue="nameAsc" nzLabel="Nombre A-Z"></nz-option>
-                                <nz-option nzValue="nameDesc" nzLabel="Nombre Z-A"></nz-option>
-                            </nz-select>
-                        </nz-form-control>
-                    </nz-form-item>
+                <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="12" class="text-right">
+                    <button nz-button (click)="filterForm.reset(); onSearch()">Limpiar</button>
+                    <button nz-button nzType="primary" class="ml-2" (click)="onSearch()">Aplicar Filtros</button>
                 </div>
             </div>
         </form>
@@ -115,129 +122,145 @@
     <nz-card>
         <nz-table #productsTable [nzData]="products" [nzFrontPagination]="false" [nzTotal]="total"
             [nzPageSize]="pageSize" [nzPageIndex]="pageIndex" [nzLoading]="loading"
-            (nzQueryParams)="onQueryParamsChange($event)">
-
+            (nzQueryParams)="onQueryParamsChange($event)" nzTableLayout="fixed">
             <thead>
                 <tr>
-                    <th nzWidth="60px"></th>
+                    <th nzWidth="40px"></th>
                     <th nzWidth="80px">Imagen</th>
-                    <th>Nombre</th>
-                    <th>SKU</th>
-                    <th>Categoría</th>
+                    <th nzWidth="200px">Nombre</th>
                     <th nzWidth="100px">Precio</th>
                     <th nzWidth="100px">Stock</th>
-                    <th nzWidth="180px">Acciones</th>
+                    <th nzWidth="120px">SKU</th>
+                    <th nzWidth="110px">Categoría</th>
+                    <th nzWidth="120px">Estado</th>
+                    <th nzWidth="170px">Acciones</th>
                 </tr>
             </thead>
-
             <tbody>
                 <ng-container *ngFor="let product of productsTable.data">
                     <tr>
                         <td [nzExpand]="expandSet.has(product.id)"
                             (nzExpandChange)="onExpandChange(product.id, $event)"></td>
                         <td>
-                            <nz-avatar [nzShape]="'square'" [nzSize]="64"
-                                [nzSrc]="product.imageUrl || '/assets/img/no-image.png'"></nz-avatar>
+                            <nz-avatar [nzShape]="'square'" [nzSize]="60"
+                                [nzSrc]="product.imageUrl || 'assets/images/no-image.png'"
+                                nzAlt="product image"></nz-avatar>
                         </td>
+                        <td>{{ product.name }}</td>
                         <td>
-                            {{ product.name }}
-                            <div>
-                                <nz-tag *ngIf="product.isNew" nzColor="green">Nuevo</nz-tag>
-                                <nz-tag *ngIf="product.isBestSeller" nzColor="gold">Best Seller</nz-tag>
-                            </div>
+                            <ng-container *ngIf="product.discountPercentage && product.discountPercentage > 0">
+                                <div class="price-container">
+                                    <span class="original-price">{{ product.originalPrice | currency }}</span>
+                                    <span class="current-price">{{ product.currentPrice | currency }}</span>
+                                    <nz-tag [nzColor]="'#f50'">-{{ product.discountPercentage }}%</nz-tag>
+                                </div>
+                            </ng-container>
+                            <ng-container *ngIf="!product.discountPercentage || product.discountPercentage === 0">
+                                {{ product.price | currency }}
+                            </ng-container>
+                        </td>
+                        <td [ngClass]="product.totalStock < 10 ? 'text-danger' : ''">
+                            {{ product.totalStock }}
+                            <span nz-icon nzType="warning" nzTheme="fill" *ngIf="product.totalStock < 10"></span>
                         </td>
                         <td>{{ product.sku }}</td>
                         <td>
                             <nz-tag>{{ product.category }}</nz-tag>
                         </td>
-                        <td>{{ product.price | currency:'EUR':'symbol':'1.2-2' }}</td>
                         <td>
-                            <nz-tag
-                                [nzColor]="product.totalStock > 10 ? 'success' : (product.totalStock > 5 ? 'warning' : 'error')">
-                                {{ product.totalStock }} unid.
-                            </nz-tag>
+                            <nz-tag [nzColor]="'green'" *ngIf="product.isNew">Nuevo</nz-tag>
+                            <nz-tag [nzColor]="'gold'" *ngIf="product.isBestSeller">Más Vendido</nz-tag>
                         </td>
                         <td>
-                            <button nz-button nzType="primary" nzSize="small" nzShape="circle" nzTooltipTitle="Editar"
-                                nz-tooltip (click)="editProduct(product)">
-                                <i nz-icon nzType="edit"></i>
+                            <button nz-button nzType="primary" nzSize="small" nzShape="circle" nz-tooltip="Editar"
+                                (click)="editProduct(product)">
+                                <span nz-icon nzType="edit"></span>
                             </button>
                             <button nz-button nzType="default" nzSize="small" nzShape="circle"
-                                nzTooltipTitle="Ver variantes" nz-tooltip (click)="showVariantsForProduct(product)">
-                                <i nz-icon nzType="apartment"></i>
+                                nz-tooltip="Ver Variantes" (click)="showVariantsForProduct(product)" class="ml-1">
+                                <span nz-icon nzType="appstore"></span>
                             </button>
                             <button nz-button nzType="default" nzSize="small" nzShape="circle"
-                                nzTooltipTitle="Ver estadísticas" nz-tooltip (click)="viewProductDetails(product.id)">
-                                <i nz-icon nzType="bar-chart"></i>
+                                nz-tooltip="Ver Estadísticas" (click)="viewProductDetails(product.id)" class="ml-1">
+                                <span nz-icon nzType="bar-chart"></span>
                             </button>
-                            <button nz-button nzType="default" nzSize="small" nzShape="circle"
-                                nzTooltipTitle="Incrementar vistas" nz-tooltip
-                                (click)="incrementProductViews(product.id)">
-                                <i nz-icon nzType="eye"></i>
-                            </button>
-                            <button nz-button nzDanger="true" nzSize="small" nzShape="circle" nzTooltipTitle="Eliminar"
-                                nz-tooltip (click)="deleteProduct(product.id)">
-                                <i nz-icon nzType="delete"></i>
+                            <button nz-button nzDanger="true" nzSize="small" nzShape="circle" nz-tooltip="Eliminar"
+                                (click)="deleteProduct(product.id)" class="ml-1">
+                                <span nz-icon nzType="delete"></span>
                             </button>
                         </td>
                     </tr>
                     <tr [nzExpand]="expandSet.has(product.id)">
-                        <td colspan="8">
-                            <div class="product-expanded-content">
-                                <div class="description-section">
-                                    <h4>Descripción</h4>
-                                    <p>{{ product.description || 'Sin descripción' }}</p>
-                                </div>
+                        <td colspan="9">
+                            <div class="expanded-row-content">
+                                <nz-divider nzText="Detalles del Producto" nzOrientation="left"></nz-divider>
+                                <div nz-row [nzGutter]="16">
+                                    <div nz-col [nzSpan]="8">
+                                        <p><strong>Descripción:</strong> {{ product.description || 'Sin descripción' }}
+                                        </p>
+                                        <p><strong>Código de Barras:</strong> {{ product.barcode || 'No asignado' }}</p>
+                                        <p><strong>Temporada:</strong> {{ product.season || 'No asignada' }}</p>
+                                        <p><strong>Colección:</strong> {{ product.collection || 'No asignada' }}</p>
+                                    </div>
+                                    <div nz-col [nzSpan]="8">
+                                        <p><strong>Vistas:</strong> {{ product.views }}</p>
+                                        <p><strong>Ventas:</strong> {{ product.sales }}</p>
+                                        <p><strong>Rating:</strong>
+                                            <nz-rate [ngModel]="product.rating" nzDisabled
+                                                [nzAllowHalf]="true"></nz-rate>
+                                        </p>
+                                        <p>
+                                            <button nz-button nzType="default" nzSize="small"
+                                                (click)="incrementProductViews(product.id)">
+                                                <span nz-icon nzType="eye"></span> Incrementar Vistas
+                                            </button>
+                                        </p>
+                                    </div>
 
-                                <nz-divider></nz-divider>
+                                    <div nz-col [nzSpan]="8">
+                                        <!-- Información de promociones activas -->
+                                        <p><strong>Promociones activas:</strong></p>
+                                        <ng-container *ngIf="product.promotions && product.promotions.length > 0">
+                                            <nz-list [nzSize]="'small'" [nzBordered]="true">
+                                                <nz-list-item *ngFor="let promo of product.promotions">
+                                                    <span nz-icon nzType="tag" nzTheme="outline"></span>
+                                                    {{ promo.name }} -
+                                                    <ng-container *ngIf="promo.discountType === 'percentage'">
+                                                        {{ promo.discountValue }}%
+                                                    </ng-container>
+                                                    <ng-container *ngIf="promo.discountType === 'fixed'">
+                                                        {{ promo.discountValue | currency }}
+                                                    </ng-container>
+                                                    <span *ngIf="promo.maxDiscountAmount"> (max {{
+                                                        promo.maxDiscountAmount | currency }})</span>
+                                                    <p class="promo-dates">{{ promo.startDate | date }} - {{
+                                                        promo.endDate | date }}</p>
+                                                </nz-list-item>
+                                            </nz-list>
+                                            <button nz-button nzType="default" nzDanger nzSize="small" class="mt-2"
+                                                (click)="removePromotionsFromProduct(product.id)">
+                                                <span nz-icon nzType="delete"></span> Quitar Promociones
+                                            </button>
+                                        </ng-container>
+                                        <nz-empty *ngIf="!product.promotions || product.promotions.length === 0"
+                                            [nzNotFoundContent]="'Sin promociones activas'">
+                                        </nz-empty>
+                                        <button nz-button nzType="primary" nzSize="small" class="mt-2"
+                                            (click)="openPromotionDrawer(product.id)">
+                                            <span nz-icon nzType="appstore-add"></span> Aplicar Promoción
+                                        </button>
+                                    </div>
 
-                                <div class="attributes-section">
-                                    <div nz-row [nzGutter]="16">
-                                        <div nz-col [nzSpan]="12">
-                                            <h4>Colores ({{ product.colors.length }})</h4>
-                                            <div class="color-chips">
-                                                <div *ngFor="let color of product.colors" class="color-chip">
-                                                    <div class="color-sample"
-                                                        [ngStyle]="{'background-color': color.code}"></div>
-                                                    <span>{{ color.name }}</span>
-                                                </div>
+                                    <div nz-col [nzSpan]="8">
+                                        <p><strong>Colores disponibles:</strong></p>
+                                        <div class="color-list">
+                                            <div class="color-item" *ngFor="let color of product.colors">
+                                                <div class="color-square" [style.background]="color.code" nz-tooltip
+                                                    [nzTooltipTitle]="color.name"></div>
                                             </div>
                                         </div>
-
-                                        <div nz-col [nzSpan]="12">
-                                            <h4>Tallas ({{ product.sizes.length }})</h4>
-                                            <nz-tag *ngFor="let size of product.sizes">
-                                                {{ size.name }} ({{ size.stock }})
-                                            </nz-tag>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <nz-divider></nz-divider>
-
-                                <div class="metadata-section">
-                                    <div nz-row [nzGutter]="16">
-                                        <div nz-col [nzSpan]="8">
-                                            <h4>Temporada</h4>
-                                            <p>{{ product.season || 'N/A' }}</p>
-                                        </div>
-                                        <div nz-col [nzSpan]="8">
-                                            <h4>Colección</h4>
-                                            <p>{{ product.collection || 'N/A' }}</p>
-                                        </div>
-                                        <div nz-col [nzSpan]="8">
-                                            <h4>Código de Barras</h4>
-                                            <p>{{ product.barcode || 'N/A' }}</p>
-                                        </div>
-                                    </div>
-
-                                    <div nz-row [nzGutter]="16" style="margin-top: 8px;">
-                                        <div nz-col [nzSpan]="24">
-                                            <h4>Etiquetas</h4>
-                                            <nz-tag *ngFor="let tag of product.tags">{{ tag }}</nz-tag>
-                                            <span *ngIf="!product.tags || product.tags.length === 0">Sin
-                                                etiquetas</span>
-                                        </div>
+                                        <p><strong>Tallas disponibles:</strong></p>
+                                        <nz-tag *ngFor="let size of product.sizes">{{ size.name }}</nz-tag>
                                     </div>
                                 </div>
                             </div>
@@ -246,318 +269,585 @@
                 </ng-container>
             </tbody>
         </nz-table>
+        <nz-empty *ngIf="products.length === 0 && !loading"
+            [nzNotFoundContent]="'No se encontraron productos'"></nz-empty>
     </nz-card>
 
-    <!-- Formulario de producto (modal o drawer) -->
-    <nz-drawer [nzVisible]="isAddMode || selectedProduct !== undefined"
-        [nzTitle]="isAddMode ? 'Crear Nuevo Producto' : 'Editar Producto'" [nzWidth]="720"
-        (nzOnClose)="selectedProduct = undefined">
+    <!-- Drawer para aplicar promociones -->
+    <nz-drawer [nzTitle]="'Aplicar Promoción a ' + (selectedProduct ? selectedProduct.name : '')" [nzWidth]="500"
+        [nzVisible]="showPromotionDrawer" (nzOnClose)="closePromotionDrawer()">
+        <ng-container *nzDrawerContent>
+            <nz-spin [nzSpinning]="loadingPromotions">
+                <nz-empty *ngIf="!availablePromotions || availablePromotions.length === 0"
+                    [nzNotFoundContent]="'No hay promociones disponibles para este producto'">
+                </nz-empty>
 
-        <form *nzDrawerContent nz-form [formGroup]="productForm" (ngSubmit)="submitProductForm()">
-            <nz-tabset>
-                <nz-tab nzTitle="Información Básica">
-                    <div nz-row [nzGutter]="16">
-                        <div nz-col [nzSpan]="16">
-                            <nz-form-item>
-                                <nz-form-label nzRequired>Nombre</nz-form-label>
-                                <nz-form-control nzErrorTip="Por favor ingrese un nombre">
-                                    <input nz-input formControlName="name" placeholder="Nombre del producto" />
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
+                <nz-list [nzSize]="'large'" [nzBordered]="true"
+                    *ngIf="availablePromotions && availablePromotions.length > 0">
+                    <nz-list-item *ngFor="let promo of availablePromotions">
+                        <nz-list-item-meta [nzTitle]="promo.name" [nzDescription]="promoDesc" [nzAvatar]="promoAvatar">
+                            <ng-template #promoAvatar>
+                                <span nz-icon [nzType]="promo.discountType === 'percentage' ? 'percentage' : 'dollar'"
+                                    nzTheme="outline" style="font-size: 28px;"></span>
+                            </ng-template>
+                            <ng-template #promoDesc>
+                                <p>
+                                    Descuento:
+                                    <ng-container *ngIf="promo.discountType === 'percentage'">
+                                        {{ promo.discountValue }}%
+                                    </ng-container>
+                                    <ng-container *ngIf="promo.discountType === 'fixed'">
+                                        {{ promo.discountValue | currency }}
+                                    </ng-container>
+                                    <span *ngIf="promo.maxDiscountAmount"> (max {{ promo.maxDiscountAmount | currency
+                                        }})</span>
+                                </p>
+                                <p>Válido: {{ promo.startDate | date }} - {{ promo.endDate | date }}</p>
+                            </ng-template>
+                        </nz-list-item-meta>
+                        <ul nz-list-item-actions>
+                            <nz-list-item-action>
+                                <button nz-button nzType="primary" [disabled]="!selectedProduct"
+                                    (click)="applyPromotionToProduct(selectedProduct!.id, promo.id)">
+                                    Aplicar
+                                </button>
+                            </nz-list-item-action>
+                        </ul>
+                    </nz-list-item>
+                </nz-list>
+            </nz-spin>
+        </ng-container>
+    </nz-drawer>
 
-                        <div nz-col [nzSpan]="8">
-                            <nz-form-item>
-                                <nz-form-label nzRequired>Precio</nz-form-label>
-                                <nz-form-control nzErrorTip="Por favor ingrese un precio válido">
-                                    <nz-input-number formControlName="price" [nzMin]="0" [nzStep]="0.01"
-                                        [nzPrecision]="2" style="width: 100%;"></nz-input-number>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                    </div>
-
-                    <div nz-row [nzGutter]="16">
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label nzRequired>SKU</nz-form-label>
-                                <nz-form-control nzErrorTip="Por favor ingrese el código SKU">
-                                    <input nz-input formControlName="sku" placeholder="SKU" />
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label>Código de Barras</nz-form-label>
-                                <nz-form-control>
-                                    <input nz-input formControlName="barcode"
-                                        placeholder="Código de barras (opcional)" />
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                    </div>
-
-                    <div nz-row [nzGutter]="16">
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label nzRequired>Categoría</nz-form-label>
-                                <nz-form-control nzErrorTip="Por favor seleccione una categoría">
-                                    <nz-select formControlName="category" nzPlaceHolder="Seleccionar categoría">
-                                        <nz-option *ngFor="let cat of categories" [nzValue]="cat.id"
-                                            [nzLabel]="cat.name"></nz-option>
-                                    </nz-select>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-
-                        <div nz-col [nzSpan]="12">
-                            <div nz-row [nzGutter]="8">
-                                <div nz-col [nzSpan]="12">
-                                    <label nz-checkbox formControlName="isNew">¿Producto Nuevo?</label>
-                                </div>
-                                <div nz-col [nzSpan]="12">
-                                    <label nz-checkbox formControlName="isBestSeller">¿Best Seller?</label>
-                                </div>
+    <!-- Drawer para formulario de producto -->
+    <nz-drawer [nzTitle]="isAddMode ? 'Nuevo Producto' : 'Editar Producto'" [nzWidth]="720"
+        [nzVisible]="isAddMode || (!isAddMode && selectedProduct !== undefined)" [nzFooter]="formFooter"
+        (nzOnClose)="closeDrawer()">
+        <ng-container *nzDrawerContent>
+            <form nz-form [formGroup]="productForm">
+                <nz-tabset>
+                    <!-- Información Básica -->
+                    <nz-tab nzTitle="Información Básica">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="24">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24" nzRequired>Nombre del Producto</nz-form-label>
+                                    <nz-form-control [nzSpan]="24" nzErrorTip="¡El nombre es obligatorio!">
+                                        <input nz-input formControlName="name" placeholder="Nombre del producto" />
+                                    </nz-form-control>
+                                </nz-form-item>
                             </div>
                         </div>
-                    </div>
-
-                    <nz-form-item>
-                        <nz-form-label>Descripción</nz-form-label>
-                        <nz-form-control>
-                            <textarea nz-input formControlName="description" [nzAutosize]="{ minRows: 3 }"
-                                placeholder="Descripción del producto"></textarea>
-                        </nz-form-control>
-                    </nz-form-item>
-
-                    <div nz-row [nzGutter]="16">
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label>Temporada</nz-form-label>
-                                <nz-form-control>
-                                    <nz-select formControlName="season" nzPlaceHolder="Seleccionar temporada"
-                                        [nzAllowClear]="true">
-                                        <nz-option *ngFor="let season of seasons" [nzValue]="season"
-                                            [nzLabel]="season"></nz-option>
-                                    </nz-select>
-                                </nz-form-control>
-                            </nz-form-item>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24" nzRequired>Precio</nz-form-label>
+                                    <nz-form-control [nzSpan]="24" nzErrorTip="¡El precio es obligatorio!">
+                                        <nz-input-number [nzMin]="0" formControlName="price" [nzStep]="0.01"
+                                            [nzPlaceHolder]="'0.00'" style="width: 100%;"></nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24" nzRequired>Categoría</nz-form-label>
+                                    <nz-form-control [nzSpan]="24" nzErrorTip="¡La categoría es obligatoria!">
+                                        <nz-select formControlName="category" nzPlaceHolder="Seleccionar categoría">
+                                            <nz-option *ngFor="let category of categories" [nzValue]="category.id"
+                                                [nzLabel]="category.name"></nz-option>
+                                        </nz-select>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
                         </div>
-
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label>Colección</nz-form-label>
-                                <nz-form-control>
-                                    <nz-select formControlName="collection" nzPlaceHolder="Seleccionar colección"
-                                        [nzAllowClear]="true">
-                                        <nz-option *ngFor="let collection of collections" [nzValue]="collection"
-                                            [nzLabel]="collection"></nz-option>
-                                    </nz-select>
-                                </nz-form-control>
-                            </nz-form-item>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24" nzRequired>SKU</nz-form-label>
+                                    <nz-form-control [nzSpan]="24" nzErrorTip="¡El SKU es obligatorio!">
+                                        <input nz-input formControlName="sku" placeholder="SKU" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Código de Barras</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <input nz-input formControlName="barcode" placeholder="Código de barras" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
                         </div>
-                    </div>
-
-                    <nz-form-item>
-                        <nz-form-label>Imagen Principal</nz-form-label>
-                        <nz-form-control>
-                            <div class="image-upload-container">
-                                <ng-container *ngIf="mainImageUrl; else noImage">
-                                    <div class="image-preview">
-                                        <img [src]="mainImageUrl" alt="Vista previa" />
-                                    </div>
-                                </ng-container>
-                                <ng-template #noImage>
-                                    <div class="upload-placeholder">
-                                        <i nz-icon nzType="picture" nzTheme="outline"></i>
-                                        <p>Clic para subir</p>
-                                    </div>
-                                </ng-template>
-                                <input type="file" #mainImageInput (change)="onMainImageChange($event)"
-                                    accept="image/*" />
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="24">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Descripción</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <textarea formControlName="description" nz-input rows="4"
+                                            placeholder="Descripción del producto"></textarea>
+                                    </nz-form-control>
+                                </nz-form-item>
                             </div>
-                        </nz-form-control>
-                    </nz-form-item>
-                </nz-tab>
-
-                <nz-tab nzTitle="Colores y Tallas">
-                    <div class="section-header">
-                        <h3>Colores</h3>
-                        <button nz-button nzType="default" (click)="addColor()">
-                            <i nz-icon nzType="plus"></i> Añadir Color
-                        </button>
-                    </div>
-
-                    <div class="color-list" formArrayName="colors">
-                        <div *ngFor="let colorForm of colorForms.controls; let i = index" [formGroupName]="i"
-                            class="color-item">
-                            <div nz-row [nzGutter]="16">
-                                <div nz-col [nzSpan]="8">
-                                    <nz-form-item>
-                                        <nz-form-label nzRequired>Nombre</nz-form-label>
-                                        <nz-form-control nzErrorTip="Ingrese un nombre">
-                                            <input nz-input formControlName="name" placeholder="Ej: Rojo" />
-                                        </nz-form-control>
-                                    </nz-form-item>
-                                </div>
-
-                                <div nz-col [nzSpan]="8">
-                                    <nz-form-item>
-                                        <nz-form-label nzRequired>Color</nz-form-label>
-                                        <nz-form-control nzErrorTip="Seleccione un color">
-                                            <nz-color-picker formControlName="code"></nz-color-picker>
-                                        </nz-form-control>
-                                    </nz-form-item>
-                                </div>
-
-                                <div nz-col [nzSpan]="6">
-                                    <nz-form-item>
-                                        <nz-form-label>Imagen</nz-form-label>
-                                        <nz-form-control>
-                                            <button nz-button nzType="default" (click)="$event.preventDefault()">
-                                                <input type="file"
-                                                    (change)="onColorImageChange($event, colorForm.get('name')?.value)"
-                                                    accept="image/*" />
-                                                <i nz-icon nzType="upload"></i> Subir
-                                            </button>
-                                        </nz-form-control>
-                                    </nz-form-item>
-                                </div>
-
-                                <div nz-col [nzSpan]="2">
-                                    <button nz-button nzType="default" nzDanger nzShape="circle"
-                                        (click)="removeColor(i)">
-                                        <i nz-icon nzType="delete"></i>
-                                    </button>
-                                </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Temporada</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <nz-select formControlName="season" nzPlaceHolder="Seleccionar temporada"
+                                            nzAllowClear>
+                                            <nz-option *ngFor="let season of seasons" [nzValue]="season"
+                                                [nzLabel]="season"></nz-option>
+                                        </nz-select>
+                                    </nz-form-control>
+                                </nz-form-item>
                             </div>
-
-                            <div *ngIf="colorImages.get(colorForm.get('name')?.value)?.url" class="image-preview small">
-                                <img [src]="colorImages.get(colorForm.get('name')?.value)?.url" alt="Vista previa" />
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Colección</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <nz-select formControlName="collection" nzPlaceHolder="Seleccionar colección"
+                                            nzAllowClear>
+                                            <nz-option *ngFor="let collection of collections" [nzValue]="collection"
+                                                [nzLabel]="collection"></nz-option>
+                                        </nz-select>
+                                    </nz-form-control>
+                                </nz-form-item>
                             </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-control [nzSpan]="24">
+                                        <label nz-checkbox formControlName="isNew">Marcar como Nuevo</label>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-control [nzSpan]="24">
+                                        <label nz-checkbox formControlName="isBestSeller">Marcar como Más
+                                            Vendido</label>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="24">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Imagen Principal</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <div class="image-upload-container">
+                                            <div class="image-preview" *ngIf="mainImageUrl">
+                                                <img [src]="mainImageUrl" alt="imagen principal" />
+                                            </div>
+                                            <div class="upload-button">
+                                                <button nz-button (click)="mainImageInput.click()">
+                                                    <span nz-icon nzType="upload"></span>
+                                                    <span>Subir Imagen</span>
+                                                </button>
+                                                <input type="file" #mainImageInput style="display: none"
+                                                    accept="image/*" (change)="onMainImageChange($event)">
+                                            </div>
+                                        </div>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                    </nz-tab>
+
+                    <!-- Colores -->
+                    <nz-tab nzTitle="Colores">
+                        <div class="mb-3">
+                            <button nz-button nzType="dashed" (click)="addColor()">
+                                <span nz-icon nzType="plus"></span>
+                                Agregar Color
+                            </button>
                         </div>
 
                         <nz-empty *ngIf="colorForms.length === 0"
-                            [nzNotFoundContent]="'No hay colores añadidos'"></nz-empty>
-                    </div>
+                            nzNotFoundContent="No hay colores agregados"></nz-empty>
 
-                    <nz-divider></nz-divider>
+                        <div *ngFor="let colorForm of colorForms.controls; let i = index" class="color-form-item">
+                            <nz-card [nzTitle]="'Color ' + (i + 1)" [nzExtra]="colorActionsTpl">
+                                <ng-template #colorActionsTpl>
+                                    <a nz-popconfirm nzPopconfirmTitle="¿Está seguro de eliminar este color?"
+                                        (nzOnConfirm)="removeColor(i)">Eliminar</a>
+                                </ng-template>
 
-                    <div class="section-header">
-                        <h3>Tallas</h3>
-                        <button nz-button nzType="default" (click)="addSize()">
-                            <i nz-icon nzType="plus"></i> Añadir Talla
-                        </button>
-                    </div>
-
-                    <div class="size-list" formArrayName="sizes">
-                        <div *ngFor="let sizeForm of sizeForms.controls; let i = index" [formGroupName]="i"
-                            class="size-item">
-                            <div nz-row [nzGutter]="16">
-                                <div nz-col [nzSpan]="8">
-                                    <nz-form-item>
-                                        <nz-form-label nzRequired>Nombre</nz-form-label>
-                                        <nz-form-control nzErrorTip="Ingrese un nombre">
-                                            <input nz-input formControlName="name" placeholder="Ej: S, M, L, XL" />
-                                        </nz-form-control>
-                                    </nz-form-item>
-                                </div>
-
-                                <div nz-col [nzSpan]="8">
-                                    <nz-form-item>
-                                        <nz-form-label nzRequired>Stock</nz-form-label>
-                                        <nz-form-control nzErrorTip="Ingrese stock válido">
-                                            <nz-input-number formControlName="stock" [nzMin]="0" [nzStep]="1"
-                                                style="width: 100%;"></nz-input-number>
-                                        </nz-form-control>
-                                    </nz-form-item>
-                                </div>
-
-                                <div nz-col [nzSpan]="6">
-                                    <nz-form-item>
-                                        <nz-form-label>Imagen</nz-form-label>
-                                        <nz-form-control>
-                                            <button nz-button nzType="default" (click)="$event.preventDefault()">
-                                                <input type="file"
-                                                    (change)="onSizeImageChange($event, sizeForm.get('name')?.value)"
-                                                    accept="image/*" />
-                                                <i nz-icon nzType="upload"></i> Subir
-                                            </button>
-                                        </nz-form-control>
-                                    </nz-form-item>
-                                </div>
-
-                                <div nz-col [nzSpan]="2">
-                                    <button nz-button nzType="default" nzDanger nzShape="circle"
-                                        (click)="removeSize(i)">
-                                        <i nz-icon nzType="delete"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div *ngIf="sizeImages.get(sizeForm.get('name')?.value)?.url" class="image-preview small">
-                                <img [src]="sizeImages.get(sizeForm.get('name')?.value)?.url" alt="Vista previa" />
-                            </div>
-
-                            <!-- Stock por color -->
-                            <div *ngIf="colorForms.length > 0" class="color-stocks-container">
-                                <h4>Stock por color</h4>
-                                <div formArrayName="colorStocks">
-                                    <div nz-row [nzGutter]="8">
-                                        <div nz-col [nzSpan]="8"
-                                            *ngFor="let colorForm of colorForms.controls; let colorIndex = index">
-                                            <div class="color-stock-item"
-                                                [ngStyle]="{'border-left-color': colorForm.get('code')?.value}">
-                                                <span>{{ colorForm.get('name')?.value }}</span>
-                                                <nz-input-number [nzMin]="0" [nzStep]="1" style="width: 80px;"
-                                                    [ngModel]="getColorStockValue(i, colorForm.get('name')?.value)"
-                                                    (ngModelChange)="updateColorStock(i, colorForm.get('name')?.value, $event)">
-                                                </nz-input-number>
-                                            </div>
-                                        </div>
+                                <div nz-row [nzGutter]="16" [formGroup]="colorForm">
+                                    <div nz-col [nzSpan]="12">
+                                        <nz-form-item>
+                                            <nz-form-label [nzSpan]="24" nzRequired>Nombre</nz-form-label>
+                                            <nz-form-control [nzSpan]="24" nzErrorTip="¡El nombre es obligatorio!">
+                                                <input nz-input formControlName="name" placeholder="Nombre del color">
+                                            </nz-form-control>
+                                        </nz-form-item>
+                                    </div>
+                                    <div nz-col [nzSpan]="12">
+                                        <nz-form-item>
+                                            <nz-form-label [nzSpan]="24" nzRequired>Código de Color</nz-form-label>
+                                            <nz-form-control [nzSpan]="24">
+                                                <nz-color-picker formControlName="code"></nz-color-picker>
+                                            </nz-form-control>
+                                        </nz-form-item>
                                     </div>
                                 </div>
-                            </div>
+
+                                <div nz-row [nzGutter]="16" [formGroup]="colorForm">
+                                    <div nz-col [nzSpan]="24">
+                                        <nz-form-item>
+                                            <nz-form-label [nzSpan]="24">Imagen del Color</nz-form-label>
+                                            <nz-form-control [nzSpan]="24">
+                                                <div class="image-upload-container">
+                                                    <div class="image-preview"
+                                                        *ngIf="colorImages.has(colorForm.get('name')?.value)">
+                                                        <img [src]="colorImages.get(colorForm.get('name')?.value)?.url"
+                                                            alt="imagen del color">
+                                                    </div>
+                                                    <div class="upload-button">
+                                                        <button nz-button (click)="colorImageInput.click()">
+                                                            <span nz-icon nzType="upload"></span>
+                                                            <span>Subir Imagen</span>
+                                                        </button>
+                                                        <input type="file" #colorImageInput style="display: none"
+                                                            accept="image/*"
+                                                            (change)="onColorImageChange($event, colorForm.get('name')?.value)">
+                                                    </div>
+                                                </div>
+                                            </nz-form-control>
+                                        </nz-form-item>
+                                    </div>
+                                </div>
+                            </nz-card>
+                        </div>
+                    </nz-tab>
+
+                    <!-- Tallas -->
+                    <nz-tab nzTitle="Tallas">
+                        <div class="mb-3">
+                            <button nz-button nzType="dashed" (click)="addSize()">
+                                <span nz-icon nzType="plus"></span>
+                                Agregar Talla
+                            </button>
                         </div>
 
-                        <nz-empty *ngIf="sizeForms.length === 0"
-                            [nzNotFoundContent]="'No hay tallas añadidas'"></nz-empty>
-                    </div>
-                </nz-tab>
+                        <nz-empty *ngIf="sizeForms.length === 0" nzNotFoundContent="No hay tallas agregadas"></nz-empty>
 
-                <nz-tab nzTitle="SEO y Metadatos">
-                    <nz-form-item>
-                        <nz-form-label>Meta Título</nz-form-label>
-                        <nz-form-control>
-                            <input nz-input formControlName="metaTitle" placeholder="Meta título (para SEO)" />
-                        </nz-form-control>
-                    </nz-form-item>
+                        <div *ngFor="let sizeForm of sizeForms.controls; let i = index" class="size-form-item">
+                            <nz-card [nzTitle]="'Talla ' + (i + 1)" [nzExtra]="sizeActionsTpl">
+                                <ng-template #sizeActionsTpl>
+                                    <a nz-popconfirm nzPopconfirmTitle="¿Está seguro de eliminar esta talla?"
+                                        (nzOnConfirm)="removeSize(i)">Eliminar</a>
+                                </ng-template>
 
-                    <nz-form-item>
-                        <nz-form-label>Meta Descripción</nz-form-label>
-                        <nz-form-control>
-                            <textarea nz-input formControlName="metaDescription" [nzAutosize]="{ minRows: 3 }"
-                                placeholder="Meta descripción (para SEO)"></textarea>
-                        </nz-form-control>
-                    </nz-form-item>
+                                <div nz-row [nzGutter]="16" [formGroup]="$any(sizeForm)">
+                                    <div nz-col [nzSpan]="12">
+                                        <nz-form-item>
+                                            <nz-form-label [nzSpan]="24" nzRequired>Nombre</nz-form-label>
+                                            <nz-form-control [nzSpan]="24" nzErrorTip="¡El nombre es obligatorio!">
+                                                <input nz-input formControlName="name" placeholder="Nombre de la talla">
+                                            </nz-form-control>
+                                        </nz-form-item>
+                                    </div>
+                                    <div nz-col [nzSpan]="12">
+                                        <nz-form-item>
+                                            <nz-form-label [nzSpan]="24" nzRequired>Stock</nz-form-label>
+                                            <nz-form-control [nzSpan]="24" nzErrorTip="¡El stock es obligatorio!">
+                                                <nz-input-number formControlName="stock" [nzMin]="0" [nzStep]="1"
+                                                    style="width: 100%;"></nz-input-number>
+                                            </nz-form-control>
+                                        </nz-form-item>
+                                    </div>
+                                </div>
 
-                    <nz-form-item>
-                        <nz-form-label>Palabras clave</nz-form-label>
-                        <nz-form-control nzExtra="Separadas por comas">
-                            <input nz-input formControlName="searchKeywords"
-                                placeholder="Palabras clave separadas por comas" />
-                        </nz-form-control>
-                    </nz-form-item>
-                </nz-tab>
-            </nz-tabset>
-            <div class="drawer-footer" style="margin-top: 24px; text-align: right;">
-                <button nz-button style="margin-right: 8px;" (click)="selectedProduct = undefined">Cancelar</button>
-                <button nz-button nzType="primary"  (click)="submitProductForm()">
-                    <i nz-icon nzType="save"></i> Guardar
+                                <div nz-row [nzGutter]="16" [formGroup]="$any(sizeForm)">
+                                    <div nz-col [nzSpan]="24">
+                                        <nz-form-item>
+                                            <nz-form-label [nzSpan]="24">Imagen de la Talla</nz-form-label>
+                                            <nz-form-control [nzSpan]="24">
+                                                <div class="image-upload-container">
+                                                    <div class="image-preview"
+                                                        *ngIf="sizeImages.has(sizeForm.get('name')?.value)">
+                                                        <img [src]="sizeImages.get(sizeForm.get('name')?.value)?.url"
+                                                            alt="imagen de la talla">
+                                                    </div>
+                                                    <div class="upload-button">
+                                                        <button nz-button (click)="sizeImageInput.click()">
+                                                            <span nz-icon nzType="upload"></span>
+                                                            <span>Subir Imagen</span>
+                                                        </button>
+                                                        <input type="file" #sizeImageInput style="display: none"
+                                                            accept="image/*"
+                                                            (change)="onSizeImageChange($event, sizeForm.get('name')?.value)">
+                                                    </div>
+                                                </div>
+                                            </nz-form-control>
+                                        </nz-form-item>
+                                    </div>
+                                </div>
+
+                                <!-- Stock por colores -->
+                                <nz-divider nzText="Stock por colores" nzOrientation="left"></nz-divider>
+
+                                <nz-table #colorStockTable [nzData]="colorForms.controls" [nzShowPagination]="false"
+                                    nzSize="small">
+                                    <thead>
+                                        <tr>
+                                            <th>Color</th>
+                                            <th>Stock</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr *ngFor="let colorForm of colorForms.controls">
+                                            <td>
+                                                <div class="color-display">
+                                                    <div class="color-square"
+                                                        [style.background]="colorForm.get('code')?.value"></div>
+                                                    <span>{{ colorForm.get('name')?.value }}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <nz-input-number
+                                                    [ngModel]="getColorStockValue(i, colorForm.get('name')?.value)"
+                                                    (ngModelChange)="updateColorStock(i, colorForm.get('name')?.value, $event)"
+                                                    [nzMin]="0" [nzStep]="1">
+                                                </nz-input-number>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </nz-table>
+                            </nz-card>
+                        </div>
+                    </nz-tab>
+
+                    <!-- Variantes -->
+                    <nz-tab nzTitle="Variantes" [nzDisabled]="colorForms.length === 0 || sizeForms.length === 0">
+                        <nz-alert nzType="info" nzMessage="Gestión de Variantes"
+                            nzDescription="Las variantes se generan automáticamente al combinar colores y tallas. Puede cargar imágenes específicas para cada combinación."
+                            class="mb-3">
+                        </nz-alert>
+
+                        <nz-empty *ngIf="colorForms.length === 0 || sizeForms.length === 0"
+                            nzNotFoundContent="Agregue al menos un color y una talla para gestionar variantes">
+                        </nz-empty>
+
+                        <nz-collapse *ngIf="colorForms.length > 0 && sizeForms.length > 0">
+                            <nz-collapse-panel *ngFor="let colorForm of colorForms.controls"
+                                [nzHeader]="colorForm.get('name')?.value" [nzExtra]="extraTpl">
+                                <ng-template #extraTpl>
+                                    <div class="color-square" [style.background]="colorForm.get('code')?.value"></div>
+                                </ng-template>
+
+                                <div *ngFor="let sizeForm of sizeForms.controls" class="variant-item">
+                                    <nz-card>
+                                        <div nz-row [nzGutter]="16">
+                                            <div nz-col [nzSpan]="8">
+                                                <h4>{{ colorForm.get('name')?.value }} - {{ sizeForm.get('name')?.value
+                                                    }}</h4>
+                                            </div>
+                                            <div nz-col [nzSpan]="16">
+                                                <div class="image-upload-container">
+                                                    <div class="image-preview"
+                                                        *ngIf="variantImages.has(colorForm.get('name')?.value + '-' + sizeForm.get('name')?.value)">
+                                                        <img [src]="variantImages.get(colorForm.get('name')?.value + '-' + sizeForm.get('name')?.value)?.url"
+                                                            alt="imagen de variante">
+                                                    </div>
+                                                    <div class="upload-button">
+                                                        <button nz-button (click)="variantImageInput.click()">
+                                                            <span nz-icon nzType="upload"></span>
+                                                            <span>Subir Imagen de Variante</span>
+                                                        </button>
+                                                        <input type="file" #variantImageInput style="display: none"
+                                                            accept="image/*"
+                                                            (change)="onVariantImageChange($event, colorForm.get('name')?.value, sizeForm.get('name')?.value)">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </nz-card>
+                                </div>
+                            </nz-collapse-panel>
+                        </nz-collapse>
+                    </nz-tab>
+
+                    <!-- SEO -->
+                    <nz-tab nzTitle="SEO y Metadatos">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="24">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Meta Título</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <input nz-input formControlName="metaTitle" placeholder="Meta título para SEO">
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="24">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Meta Descripción</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <textarea formControlName="metaDescription" nz-input rows="4"
+                                            placeholder="Meta descripción para SEO"></textarea>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="24">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Palabras Clave</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <input nz-input formControlName="searchKeywords"
+                                            placeholder="Palabras clave separadas por comas">
+                                        <div class="ant-form-item-explain">Las palabras clave mejoran la búsqueda en tu
+                                            tienda y SEO.</div>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="24">
+                                <nz-form-item>
+                                    <nz-form-label [nzSpan]="24">Etiquetas</nz-form-label>
+                                    <nz-form-control [nzSpan]="24">
+                                        <input nz-input formControlName="tags"
+                                            placeholder="Etiquetas separadas por comas">
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                    </nz-tab>
+                </nz-tabset>
+            </form>
+        </ng-container>
+        <ng-template #formFooter>
+            <div style="float: right">
+                <button nz-button style="margin-right: 8px;" (click)="closeDrawer()">Cancelar</button>
+                <button nz-button nzType="primary" [nzLoading]="submitting" (click)="submitProductForm()">
+                    {{ isAddMode ? 'Crear Producto' : 'Actualizar Producto' }}
                 </button>
             </div>
-            
-        </form>
+        </ng-template>
     </nz-drawer>
+
+    <!-- Drawer para variantes -->
+    <nz-drawer [nzTitle]="selectedProduct ? 'Variantes de ' + selectedProduct.name : 'Variantes'" [nzWidth]="720"
+        [nzVisible]="showVariantDrawer" [nzFooter]="variantFooter" (nzOnClose)="closeDrawers()">
+        <ng-container *nzDrawerContent>
+            <nz-empty *ngIf="!selectedProduct"
+                nzNotFoundContent="Seleccione un producto para ver sus variantes"></nz-empty>
+
+            <div *ngIf="selectedProduct" class="variants-container">
+                <nz-table #variantsTable [nzData]="selectedProduct.variants" [nzShowPagination]="false">
+                    <thead>
+                        <tr>
+                            <th>Imagen</th>
+                            <th>Color</th>
+                            <th>Talla</th>
+                            <th>Stock</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let variant of variantsTable.data">
+                            <td>
+                                <nz-avatar [nzShape]="'square'" [nzSize]="60"
+                                    [nzSrc]="variant.imageUrl || selectedProduct.imageUrl || 'assets/images/no-image.png'"
+                                    nzAlt="variant image">
+                                </nz-avatar>
+                            </td>
+                            <td>
+                                <div class="color-display">
+                                    <div class="color-square"
+                                        [style.background]="getColorByName(variant.colorName)?.code || '#000000'">
+                                    </div>
+                                    <span>{{ variant.colorName }}</span>
+                                </div>
+                            </td>
+                            <td>{{ variant.sizeName }}</td>
+                            <td>
+                                <nz-input-number [(ngModel)]="variant.stock" [nzMin]="0" [nzStep]="1">
+                                </nz-input-number>
+                            </td>
+                            <td>
+                                <button nz-button nzType="primary" nzSize="small"
+                                    (click)="updateStockQuantity(selectedProduct!.id, variant.id, variant.stock)">
+                                    Actualizar
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </nz-table>
+            </div>
+        </ng-container>
+        <ng-template #variantFooter>
+            <div style="float: right">
+                <button nz-button (click)="closeDrawers()">Cerrar</button>
+            </div>
+        </ng-template>
+    </nz-drawer>
+
+    <!-- Drawer para estadísticas -->
+    <nz-drawer [nzTitle]="selectedProduct ? 'Estadísticas de ' + selectedProduct.name : 'Estadísticas'" [nzWidth]="720"
+        [nzVisible]="showStatsDrawer" [nzFooter]="statsFooter" (nzOnClose)="closeDrawers()">
+        <ng-container *nzDrawerContent>
+            <nz-empty *ngIf="!selectedProduct"
+                nzNotFoundContent="Seleccione un producto para ver sus estadísticas"></nz-empty>
+
+            <div *ngIf="selectedProduct" class="stats-container">
+                <nz-card>
+                    <div nz-row [nzGutter]="16">
+                        <div nz-col [nzSpan]="6">
+                            <nz-statistic [nzValue]="selectedProduct.views" [nzTitle]="'Vistas'">
+                            </nz-statistic>
+                        </div>
+                        <div nz-col [nzSpan]="6">
+                            <nz-statistic [nzValue]="selectedProduct.sales" [nzTitle]="'Ventas'">
+                            </nz-statistic>
+                        </div>
+                        <div nz-col [nzSpan]="6">
+                            <nz-statistic [nzValue]="selectedProduct.totalStock" [nzTitle]="'Stock Total'">
+                            </nz-statistic>
+                        </div>
+                        <div nz-col [nzSpan]="6">
+                            <nz-statistic [nzValue]="selectedProduct.rating" [nzTitle]="'Rating'"
+                                [nzSuffix]="ratingSuffix">
+                            </nz-statistic>
+                            <ng-template #ratingSuffix>
+                                <span nz-icon nzType="star" nzTheme="fill" style="color: #fadb14;"></span>
+                            </ng-template>
+                        </div>
+                    </div>
+                </nz-card>
+
+                <nz-card nzTitle="Historial de Ventas" class="mt-3">
+                    <div class="sales-chart">
+                        <!-- Aquí podrías incluir un gráfico usando ng-charts, recharts o similar -->
+                        <table class="sales-history-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Ventas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let sale of salesHistory">
+                                    <td>{{ sale.date | date:'dd/MM/yyyy' }}</td>
+                                    <td>{{ sale.sales }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </nz-card>
+            </div>
+        </ng-container>
+        <ng-template #statsFooter>
+            <div style="float: right">
+                <button nz-button (click)="closeDrawers()">Cerrar</button>
+            </div>
+        </ng-template>
+    </nz-drawer>
+
 </div>

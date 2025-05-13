@@ -1,4 +1,4 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -7,6 +7,8 @@ import { Router, RouterLink, RouterModule } from '@angular/router';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { CartService } from '../../pasarela-pago/services/cart/cart.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-nav-bar',
@@ -25,9 +27,10 @@ import { NzMenuModule } from 'ng-zorro-antd/menu';
   templateUrl: './nav-bar.component.html',
   styleUrl: './nav-bar.component.css'
 })
-export class NavBarComponent {
+export class NavBarComponent implements OnInit, OnDestroy {
   mobileMenuOpen = false;
-  cartCount = 1;
+  cartCount = 0;
+  private cartSubscription: Subscription | null = null;
   isScrolled = false;
   hideHeader = false;
   lastScrollTop = 0;
@@ -44,7 +47,22 @@ export class NavBarComponent {
     { label: 'RESEÑAS', link: '/welcome', fragment: 'resenas' },
   ];
 
-  constructor(private router: Router) {}
+  constructor(
+    private cartService: CartService, 
+    private router: Router
+  ) {}
+
+  ngOnInit() {
+    this.cartSubscription = this.cartService.getCartItemCount().subscribe(count => {
+      this.cartCount = count;
+    });
+  }
+  
+  ngOnDestroy() {
+    if (this.cartSubscription) {
+      this.cartSubscription.unsubscribe();
+    }
+  }
 
   toggleMobileMenu() {
     this.mobileMenuOpen = !this.mobileMenuOpen;

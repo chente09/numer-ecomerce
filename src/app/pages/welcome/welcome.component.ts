@@ -2,8 +2,9 @@ import { Component, ElementRef, Input, OnDestroy, OnInit, TemplateRef, ViewChild
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { CategoryService, Category } from '../../services/category/category.service';
-import { ProductService, Product, Color } from '../../services/product/product.service';
+import { CategoryService, Category } from '../../services/admin/category/category.service';
+import { ProductService} from '../../services/admin/product/product.service';
+import { Product, Color  } from '../../models/models';
 import { ScrollService } from '../../services/scroll/scroll.service';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzCardModule } from 'ng-zorro-antd/card';

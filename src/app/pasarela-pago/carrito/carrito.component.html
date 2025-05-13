@@ -1,21 +1,161 @@
-<div class="container mt-4">
-    <h2>Carrito de compras</h2>
-    <hr>
-    <div class="mb-3">
-        <input [(ngModel)]="nombreProducto" class="form-control mb-2" placeholder="Nombre del producto" required>
-        <input [(ngModel)]="precioProducto" class="form-control mb-2" type="number" placeholder="Precio del producto (USD)" required>
-        <button class="btn btn-primary" (click)="agregarProducto()" [disabled]="!nombreProducto || !precioProducto || precioProducto <= 0">
-          Agregar producto
+<div class="carrito-container">
+  <h1 class="carrito-title">Tu Carrito de Compras</h1>
+  
+  <!-- Mostrar loader mientras carga -->
+  <div *ngIf="loading" class="loading-container">
+    <nz-spin nzTip="Cargando carrito..."></nz-spin>
+  </div>
+  
+  <!-- Carrito vacío -->
+  <div *ngIf="!loading && (!cart || cart.items.length === 0)" class="empty-cart">
+    <div class="empty-cart-icon">
+      <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
+    </div>
+    <h2>Tu carrito está vacío</h2>
+    <p>Parece que no has agregado ningún producto a tu carrito.</p>
+    <button nz-button nzType="primary" (click)="continueShopping()">
+      Continuar Comprando
+    </button>
+  </div>
+  
+  <!-- Carrito con productos -->
+  <div *ngIf="!loading && cart && cart.items.length > 0" class="cart-content">
+    <!-- Tabla de productos -->
+    <table class="cart-table">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Variante</th>
+          <th>Precio</th>
+          <th>Cantidad</th>
+          <th>Total</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of cart.items">
+          <td class="product-cell">
+            <div class="product-info">
+              <img 
+                [src]="item.product?.imageUrl" 
+                [alt]="item.product?.name" 
+                class="product-thumbnail" 
+              />
+              <div>
+                <div class="product-name">{{ item.product?.name }}</div>
+                <div class="product-category">{{ item.product?.category }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="variant-info">
+              <span class="color-dot" [style.background-color]="item.variant?.colorCode"></span>
+              <span>{{ item.variant?.colorName }} / {{ item.variant?.sizeName }}</span>
+            </div>
+          </td>
+          <td>${{ item.unitPrice | number:'1.2-2' }}</td>
+          <td>
+            <nz-input-number
+              [(ngModel)]="item.quantity"
+              [nzMin]="1"
+              [nzMax]="item.variant?.stock || 10"
+              [nzStep]="1"
+              [nzDisabled]="updating"
+              (ngModelChange)="updateQuantity(item, $event)"
+            ></nz-input-number>
+          </td>
+          <td>${{ item.totalPrice | number:'1.2-2' }}</td>
+          <td>
+            <button 
+              nz-button 
+              nzType="text" 
+              nzDanger 
+              (click)="removeItem(item)" 
+              [disabled]="updating"
+              nz-tooltip
+              nzTooltipTitle="Eliminar producto"
+            >
+              <i nz-icon nzType="delete" nzTheme="outline"></i>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <!-- Sección de totales y checkout -->
+    <div class="cart-summary">
+      <div class="summary-left">
+        <!-- Código de descuento -->
+        <div class="discount-section">
+          <input 
+            nz-input 
+            placeholder="Código de descuento" 
+            [(ngModel)]="discountCode" 
+            [disabled]="updating"
+          />
+          <button 
+            nz-button 
+            nzType="primary" 
+            (click)="applyDiscount()" 
+            [disabled]="updating || !discountCode"
+          >
+            Aplicar
+          </button>
+        </div>
+        
+        <button 
+          nz-button 
+          (click)="clearCart()" 
+          [disabled]="updating"
+        >
+          Vaciar Carrito
+        </button>
+        
+        <button 
+          nz-button 
+          (click)="continueShopping()" 
+          [disabled]="updating"
+        >
+          Continuar Comprando
         </button>
       </div>
       
-    <ul class="list-group">
-      <li *ngFor="let p of productos" class="list-group-item">
-        {{ p.nombre }} - {{ p.precio | currency:'USD' }}
-      </li>
-    </ul>
-    <hr>
-    <h4>Total: {{ total | currency:'USD' }}</h4>
-    <button class="btn btn-success" (click)="irAPagar()" [disabled]="total <= 0">Pagar</button>
-    <div id="pp-button"></div>
+      <div class="summary-right">
+        <div class="summary-totals">
+          <div class="summary-row">
+            <span>Subtotal:</span>
+            <span>${{ cart.subtotal | number:'1.2-2' }}</span>
+          </div>
+          <div class="summary-row" *ngIf="cart.discount > 0">
+            <span>Descuento:</span>
+            <span>-${{ cart.discount | number:'1.2-2' }}</span>
+          </div>
+          <div class="summary-row">
+            <span>IVA (15%):</span>
+            <span>${{ cart.tax | number:'1.2-2' }}</span>
+          </div>
+          <div class="summary-row">
+            <span>Envío:</span>
+            <span *ngIf="cart.shipping > 0">${{ cart.shipping | number:'1.2-2' }}</span>
+            <span *ngIf="cart.shipping === 0" class="free-shipping">GRATIS</span>
+          </div>
+          <div class="summary-row total-row">
+            <span>Total:</span>
+            <span>${{ cart.total | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        
+        <button 
+          nz-button 
+          nzType="primary" 
+          nzSize="large" 
+          class="checkout-button" 
+          [nzLoading]="updating"
+          (click)="proceedToCheckout()"
+        >
+          Completar Compra
+        </button>
+      </div>
+    </div>
   </div>
+</div>
