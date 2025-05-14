@@ -36,7 +36,8 @@
 
 .main-product-image {
     position: absolute;
-    top: 0;
+    padding-top: 30px;
+    top: 0px;
     left: 0;
     width: 100%;
     height: 100%;
@@ -53,8 +54,8 @@
 .bestseller-badge,
 .sale-badge {
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: 10px;
+    right: 10px;
     background-color: #000;
     color: #fff;
     font-size: 12px;
@@ -101,18 +102,17 @@
     border: 1px solid #e0e0e0;
     padding: 2px;
     cursor: pointer;
-    background-color: #f5f5f5;
+    background-color: #888;
 }
 
 .thumbnail.active {
-    border: 2px solid #000;
-    background-color: #fff;
+    border: 2px solid #fff;
+    background-color: #f5f5f5;
 }
 
 .thumbnail img {
-    width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 /* Estilos de la información del producto */
@@ -217,7 +217,6 @@
     font-size: 16px;
     font-weight: 600;
     text-transform: uppercase;
-    margin-bottom: 15px;
     letter-spacing: 1px;
 }
 
@@ -241,7 +240,8 @@
 }
 
 .color-option.active .color-thumbnail {
-    border: 2px solid #000;
+    border: 1px solid #f5f5f5;
+    background-color: #f5f5f5;
 }
 
 .color-option.out-of-stock {
@@ -262,25 +262,61 @@
 .color-thumbnail {
     position: relative;
     width: 56px;
-    height: 56px;
-    border: 1px solid #e0e0e0;
-    background-color: #f5f5f5;
+    height: 66px;
+    border: 1px solid #888;
+    background-color: #888;
     padding: 2px;
     margin-bottom: 5px;
 }
 
 .color-thumbnail img {
-    width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
 /* Tallas */
+/* Estilo para tallas no disponibles (tachadas) */
+.size-option.unavailable {
+  position: relative;
+  opacity: 0.6;
+  pointer-events: none; /* Evita clics en tallas no disponibles */
+}
+
+.size-option.unavailable::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #f0f0f0; /* Color de la línea */
+  transform: rotate(-45deg);
+}
+
+
+/* Estilo para tallas sin stock (disponibles pero sin stock) */
+.size-option.out-of-stock {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f0f0f0;
+}
+
+/* Estilo para tallas con poco stock */
+.size-option.low-stock {
+  background-color: #fff3cd; /* Color amarillo suave */
+}
+
+/* Estilo para la talla seleccionada actualmente */
+.size-option.active {
+  background-color: #000;
+  color: #fff;
+  border-color: #000;
+}
+
 .size-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
 }
 
 .size-guide-button {
@@ -319,23 +355,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #e0e0e0;
+    border: 1px solid #999;
     padding: 5px 10px;
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 14px;
-    background-color: #fff;
+    background-color: #999;
     user-select: none;
 }
 
-.size-option:hover {
-    background-color: #f5f5f5;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
 
 .size-option.active {
-    border: 2px solid #000;
+    border: 2px solid #f5f5f5;
     font-weight: 600;
 }
 
@@ -346,24 +377,6 @@
     background-color: #f9f9f9;
 }
 
-.size-option.out-of-stock:hover {
-    transform: none;
-    box-shadow: none;
-}
-
-.size-option.out-of-stock::after {
-    content: '';
-    position: absolute;
-    width: 80%;
-    height: 1px;
-    background-color: #ff4d4f;
-    transform: rotate(45deg);
-    top: 50%;
-}
-
-.size-option.low-stock {
-    border-color: #faad14;
-}
 
 /* Indicador de stock dentro de la talla */
 .stock-indicator {
@@ -1116,6 +1129,18 @@
 }
 
 /* Modal de previsualización de imagen */
+.close-preview-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #000;
+    border: none;
+    font-size: 10px;
+    cursor: pointer;
+    color: #fff;
+    transition: all 0.2s ease;
+}
+
 .image-preview-modal .ant-modal-content {
     background: transparent;
     box-shadow: none;
@@ -1129,8 +1154,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.85);
-    border-radius: 8px;
+    background-color: black;
     overflow: hidden;
     max-height: 80vh;
 }
@@ -1139,7 +1163,6 @@
     max-width: 100%;
     max-height: 80vh;
     object-fit: contain;
-    border-radius: 4px;
 }
 
 /* Estilos para dispositivos móviles */

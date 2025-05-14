@@ -48,12 +48,14 @@ export class DetalleProductoComponent implements OnInit {
   showSizeLegend: boolean = true;
   showImageModal: boolean = false;
   previewImageUrl: string = '';
+  standardSizes: string[] = ['XS', 'S', 'M', 'L', 'XL'];
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
   // Estado adicional
   activeTab: string = 'description';
   isInWishlist: boolean = false;
   relatedProducts: Product[] = [];
+  currentImageUrl: string = '';
 
 
   constructor(
@@ -93,6 +95,7 @@ export class DetalleProductoComponent implements OnInit {
         // Inicializar selecciones por defecto
         if (product) {
           // Cargar datos de categoría
+          this.currentImageUrl = product.imageUrl;
           this.loadCategoryInfo(product.category);
 
           if (product.colors.length > 0) {
@@ -149,8 +152,15 @@ export class DetalleProductoComponent implements OnInit {
   // Métodos para manejar selecciones
   selectColor(color: Color): void {
     this.selectedColor = color;
+
+    // Actualizar la imagen del producto para mantener la compatibilidad con el HTML
+    if (this.product && color.imageUrl) {
+      this.product.imageUrl = color.imageUrl;
+    }
+
     this.updateSelectedVariant();
   }
+
 
   // Versión mejorada para seleccionar una talla con validación de stock
   selectSize(size: Size): void {
@@ -173,6 +183,42 @@ export class DetalleProductoComponent implements OnInit {
     this.updateSelectedVariant();
   }
 
+  // Verifica si una talla está disponible en el producto
+  isSizeAvailable(sizeName: string): boolean {
+    if (!this.product || !this.product.sizes) return false;
+    return this.product.sizes.some(size => size.name === sizeName);
+  }
+
+  // Maneja el clic en una talla
+  handleSizeClick(sizeName: string): void {
+    // Solo procesar el clic si la talla está disponible y tiene stock
+    if (this.isSizeAvailable(sizeName) && this.hasStockForSizeName(sizeName)) {
+      const size = this.product!.sizes.find(s => s.name === sizeName);
+      if (size) {
+        this.selectSize(size);
+      }
+    }
+  }
+
+  // Verifica si hay stock para una talla por nombre
+  hasStockForSizeName(sizeName: string): boolean {
+    if (!this.product) return false;
+
+    const size = this.product.sizes.find(s => s.name === sizeName);
+    if (!size) return false;
+
+    return this.hasStockForSize(size);
+  }
+
+  // Verifica si hay poco stock para una talla por nombre
+  hasLowStockForSizeName(sizeName: string): boolean {
+    if (!this.product) return false;
+
+    const size = this.product.sizes.find(s => s.name === sizeName);
+    if (!size) return false;
+
+    return this.hasLowStockForSize(size);
+  }
   ngAfterViewInit(): void {
     // Verificar si se necesita scroll en la tabla
     this.checkTableScroll();
@@ -195,7 +241,7 @@ export class DetalleProductoComponent implements OnInit {
     if (this.tableContainer) {
       const container = this.tableContainer.nativeElement;
       const hasScroll = container.scrollWidth > container.clientWidth;
-      
+
       if (hasScroll) {
         container.classList.remove('no-scroll');
       } else {
@@ -212,7 +258,7 @@ export class DetalleProductoComponent implements OnInit {
       this.checkTableScroll();
     }, 300);
   }
-  
+
 
   // Método auxiliar para obtener los colores disponibles para una talla
   getAvailableColorsForSize(size: Size): Color[] {
@@ -297,17 +343,17 @@ export class DetalleProductoComponent implements OnInit {
 
   // Nuevo método para verificar si hay poco stock para una talla específica
   hasLowStockForSize(size: Size): boolean {
-  if (!this.product) return false;
-  
-  // Busca la variante con la talla seleccionada y el color seleccionado (si existe)
-  const variant = this.product.variants.find(v => 
-    v.sizeName === size.name && 
-    (!this.selectedColor || v.colorName === this.selectedColor.name)
-  );
-  
-  // Retorna true si hay stock pero es bajo (entre 1 y 5 unidades)
-  return !!variant && variant.stock > 0 && variant.stock <= 5;
-}
+    if (!this.product) return false;
+
+    // Busca la variante con la talla seleccionada y el color seleccionado (si existe)
+    const variant = this.product.variants.find(v =>
+      v.sizeName === size.name &&
+      (!this.selectedColor || v.colorName === this.selectedColor.name)
+    );
+
+    // Retorna true si hay stock pero es bajo (entre 1 y 5 unidades)
+    return !!variant && variant.stock > 0 && variant.stock <= 5;
+  }
 
   // Métodos para los tabs
   setActiveTab(tabName: string): void {
@@ -361,70 +407,70 @@ export class DetalleProductoComponent implements OnInit {
 
   // Agregar al carrito
   // En DetalleProductoComponent
-async addToCart(): Promise<void> {
-  if (!this.product || !this.selectedVariant) {
-    this.modalService.warning({
-      nzTitle: 'No se pudo agregar el producto',
-      nzContent: 'Por favor selecciona una talla y un color antes de agregar al carrito.'
-    });
-    return;
-  }
-
-  console.log('Producto completo:', this.product);
-  console.log('Todas las variantes del producto:', this.product.variants);
-  console.log('Variante seleccionada en UI:', this.selectedVariant);
-  console.log('Stock mostrado en UI:', this.selectedVariant.stock);
-  console.log('ID de la variante a enviar:', this.selectedVariant.id);
-
-  try {
-    // Aquí podemos intentar un enfoque alternativo:
-    // En lugar de buscar por ID, busquemos la variante directamente del producto
-    const matchingVariant = this.product.variants.find(v => 
-      v.id === this.selectedVariant!.id
-    );
-    
-    if (!matchingVariant) {
-      console.error('No se encontró la variante en el producto');
-      this.modalService.error({
-        nzTitle: 'Error',
-        nzContent: 'Variante no encontrada en el producto.'
+  async addToCart(): Promise<void> {
+    if (!this.product || !this.selectedVariant) {
+      this.modalService.warning({
+        nzTitle: 'No se pudo agregar el producto',
+        nzContent: 'Por favor selecciona una talla y un color antes de agregar al carrito.'
       });
       return;
     }
-    
-    // Usar directamente la información de la variante del producto
-    const success = await this.cartService.addToCart(
-      this.product.id,
-      this.selectedVariant.id,
-      this.quantity,
-      this.product,           // Pasar el producto completo
-      this.selectedVariant  
-    );
 
-    if (success) {
-      this.modalService.success({
-        nzTitle: 'Producto añadido al carrito',
-        nzContent: `Has agregado ${this.quantity} unidad(es) de ${this.product.name} a tu carrito.`,
-        nzOkText: 'Ir al carrito',
-        nzCancelText: 'Continuar comprando',
-        nzOnOk: () => {
-          this.router.navigate(['/carrito']);
-        }
-      });
-    } else {
+    console.log('Producto completo:', this.product);
+    console.log('Todas las variantes del producto:', this.product.variants);
+    console.log('Variante seleccionada en UI:', this.selectedVariant);
+    console.log('Stock mostrado en UI:', this.selectedVariant.stock);
+    console.log('ID de la variante a enviar:', this.selectedVariant.id);
+
+    try {
+      // Aquí podemos intentar un enfoque alternativo:
+      // En lugar de buscar por ID, busquemos la variante directamente del producto
+      const matchingVariant = this.product.variants.find(v =>
+        v.id === this.selectedVariant!.id
+      );
+
+      if (!matchingVariant) {
+        console.error('No se encontró la variante en el producto');
+        this.modalService.error({
+          nzTitle: 'Error',
+          nzContent: 'Variante no encontrada en el producto.'
+        });
+        return;
+      }
+
+      // Usar directamente la información de la variante del producto
+      const success = await this.cartService.addToCart(
+        this.product.id,
+        this.selectedVariant.id,
+        this.quantity,
+        this.product,           // Pasar el producto completo
+        this.selectedVariant
+      );
+
+      if (success) {
+        this.modalService.success({
+          nzTitle: 'Producto añadido al carrito',
+          nzContent: `Has agregado ${this.quantity} unidad(es) de ${this.product.name} a tu carrito.`,
+          nzOkText: 'Ir al carrito',
+          nzCancelText: 'Continuar comprando',
+          nzOnOk: () => {
+            this.router.navigate(['/carrito']);
+          }
+        });
+      } else {
+        this.modalService.error({
+          nzTitle: 'Error',
+          nzContent: 'No se pudo agregar el producto al carrito. Verifica el stock disponible.'
+        });
+      }
+    } catch (error) {
+      console.error('Error al procesar la solicitud:', error);
       this.modalService.error({
         nzTitle: 'Error',
-        nzContent: 'No se pudo agregar el producto al carrito. Verifica el stock disponible.'
+        nzContent: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta nuevamente.'
       });
     }
-  } catch (error) {
-    console.error('Error al procesar la solicitud:', error);
-    this.modalService.error({
-      nzTitle: 'Error',
-      nzContent: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta nuevamente.'
-    });
   }
-}
 
   // Toggle wishlist
   toggleWishlist(): void {

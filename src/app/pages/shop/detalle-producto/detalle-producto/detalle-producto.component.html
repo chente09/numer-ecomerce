@@ -16,7 +16,7 @@
         <!-- Miniaturas de colores -->
         <div class="thumbnails-container">
             <div *ngFor="let color of product.colors" class="thumbnail"
-                [ngClass]="{'active': selectedColor?.id === color.id}" (click)="selectColor(color)">
+                [ngClass]="{'active': product.imageUrl === color.imageUrl}" (click)="selectColor(color)">
                 <img [src]="color.imageUrl" [alt]="color.name">
             </div>
         </div>
@@ -55,8 +55,9 @@
             <div class="option-section">
                 <h3 class="option-title">Colores</h3>
                 <div class="color-options">
+                    
                     <div *ngFor="let color of product.colors" class="color-option"
-                        [ngClass]="{'active': selectedColor?.id === color.id, 'out-of-stock': !hasStockForColor(color)}"
+                        [ngClass]="{'active': product.imageUrl === color.imageUrl, 'out-of-stock': !hasStockForColor(color)}"
                         (click)="selectColor(color)">
                         <div class="color-thumbnail">
                             <img [src]="color.imageUrl" [alt]="color.name">
@@ -74,10 +75,15 @@
                     </button>
                 </div>
                 <div class="size-options">
-                    <div *ngFor="let size of product.sizes" class="size-option"
-                        [ngClass]="{'active': selectedSize?.name === size.name, 'out-of-stock': !hasStockForSize(size), 'low-stock': hasLowStockForSize(size)}"
-                        (click)="selectSize(size)">
-                        <span class="size-name">{{ size.name }}</span>
+                    <div *ngFor="let sizeName of standardSizes" class="size-option"
+                        [ngClass]="{
+                            'active': selectedSize?.name === sizeName,
+                            'unavailable': !isSizeAvailable(sizeName),
+                            'out-of-stock': isSizeAvailable(sizeName) && !hasStockForSizeName(sizeName),
+                            'low-stock': isSizeAvailable(sizeName) && hasLowStockForSizeName(sizeName)
+                        }"
+                        (click)="handleSizeClick(sizeName)">
+                        <span class="size-name">{{ sizeName }}</span>
                     </div>
                 </div>
             </div>
@@ -129,11 +135,14 @@
 
             <!-- Modal para previsualización de imágenes -->
             <nz-modal [(nzVisible)]="showImageModal" [nzTitle]="undefined" [nzFooter]="null"
-                (nzOnCancel)="closeImagePreview()" nzWidth="auto" nzCentered="true" nzClassName="image-preview-modal">
+                (nzOnCancel)="closeImagePreview()" nzWidth="auto" [nzCentered]="true" [nzBodyStyle]="{ padding: '0' }" nzClassName="image-preview-modal">
                 <ng-container *nzModalContent>
                     <div class="image-preview-container">
                         <img [src]="previewImageUrl" alt="Vista ampliada" class="preview-image">
                     </div>
+                    <button class="close-preview-btn">
+                        <i nz-icon nzType="close" nzTheme="outline"></i>
+                    </button>
                 </ng-container>
             </nz-modal>
 
@@ -189,7 +198,8 @@
 
                 <!-- Contenido de pestañas -->
                 <div class="tab-content" *ngIf="activeTab === 'description'">
-                    <p class="product-description">{{ product.description || 'No hay descripción disponible para este producto.'}}</p>
+                    <p class="product-description">{{ product.description || 'No hay descripción disponible para este
+                        producto.'}}</p>
                     <p *ngIf="categoryDescription" class="category-description">
                         <strong>Acerca de {{ categoryName }}:</strong> {{ categoryDescription }}
                     </p>
