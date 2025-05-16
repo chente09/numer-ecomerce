@@ -10,6 +10,7 @@ import { ProductManagementComponent } from './pages/admin/product-management/pro
 import { CategoriasComponent } from './pages/admin/categorias/categorias.component';
 import { ServicioClienteComponent } from './pages/servicio-cliente/servicio-cliente.component';
 import { CuidadoProductoComponent } from './pages/cuidado-producto/cuidado-producto.component';
+import { HeroesComponent } from './pages/admin/heroes/heroes.component';
 
 export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: '/welcome' },
@@ -28,6 +29,7 @@ export const routes: Routes = [
             { path: '', redirectTo: 'products', pathMatch: 'full' },
             { path: 'products', component: ProductManagementComponent },
             { path: 'categories', component: CategoriasComponent },
+            { path: 'heroes', component: HeroesComponent },
         ]
     },
 ];

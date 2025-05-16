@@ -1,0 +1,256 @@
+<nz-card nzTitle="Administrar Banners" class="mb-4">
+    <div class="action-buttons">
+        <button nz-button nzType="primary" (click)="openModal()">Nuevo Banner</button>
+    </div>
+</nz-card>
+
+<nz-table #tabla [nzData]="heroes" [nzBordered]="true" [nzLoading]="loading" [nzShowPagination]="true" [nzPageSize]="5">
+    <thead>
+        <tr>
+            <th nzWidth="200px">Imagen</th>
+            <th>Título</th>
+            <th>Botón</th>
+            <th nzWidth="110px">Activo</th>
+            <th nzWidth="110px">Orden</th>
+            <th nzWidth="180px">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (hero of tabla.data; track hero.id) {
+        <tr [class.active-row]="hero.isActive">
+            <td>
+                <div class="image-preview-cell">
+                    <img [src]="hero.imageUrl" class="banner-image" />
+                    @if (hero.isGif) {
+                    <nz-badge nzStatus="processing" nzText="GIF" class="gif-badge"></nz-badge>
+                    }
+                    @if (hero.mobileImageUrl) {
+                    <nz-tooltip nzTitle="'Tiene versión móvil'">
+                        <span nz-tooltip class="mobile-badge">
+                            <i nz-icon nzType="mobile" nzTheme="outline"></i>
+                        </span>
+                    </nz-tooltip>
+                    }
+                </div>
+            </td>
+            <td>
+                <div class="title-cell">
+                    <div class="hero-title">{{ hero.title }}</div>
+                    <div class="hero-subtitle">{{ hero.subtitle }}</div>
+
+                    @if (hero.startDate || hero.endDate) {
+                    <div class="dates-info">
+                        <i nz-icon nzType="calendar" nzTheme="outline"></i>
+                        @if (hero.startDate) {
+                        <span>Desde: {{ formatDate(hero.startDate) }}</span>
+                        }
+                        @if (hero.endDate) {
+                        <span>Hasta: {{ formatDate(hero.endDate) }}</span>
+                        }
+                    </div>
+                    }
+                </div>
+            </td>
+            <td>
+                <div class="cta-cell">
+                    <div class="cta-text">{{ hero.ctaText }}</div>
+                    <div class="cta-link text-truncate">
+                        <i nz-icon nzType="link" nzTheme="outline"></i>
+                        {{ hero.ctaLink }}
+                    </div>
+                </div>
+            </td>
+            <td class="text-center">
+                <nz-tooltip nzTitle="hero.isActive ? 'Activo' : 'Inactivo'">
+                    <i nz-tooltip nz-icon [nzType]="hero.isActive ? 'check-circle' : 'close-circle'" [nzTheme]="'fill'"
+                        [style.color]="hero.isActive ? '#52c41a' : '#f5222d'">
+                    </i>
+                </nz-tooltip>
+            </td>
+            <td class="text-center order-cell">
+                <div class="order-controls">
+                    <span class="order-number">{{ hero.order }}</span>
+                    <div class="order-buttons">
+                        <button nz-button nzType="text" nzSize="small" (click)="moveUp(hero)"
+                            [disabled]="heroes.indexOf(hero) === 0">
+                            <i nz-icon nzType="up" nzTheme="outline"></i>
+                        </button>
+                        <button nz-button nzType="text" nzSize="small" (click)="moveDown(hero)"
+                            [disabled]="heroes.indexOf(hero) === heroes.length - 1">
+                            <i nz-icon nzType="down" nzTheme="outline"></i>
+                        </button>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    @if (!hero.isActive) {
+                    <nz-tooltip nzTitle="Establecer como activo">
+                        <button nz-button nzType="default" nzSize="small" nz-tooltip (click)="setActive(hero.id!)">
+                            <i nz-icon nzType="thunderbolt" nzTheme="outline"></i>
+                        </button>
+                    </nz-tooltip>
+                    }
+                    <button nz-button nzType="default" nzSize="small" (click)="editHero(hero)">Editar</button>
+                    <button nz-button nzType="default" nzDanger nzSize="small" nz-popconfirm
+                        nzPopconfirmTitle="¿Seguro que quieres eliminar este banner?"
+                        (nzOnConfirm)="deleteHero(hero.id)" nzPopconfirmOkText="Sí" nzPopconfirmCancelText="No">
+                        Eliminar
+                    </button>
+                </div>
+            </td>
+        </tr>
+        }
+    </tbody>
+</nz-table>
+
+<nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Banner' : 'Nuevo Banner'" [nzOkLoading]="saving"
+    (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="900">
+    <ng-container *nzModalContent>
+        <form nz-form [nzLayout]="'vertical'">
+            <div nz-row [nzGutter]="16">
+                <!-- Columna izquierda -->
+                <div nz-col [nzXs]="24" [nzMd]="12">
+                    <nz-form-item>
+                        <nz-form-label>Título</nz-form-label>
+                        <nz-form-control>
+                            <input nz-input [(ngModel)]="form.title" name="title" required
+                                placeholder="Título principal del banner" />
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-label>Subtítulo</nz-form-label>
+                        <nz-form-control>
+                            <textarea nz-input [(ngModel)]="form.subtitle" name="subtitle" required
+                                placeholder="Texto descriptivo adicional"
+                                [nzAutosize]="{minRows: 2, maxRows: 4}"></textarea>
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-label>Texto del botón</nz-form-label>
+                        <nz-form-control>
+                            <input nz-input [(ngModel)]="form.ctaText" name="ctaText" required
+                                placeholder="Ej. Ver Colección" />
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-label>Enlace del botón</nz-form-label>
+                        <nz-form-control>
+                            <input nz-input [(ngModel)]="form.ctaLink" name="ctaLink" required
+                                placeholder="Ej. /productos" />
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <div nz-row [nzGutter]="16">
+                        <div nz-col [nzSpan]="12">
+                            <nz-form-item>
+                                <nz-form-label>Color de fondo</nz-form-label>
+                                <nz-form-control>
+                                    <nz-color-picker [(ngModel)]="form.backgroundColor"
+                                        name="backgroundColor"></nz-color-picker>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="12">
+                            <nz-form-item>
+                                <nz-form-label>Color de texto</nz-form-label>
+                                <nz-form-control>
+                                    <nz-color-picker [(ngModel)]="form.textColor" name="textColor"></nz-color-picker>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna derecha -->
+                <div nz-col [nzXs]="24" [nzMd]="12">
+                    <div nz-row [nzGutter]="16">
+                        <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                                <nz-form-label>Activo</nz-form-label>
+                                <nz-form-control>
+                                    <nz-switch [(ngModel)]="form.isActive" name="isActive"></nz-switch>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                                <nz-form-label>Es un GIF</nz-form-label>
+                                <nz-form-control>
+                                    <nz-switch [(ngModel)]="form.isGif" name="isGif"></nz-switch>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="8">
+                            <nz-form-item>
+                                <nz-form-label>Orden</nz-form-label>
+                                <nz-form-control>
+                                    <nz-input-number [(ngModel)]="form.order" name="order"
+                                        [nzMin]="1"></nz-input-number>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                    </div>
+
+                    <div nz-row [nzGutter]="16">
+                        <div nz-col [nzSpan]="12">
+                            <nz-form-item>
+                                <nz-form-label>Fecha de inicio</nz-form-label>
+                                <nz-form-control>
+                                    <nz-date-picker [(ngModel)]="form.startDate" name="startDate"
+                                        style="width: 100%"></nz-date-picker>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzSpan]="12">
+                            <nz-form-item>
+                                <nz-form-label>Fecha de fin</nz-form-label>
+                                <nz-form-control>
+                                    <nz-date-picker [(ngModel)]="form.endDate" name="endDate"
+                                        style="width: 100%"></nz-date-picker>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                    </div>
+
+                    <nz-form-item>
+                        <nz-form-label>Imagen principal</nz-form-label>
+                        <nz-form-control>
+                            <nz-upload [nzFileList]="mainFileList" [nzBeforeUpload]="beforeUploadMain"
+                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemoveMain" nzListType="picture-card">
+                                <div *ngIf="mainFileList.length < 1">
+                                    <span nz-icon nzType="plus"></span>
+                                    <div class="ant-upload-text">Subir</div>
+                                </div>
+                            </nz-upload>
+                            <div *ngIf="mainImageError" class="error-message">
+                                {{ mainImageError }}
+                            </div>
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-label>Imagen para móviles (opcional)</nz-form-label>
+                        <nz-form-control>
+                            <nz-upload [nzFileList]="mobileFileList" [nzBeforeUpload]="beforeUploadMobile"
+                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemoveMobile" nzListType="picture-card">
+                                <div *ngIf="mobileFileList.length < 1">
+                                    <span nz-icon nzType="plus"></span>
+                                    <div class="ant-upload-text">Subir</div>
+                                </div>
+                            </nz-upload>
+                            <div *ngIf="mobileImageError" class="error-message">
+                                {{ mobileImageError }}
+                            </div>
+                        </nz-form-control>
+                    </nz-form-item>
+                </div>
+            </div>
+        </form>
+    </ng-container>
+</nz-modal>

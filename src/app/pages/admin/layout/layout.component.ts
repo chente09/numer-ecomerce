@@ -62,8 +62,8 @@ export class LayoutComponent {
       level: 1,
       title: 'Configuración',
       icon: 'setting',
-      path: '/admin/settings'
-    }
+      path: '/admin/heroes'
+    },
   ];
 
 }

@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CategoryService, Category } from '../../services/admin/category/category.service';
 import { ProductService} from '../../services/admin/product/product.service';
+import { HeroService, HeroItem } from '../../services/admin/hero/hero.service';
 import { Product, Color  } from '../../models/models';
 import { ScrollService } from '../../services/scroll/scroll.service';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -14,7 +15,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzCarouselModule } from 'ng-zorro-antd/carousel';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
-import { interval, Subscription } from 'rxjs';
+import { interval, Subject, Subscription } from 'rxjs';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { FormsModule } from '@angular/forms';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -22,6 +23,7 @@ import { NzTypographyModule } from 'ng-zorro-antd/typography';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { SafeStyle } from '@angular/platform-browser';
 
 interface InstagramComment {
   username: string;
@@ -84,6 +86,9 @@ export class WelcomeComponent implements OnInit, OnDestroy {
 
   hoveredCategorySlug: string | null = null;
 
+  activeHero: HeroItem | null = null;
+  private subscription: Subscription = new Subscription();
+
   @ViewChild('postDetailModal') postDetailModal!: TemplateRef<any>;
   @ViewChild('commentInput') commentInput!: ElementRef;
   @ViewChild('resenas') resenasElement!: ElementRef;
@@ -95,6 +100,15 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   heroSubtitle = 'Numer Equipment: Equipamiento innovador para deportes de aventura, senderismo y montaña.';
   ctaText = 'Ver Novedades';
   ctaLink = '/new-arrivals';
+
+  heroBgImage: SafeStyle | null = null;
+  heroMobileBgImage: SafeStyle | null = null;
+  backgroundColor: string | null = null;
+  textColor: string | null = null;
+  isGif = false;
+
+  // Para limpieza de suscripciones
+  private destroy$ = new Subject<void>();
 
   navItems = [
     {
@@ -283,6 +297,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   constructor(
     private categoryService: CategoryService,
     private productService: ProductService,
+    private heroService: HeroService,
     private modalService: NzModalService,
     private scrollService: ScrollService,
     private route: ActivatedRoute,
@@ -295,7 +310,33 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     this.loadFeaturedProducts();
     this.startCountdown();
     this.loadInstagramFeed();
-    this.handleVideoAutoplay();
+    this.subscription.add(
+      this.heroService.getActiveHero().subscribe(hero => {
+        this.activeHero = hero;
+        
+        // Si hay una imagen móvil, la aplicamos como variable CSS
+        if (hero?.mobileImageUrl) {
+          document.documentElement.style.setProperty(
+            '--mobile-image', 
+            `url('${hero.mobileImageUrl}')`
+          );
+        } else {
+          document.documentElement.style.removeProperty('--mobile-image');
+        }
+      })
+    );
+  }
+
+   ngOnDestroy() {
+    if (this.countdownSubscription) {
+      this.countdownSubscription.unsubscribe();
+    }
+
+    // Limpiar la suscripción para evitar memory leaks
+    this.subscription.unsubscribe();
+    
+    // Limpiar variables CSS
+    document.documentElement.style.removeProperty('--mobile-image');
   }
 
   ngAfterViewInit() {
@@ -317,12 +358,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     }
 
     this.scrollService.scrollToElementById(sectionId);
-  }
-
-  ngOnDestroy() {
-    if (this.countdownSubscription) {
-      this.countdownSubscription.unsubscribe();
-    }
   }
 
   // Método para seleccionar un color de producto
@@ -349,44 +384,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   });
 }
 
-handleVideoAutoplay() {
-    const video = document.getElementById('background-video') as HTMLVideoElement;
-
-    if (video) {
-      // Intentar reproducir el video inmediatamente
-      const playPromise = video.play();
-
-      // Manejar el caso en que el navegador no permita la reproducción automática
-      if (playPromise !== undefined) {
-        playPromise.then(() => {
-          // La reproducción automática comenzó
-          console.log('Autoplay started');
-        }).catch(error => {
-          // La reproducción automática fue prevenida
-          console.log('Autoplay prevented:', error);
-
-          // Agregar event listener para reproducir el video en la primera interacción
-          const playVideoOnce = () => {
-            video.play();
-            document.removeEventListener('click', playVideoOnce);
-            document.removeEventListener('touchstart', playVideoOnce);
-            document.removeEventListener('scroll', playVideoOnce);
-          };
-
-          document.addEventListener('click', playVideoOnce);
-          document.addEventListener('touchstart', playVideoOnce);
-          document.addEventListener('scroll', playVideoOnce);
-        });
-      }
-
-      // Asegurarse de que el video se reproduzca cuando vuelva a ser visible
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          video.play();
-        }
-      });
-    }
-  }
 
 // Método privado para mezclar un arreglo
 private shuffleArray<T>(array: T[]): T[] {

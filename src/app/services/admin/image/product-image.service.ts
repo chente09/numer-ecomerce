@@ -109,7 +109,7 @@ export class ProductImageService {
   /**
    * Sube imagen con compresión y formato webp
    */
-  private async uploadCompressedImage(path: string, file: File): Promise<ImageUploadResult> {
+  public async uploadCompressedImage(path: string, file: File): Promise<ImageUploadResult> {
     const compressed = await this.compressImage(file);
     const storageRef = ref(this.storage, path);
     await uploadBytes(storageRef, compressed);
