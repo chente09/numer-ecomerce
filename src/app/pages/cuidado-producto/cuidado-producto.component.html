@@ -1,0 +1,200 @@
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content">
+            <h1 class="title">Cuidado de Producto y Garantía</h1>
+            <p class="subtitle">Aprende a mantener tus productos Numer en óptimas condiciones y conoce nuestras
+                políticas de garantía.</p>
+        </div>
+    </div>
+</section>
+
+<div class="customer-service-container">
+    <div class="container">
+        <nz-tabset [nzTabPosition]="'top'" [nzAnimated]="true">
+            <!-- Tab de Cuidado de Producto -->
+            <nz-tab nzTitle="Cuidado de Producto">
+                <div class="tab-content">
+                    <h2>Recomendaciones de Cuidado</h2>
+
+                    <div nz-row [nzGutter]="[24, 32]">
+                        <!-- Tarjetas de cuidado de productos -->
+                        <div *ngFor="let category of productCareCategories" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+                            <nz-card [nzCover]="coverTemplate" nzHoverable>
+                                <ng-template #coverTemplate>
+                                    <div class="card-image-container">
+                                        <img [src]="category.imageUrl" [alt]="category.title" />
+                                    </div>
+                                </ng-template>
+                                <nz-card-meta [nzTitle]="category.title"
+                                    [nzDescription]="category.description"></nz-card-meta>
+                                <div class="care-instructions">
+                                    <ul>
+                                        <li *ngFor="let instruction of category.instructions">{{ instruction }}</li>
+                                    </ul>
+                                </div>
+                            </nz-card>
+                        </div>
+                    </div>
+
+                    <div class="content-section">
+                        <h3>Consejos Generales</h3>
+                        <nz-collapse [nzBordered]="false">
+                            <nz-collapse-panel *ngFor="let tip of generalTips; let i = index" [nzHeader]="tip.title"
+                                [nzActive]="i === 0">
+                                <p>{{ tip.content }}</p>
+                                <ul *ngIf="tip.bullets && tip.bullets.length">
+                                    <li *ngFor="let bullet of tip.bullets">{{ bullet }}</li>
+                                </ul>
+                            </nz-collapse-panel>
+                        </nz-collapse>
+                    </div>
+
+                    <nz-divider></nz-divider>
+
+                    <!-- Video demostrativo -->
+                    <div class="video-section text-center">
+                        <h3>Video Demostrativo: Cómo Limpiar y Mantener tus Productos</h3>
+                        <div class="video-container">
+                            <iframe width="560" height="315" src="https://www.youtube.com/embed/your-video-id"
+                                title="Cuidado de Producto Numer" frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen>
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+            </nz-tab>
+
+            <!-- Tab de Garantía -->
+            <nz-tab nzTitle="Garantía">
+                <div class="tab-content">
+                    <h2>Política de Garantía</h2>
+
+                    <div class="content-section">
+                        <p>En Numer, respaldamos la calidad de todos nuestros productos. Ofrecemos una garantía limitada
+                            para defectos de fabricación según las siguientes condiciones:</p>
+
+                        <nz-timeline [nzMode]="'left'">
+                            <nz-timeline-item nzColor="green">
+                                <h4>Duración de la Garantía</h4>
+                                <p>Todos los productos Numer están garantizados por un período de 2 años desde la fecha
+                                    de compra para defectos de fabricación.</p>
+                            </nz-timeline-item>
+
+                            <nz-timeline-item nzColor="green">
+                                <h4>¿Qué Cubre?</h4>
+                                <ul>
+                                    <li>Defectos en materiales y mano de obra bajo uso normal</li>
+                                    <li>Costuras defectuosas o rotas</li>
+                                    <li>Fallos en cremalleras y cierres</li>
+                                    <li>Problemas con componentes estructurales</li>
+                                </ul>
+                            </nz-timeline-item>
+
+                            <nz-timeline-item nzColor="red">
+                                <h4>¿Qué No Cubre?</h4>
+                                <ul>
+                                    <li>Daños causados por accidentes o uso indebido</li>
+                                    <li>Desgaste normal por uso</li>
+                                    <li>Daños por exposición a condiciones extremas</li>
+                                    <li>Productos que han sido modificados</li>
+                                    <li>Productos adquiridos de segunda mano</li>
+                                </ul>
+                            </nz-timeline-item>
+
+                            <nz-timeline-item nzColor="blue">
+                                <h4>Proceso de Reclamación</h4>
+                                <p>Para hacer uso de la garantía, sigue estos pasos:</p>
+                                <ol>
+                                    <li>Contacta con nuestro servicio al cliente a través del formulario en la sección
+                                        "Contacto" o directamente por correo electrónico</li>
+                                    <li>Presenta prueba de compra (factura o recibo)</li>
+                                    <li>Proporciona fotos del defecto</li>
+                                    <li>Nuestro equipo evaluará el caso y te contactará con instrucciones para la
+                                        reparación o reemplazo</li>
+                                </ol>
+                            </nz-timeline-item>
+                        </nz-timeline>
+                    </div>
+
+                    <div class="warranty-registration content-section">
+                        <h3>Registra tu Producto</h3>
+                        <p>Registra tu producto para activar completamente tu garantía y recibir actualizaciones sobre
+                            cuidados específicos:</p>
+
+                        <form nz-form [formGroup]="warrantyForm" (ngSubmit)="submitWarrantyForm()">
+                            <nz-form-item>
+                                <nz-form-label [nzSpan]="6" nzRequired>Nombre completo</nz-form-label>
+                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor ingresa tu nombre completo">
+                                    <input nz-input formControlName="fullName" placeholder="Nombre completo" />
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-label [nzSpan]="6" nzRequired>Correo electrónico</nz-form-label>
+                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor ingresa un correo válido">
+                                    <input nz-input formControlName="email" placeholder="correo@ejemplo.com" />
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-label [nzSpan]="6" nzRequired>Modelo del producto</nz-form-label>
+                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor selecciona un modelo">
+                                    <nz-select formControlName="productModel" nzPlaceHolder="Selecciona un modelo">
+                                        <nz-option *ngFor="let model of productModels" [nzValue]="model.value"
+                                            [nzLabel]="model.label"></nz-option>
+                                    </nz-select>
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-label [nzSpan]="6" nzRequired>Número de serie</nz-form-label>
+                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor ingresa el número de serie">
+                                    <input nz-input formControlName="serialNumber" placeholder="Ej. NM-2023-12345" />
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-label [nzSpan]="6" nzRequired>Fecha de compra</nz-form-label>
+                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor selecciona la fecha de compra">
+                                    <nz-date-picker formControlName="purchaseDate"
+                                        [nzFormat]="'dd/MM/yyyy'"></nz-date-picker>
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-label [nzSpan]="6">Factura/Recibo</nz-form-label>
+                                <nz-form-control [nzSpan]="14">
+                                    <nz-upload nzAction="https://api.numer.ec/upload"
+                                        [nzHeaders]="{ authorization: 'authorization-text' }"
+                                        (nzChange)="handleUploadChange($event)">
+                                        <button nz-button>
+                                            <i nz-icon nzType="upload"></i> Subir archivo
+                                        </button>
+                                    </nz-upload>
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-control [nzOffset]="6" [nzSpan]="14">
+                                    <button nz-button nzType="primary" [disabled]="!warrantyForm.valid">Registrar
+                                        Producto</button>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </form>
+                    </div>
+
+                    <div class="content-section">
+                        <h3>Preguntas Frecuentes sobre Garantía</h3>
+                        <nz-collapse [nzBordered]="false">
+                            <nz-collapse-panel *ngFor="let faq of warrantyFaqs; let i = index" [nzHeader]="faq.question"
+                                [nzActive]="i === 0">
+                                <p [innerHTML]="faq.answer"></p>
+                            </nz-collapse-panel>
+                        </nz-collapse>
+                    </div>
+                </div>
+            </nz-tab>
+        </nz-tabset>
+    </div>
+</div>

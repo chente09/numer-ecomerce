@@ -9,6 +9,7 @@ import { LayoutComponent } from './pages/admin/layout/layout.component';
 import { ProductManagementComponent } from './pages/admin/product-management/product-management.component';
 import { CategoriasComponent } from './pages/admin/categorias/categorias.component';
 import { ServicioClienteComponent } from './pages/servicio-cliente/servicio-cliente.component';
+import { CuidadoProductoComponent } from './pages/cuidado-producto/cuidado-producto.component';
 
 export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: '/welcome' },
@@ -19,6 +20,7 @@ export const routes: Routes = [
     { path: 'respuesta-pago', component: RespuestaPagoComponent },
     { path: 'nosotros', component: NosotrosComponent, pathMatch: 'full' },
     { path: 'products/:id', component: DetalleProductoComponent },
+    { path: 'cuidado-producto', component: CuidadoProductoComponent },
     {
         path: 'admin',
         component: LayoutComponent,

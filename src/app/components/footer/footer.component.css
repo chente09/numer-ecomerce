@@ -10,8 +10,66 @@
     padding: 0 15px;
 }
 
-.footer-main {
+/* Nuevo contenedor para el logo y las columnas del footer */
+.footer-top {
+    display: flex;
+    flex-wrap: wrap;
     margin-bottom: 40px;
+}
+
+/* .footer-logo-container {
+    flex: 0 0 100%;
+    margin-bottom: 30px;
+    
+    @media (min-width: 992px) {
+        flex: 0 0 25%;
+        margin-bottom: 0;
+    }
+}
+
+.footer-logo {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 5px;
+    justify-items: center;
+    width: 100%;
+    max-width: 200px;
+}
+
+.footer-logo .logo-shield {
+    width: 80%;
+    max-width: 120px;
+    height: auto;
+}
+
+.footer-logo .logo-text {
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+}
+
+@media (max-width: 768px) {
+    .footer-logo {
+        margin: 0 auto;
+    }
+} */
+
+.footer-logo {
+    flex: 0 0 100%;
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.footer-logo img {
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+}
+
+.footer-main {
+    flex: 1;
+    width: 100%;
 }
 
 .footer-column {
@@ -53,9 +111,49 @@
     font-size: 14px;
     margin-bottom: 15px;
 }
-
+/* Estilo mejorado para el formulario de newsletter */
 .newsletter-form {
     margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Espacio entre el input y el botón */
+}
+
+/* Adaptando los estilos del input */
+.newsletter-form input[nz-input] {
+    width: 100%;
+    border-radius: 4px;
+    padding: 8px 12px;
+    background-color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: black;
+    transition: all 0.3s ease;
+}
+
+.newsletter-form input[nz-input]:focus,
+.newsletter-form input[nz-input]:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+/* Estilos para el botón */
+.newsletter-form button[nz-button] {
+    width: 100%; /* El botón ocupa todo el ancho */
+    background-color: #000000;
+    border: 1px solid #fff;
+    color: #ffffff;
+    border-radius: 4px;
+    padding: 8px 12px;
+    height: auto; /* Anula la altura fija que a veces tienen los botones */
+    transition: all 0.3s ease;
+}
+
+.newsletter-form button[nz-button]:hover {
+    background-color: #333333;
+    border-color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .footer-social {
@@ -76,13 +174,36 @@
         transition: all 0.3s ease;
 
         &:hover {
-            background-color: #1890ff;
+            background-color: #333;
             transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            
+            /* Efecto gradiente en hover de iconos */
+            i {
+                background: linear-gradient(90deg,
+                    #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+                background-size: 300% 300%;
+                background-clip: text;
+                -webkit-background-clip: text;
+                color: transparent;
+                -webkit-text-fill-color: transparent;
+                animation: shimmer 3s linear infinite;
+            }
         }
 
         i {
             font-size: 18px;
         }
+    }
+}
+
+/* Animación shimmer para iconos y otros elementos */
+@keyframes shimmer {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
     }
 }
 
@@ -115,6 +236,31 @@
     }
 }
 
+/* Para pantallas medianas, ajustamos el logo para que ocupe la mitad del ancho */
+@media (min-width: 768px) {
+    .footer-logo {
+        flex: 0 0 100%;
+        padding-right: 30px;
+        margin-bottom: 40px;
+    }
+}
+
+/* Para pantallas grandes, ajustamos el logo para que se posicione a la izquierda */
+@media (min-width: 992px) {
+    .footer-top {
+        align-items: flex-start;
+    }
+    
+    .footer-logo {
+        flex: 0 0 25%;
+        margin-bottom: 0;
+    }
+    
+    .footer-main {
+        flex: 0 0 75%;
+    }
+}
+
 @media (max-width: 768px) {
     .footer-bottom {
         flex-direction: column;
@@ -128,4 +274,34 @@
             }
         }
     }
+    
+    .footer-logo {
+        align-items: center;
+    }
+    
+    /* Ajustar tamaños para móviles */
+    .footer-logo .logo-shield {
+        width: 100px;
+    }
+    
+    .footer-logo .logo-text {
+        width: 180px;
+        margin-top: -15px;
+    }
+}
+
+/* Animaciones para mejorar la experiencia */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.footer-column {
+    animation: fadeInUp 0.8s ease-out;
 }

@@ -1,55 +1,66 @@
 <footer class="site-footer">
     <div class="container">
-        <div class="footer-main">
-            <div nz-row [nzGutter]="[24, 32]">
-                <!-- Shop Column -->
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
-                    <div class="footer-column">
-                        <h3 class="footer-title">Tienda</h3>
-                        <ul class="footer-links">
-                            <li *ngFor="let link of shopLinks">
-                                <a [routerLink]="link.link">{{ link.label }}</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
+        <div class="footer-top">
+            <!-- Contenedor del logo con escudo y logotipo -->
+            <!-- <div class="footer-logo">
+                <img class="logo-shield" src="https://i.postimg.cc/k59SjrbJ/Logo-Numer-blanco.png" alt="Numer Escudo">
+                <img class="logo-text" src="https://i.postimg.cc/Z5MYtMdF/Logo-Numer-blanco-letras.png"
+                    alt="Numer Logo">
+            </div> -->
 
-                <!-- Support Column -->
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
-                    <div class="footer-column">
-                        <h3 class="footer-title">Soporte</h3>
-                        <ul class="footer-links">
-                            <li *ngFor="let link of supportLinks">
-                                <a [routerLink]="link.link">{{ link.label }}</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
+            <div class="footer-logo">
+                <img src="https://i.postimg.cc/k59SjrbJ/Logo-Numer-blanco.png" alt="Numer Logo">
+            </div>
 
-                <!-- Company Column -->
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
-                    <div class="footer-column">
-                        <h3 class="footer-title">Empresa</h3>
-                        <ul class="footer-links">
-                            <li *ngFor="let link of companyLinks">
-                                <a [routerLink]="link.link">{{ link.label }}</a>
-                            </li>
-                        </ul>
+            <!-- Contenido principal del footer -->
+            <div class="footer-main">
+                <div nz-row [nzGutter]="[24, 32]">
+                    <!-- Shop Column -->
+                    <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                        <div class="footer-column">
+                            <h3 class="footer-title">Tienda</h3>
+                            <ul class="footer-links">
+                                <li *ngFor="let link of shopLinks">
+                                    <a [routerLink]="link.link">{{ link.label }}</a>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Newsletter Column -->
-                <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
-                    <div class="footer-column">
-                        <h3 class="footer-title">Conéctate</h3>
-                        <p class="newsletter-text">Suscríbete para recibir actualizaciones, acceso a ofertas exclusivas y más.</p>
-                        <div class="newsletter-form">
-                            <nz-input-group [nzAddOnAfter]="subscribeButton">
-                                <input type="email" nz-input placeholder="Correo Electronico" />
-                            </nz-input-group>
-                            <ng-template #subscribeButton>
-                                <button nz-button nzType="primary">Subscribe</button>
-                            </ng-template>
+                    <!-- Support Column -->
+                    <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                        <div class="footer-column">
+                            <h3 class="footer-title">Soporte</h3>
+                            <ul class="footer-links">
+                                <li *ngFor="let link of supportLinks">
+                                    <a [routerLink]="link.link">{{ link.label }}</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Company Column -->
+                    <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                        <div class="footer-column">
+                            <h3 class="footer-title">Empresa</h3>
+                            <ul class="footer-links">
+                                <li *ngFor="let link of companyLinks">
+                                    <a [routerLink]="link.link">{{ link.label }}</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Newsletter Column -->
+                    <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                        <div class="footer-column">
+                            <h3 class="footer-title">Conéctate</h3>
+                            <p class="newsletter-text">Suscríbete para recibir actualizaciones, acceso a ofertas
+                                exclusivas y más.</p>
+                            <div class="newsletter-form">
+                                <input type="email" nz-input placeholder="Correo Electrónico" />
+                                <button nz-button nzType="primary">Suscribirse</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -58,8 +69,8 @@
 
         <div class="footer-social">
             <a *ngFor="let social of socialLinks" [href]="social.link" target="_blank" class="social-link">
-              <i *ngIf="!social.icon.startsWith('bi')" nz-icon [nzType]="social.icon" nzTheme="fill"></i>
-              <i *ngIf="social.icon.startsWith('bi')" [class]="social.icon"></i>
+                <i *ngIf="!social.icon.startsWith('bi')" nz-icon [nzType]="social.icon" nzTheme="fill"></i>
+                <i *ngIf="social.icon.startsWith('bi')" [class]="social.icon"></i>
             </a>
         </div>
 
@@ -68,8 +79,8 @@
                 &copy; {{ currentYear }} Numer - Todos los derechos reservados
             </div>
             <div class="footer-bottom-links">
-                <a routerLink="/privacy">Politicas de Privacidad</a>
-                <a routerLink="/terms">Terminos y Condiciones</a>
+                <a routerLink="/privacy">Políticas de Privacidad</a>
+                <a routerLink="/terms">Términos y Condiciones</a>
                 <a routerLink="/sitemap">Mapa del Sitio</a>
             </div>
         </div>

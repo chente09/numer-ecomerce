@@ -32,11 +32,11 @@ export class FooterComponent {
   
   
   supportLinks = [
-    { label: 'Contáctanos', link: '/contact' },
-    { label: 'Envíos y Devoluciones', link: '/shipping-returns' },
-    { label: 'Garantía', link: '/warranty' },
-    { label: 'Cuidado del Producto', link: '/product-care' },
-    { label: 'Preguntas Frecuentes', link: '/faq' }
+    { label: 'Contáctanos', link: '/servicio-cliente' },
+    { label: 'Envíos y Devoluciones', link: '/servicio-cliente' },
+    { label: 'Garantía', link: '/cuidado-producto' },
+    { label: 'Cuidado del Producto', link: '/cuidado-producto' },
+    { label: 'Preguntas Frecuentes', link: '/servicio-cliente' }
   ];
   
   companyLinks = [
@@ -48,9 +48,9 @@ export class FooterComponent {
   ];
   
   socialLinks = [
-    { label: 'Instagram', icon: 'instagram', link: 'https://www.instagram.com/numer.ec' },
-    { label: 'Facebook', icon: 'facebook', link: 'https://www.facebook.com' },
-    { label: 'YouTube', icon: 'youtube', link: 'https://youtube.com/user/blackdiamondequipment' },
+    { label: 'Instagram', icon: 'bi bi-instagram', link: 'https://www.instagram.com/numer.ec' },
+    { label: 'Facebook', icon: 'bi bi-facebook', link: 'https://www.facebook.com' },
+    { label: 'YouTube', icon: 'bi bi-youtube', link: 'https://youtube.com/user/blackdiamondequipment' },
     { label: 'Strava', icon: 'bi bi-strava', link: 'https://www.strava.com' }
   ];
 

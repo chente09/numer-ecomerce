@@ -336,17 +336,28 @@ export class WelcomeComponent implements OnInit, OnDestroy {
 
 
   loadCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (data) => {
-        this.categories = data;
-        this.categoriesLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading categories:', error);
-        this.categoriesLoading = false;
-      }
-    });
+  this.categoryService.getCategories().subscribe({
+    next: (data) => {
+      this.categories = this.shuffleArray(data); // Mezclar el arreglo
+      this.categoriesLoading = false;
+    },
+    error: (error) => {
+      console.error('Error loading categories:', error);
+      this.categoriesLoading = false;
+    }
+  });
+}
+
+// Método privado para mezclar un arreglo
+private shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+  return shuffled;
+}
+
 
   loadFeaturedProducts(): void {
     this.productsLoading = true;

@@ -142,12 +142,33 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
     background: transparent;
 }
 
+@keyframes shimmer {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
 /* Estilos para hover */
 .nav-menu li a:hover {
     font-weight: 900;
     font-size: 15px;
     border-radius: 4px;
     padding: 5px 10px;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    
+    /* Efecto gradiente en hover */
+    background: linear-gradient(90deg,
+        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+    background-size: 300% 300%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
 }
 
 
@@ -157,6 +178,32 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
     font-size: 15px;
     border-radius: 4px;
     padding: 5px 10px;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    
+    /* Efecto gradiente para enlaces activos */
+    background: linear-gradient(90deg,
+        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+    background-size: 300% 300%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+}
+
+@media (max-width: 768px) {
+    .nav-menu li a:hover,
+    .nav-menu li a.active {
+        background: linear-gradient(90deg,
+            #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+        background-size: 300% 300%;
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent !important;
+        -webkit-text-fill-color: transparent;
+        animation: shimmer 3s linear infinite;
+    }
 }
 
 /* Anular estilos no deseados de NG-ZORRO */
@@ -188,12 +235,40 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
     color: aliceblue;
 }
 
+@keyframes shimmer {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
 .header-icons .icon-link {
     margin-left: 20px;
     font-size: 20px;
     color: aliceblue;
     display: flex;
     align-items: center;
+    transition: all 0.3s ease;
+}
+
+.header-icons .icon-link:hover {
+    transform: translateY(-3px);
+    /* No cambiamos el background-color aquí ya que el fondo ya es negro */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Efecto gradiente en los iconos al hacer hover */
+.header-icons .icon-link:hover i {
+    background: linear-gradient(90deg,
+        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+    background-size: 300% 300%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
 }
 
 .container {
