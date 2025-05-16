@@ -30,6 +30,5 @@ export const routes: Routes = [
             { path: 'categories', component: CategoriasComponent },
         ]
     },
-    { path: '**', redirectTo: '/welcome' }
 ];
 

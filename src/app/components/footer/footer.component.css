@@ -63,8 +63,9 @@
 
 .footer-logo img {
     width: 100%;
-    max-width: 200px;
+    max-width: 150px;
     height: auto;
+    align-items: center;
 }
 
 .footer-main {
@@ -111,12 +112,14 @@
     font-size: 14px;
     margin-bottom: 15px;
 }
+
 /* Estilo mejorado para el formulario de newsletter */
 .newsletter-form {
     margin-top: 15px;
     display: flex;
     flex-direction: column;
-    gap: 10px; /* Espacio entre el input y el botón */
+    gap: 10px;
+    /* Espacio entre el input y el botón */
 }
 
 /* Adaptando los estilos del input */
@@ -139,13 +142,15 @@
 
 /* Estilos para el botón */
 .newsletter-form button[nz-button] {
-    width: 100%; /* El botón ocupa todo el ancho */
+    width: 100%;
+    /* El botón ocupa todo el ancho */
     background-color: #000000;
     border: 1px solid #fff;
     color: #ffffff;
     border-radius: 4px;
     padding: 8px 12px;
-    height: auto; /* Anula la altura fija que a veces tienen los botones */
+    height: auto;
+    /* Anula la altura fija que a veces tienen los botones */
     transition: all 0.3s ease;
 }
 
@@ -177,11 +182,11 @@
             background-color: #333;
             transform: translateY(-3px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            
+
             /* Efecto gradiente en hover de iconos */
             i {
                 background: linear-gradient(90deg,
-                    #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+                        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
                 background-size: 300% 300%;
                 background-clip: text;
                 -webkit-background-clip: text;
@@ -202,6 +207,7 @@
     0% {
         background-position: 0% 50%;
     }
+
     100% {
         background-position: 100% 50%;
     }
@@ -250,18 +256,29 @@
     .footer-top {
         align-items: flex-start;
     }
-    
+
     .footer-logo {
         flex: 0 0 25%;
         margin-bottom: 0;
     }
-    
+
     .footer-main {
         flex: 0 0 75%;
     }
 }
 
 @media (max-width: 768px) {
+
+    .footer-column {
+        text-align: center;
+    }
+    .footer-logo {
+        text-align: center;
+    }
+
+    .footer-logo img {
+    max-width: 120px;
+  }
     .footer-bottom {
         flex-direction: column;
         text-align: center;
@@ -274,16 +291,12 @@
             }
         }
     }
-    
-    .footer-logo {
-        align-items: center;
-    }
-    
+
     /* Ajustar tamaños para móviles */
     .footer-logo .logo-shield {
         width: 100px;
     }
-    
+
     .footer-logo .logo-text {
         width: 180px;
         margin-top: -15px;
@@ -296,6 +309,7 @@
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
