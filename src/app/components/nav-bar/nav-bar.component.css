@@ -340,7 +340,6 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
     
     .nav-container.mobile-menu-open {
         max-height: 500px;
-        padding: 10px;
         margin-top: 5px;
     }
     
