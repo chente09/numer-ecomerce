@@ -81,9 +81,9 @@ export class NavBarComponent implements OnInit, OnDestroy {
   @HostListener('window:scroll', [])
   onWindowScroll() {
     const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-    this.isScrolled = currentScroll > 50;
+    this.isScrolled = currentScroll > 10;
 
-    if (currentScroll > this.lastScrollTop && currentScroll > 100) {
+    if (currentScroll > this.lastScrollTop && currentScroll > 10) {
       this.hideHeader = true; // Scrolling down
     } else {
       this.hideHeader = false; // Scrolling up

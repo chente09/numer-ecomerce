@@ -181,20 +181,10 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
     transform: translateY(-3px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     
-    /* Efecto gradiente para enlaces activos */
-    background: linear-gradient(90deg,
-        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
-    background-size: 300% 300%;
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent !important;
-    -webkit-text-fill-color: transparent;
-    animation: shimmer 3s linear infinite;
 }
 
 @media (max-width: 768px) {
-    .nav-menu li a:hover,
-    .nav-menu li a.active {
+    .nav-menu li a:hover{
         background: linear-gradient(90deg,
             #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
         background-size: 300% 300%;

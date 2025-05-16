@@ -1,4 +1,11 @@
 <section class="hero-section">
+    <video id="background-video" autoplay loop muted playsinline preload="auto" class="background-video">
+        <source src="video.mp4" type="video/mp4">
+        <!-- Es buena práctica proporcionar un formato alternativo -->
+        <source src="video.webm" type="video/webm">
+        <!-- Mensaje para navegadores que no soportan video -->
+        Tu navegador no soporta videos HTML5.
+    </video>
     <div class="hero-content">
         <h1 class="hero-title">{{ heroTitle }}</h1>
         <p class="hero-subtitle">{{ heroSubtitle }}</p>
