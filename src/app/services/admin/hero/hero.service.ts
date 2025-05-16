@@ -110,18 +110,21 @@ export class HeroService {
    * Carga un héroe predeterminado cuando no hay ninguno disponible
    */
   private loadDefaultHero(): void {
-    this.activeHero$.next({
-      id: 'default',
-      title: 'Para las Montañas y Más Allá',
-      subtitle: 'Numer Equipment: Equipamiento innovador para deportes de aventura, senderismo y montaña.',
-      ctaText: 'Ver Novedades',
-      ctaLink: '/new-arrivals',
-      imageUrl: 'https://i.postimg.cc/sDNm0F60/255-1.gif',
-      isGif: true,
-      isActive: true,
-      order: 1
-    });
-  }
+  this.activeHero$.next({
+    id: 'default',
+    title: 'Para las Montañas y Más Allá',
+    subtitle: 'Numer Equipment: Equipamiento innovador para deportes de aventura, senderismo y montaña.',
+    ctaText: 'Ver Novedades',
+    ctaLink: '/new-arrivals',
+    imageUrl: 'https://i.postimg.cc/sDNm0F60/255-1.gif',
+    mobileImageUrl: 'https://i.postimg.cc/sDNm0F60/255-1.gif', // Añade una imagen optimizada para móviles
+    isGif: true,
+    isActive: true,
+    order: 1,
+    backgroundColor: '#333333', // Opcional: color de fondo para dispositivos que no cargan la imagen
+    textColor: '#ffffff'        // Opcional: asegura que el texto sea visible
+  });
+}
 
   /**
    * Obtiene todos los héroes con caché
