@@ -41,6 +41,7 @@ import { HeroService, HeroItem } from '../../../services/admin/hero/hero.service
     NzBadgeModule,
     NzColorPickerModule,
     NzInputNumberModule,
+    
   ],
   templateUrl: './heroes.component.html',
   styleUrls: ['./heroes.component.css']

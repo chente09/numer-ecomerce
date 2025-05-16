@@ -61,11 +61,10 @@
                 </div>
             </td>
             <td class="text-center">
-                <nz-tooltip nzTitle="hero.isActive ? 'Activo' : 'Inactivo'">
-                    <i nz-tooltip nz-icon [nzType]="hero.isActive ? 'check-circle' : 'close-circle'" [nzTheme]="'fill'"
-                        [style.color]="hero.isActive ? '#52c41a' : '#f5222d'">
-                    </i>
-                </nz-tooltip>
+                <i [nz-tooltip] [nzTooltipTitle]="hero.isActive ? 'Activo' : 'Inactivo'" nz-icon
+                    [nzType]="hero.isActive ? 'check-circle' : 'close-circle'" [nzTheme]="'fill'"
+                    [style.color]="hero.isActive ? '#52c41a' : '#f5222d'">
+                </i>
             </td>
             <td class="text-center order-cell">
                 <div class="order-controls">

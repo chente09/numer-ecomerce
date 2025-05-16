@@ -110,7 +110,7 @@
 
     <!-- Usa [nzGutter]="[0, 0]" para eliminar espacios entre columnas -->
     <div *ngIf="!loading" nz-row [nzGutter]="[0, 0]">
-        <div *ngFor="let category of categories" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6"
+        <div *ngFor="let category of categories" nz-col [nzXs]="12" [nzSm]="12" [nzMd]="6"
             [class.blur]="hoveredCategorySlug && hoveredCategorySlug !== category.slug"
             style="padding: 0; margin: 0; overflow: hidden;">
 
@@ -197,11 +197,9 @@
 <section class="featured-products-section">
     <div>
         <h2 class="section-title">Productos Destacados</h2>
-
         <div *ngIf="productsLoading" class="loading-container">
             <nz-spin nzSize="large"></nz-spin>
         </div>
-
         <div *ngIf="!productsLoading" class="product-grid">
             <div *ngFor="let product of featuredProducts" class="product-card-section">
                 <!-- Agregar el enlace al área de la imagen para navegar al detalle -->
@@ -209,7 +207,6 @@
                     <img [src]="product.imageUrl" alt="{{ product.name }}" class="product-image-section">
                     <span *ngIf="product.isNew" class="new-badge">NEW</span>
                 </div>
-
                 <div class="color-options">
                     <div *ngFor="let color of product.colors" class="color-option"
                         [ngClass]="{'active': product.imageUrl === color.imageUrl}"
@@ -217,17 +214,14 @@
                         <img [src]="color.imageUrl" [alt]="color.name">
                     </div>
                 </div>
-
                 <!-- También puedes hacer clic en el nombre del producto -->
                 <h3 class="product-name" [routerLink]="['/products', product.id]" style="cursor: pointer;">
                     {{ product.name }}
                 </h3>
                 <div class="product-price">${{ product.price.toFixed(2) }}</div>
-
                 <div class="product-rating">
                     <nz-rate [ngModel]="product.rating" nzDisabled [nzAllowHalf]="true" class="large"></nz-rate>
                 </div>
-
             </div>
         </div>
 
@@ -311,7 +305,6 @@
 <section class="trends-section">
     <div>
         <h2 class="section-title">Tendencias y Novedades</h2>
-
         <div class="trend-tabs">
             <nz-tabset>
                 <nz-tab nzTitle="Más Populares">
@@ -319,24 +312,25 @@
                         <div *ngFor="let product of trendingProducts.mostPopular" nz-col [nzXs]="24" [nzSm]="12"
                             [nzMd]="6">
                             <div class="trend-product-card">
-                                <div class="trend-product-image">
-                                    <img [src]="product.imageUrl" [alt]="product.name">
-                                    <div class="trend-product-badge">Popular</div>
+                                <div class="product-image-container">
+                                    <img [src]="product.imageUrl" [alt]="product.name" class="product-image-section">
+                                    <div class="new-badge">POPULAR</div>
                                 </div>
-                                <div class="trend-product-details">
-                                    <h4 class="trend-product-name">{{ product.name }}</h4>
-                                    <p class="trend-product-price">${{ product.price.toFixed(2) }}</p>
-                                    <div class="trend-product-actions">
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
-                                        </button>
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="heart" nzTheme="outline"></i>
-                                        </button>
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="eye" nzTheme="outline"></i>
-                                        </button>
+                                <!-- <div class="color-options">
+                                    <div *ngFor="let color of product.colors" class="color-option"
+                                        [ngClass]="{'active': product.imageUrl === color.imageUrl}"
+                                        (click)="selectColor(product, color)">
+                                        <img [src]="color.imageUrl" [alt]="color.name">
                                     </div>
+                                </div> -->
+                                <h3 class="product-name" [routerLink]="['/products', product.id]"
+                                    style="cursor: pointer;">
+                                    {{ product.name }}
+                                </h3>
+                                <div class="product-price">${{ product.price.toFixed(2) }}</div>
+                                <div class="product-rating">
+                                    <nz-rate [ngModel]="product.name" nzDisabled [nzAllowHalf]="true" class="large">
+                                    </nz-rate>
                                 </div>
                             </div>
                         </div>
@@ -348,24 +342,18 @@
                         <div *ngFor="let product of trendingProducts.newArrivals" nz-col [nzXs]="24" [nzSm]="12"
                             [nzMd]="6">
                             <div class="trend-product-card">
-                                <div class="trend-product-image">
-                                    <img [src]="product.imageUrl" [alt]="product.name">
-                                    <div class="trend-product-badge new">Nuevo</div>
+                                <div class="product-image-container">
+                                    <img [src]="product.imageUrl" [alt]="product.name" class="product-image-section">
+                                    <div class="new-badge">NUEVO</div>
                                 </div>
-                                <div class="trend-product-details">
-                                    <h4 class="trend-product-name">{{ product.name }}</h4>
-                                    <p class="trend-product-price">${{ product.price.toFixed(2) }}</p>
-                                    <div class="trend-product-actions">
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
-                                        </button>
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="heart" nzTheme="outline"></i>
-                                        </button>
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="eye" nzTheme="outline"></i>
-                                        </button>
-                                    </div>
+                                <h3 class="product-name" [routerLink]="['/products', product.id]"
+                                    style="cursor: pointer;">
+                                    {{ product.name }}
+                                </h3>
+                                <div class="product-price">${{ product.price.toFixed(2) }}</div>
+                                <div class="product-rating">
+                                    <nz-rate [ngModel]="product.name" nzDisabled [nzAllowHalf]="true" class="large">
+                                    </nz-rate>
                                 </div>
                             </div>
                         </div>
@@ -376,27 +364,20 @@
                     <div class="featured-products-container">
                         <div *ngFor="let product of trendingProducts.onSale" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
                             <div class="trend-product-card">
-                                <div class="trend-product-image">
-                                    <img [src]="product.imageUrl" [alt]="product.name">
-                                    <div class="trend-product-badge sale">-{{ product.discountPercentage }}%</div>
+                                <div class="product-image-container">
+                                    <img [src]="product.imageUrl" [alt]="product.name" class="product-image-section">
+                                    <div class="new-badge">-{{ product.discountPercentage }}%</div>
                                 </div>
                                 <div class="trend-product-details">
-                                    <h4 class="trend-product-name">{{ product.name }}</h4>
-                                    <p class="trend-product-price">
+                                    <h4 class="product-name">{{ product.name }}</h4>
+                                    <p class="product-price">
                                         <span class="original-price">${{ product.originalPrice.toFixed(2) }}</span>
                                         <span class="current-price">${{ product.price.toFixed(2) }}</span>
                                     </p>
-                                    <div class="trend-product-actions">
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
-                                        </button>
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="heart" nzTheme="outline"></i>
-                                        </button>
-                                        <button nz-button nzShape="circle">
-                                            <i nz-icon nzType="eye" nzTheme="outline"></i>
-                                        </button>
-                                    </div>
+                                    <div class="product-rating">
+                                    <nz-rate [ngModel]="product.name" nzDisabled [nzAllowHalf]="true" class="large">
+                                    </nz-rate>
+                                </div>
                                 </div>
                             </div>
                         </div>
