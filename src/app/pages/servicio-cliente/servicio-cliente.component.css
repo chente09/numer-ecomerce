@@ -1,0 +1,321 @@
+/* General Styles */
+.customer-service-container {
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+}
+
+.content-section {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Hero Section */
+.hero-section {
+    padding: 180px 0 60px;
+    background-color: #000000;
+    background-image: url('https://i.postimg.cc/k59SjrbJ/Logo-Numer-blanco.png');
+    background-repeat: no-repeat;
+    background-size: 240px 240px;
+    background-position: top 30px center;
+    color: #ffffff;
+    text-align: center;
+    position: relative;
+    min-height: 40vh;
+}
+
+.title {
+    font-size: 42px;
+    font-weight: 700;
+    margin-top: 8%;
+    margin-bottom: 1px;
+    letter-spacing: 0.5px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    letter-spacing: 2px;
+    color: aliceblue;
+}
+
+.subtitle {
+    font-size: clamp(20px, 3vw, 24px);
+    max-width: 90%;
+    margin: 0 auto;
+    padding-top: 20px;
+    line-height: 1.5;
+    opacity: 0.9;
+}
+
+.subtitle:hover, .title:hover {
+    background: linear-gradient(90deg,
+            #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+    background-size: 300% 300%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+/* Tabs Section */
+.ant-tabs-nav {
+    margin-bottom: 24px !important;
+}
+
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: #000000 !important;
+    font-weight: 600;
+}
+
+.ant-tabs-ink-bar {
+    background-color: #000000 !important;
+}
+
+.tab-content {
+    padding: 20px 0;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+/* Animación de entrada */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Sección de Preguntas Frecuentes */
+.ant-collapse {
+    border: none;
+    background-color: transparent;
+}
+
+.ant-collapse-header {
+    font-weight: 500 !important;
+    font-size: 16px !important;
+}
+
+.ant-collapse-content {
+    border-top: none !important;
+}
+
+.ant-collapse-item {
+    border-bottom: 1px solid #f0f0f0 !important;
+    margin-bottom: 8px !important;
+    background-color: white;
+    border-radius: 4px !important;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+    transition: box-shadow 0.3s ease !important;
+}
+
+.ant-collapse-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Sección de Contacto */
+nz-card {
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    border: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+nz-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+}
+
+nz-form-item {
+    margin-bottom: 20px;
+}
+
+.ant-input {
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+
+button[nz-button].ant-btn-primary {
+    background-color: #000000;
+    border-color: #000000;
+    color: #ffffff;
+}
+
+button[nz-button].ant-btn-primary:hover {
+    background-color: #333333;
+    border-color: #333333;
+}
+
+h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #000000;
+}
+
+/* Lista de información de contacto */
+.contact-info-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.contact-info-list li {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    animation: fadeInUp 1s ease-out;
+}
+
+.icon-container {
+    font-size: 24px;
+    margin-right: 16px;
+    color: #000000;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.08);
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+
+.contact-info-list li:hover .icon-container {
+    transform: scale(1.1);
+}
+
+.contact-info-list li strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 16px;
+}
+
+.contact-info-list li p {
+    margin: 0 0 5px;
+    color: #333;
+}
+
+.text-muted {
+    color: #888;
+    font-size: 14px;
+}
+
+/* Sección de Seguimiento de Pedidos */
+.order-status-container {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.05);
+    animation: fadeInUp 0.8s ease-out;
+}
+
+/* Timeline */
+.ant-timeline-item-tail {
+    border-left: 2px solid #e8e8e8 !important;
+}
+
+.ant-timeline-item-head-green {
+    color: #000000 !important;
+    border-color: #000000 !important;
+}
+
+/* Sección de Devoluciones */
+nz-divider {
+    margin: 32px 0 24px !important;
+}
+
+/* Chat en vivo (adaptación) */
+.chat-widget {
+    z-index: 1000;
+}
+
+.chat-toggle-button {
+    background-color: #000000;
+    border-color: #000000;
+}
+
+.chat-toggle-button:hover {
+    background-color: #333333;
+    border-color: #333333;
+}
+
+.chat-header {
+    background-color: #000000;
+}
+
+.user-message .message {
+    background-color: #000000;
+}
+
+.chat-footer button {
+    background-color: #000000;
+    border-color: #000000;
+}
+
+.chat-footer button:hover {
+    background-color: #333333;
+    border-color: #333333;
+}
+
+/* Ajustes para tablets */
+@media (max-width: 992px) {
+    .hero-section {
+        background-size: 200px 200px;
+        padding-top: 160px;
+    }
+
+    .subtitle {
+        padding-top: 30px;
+    }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        background-size: 190px 190px;
+        background-position: top 20px center;
+        padding: 200px 0 40px;
+        min-height: auto;
+    }
+
+    .subtitle {
+        padding-top: 20px;
+        max-width: 95%;
+    }
+
+    nz-card {
+        margin-bottom: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .title {
+        font-size: 32px;
+    }
+
+    h3 {
+        font-size: 18px;
+    }
+}

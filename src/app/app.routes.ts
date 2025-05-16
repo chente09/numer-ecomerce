@@ -8,10 +8,12 @@ import { WelcomeComponent } from './pages/welcome/welcome.component';
 import { LayoutComponent } from './pages/admin/layout/layout.component';
 import { ProductManagementComponent } from './pages/admin/product-management/product-management.component';
 import { CategoriasComponent } from './pages/admin/categorias/categorias.component';
+import { ServicioClienteComponent } from './pages/servicio-cliente/servicio-cliente.component';
 
 export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: '/welcome' },
     { path: 'welcome', component: WelcomeComponent },
+    { path: 'servicio-cliente', component: ServicioClienteComponent },
     { path: 'carrito', component: CarritoComponent },
     { path: 'pago', component: PayphoneFormComponent },
     { path: 'respuesta-pago', component: RespuestaPagoComponent },

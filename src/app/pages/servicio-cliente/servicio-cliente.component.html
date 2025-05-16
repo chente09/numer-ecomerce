@@ -1,0 +1,254 @@
+<div class="customer-service-container">
+    <div class="hero-section">
+        <h1 class="title">Atención al Cliente</h1>
+        <p class="subtitle">Estamos aquí para ayudarte con cualquier consulta o problema que puedas tener</p>
+    </div>
+
+    <div class="content-section">
+        <nz-tabset [nzAnimated]="true" nzSize="large">
+            <!-- Pestaña de FAQ -->
+            <nz-tab nzTitle="Preguntas Frecuentes">
+                <div class="tab-content">
+                    <div class="text-center">
+                        <h2 class="section-title">Respuestas a tus preguntas</h2>
+                        <div class="custom-divider" style="margin: 0 auto 30px;"></div>
+                    </div>
+
+                    <nz-collapse>
+                        <nz-collapse-panel *ngFor="let faq of faqs" [nzHeader]="faq.question" [nzActive]="faq.active">
+                            <p [innerHTML]="faq.answer"></p>
+                        </nz-collapse-panel>
+                    </nz-collapse>
+                </div>
+            </nz-tab>
+
+            <!-- Pestaña de Contacto -->
+            <nz-tab nzTitle="Contacto Directo">
+                <div class="tab-content">
+                    <div class="text-center">
+                        <h2 class="section-title">Ponte en contacto con nosotros</h2>
+                        <div class="custom-divider" style="margin: 0 auto 30px;"></div>
+                    </div>
+
+                    <div nz-row [nzGutter]="[24, 24]">
+                        <div nz-col [nzXs]="24" [nzMd]="12">
+                            <nz-card class="content-box">
+                                <form [formGroup]="contactForm" (ngSubmit)="submitContactForm()">
+                                    <h3>Envíanos un mensaje</h3>
+                                    <div class="custom-divider"></div>
+
+                                    <nz-form-item>
+                                        <nz-form-control>
+                                            <input nz-input formControlName="name" placeholder="Nombre completo" />
+                                        </nz-form-control>
+                                    </nz-form-item>
+
+                                    <nz-form-item>
+                                        <nz-form-control>
+                                            <input nz-input formControlName="email" placeholder="Correo electrónico" />
+                                        </nz-form-control>
+                                    </nz-form-item>
+
+                                    <nz-form-item>
+                                        <nz-form-control>
+                                            <nz-select formControlName="subject" nzPlaceHolder="Asunto">
+                                                <nz-option *ngFor="let subject of subjects" [nzValue]="subject.value"
+                                                    [nzLabel]="subject.label"></nz-option>
+                                            </nz-select>
+                                        </nz-form-control>
+                                    </nz-form-item>
+
+                                    <nz-form-item>
+                                        <nz-form-control>
+                                            <textarea nz-input formControlName="message" rows="4"
+                                                placeholder="¿En qué podemos ayudarte?"></textarea>
+                                        </nz-form-control>
+                                    </nz-form-item>
+
+                                    <button nz-button nzType="primary" [disabled]="contactForm.invalid" nzBlock>Enviar
+                                        mensaje</button>
+                                </form>
+                            </nz-card>
+                        </div>
+
+                        <div nz-col [nzXs]="24" [nzMd]="12">
+                            <nz-card class="content-box">
+                                <h3>Información de contacto</h3>
+                                <div class="custom-divider"></div>
+
+                                <ul class="contact-info-list">
+                                    <li>
+                                        <span class="icon-container"><i nz-icon nzType="phone"
+                                                nzTheme="outline"></i></span>
+                                        <div>
+                                            <strong>Teléfono</strong>
+                                            <p>+593 98 712 5801</p>
+                                            <p class="text-muted">Lun-Vie: 9am - 6pm / Sábados: 9am - 2pm</p>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="icon-container"><i nz-icon nzType="mail"
+                                                nzTheme="outline"></i></span>
+                                        <div>
+                                            <strong>Email</strong>
+                                            <p>soporte&#64;numer.ec</p>
+                                            <p class="text-muted">Responderemos en menos de 24 horas</p>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="icon-container"><i nz-icon nzType="environment"
+                                                nzTheme="outline"></i></span>
+                                        <div>
+                                            <strong>Dirección</strong>
+                                            <p>Quito, Ecuador</p>
+                                            <p class="text-muted">Visítanos en nuestra tienda física</p>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="icon-container"><i nz-icon nzType="whats-app"
+                                                nzTheme="outline"></i></span>
+                                        <div>
+                                            <strong>WhatsApp</strong>
+                                            <p>+593 98 712 5801</p>
+                                            <a href="https://wa.me/593987125801" target="_blank" nz-button
+                                                nzType="default">
+                                                <i nz-icon nzType="whats-app" nzTheme="outline"></i> Chatea con nosotros
+                                            </a>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </nz-card>
+                        </div>
+                    </div>
+                </div>
+            </nz-tab>
+
+            <!-- Pestaña de Seguimiento de Pedidos -->
+            <nz-tab nzTitle="Seguimiento de Pedidos">
+                <div class="tab-content">
+                    <div class="text-center">
+                        <h2 class="section-title">Consulta el estado de tu pedido</h2>
+                        <div class="custom-divider" style="margin: 0 auto 30px;"></div>
+                    </div>
+
+                    <nz-card class="content-box">
+                        <h3>Seguimiento de tu pedido</h3>
+                        <div class="custom-divider"></div>
+                        <p>Ingresa el número de orden para verificar el estado de tu pedido</p>
+
+                        <div nz-row [nzGutter]="[16, 16]">
+                            <div nz-col [nzXs]="24" [nzMd]="16">
+                                <nz-input-group [nzSuffix]="suffixButton">
+                                    <input type="text" nz-input [(ngModel)]="orderNumber"
+                                        placeholder="Número de orden (ej: ORD-12345)" />
+                                    <ng-template #suffixButton>
+                                        <button nz-button nzType="primary" (click)="trackOrder()">Buscar</button>
+                                    </ng-template>
+                                </nz-input-group>
+                            </div>
+                        </div>
+
+                        <div *ngIf="orderStatus" class="order-status-container">
+                            <!-- Aquí iría el componente de tracking con información del pedido -->
+                            <nz-timeline>
+                                <nz-timeline-item *ngFor="let step of orderStatus.steps"
+                                    [nzColor]="step.completed ? 'green' : 'gray'">
+                                    <p><strong>{{step.title}}</strong></p>
+                                    <p>{{step.description}}</p>
+                                    <p class="text-muted" *ngIf="step.date">{{step.date | date:'medium'}}</p>
+                                </nz-timeline-item>
+                            </nz-timeline>
+                        </div>
+                    </nz-card>
+                </div>
+            </nz-tab>
+
+            <!-- Pestaña de Devoluciones -->
+            <nz-tab nzTitle="Devoluciones">
+                <div class="tab-content">
+                    <div class="text-center">
+                        <h2 class="section-title">Política de devoluciones</h2>
+                        <div class="custom-divider" style="margin: 0 auto 30px;"></div>
+                    </div>
+
+                    <nz-card class="content-box">
+                        <h3>Cómo realizar una devolución</h3>
+                        <div class="custom-divider"></div>
+                        <p>En Numer, queremos que estés completamente satisfecho con tu compra. Si por alguna razón no
+                            lo
+                            estás, aquí te explicamos cómo proceder:</p>
+
+                        <nz-collapse>
+                            <nz-collapse-panel nzHeader="¿Cuánto tiempo tengo para devolver un producto?">
+                                <p>Dispones de 30 días desde la recepción de tu pedido para solicitar una devolución.
+                                </p>
+                            </nz-collapse-panel>
+                            <nz-collapse-panel nzHeader="¿Qué productos puedo devolver?">
+                                <p>Todos los productos pueden ser devueltos siempre y cuando estén en su estado
+                                    original,
+                                    sin usar y con todas las etiquetas y embalajes.</p>
+                            </nz-collapse-panel>
+                            <nz-collapse-panel nzHeader="¿Cómo inicio el proceso de devolución?">
+                                <p>Para iniciar una devolución, sigue estos pasos:</p>
+                                <ol>
+                                    <li>Accede a tu cuenta y ve a "Mis pedidos"</li>
+                                    <li>Selecciona el pedido con el artículo que deseas devolver</li>
+                                    <li>Haz clic en "Solicitar devolución" y sigue las instrucciones</li>
+                                </ol>
+                                <p>También puedes contactarnos directamente a través del formulario de contacto.</p>
+                            </nz-collapse-panel>
+                        </nz-collapse>
+
+                        <nz-divider></nz-divider>
+
+                        <h3>Iniciar proceso de devolución</h3>
+                        <div class="custom-divider"></div>
+                        <p>Completa el siguiente formulario para iniciar el proceso de devolución de un producto</p>
+
+                        <form [formGroup]="returnForm" (ngSubmit)="submitReturnForm()">
+                            <nz-form-item>
+                                <nz-form-control>
+                                    <input nz-input formControlName="orderNumber" placeholder="Número de orden" />
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-control>
+                                    <input nz-input formControlName="email" placeholder="Correo electrónico" />
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-control>
+                                    <nz-select formControlName="reason" nzPlaceHolder="Motivo de la devolución">
+                                        <nz-option *ngFor="let reason of returnReasons" [nzValue]="reason.value"
+                                            [nzLabel]="reason.label"></nz-option>
+                                    </nz-select>
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <nz-form-item>
+                                <nz-form-control>
+                                    <textarea nz-input formControlName="comments" rows="4"
+                                        placeholder="Comentarios adicionales"></textarea>
+                                </nz-form-control>
+                            </nz-form-item>
+
+                            <button nz-button nzType="primary" [disabled]="returnForm.invalid">Solicitar
+                                devolución</button>
+                        </form>
+                    </nz-card>
+                </div>
+            </nz-tab>
+        </nz-tabset>
+        <!-- Sección de CTA similar a la del componente "nosotros" -->
+        <div class="cta-section">
+            <div class="container">
+                <h2 class="cta-title">¿Necesitas ayuda personalizada?</h2>
+                <p class="cta-text">Nuestro equipo de atención al cliente está listo para ayudarte con cualquier
+                    consulta o
+                    problema que puedas tener. Ponte en contacto con nosotros hoy mismo en nuestro boton de whatsapp.</p>
+            </div>
+        </div>
+    </div>
+</div>
