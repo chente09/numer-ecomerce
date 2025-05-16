@@ -29,6 +29,7 @@ export const routes: Routes = [
             { path: 'products', component: ProductManagementComponent },
             { path: 'categories', component: CategoriasComponent },
         ]
-    }
+    },
+    { path: '**', redirectTo: '/welcome' }
 ];
 

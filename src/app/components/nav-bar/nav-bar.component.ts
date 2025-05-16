@@ -56,7 +56,6 @@ export class NavBarComponent implements OnInit, OnDestroy {
     this.cartSubscription = this.cartService.getCartItemCount().subscribe(count => {
       this.cartCount = count;
     });
-    this.handleVideoAutoplay();
   }
 
   ngOnDestroy() {
@@ -91,45 +90,6 @@ export class NavBarComponent implements OnInit, OnDestroy {
     }
 
     this.lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
-  }
-
-  handleVideoAutoplay() {
-    const video = document.getElementById('background-video') as HTMLVideoElement;
-
-    if (video) {
-      // Intentar reproducir el video inmediatamente
-      const playPromise = video.play();
-
-      // Manejar el caso en que el navegador no permita la reproducción automática
-      if (playPromise !== undefined) {
-        playPromise.then(() => {
-          // La reproducción automática comenzó
-          console.log('Autoplay started');
-        }).catch(error => {
-          // La reproducción automática fue prevenida
-          console.log('Autoplay prevented:', error);
-
-          // Agregar event listener para reproducir el video en la primera interacción
-          const playVideoOnce = () => {
-            video.play();
-            document.removeEventListener('click', playVideoOnce);
-            document.removeEventListener('touchstart', playVideoOnce);
-            document.removeEventListener('scroll', playVideoOnce);
-          };
-
-          document.addEventListener('click', playVideoOnce);
-          document.addEventListener('touchstart', playVideoOnce);
-          document.addEventListener('scroll', playVideoOnce);
-        });
-      }
-
-      // Asegurarse de que el video se reproduzca cuando vuelva a ser visible
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          video.play();
-        }
-      });
-    }
   }
 
 }
