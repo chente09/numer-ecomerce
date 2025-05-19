@@ -1,0 +1,186 @@
+<!-- src/app/pages/reviews/reviews.component.html -->
+<div class="reviews-page-container">
+    <div class="header-section">
+        <h1 class="page-title">Opiniones de nuestros clientes</h1>
+        <p class="page-subtitle">Descubre lo que opinan quienes han experimentado nuestros productos</p>
+    </div>
+
+    <!-- Botones principales de acción -->
+    <div class="main-actions">
+        <button class="main-action-button" nz-button nzType="dashed" nzSize="large" (click)="toggleForm()"
+            *ngIf="!showForm">
+            <span nz-icon nzType="edit"></span> Escribir una reseña
+        </button>
+        <button class="main-action-button" nz-button nzType="dashed" nzSize="large" (click)="toggleForm()"
+            *ngIf="showForm">
+            Cancelar
+        </button>
+    </div>
+
+
+    <!-- Formulario de reseña -->
+    <div id="review-form" class="review-form-section" *ngIf="showForm" [@fadeInOut]>
+        <nz-card [nzTitle]="formTitle" [nzBordered]="true">
+            <ng-template #formTitle>
+                <div class="form-header">
+                    <h2>Comparte tu experiencia</h2>
+                    <p>Tu opinión es valiosa para nosotros y para otros clientes</p>
+                </div>
+            </ng-template>
+
+            <nz-alert *ngIf="submitSuccess" nzType="success" nzMessage="¡Reseña enviada con éxito!"
+                nzDescription="Tu reseña ha sido enviada y será revisada por nuestro equipo antes de publicarse. ¡Gracias por compartir tu experiencia!"
+                nzShowIcon></nz-alert>
+
+            <form *ngIf="!submitSuccess" [formGroup]="reviewForm" (ngSubmit)="onSubmit()" nz-form
+                [nzLayout]="'vertical'">
+                <div nz-row [nzGutter]="24">
+                    <div nz-col [nzXs]="24" [nzMd]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingresa tu nombre">
+                                <input nz-input formControlName="name" placeholder="Tu nombre" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzXs]="24" [nzMd]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Ciudad</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingresa tu ciudad">
+                                <input nz-input formControlName="location" placeholder="Ej: Quito, Guayaquil, etc." />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <nz-form-item>
+                    <nz-form-label nzRequired>Calificación</nz-form-label>
+                    <nz-form-control class="rate-container" >
+                        <nz-rate  formControlName="rating" [nzAllowHalf]="true"></nz-rate>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label nzRequired>Tu experiencia</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor comparte tu experiencia (mínimo 10 caracteres)">
+                        <textarea nz-input formControlName="text" [nzAutosize]="{ minRows: 4, maxRows: 8 }"
+                            placeholder="Cuéntanos sobre tu experiencia con nuestros productos..."></textarea>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Foto de perfil (opcional)</nz-form-label>
+                    <nz-form-control>
+                        <div class="avatar-info" *ngIf="isAuthenticated && !avatarFile">
+                            <nz-alert nzType="info"
+                                nzMessage="Se usará tu foto de perfil de Google si no subes una imagen personalizada"
+                                nzShowIcon>
+                            </nz-alert>
+                        </div>
+                        <nz-upload nzListType="picture-card" [nzFileList]="avatarFileList"
+                            [nzBeforeUpload]="beforeUploadAvatar"
+                            [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }">
+                            <div *ngIf="avatarFileList.length < 1">
+                                <span nz-icon nzType="plus"></span>
+                                <div style="margin-top: 8px">Subir</div>
+                            </div>
+                        </nz-upload>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-control>
+                        <button nz-button nzType="primary" [nzLoading]="submitting" [disabled]="reviewForm.invalid">
+                            Enviar reseña
+                        </button>
+                    </nz-form-control>
+                </nz-form-item>
+            </form>
+        </nz-card>
+    </div>
+
+    <!-- Contenido de reseñas -->
+    <div class="reviews-content">
+        <!-- Pestañas para separar reseñas públicas y propias -->
+        <nz-tabset *ngIf="!loading">
+            <nz-tab nzTitle="Todas las reseñas">
+                <!-- Mensaje si no hay reseñas -->
+                <div *ngIf="reviews.length === 0" class="empty-state">
+                    <nz-empty nzDescription="Aún no hay reseñas. ¡Sé el primero en compartir tu experiencia!"
+                        [nzNotFoundImage]="'https://i.postimg.cc/WpSFTWP4/empty-reviews.png'">
+                        <button nz-button nzType="primary" (click)="toggleForm()">
+                            Escribir una reseña
+                        </button>
+                    </nz-empty>
+                </div>
+
+                <!-- Lista de reseñas -->
+                <div *ngIf="reviews.length > 0" class="reviews-grid">
+                    <div nz-row [nzGutter]="[24, 24]">
+                        <div *ngFor="let review of reviews" nz-col [nzXs]="24" [nzSm]="12" [nzLg]="8" [nzXXl]="6">
+                            <nz-card class="review-card" [nzBordered]="true">
+                                <div class="review-rating">
+                                    <nz-rate [ngModel]="review.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
+                                </div>
+
+                                <p class="review-text">"{{ review.text }}"</p>
+
+                                <div class="review-author">
+                                    <nz-avatar [nzSrc]="review.avatarUrl" [nzSize]="48"></nz-avatar>
+                                    <div class="author-info">
+                                        <h4>{{ review.name }}</h4>
+                                        <span>{{ review.location }}</span>
+                                        <div class="review-date">{{ formatDate(review.createdAt) }}</div>
+                                    </div>
+                                </div>
+                            </nz-card>
+                        </div>
+                    </div>
+                </div>
+            </nz-tab>
+
+            <!-- Pestaña de reseñas propias (solo para usuarios autenticados) -->
+            <nz-tab nzTitle="Mis reseñas" *ngIf="isAuthenticated">
+                <div *ngIf="userReviews.length === 0" class="empty-state">
+                    <nz-empty nzDescription="No has publicado ninguna reseña aún">
+                        <button nz-button nzType="primary" (click)="toggleForm()">
+                            Escribir una reseña
+                        </button>
+                    </nz-empty>
+                </div>
+
+                <div *ngIf="userReviews.length > 0" class="reviews-grid">
+                    <div nz-row [nzGutter]="[24, 24]">
+                        <div *ngFor="let review of userReviews" nz-col [nzXs]="24" [nzSm]="12" [nzXXl]="8">
+                            <nz-card class="review-card my-review" [nzBordered]="true">
+                                <nz-ribbon [nzText]="review.approved ? 'Aprobada' : 'Pendiente'"
+                                    [nzColor]="review.approved ? 'green' : 'gold'">
+                                    <div class="review-rating">
+                                        <nz-rate [ngModel]="review.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
+                                    </div>
+
+                                    <p class="review-text">"{{ review.text }}"</p>
+
+                                    <div class="review-author">
+                                        <nz-avatar [nzSrc]="review.avatarUrl" [nzSize]="48"></nz-avatar>
+                                        <div class="author-info">
+                                            <h4>{{ review.name }}</h4>
+                                            <span>{{ review.location }}</span>
+                                            <div class="review-date">{{ formatDate(review.createdAt) }}</div>
+                                        </div>
+                                    </div>
+                                </nz-ribbon>
+                            </nz-card>
+                        </div>
+                    </div>
+                </div>
+            </nz-tab>
+        </nz-tabset>
+
+        <!-- Loader -->
+        <div *ngIf="loading" class="loading-container">
+            <nz-spin nzSize="large"></nz-spin>
+        </div>
+    </div>
+</div>

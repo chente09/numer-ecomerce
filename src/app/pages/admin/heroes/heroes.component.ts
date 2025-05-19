@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -19,6 +19,8 @@ import { NzColorPickerModule } from 'ng-zorro-antd/color-picker';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 
 import { HeroService, HeroItem } from '../../../services/admin/hero/hero.service';
+import { Subscription } from 'rxjs';
+import { ReviewManagementComponent } from "../review-management/review-management.component";
 
 @Component({
   selector: 'app-heroes',
@@ -41,12 +43,12 @@ import { HeroService, HeroItem } from '../../../services/admin/hero/hero.service
     NzBadgeModule,
     NzColorPickerModule,
     NzInputNumberModule,
-    
-  ],
+    ReviewManagementComponent
+],
   templateUrl: './heroes.component.html',
   styleUrls: ['./heroes.component.css']
 })
-export class HeroesComponent implements OnInit {
+export class HeroesComponent implements OnInit, OnDestroy {
   heroes: HeroItem[] = [];
   loading = false;
   saving = false;
@@ -54,7 +56,7 @@ export class HeroesComponent implements OnInit {
   isEditMode = false;
   form: Partial<HeroItem> = {};
   editingId: string | null = null;
-  
+
   // Para subida de imágenes
   mainImageFile: File | null = null;
   mobileImageFile: File | null = null;
@@ -62,6 +64,8 @@ export class HeroesComponent implements OnInit {
   mobileFileList: NzUploadFile[] = [];
   mainImageError: string | null = null;
   mobileImageError: string | null = null;
+
+  private subscription = new Subscription();
 
   constructor(
     private heroService: HeroService,
@@ -74,16 +78,28 @@ export class HeroesComponent implements OnInit {
 
   fetchHeroes(): void {
     this.loading = true;
-    this.heroService.getHeroes().subscribe({
-      next: (data) => {
-        this.heroes = data;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.message.error('Error al cargar los banners');
-        this.loading = false;
-      }
-    });
+    // Cancelar cualquier suscripción anterior
+    this.subscription.unsubscribe();
+    this.subscription = new Subscription();
+
+    // Añadir la nueva suscripción al grupo
+    this.subscription.add(
+      this.heroService.getHeroes(true).subscribe({
+        next: (data) => {
+          this.heroes = data;
+          this.loading = false;
+        },
+        error: (err) => {
+          this.message.error('Error al cargar los banners');
+          this.loading = false;
+        }
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    // Importante: cancelar todas las suscripciones al destruir el componente
+    this.subscription.unsubscribe();
   }
 
   openModal(): void {
@@ -256,7 +272,7 @@ export class HeroesComponent implements OnInit {
   }
 
   editHero(hero: HeroItem): void {
-    this.form = { 
+    this.form = {
       ...hero,
       // Convertir fechas a objetos Date si vienen como timestamps
       startDate: hero.startDate ? new Date(hero.startDate) : undefined,
@@ -319,11 +335,11 @@ export class HeroesComponent implements OnInit {
   async moveUp(hero: HeroItem): Promise<void> {
     const index = this.heroes.findIndex(h => h.id === hero.id);
     if (index <= 0) return; // Ya está en la primera posición
-    
+
     const newOrder = [...this.heroes.map(h => h.id!)];
     // Intercambiar posiciones
     [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
-    
+
     try {
       await this.heroService.updateHeroesOrder(newOrder);
       this.message.success('Orden actualizado con éxito');
@@ -337,11 +353,11 @@ export class HeroesComponent implements OnInit {
   async moveDown(hero: HeroItem): Promise<void> {
     const index = this.heroes.findIndex(h => h.id === hero.id);
     if (index >= this.heroes.length - 1) return; // Ya está en la última posición
-    
+
     const newOrder = [...this.heroes.map(h => h.id!)];
     // Intercambiar posiciones
     [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    
+
     try {
       await this.heroService.updateHeroesOrder(newOrder);
       this.message.success('Orden actualizado con éxito');

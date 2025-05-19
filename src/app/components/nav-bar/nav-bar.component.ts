@@ -42,8 +42,8 @@ export class NavBarComponent implements OnInit, OnDestroy {
   ];
 
   navItems = [
-    { label: 'NOSOTROS', link: '/nosotros' },
     { label: 'TIENDA', link: '/productos' },
+    { label: 'NOSOTROS', link: '/nosotros' },
     { label: 'RESEÑAS', link: '/welcome', fragment: 'resenas' },
   ];
 

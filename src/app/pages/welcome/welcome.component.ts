@@ -3,9 +3,9 @@ import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CategoryService, Category } from '../../services/admin/category/category.service';
-import { ProductService} from '../../services/admin/product/product.service';
+import { ProductService } from '../../services/admin/product/product.service';
 import { HeroService, HeroItem } from '../../services/admin/hero/hero.service';
-import { Product, Color  } from '../../models/models';
+import { Product, Color, Review } from '../../models/models';
 import { ScrollService } from '../../services/scroll/scroll.service';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -24,6 +24,9 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { SafeStyle } from '@angular/platform-browser';
+import { ChangeDetectorRef } from '@angular/core';
+import { ReviewService } from '../../services/review/review.service';
+import { animate, style, transition, trigger } from '@angular/animations';
 
 interface InstagramComment {
   username: string;
@@ -71,7 +74,15 @@ interface ProductPair {
   ],
   standalone: true,
   templateUrl: './welcome.component.html',
-  styleUrl: './welcome.component.css'
+  styleUrl: './welcome.component.css',
+  animations: [
+    trigger('fadeIn', [
+      transition(':enter', [
+        style({ opacity: 0 }),
+        animate('500ms ease-out', style({ opacity: 1 }))
+      ])
+    ])
+  ]
 })
 export class WelcomeComponent implements OnInit, OnDestroy {
   categories: Category[] = [];
@@ -83,6 +94,9 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   instagramFeed: InstagramPost[] = [];
   selectedPost: InstagramPost | null = null;
   newComment: string = '';
+  testimonials: Review[] = []; 
+  private subscriptions: Subscription = new Subscription();
+  testimonialsLoading = true;
 
   hoveredCategorySlug: string | null = null;
 
@@ -146,31 +160,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     {
       title: 'Mujer',
       image: 'https://i.postimg.cc/L578zYrW/MENTA-GRIS.png'
-    }
-  ];
-
-  // Testimonios
-  testimonials = [
-    {
-      name: 'María González',
-      location: 'Quito',
-      rating: 5,
-      text: 'Increíble experiencia de compra. Productos de alta calidad y un servicio al cliente excepcional. Definitivamente volveré a comprar aquí.',
-      avatarUrl: 'https://i.postimg.cc/ncHk5s9m/Dise-o-sin-t-tulo-1.png'
-    },
-    {
-      name: 'Carlos Rodríguez',
-      location: 'Loja',
-      rating: 5,
-      text: 'He realizado varias compras y siempre he quedado muy satisfecho. Envío rápido y productos exactamente como se describen.',
-      avatarUrl: 'https://i.postimg.cc/qM5m65P4/image.png'
-    },
-    {
-      name: 'Laura Martínez',
-      location: 'Cuenca',
-      rating: 4,
-      text: 'Gran selección de productos y precios muy competitivos. El proceso de compra es sencillo y la entrega fue rápida.',
-      avatarUrl: 'https://i.postimg.cc/ncHk5s9m/Dise-o-sin-t-tulo-1.png'
     }
   ];
 
@@ -298,10 +287,12 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     private categoryService: CategoryService,
     private productService: ProductService,
     private heroService: HeroService,
+    private reviewService: ReviewService,
     private modalService: NzModalService,
     private scrollService: ScrollService,
     private route: ActivatedRoute,
-    private message: NzMessageService
+    private message: NzMessageService,
+    private cdr: ChangeDetectorRef
   ) { }
 
 
@@ -310,31 +301,35 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     this.loadFeaturedProducts();
     this.startCountdown();
     this.loadInstagramFeed();
+    this.loadTestimonials();
+    this.startPeriodicTestimonialsUpdate();
     this.subscription.add(
-      this.heroService.getActiveHero().subscribe(hero => {
-        this.activeHero = hero;
-        
-        // Si hay una imagen móvil, la aplicamos como variable CSS
-        if (hero?.mobileImageUrl) {
-          document.documentElement.style.setProperty(
-            '--mobile-image', 
-            `url('${hero.mobileImageUrl}')`
-          );
-        } else {
-          document.documentElement.style.removeProperty('--mobile-image');
-        }
-      })
-    );
+    this.heroService.getActiveHero().subscribe(async hero => {
+      // Precargar imágenes antes de actualizar el componente
+      if (hero) {
+        await this.preloadHeroImages(hero);
+      }
+      
+      this.activeHero = hero;
+      
+      // Actualizar estilos de fondo
+      this.updateHeroStyles(hero);
+      
+      // Forzar la detección de cambios para actualizar la vista
+      this.cdr.detectChanges();
+    })
+  );
   }
 
-   ngOnDestroy() {
+  ngOnDestroy() {
     if (this.countdownSubscription) {
       this.countdownSubscription.unsubscribe();
     }
 
     // Limpiar la suscripción para evitar memory leaks
     this.subscription.unsubscribe();
-    
+    this.subscriptions.unsubscribe();
+
     // Limpiar variables CSS
     document.documentElement.style.removeProperty('--mobile-image');
   }
@@ -360,6 +355,83 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     this.scrollService.scrollToElementById(sectionId);
   }
 
+  // En WelcomeComponent
+preloadImage(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!url) {
+      resolve();
+      return;
+    }
+    
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = (err) => {
+      console.error('Error precargando imagen:', err);
+      resolve(); // Resolver de todas formas para no bloquear
+    };
+    img.src = url;
+  });
+}
+
+async preloadHeroImages(hero: HeroItem): Promise<void> {
+  if (!hero) return;
+  
+  // Precargar imagen principal
+  if (hero.imageUrl) {
+    await this.preloadImage(hero.imageUrl);
+  }
+  
+  // Precargar imagen móvil si existe
+  if (hero.mobileImageUrl) {
+    await this.preloadImage(hero.mobileImageUrl);
+  }
+}
+
+updateHeroStyles(hero: HeroItem | null): void {
+  if (!hero) return;
+  
+  // Actualizar estilos CSS para las imágenes
+  if (hero.imageUrl) {
+    document.documentElement.style.setProperty(
+      '--hero-image',
+      `url('${hero.imageUrl}')`
+    );
+  } else {
+    document.documentElement.style.removeProperty('--hero-image');
+  }
+  
+  if (hero.mobileImageUrl) {
+    document.documentElement.style.setProperty(
+      '--mobile-image',
+      `url('${hero.mobileImageUrl}')`
+    );
+  } else {
+    document.documentElement.style.removeProperty('--mobile-image');
+  }
+  
+  // Actualizar colores de fondo y texto
+  if (hero.backgroundColor) {
+    document.documentElement.style.setProperty(
+      '--hero-background-color',
+      hero.backgroundColor
+    );
+  } else {
+    document.documentElement.style.removeProperty('--hero-background-color');
+  }
+  
+  if (hero.textColor) {
+    document.documentElement.style.setProperty(
+      '--hero-text-color',
+      hero.textColor
+    );
+  } else {
+    document.documentElement.style.removeProperty('--hero-text-color');
+  }
+  
+  // Establecer clase para GIF si es necesario
+  this.isGif = hero.isGif || false;
+}
+
   // Método para seleccionar un color de producto
   selectColor(product: Product, color: Color): void {
     product.imageUrl = color.imageUrl;
@@ -372,28 +444,29 @@ export class WelcomeComponent implements OnInit, OnDestroy {
 
 
   loadCategories(): void {
-  this.categoryService.getCategories().subscribe({
-    next: (data) => {
-      this.categories = this.shuffleArray(data); // Mezclar el arreglo
-      this.categoriesLoading = false;
-    },
-    error: (error) => {
-      console.error('Error loading categories:', error);
-      this.categoriesLoading = false;
-    }
-  });
-}
-
-
-// Método privado para mezclar un arreglo
-private shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    this.categoryService.getCategories().subscribe({
+      next: (data) => {
+        this.categories = this.shuffleArray(data); // Mezclar el arreglo
+        this.categoriesLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+        this.categoriesLoading = false;
+      }
+    });
   }
-  return shuffled;
-}
+
+
+
+  // Método privado para mezclar un arreglo
+  private shuffleArray<T>(array: T[]): T[] {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
 
 
   loadFeaturedProducts(): void {
@@ -456,6 +529,88 @@ private shuffleArray<T>(array: T[]): T[] {
       });
     });
   }
+
+  loadTestimonials(): void {
+  console.log('Iniciando carga de testimonios en WelcomeComponent');
+  this.testimonialsLoading = true;
+  
+  const testimonialsSub = this.reviewService.getApprovedReviews(4)
+    .subscribe({
+      next: (reviews: Review[]) => {
+        console.log('Testimonios recibidos en WelcomeComponent:', reviews);
+        if (reviews && reviews.length > 0) {
+          this.testimonials = reviews;
+        } else {
+          console.log('No hay testimonios disponibles, usando estáticos');
+          this.setStaticTestimonials();
+        }
+        this.testimonialsLoading = false;
+      },
+      error: (err: Error) => {
+        console.error('Error al cargar testimonios en WelcomeComponent:', err);
+        this.setStaticTestimonials();
+        this.testimonialsLoading = false;
+      }
+    });
+  
+  this.subscriptions.add(testimonialsSub);
+} 
+
+  startPeriodicTestimonialsUpdate(): void {
+    // Actualizar los testimonios cada 5 minutos
+    const updateInterval = 5 * 60 * 1000; // 5 minutos en milisegundos
+    
+    const intervalSub = interval(updateInterval).subscribe(() => {
+      // Recargar los testimonios silenciosamente (sin mostrar loading)
+      this.reviewService.getApprovedReviews(4).subscribe({
+        next: (reviews: Review[]) => { // Tipo explícito para 'reviews'
+          if (reviews && reviews.length > 0) {
+            this.testimonials = reviews;
+          }
+        },
+        error: (err: Error) => { // Tipo explícito para 'error'
+          console.error('Error al actualizar testimonios:', err);
+          // No hacer nada en caso de error, mantener los testimonios actuales
+        }
+      });
+    });
+    
+    this.subscriptions.add(intervalSub);
+  }
+
+  // Método de respaldo con testimonios estáticos
+  setStaticTestimonials(): void {
+    this.testimonials = [
+      {
+        name: 'María González',
+        location: 'Quito',
+        rating: 5,
+        text: 'Increíble experiencia de compra. Productos de alta calidad y un servicio al cliente excepcional. Definitivamente volveré a comprar aquí.',
+        avatarUrl: 'https://i.postimg.cc/ncHk5s9m/Dise-o-sin-t-tulo-1.png',
+        approved: true,
+        createdAt: new Date('2023-09-01')
+      },
+      {
+        name: 'Carlos Rodríguez',
+        location: 'Loja',
+        rating: 5,
+        text: 'He realizado varias compras y siempre he quedado muy satisfecho. Envío rápido y productos exactamente como se describen.',
+        avatarUrl: 'https://i.postimg.cc/qM5m65P4/image.png',
+        approved: true,
+        createdAt: new Date('2023-09-01')
+      },
+      {
+        name: 'Laura Martínez',
+        location: 'Cuenca',
+        rating: 4,
+        text: 'Gran selección de productos y precios muy competitivos. El proceso de compra es sencillo y la entrega fue rápida.',
+        avatarUrl: 'https://i.postimg.cc/ncHk5s9m/Dise-o-sin-t-tulo-1.png',
+        approved: true,
+        createdAt: new Date('2023-09-01')
+      }
+    ];
+  }
+
 
   subscribeToNewsletter() {
     if (this.emailSubscription && this.validateEmail(this.emailSubscription)) {

@@ -131,3 +131,15 @@ export interface PaginatedResult<T> {
     lastDoc?: any;  // Para la paginación de Firestore
     hasMore: boolean;
 }
+
+export interface Review {
+    id?: string;
+    name: string;
+    location: string;
+    rating: number;
+    text: string;
+    avatarUrl?: string;
+    approved?: boolean;
+    createdAt: Date;
+    productId?: string; // Opcional, si quieres asociar reseñas a productos específicos
+}

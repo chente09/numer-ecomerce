@@ -1,4 +1,6 @@
 import { ElementRef, Injectable } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -7,7 +9,15 @@ export class ScrollService {
 
   private navbarHeight = 80; // Ajusta según la altura de tu navbar
   
-  constructor() { }
+  constructor(private router: Router) {
+    // Suscribirse a eventos de navegación
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe(() => {
+      // Desplazarse al inicio después de cada navegación
+      window.scrollTo(0, 0);
+    });
+  }
   
   // Método para configurar la altura del navbar
   setNavbarHeight(height: number): void {

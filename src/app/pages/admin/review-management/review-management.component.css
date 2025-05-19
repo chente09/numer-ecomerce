@@ -1,0 +1,23 @@
+/* src/app/pages/admin/review-management/review-management.component.css */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.truncated-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+}
+
+.review-text-cell {
+    cursor: pointer;
+}
+
+.truncated-text:hover {
+    color: #1890ff;
+    text-decoration: underline;
+}

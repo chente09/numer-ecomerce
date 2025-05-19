@@ -11,6 +11,8 @@ import { CategoriasComponent } from './pages/admin/categorias/categorias.compone
 import { ServicioClienteComponent } from './pages/servicio-cliente/servicio-cliente.component';
 import { CuidadoProductoComponent } from './pages/cuidado-producto/cuidado-producto.component';
 import { HeroesComponent } from './pages/admin/heroes/heroes.component';
+import { ReviewFormComponent } from './pages/review-form/review-form.component';
+import { ReviewManagementComponent } from './pages/admin/review-management/review-management.component';
 
 export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: '/welcome' },
@@ -22,6 +24,7 @@ export const routes: Routes = [
     { path: 'nosotros', component: NosotrosComponent, pathMatch: 'full' },
     { path: 'products/:id', component: DetalleProductoComponent },
     { path: 'cuidado-producto', component: CuidadoProductoComponent },
+    { path: 'review-form', component: ReviewFormComponent },
     {
         path: 'admin',
         component: LayoutComponent,
@@ -30,6 +33,7 @@ export const routes: Routes = [
             { path: 'products', component: ProductManagementComponent },
             { path: 'categories', component: CategoriasComponent },
             { path: 'heroes', component: HeroesComponent },
+            { path: 'reviews', component: ReviewManagementComponent },
         ]
     },
 ];

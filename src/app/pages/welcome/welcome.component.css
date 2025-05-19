@@ -706,17 +706,38 @@
 }
 
 /* Sección de Testimonios */
+
+.testimonial-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.no-testimonials {
+    text-align: center;
+    color: #999;
+    padding: 30px 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
 .testimonials-section {
     padding: 20px;
     background-color: black;
 }
 
 [nz-carousel-content] {
-    height: 70px;
+    height: 390px;
+    overflow: visible;
 }
 
 .testimonial-slide {
     padding: 20px;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .testimonial-card {
@@ -727,15 +748,6 @@
     text-align: center;
 }
 
-.testimonial-rating {
-    margin-bottom: 15px;
-}
-
-.star-icon {
-    color: #f7ca18;
-    font-size: 20px;
-    margin: 0 2px;
-}
 
 .testimonial-text {
     font-size: 16px;
@@ -767,15 +779,29 @@
     color: #888;
 }
 
-@media (max-width: 623px) {
-    [nz-carousel-content] {
-        height: 90px;
-    }
+.testimonials-action {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
 }
 
-@media (max-width: 452px) {
+.testimonials-action button {
+    min-width: 200px;
+    height: 44px;
+    font-size: 16px;
+}
+
+.testimonials-action button:hover {
+    background-color: black;
+    color: white;
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+@media (max-width: 623px) {
     [nz-carousel-content] {
-        height: 100px;
+        height: 390px;
     }
 }
 
@@ -821,6 +847,20 @@
 .trends-section {
     padding: 12px;
     background-color: white;
+}
+
+/* Solución para cambiar el color del tab activo a negro */
+::ng-deep .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: black !important;
+}
+
+::ng-deep .ant-tabs-ink-bar {
+    background-color: black !important;
+}
+
+/* Si quieres cambiar también el color al hacer hover */
+::ng-deep .ant-tabs-tab:hover {
+    color: #333 !important;
 }
 
 .trend-product-card {

@@ -1,5 +1,5 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import {
   Firestore,
   collection,
@@ -19,6 +19,7 @@ import {
 import { Storage, ref, uploadBytes, getDownloadURL, deleteObject } from '@angular/fire/storage';
 import { Observable, BehaviorSubject, of } from 'rxjs';
 import { map, shareReplay, catchError } from 'rxjs/operators';
+import { ProductImageService } from '../image/product-image.service';
 
 // Interfaz para los heroes/banners
 export interface HeroItem {
@@ -48,12 +49,32 @@ export class HeroService {
 
   constructor(
     private firestore: Firestore,
-    private storage: Storage
+    private storage: Storage,
+    private ngZone: NgZone,
+    private imageService: ProductImageService
   ) {
     // Cargar el hero activo al inicializar el servicio
     this.loadActiveHero();
   }
-  
+
+  // Método para ejecutar código dentro de la zona de Angular
+  private runInZone<T>(fn: () => T | Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.ngZone.run(() => {
+        try {
+          const result = fn();
+          if (result instanceof Promise) {
+            result.then(resolve, reject);
+          } else {
+            resolve(result);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+  }
+
   /**
    * Refresca los datos del hero activo (útil para llamar después de cambios)
    */
@@ -74,10 +95,10 @@ export class HeroService {
   private loadActiveHero(): void {
     // Obtener todos los héroes y filtrar en memoria
     const heroesRef = collection(this.firestore, this.collectionName);
-    
+
     // Query simple para obtener los héroes ordenados
     const q = query(heroesRef, orderBy('order', 'asc'));
-    
+
     getDocs(q)
       .then(snapshot => {
         if (!snapshot.empty) {
@@ -85,12 +106,12 @@ export class HeroService {
           const now = new Date();
           const activeHeroes = snapshot.docs
             .map(doc => this.convertToHeroItem(doc.id, doc.data()))
-            .filter(hero => 
-              hero.isActive && 
+            .filter(hero =>
+              hero.isActive &&
               (!hero.startDate || hero.startDate <= now) &&
               (!hero.endDate || hero.endDate >= now)
             );
-          
+
           if (activeHeroes.length > 0) {
             this.activeHero$.next(activeHeroes[0]);
           } else {
@@ -110,32 +131,36 @@ export class HeroService {
    * Carga un héroe predeterminado cuando no hay ninguno disponible
    */
   private loadDefaultHero(): void {
-  this.activeHero$.next({
-    id: 'default',
-    title: 'Para las Montañas y Más Allá',
-    subtitle: 'Numer Equipment: Equipamiento innovador para deportes de aventura, senderismo y montaña.',
-    ctaText: 'Ver Novedades',
-    ctaLink: '/new-arrivals',
-    imageUrl: 'https://i.postimg.cc/sDNm0F60/255-1.gif',
-    mobileImageUrl: 'https://i.postimg.cc/sDNm0F60/255-1.gif', // Añade una imagen optimizada para móviles
-    isGif: true,
-    isActive: true,
-    order: 1,
-    backgroundColor: '#333333', // Opcional: color de fondo para dispositivos que no cargan la imagen
-    textColor: '#ffffff'        // Opcional: asegura que el texto sea visible
-  });
-}
+    this.activeHero$.next({
+      id: 'default',
+      title: 'Para las Montañas y Más Allá',
+      subtitle: 'Numer Equipment: Equipamiento innovador para deportes de aventura, senderismo y montaña.',
+      ctaText: 'Ver Novedades',
+      ctaLink: '/new-arrivals',
+      imageUrl: 'https://i.postimg.cc/sDNm0F60/255-1.gif',
+      mobileImageUrl: 'https://i.postimg.cc/sDNm0F60/255-1.gif', // Añade una imagen optimizada para móviles
+      isGif: true,
+      isActive: true,
+      order: 1,
+      backgroundColor: '#333333', // Opcional: color de fondo para dispositivos que no cargan la imagen
+      textColor: '#ffffff'        // Opcional: asegura que el texto sea visible
+    });
+  }
 
   /**
    * Obtiene todos los héroes con caché
    */
-  getHeroes(): Observable<HeroItem[]> {
-    if (!this.heroesCache$) {
+  getHeroes(forceRefresh: boolean = false): Observable<HeroItem[]> {
+    if (!this.heroesCache$ || forceRefresh) {
       const heroesRef = collection(this.firestore, this.collectionName);
+
+      // Ordenar por orden, pero NO filtrar por estado activo
       const q = query(heroesRef, orderBy('order', 'asc'));
 
       this.heroesCache$ = collectionData(q, { idField: 'id' }).pipe(
-        map(data => this.mapHeroesData(data as any[])),
+        map(data => {
+          return this.mapHeroesData(data as any[]);
+        }),
         shareReplay(1),
         catchError(error => {
           console.error('Error al obtener héroes:', error);
@@ -176,6 +201,16 @@ export class HeroService {
     try {
       // Subir la imagen principal
       const imageUrl = await this.uploadImage(imageFile, 'main');
+      // Obtener el orden más alto actual
+      const heroesRef = collection(this.firestore, this.collectionName);
+      const q = query(heroesRef, orderBy('order', 'desc'), limit(1));
+      const snapshot = await getDocs(q);
+
+      let nextOrder = 1; // valor por defecto si no hay héroes
+      if (!snapshot.empty) {
+        const highestOrder = snapshot.docs[0].data()['order'] || 0;
+        nextOrder = highestOrder + 1;
+      }
 
       // Subir la imagen para móvil si existe
       let mobileImageUrl: string | undefined = undefined;
@@ -192,7 +227,7 @@ export class HeroService {
         imageUrl,
         isGif: hero.isGif || false,
         isActive: hero.isActive || false,
-        order: hero.order || 999,
+        order: hero.order || nextOrder,
         createdAt: new Date()
       };
 
@@ -231,9 +266,17 @@ export class HeroService {
     mobileImageFile?: File
   ): Promise<void> {
     try {
-      // Crear un objeto para las actualizaciones
-      const updates: any = { ...hero };
-      delete updates.id; // Eliminar el id si está presente
+      // Crear un objeto para las actualizaciones, filtrando campos undefined
+      const updates: any = {};
+
+      // Solo incluir propiedades que no sean undefined
+      Object.keys(hero).forEach(key => {
+        if (hero[key as keyof Partial<HeroItem>] !== undefined && key !== 'id') {
+          updates[key] = hero[key as keyof Partial<HeroItem>];
+        }
+      });
+
+      // Añadir timestamp de actualización
       updates.updatedAt = new Date();
 
       // Si hay nueva imagen principal
@@ -276,87 +319,91 @@ export class HeroService {
    * Elimina un hero
    */
   async deleteHero(id: string): Promise<void> {
-    try {
-      // Obtener el hero primero para eliminar sus imágenes
-      const hero = await this.getHeroById(id);
-      if (!hero) {
-        throw new Error(`El hero con ID ${id} no existe.`);
+    return this.runInZone(async () => {
+      try {
+        // Obtener el hero primero para eliminar sus imágenes
+        const hero = await this.getHeroById(id);
+        if (!hero) {
+          throw new Error(`El hero con ID ${id} no existe.`);
+        }
+
+        // Eliminar imágenes
+        if (hero.imageUrl) {
+          await this.deleteImage(hero.imageUrl);
+        }
+
+        if (hero.mobileImageUrl) {
+          await this.deleteImage(hero.mobileImageUrl);
+        }
+
+        // Eliminar documento
+        const docRef = doc(this.firestore, this.collectionName, id);
+        await deleteDoc(docRef);
+
+        // Invalidar caché
+        this.invalidateCache();
+
+        // Si era el hero activo, cargar uno nuevo
+        const currentActive = this.activeHero$.getValue();
+        if (currentActive?.id === id) {
+          this.loadActiveHero();
+        }
+      } catch (error: any) {
+        console.error(`Error al eliminar hero ${id}:`, error);
+        throw new Error(`Error al eliminar hero: ${error.message}`);
       }
-
-      // Eliminar imágenes
-      if (hero.imageUrl) {
-        await this.deleteImage(hero.imageUrl);
-      }
-
-      if (hero.mobileImageUrl) {
-        await this.deleteImage(hero.mobileImageUrl);
-      }
-
-      // Eliminar documento
-      const docRef = doc(this.firestore, this.collectionName, id);
-      await deleteDoc(docRef);
-
-      // Invalidar caché
-      this.invalidateCache();
-
-      // Si era el hero activo, cargar uno nuevo
-      const currentActive = this.activeHero$.getValue();
-      if (currentActive?.id === id) {
-        this.loadActiveHero();
-      }
-    } catch (error: any) {
-      console.error(`Error al eliminar hero ${id}:`, error);
-      throw new Error(`Error al eliminar hero: ${error.message}`);
-    }
+    });
   }
 
   /**
    * Establece un hero como activo
    */
   async setActiveHero(id: string): Promise<void> {
-    try {
-      // Obtener el hero para confirmar que existe
-      const hero = await this.getHeroById(id);
-      if (!hero) {
-        throw new Error(`El hero con ID ${id} no existe.`);
+    return this.runInZone(async () => {
+      try {
+        // Obtener el hero para confirmar que existe
+        const hero = await this.getHeroById(id);
+        if (!hero) {
+          throw new Error(`El hero con ID ${id} no existe.`);
+        }
+
+        // Desactivar todos los héroes actuales
+        const batch = writeBatch(this.firestore);
+
+        // Obtener todos los héroes activos
+        const activeHeroesQuery = query(
+          collection(this.firestore, this.collectionName),
+          where('isActive', '==', true)
+        );
+
+        const activeHeroesSnapshot = await getDocs(activeHeroesQuery);
+
+        // Desactivar todos los héroes activos actuales
+        activeHeroesSnapshot.forEach(docSnapshot => {
+          const heroRef = doc(this.firestore, this.collectionName, docSnapshot.id);
+          // Solo actualizar el campo isActive
+          batch.update(heroRef, { isActive: false });
+        });
+
+        // Activar el nuevo hero
+        const heroRef = doc(this.firestore, this.collectionName, id);
+        batch.update(heroRef, { isActive: true });
+
+        // Ejecutar todas las operaciones
+        await batch.commit();
+
+        // Invalidar caché 
+        this.invalidateCache();
+
+        // Solo después de que la operación se complete exitosamente, actualizar activeHero$
+        this.loadActiveHero();
+
+        console.log('Hero activado correctamente:', id);
+      } catch (error: any) {
+        console.error(`Error al establecer hero activo ${id}:`, error);
+        throw new Error(`Error al establecer hero activo: ${error.message}`);
       }
-
-      // Desactivar todos los héroes actuales
-      const activeHeroesQuery = query(
-        collection(this.firestore, this.collectionName),
-        where('isActive', '==', true)
-      );
-
-      const activeHeroesSnapshot = await getDocs(activeHeroesQuery);
-
-      // Crear un batch para actualizar todo de una vez
-      const batch = writeBatch(this.firestore);
-
-      // Desactivar todos los héroes activos actuales
-      activeHeroesSnapshot.forEach(docSnapshot => {
-        const heroRef = doc(this.firestore, this.collectionName, docSnapshot.id);
-        batch.update(heroRef, { isActive: false });
-      });
-
-      // Activar el nuevo hero
-      const heroRef = doc(this.firestore, this.collectionName, id);
-      batch.update(heroRef, {
-        isActive: true,
-        updatedAt: new Date()
-      });
-
-      // Ejecutar todas las operaciones
-      await batch.commit();
-
-      // Invalidar caché
-      this.invalidateCache();
-
-      // Actualizar el hero activo
-      this.activeHero$.next(hero);
-    } catch (error: any) {
-      console.error(`Error al establecer hero activo ${id}:`, error);
-      throw new Error(`Error al establecer hero activo: ${error.message}`);
-    }
+    });
   }
 
   /**
@@ -395,10 +442,21 @@ export class HeroService {
    */
   private async uploadImage(file: File, type: string): Promise<string> {
     const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-    const path = `heroes/${uniqueId}/${type}.${file.name.split('.').pop()}`;
-    const storageRef = ref(this.storage, path);
-    await uploadBytes(storageRef, file);
-    return getDownloadURL(storageRef);
+    const path = `heroes/${uniqueId}/${type}.webp`; // Siempre usar webp para mejor rendimiento
+    
+    // Usar compressImage del ProductImageService
+    try {
+      // Esta es la solución óptima: usar el servicio existente
+      const result = await this.imageService.uploadCompressedImage(path, file);
+      return result.url;
+    } catch (error) {
+      console.error('Error al comprimir imagen con ProductImageService:', error);
+      
+      // Fallback a la implementación original si algo falla
+      const storageRef = ref(this.storage, path);
+      await uploadBytes(storageRef, file);
+      return getDownloadURL(storageRef);
+    }
   }
 
   /**
@@ -406,9 +464,7 @@ export class HeroService {
    */
   private async deleteImage(imageUrl: string): Promise<void> {
     try {
-      // Extraer la ruta del storage de la URL
-      const storageRef = ref(this.storage, this.getPathFromUrl(imageUrl));
-      await deleteObject(storageRef);
+      await this.imageService.deleteImageIfExists(imageUrl);
     } catch (error) {
       console.warn('No se pudo eliminar la imagen:', error);
     }
@@ -425,16 +481,16 @@ export class HeroService {
     const startIndex = decodedUrl.indexOf(startToken) + startToken.length;
     const endIndex = decodedUrl.indexOf(tokenEnd, startIndex);
     const bucketName = decodedUrl.substring(startIndex, endIndex);
-    
+
     let pathStartIndex = decodedUrl.indexOf(tokenEnd) + tokenEnd.length;
     let fullPath = decodedUrl.substring(pathStartIndex);
-    
+
     // Remover query parameters
     const questionMarkIndex = fullPath.indexOf('?');
     if (questionMarkIndex !== -1) {
       fullPath = fullPath.substring(0, questionMarkIndex);
     }
-    
+
     return fullPath;
   }
 
@@ -442,6 +498,7 @@ export class HeroService {
    * Invalida la caché de héroes
    */
   private invalidateCache(): void {
+    console.log('Invalidando caché de héroes');
     this.heroesCache$ = undefined;
   }
 
@@ -483,23 +540,23 @@ export class HeroService {
    */
   private convertToDate(value: any): Date | undefined {
     if (!value) return undefined;
-    
+
     try {
       // Si es un timestamp de Firestore
       if (value && typeof value.toDate === 'function') {
         return value.toDate();
       }
-      
+
       // Si es un timestamp numérico
       if (typeof value === 'number') {
         return new Date(value);
       }
-      
+
       // Si ya es un objeto Date
       if (value instanceof Date) {
         return value;
       }
-      
+
       // Si es un string que representa una fecha
       if (typeof value === 'string') {
         const date = new Date(value);
@@ -510,7 +567,7 @@ export class HeroService {
     } catch (error) {
       console.error('Error al convertir a fecha:', error);
     }
-    
+
     return undefined;
   }
 }

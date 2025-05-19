@@ -5,6 +5,20 @@
     z-index: 2;
 }
 
+/* Solución para cambiar el color del tab activo a negro */
+::ng-deep .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: black !important;
+}
+
+::ng-deep .ant-tabs-ink-bar {
+    background-color: black !important;
+}
+
+/* Si quieres cambiar también el color al hacer hover */
+::ng-deep .ant-tabs-tab:hover {
+    color: #333 !important;
+}
+
 .content-section {
     max-width: 1200px;
     margin: 0 auto;
@@ -51,7 +65,8 @@
     opacity: 0.9;
 }
 
-.subtitle:hover, .title:hover {
+.subtitle:hover,
+.title:hover {
     background: linear-gradient(90deg,
             #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
     background-size: 300% 300%;

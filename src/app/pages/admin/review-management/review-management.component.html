@@ -1,0 +1,67 @@
+<div class="admin-header">
+    <h2>Gestión de Reseñas</h2>
+    <button nz-button nzType="primary" (click)="loadReviews()">
+        <span nz-icon nzType="reload"></span> Actualizar
+    </button>
+</div>
+
+<nz-table #reviewsTable [nzData]="reviews" [nzLoading]="loading" [nzShowSizeChanger]="true" [nzPageSize]="10"
+    [nzScroll]="{ x: '1100px' }">
+
+    <thead>
+        <tr>
+            <th nzWidth="60px">Avatar</th>
+            <th nzWidth="120px">Nombre</th>
+            <th nzWidth="100px">Ubicación</th>
+            <th nzWidth="120px">Calificación</th>
+            <th nzWidth="250px">Comentario</th>
+            <th nzWidth="110px">Fecha</th>
+            <th nzWidth="100px">Estado</th>
+            <th nzWidth="200px">Acciones</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        <tr *ngFor="let review of reviewsTable.data">
+            <td>
+                <nz-avatar [nzSrc]="review.avatarUrl"></nz-avatar>
+            </td>
+            <td>{{ review.name }}</td>
+            <td>{{ review.location }}</td>
+            <td>
+                <nz-rate [ngModel]="review.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
+            </td>
+            <td class="review-text-cell">
+                <div class="truncated-text">{{ review.text }}</div>
+            </td>
+            <td>{{ formatDate(review.createdAt) }}</td>
+            <td>
+                <nz-tag [nzColor]="review.approved ? 'success' : 'warning'">
+                    {{ review.approved ? 'Aprobada' : 'Pendiente' }}
+                </nz-tag>
+            </td>
+            <td>
+                <button nz-button nzType="primary" nzSize="small" (click)="viewReviewDetails(review)">
+                    Ver
+                </button>
+                <ng-container *ngIf="!review.approved">
+                    <button nz-button nzType="default" nzSize="small" (click)="approveReview(review.id!)"
+                        style="margin-left: 8px;">
+                        Aprobar
+                    </button>
+                </ng-container>
+                <ng-container *ngIf="review.approved">
+                    <button nz-button nzType="default" nzSize="small" (click)="rejectReview(review.id!)"
+                        style="margin-left: 8px;">
+                        Rechazar
+                    </button>
+                </ng-container>
+                <button nz-button nzType="primary" nzDanger nzSize="small" nz-popconfirm
+                    nzPopconfirmTitle="¿Estás seguro de eliminar esta reseña?" nzPopconfirmPlacement="topRight"
+                    (nzOnConfirm)="deleteReview(review.id!)" style="margin-left: 8px;">
+                    Eliminar
+                </button>
+            </td>
+        </tr>
+    </tbody>
+</nz-table>

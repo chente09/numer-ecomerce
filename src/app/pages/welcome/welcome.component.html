@@ -234,16 +234,20 @@
 </section>
 
 
-<!-- Sección de Testimonios y Reseñas -->
+<!-- Sección de Testimonios y Reseñas (Modificada) -->
 <section #resenas id="resenas" class="testimonials-section">
     <div class="container">
         <h2 class="section-title" style="color: aliceblue;">Lo que dicen nuestros clientes</h2>
-        <div class="testimonials-carousel">
-            <nz-carousel nzAutoPlay>
+        <div class="testimonials-carousel" @fadeIn>
+            <div *ngIf="testimonialsLoading" class="testimonial-loading">
+                <nz-spin nzSize="large"></nz-spin>
+            </div>
+            <nz-carousel nzAutoPlay *ngIf="!testimonialsLoading && testimonials && testimonials.length > 0">
                 <div nz-carousel-content *ngFor="let testimonial of testimonials" class="testimonial-slide">
                     <div class="testimonial-card">
-                        <div class="testimonial-rating">
-                            <nz-rate [ngModel]="testimonial.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
+                        <div class="product-rating">
+                            <nz-rate [ngModel]="testimonial.rating" nzDisabled [nzAllowHalf]="true"
+                                class="large"></nz-rate>
                         </div>
                         <p class="testimonial-text">"{{ testimonial.text }}"</p>
                         <div class="testimonial-author">
@@ -256,6 +260,18 @@
                     </div>
                 </div>
             </nz-carousel>
+            <!-- Mostrar mensaje cuando no hay testimonios y no está cargando -->
+            <div *ngIf="!testimonialsLoading && (!testimonials || testimonials.length === 0)" class="testimonial-empty">
+                <p>No hay reseñas disponibles en este momento.</p>
+            </div>
+
+        </div>
+
+        <!-- Botón unificado para ir a reseñas -->
+        <div class="testimonials-action">
+            <button routerLink="/review-form">
+                Ver y compartir reseñas
+            </button>
         </div>
     </div>
 </section>
@@ -298,8 +314,6 @@
         </div>
     </div>
 </section>
-
-
 
 <!-- Sección de Tendencias y Novedades -->
 <section class="trends-section">
@@ -375,9 +389,9 @@
                                         <span class="current-price">${{ product.price.toFixed(2) }}</span>
                                     </p>
                                     <div class="product-rating">
-                                    <nz-rate [ngModel]="product.name" nzDisabled [nzAllowHalf]="true" class="large">
-                                    </nz-rate>
-                                </div>
+                                        <nz-rate [ngModel]="product.name" nzDisabled [nzAllowHalf]="true" class="large">
+                                        </nz-rate>
+                                    </div>
                                 </div>
                             </div>
                         </div>
