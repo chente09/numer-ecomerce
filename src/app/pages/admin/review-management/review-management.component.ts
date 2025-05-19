@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzModalModule } from 'ng-zorro-antd/modal';
@@ -12,6 +12,10 @@ import { NzModalService } from 'ng-zorro-antd/modal';
 import { ReviewService } from '../../../services/review/review.service';
 import { Review } from '../../../models/models';
 import { FormsModule } from '@angular/forms';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 
 @Component({
@@ -25,7 +29,11 @@ import { FormsModule } from '@angular/forms';
     NzTagModule,
     NzRateModule,
     NzAvatarModule,
-    FormsModule
+    FormsModule,
+    NzPaginationModule,
+    NzSpinModule,
+    NzDropDownModule,
+    NzIconModule
   ],
   templateUrl: './review-management.component.html',
   styleUrl: './review-management.component.css'
@@ -35,16 +43,37 @@ export class ReviewManagementComponent implements OnInit {
   reviews: Review[] = [];
   loading = true;
 
+  fallbackImageUrl = 'assets/default-avatar.png';
+  isMobileView = false;
+
   constructor(
     private reviewService: ReviewService,
     private message: NzMessageService,
     private modal: NzModalService
-  ) { }
+  ) { 
+    this.checkScreenSize();
+  }
 
   ngOnInit(): void {
     this.loadReviews();
   }
 
+  // Método para manejar errores de carga de avatar
+  handleImageError(event: Event): void {
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.src = this.fallbackImageUrl;
+  }
+  
+  // Detectar cambios de tamaño de pantalla
+  @HostListener('window:resize', ['$event'])
+  onResize() {
+    this.checkScreenSize();
+  }
+  
+  checkScreenSize() {
+    this.isMobileView = window.innerWidth <= 768;
+  }
+  
   loadReviews(): void {
     this.loading = true;
     this.reviewService.getAllReviews().subscribe({

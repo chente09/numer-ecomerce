@@ -1,42 +1,154 @@
 <nz-card nzTitle="Administrar Banners" class="mb-4">
     <div class="action-buttons">
-        <button nz-button nzType="primary" (click)="openModal()">Nuevo Banner</button>
+        <button nz-button nzType="primary" (click)="openModal()">
+            <span nz-icon nzType="plus"></span>
+            <span>Nuevo Banner</span>
+        </button>
     </div>
 </nz-card>
 
-<nz-table #tabla [nzData]="heroes" [nzBordered]="true" [nzLoading]="loading" [nzShowPagination]="true" [nzPageSize]="5">
-    <thead>
-        <tr>
-            <th nzWidth="200px">Imagen</th>
-            <th>Título</th>
-            <th>Botón</th>
-            <th nzWidth="110px">Activo</th>
-            <th nzWidth="110px">Orden</th>
-            <th nzWidth="180px">Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        @for (hero of tabla.data; track hero.id) {
-        <tr [class.active-row]="hero.isActive">
-            <td>
-                <div class="image-preview-cell">
-                    <img [src]="hero.imageUrl" class="banner-image" />
+<!-- Vista de tabla para pantallas medianas y grandes -->
+<div class="table-responsive table-view-desktop">
+    <nz-table #tabla [nzData]="heroes" [nzBordered]="true" [nzLoading]="loading" [nzShowPagination]="true"
+        [nzPageSize]="5">
+        <thead>
+            <tr>
+                <th nzWidth="200px">Imagen</th>
+                <th>Título</th>
+                <th>Botón</th>
+                <th nzWidth="110px">Activo</th>
+                <th nzWidth="110px">Orden</th>
+                <th nzWidth="180px">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (hero of tabla.data; track hero.id) {
+            <tr [class.active-row]="hero.isActive">
+                <td>
+                    <div class="image-preview-cell">
+                        <img [src]="hero.imageUrl" class="banner-image" alt="Banner"
+                            (error)="handleImageError($event)" />
+                        @if (hero.isGif) {
+                        <nz-badge nzStatus="processing" nzText="GIF" class="gif-badge"></nz-badge>
+                        }
+                        @if (hero.mobileImageUrl) {
+                        <span nz-tooltip nzTooltipTitle="Tiene versión móvil" class="mobile-badge">
+                            <i nz-icon nzType="mobile" nzTheme="outline"></i>
+                        </span>
+                        }
+                    </div>
+                </td>
+                <td>
+                    <div class="title-cell">
+                        <div class="hero-title">{{ hero.title }}</div>
+                        <div class="hero-subtitle">{{ hero.subtitle }}</div>
+
+                        @if (hero.startDate || hero.endDate) {
+                        <div class="dates-info">
+                            <i nz-icon nzType="calendar" nzTheme="outline"></i>
+                            @if (hero.startDate) {
+                            <span>Desde: {{ formatDate(hero.startDate) }}</span>
+                            }
+                            @if (hero.endDate) {
+                            <span>Hasta: {{ formatDate(hero.endDate) }}</span>
+                            }
+                        </div>
+                        }
+                    </div>
+                </td>
+                <td>
+                    <div class="cta-cell">
+                        <div class="cta-text">{{ hero.ctaText }}</div>
+                        <div class="cta-link text-truncate">
+                            <i nz-icon nzType="link" nzTheme="outline"></i>
+                            {{ hero.ctaLink }}
+                        </div>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <i [nz-tooltip] [nzTooltipTitle]="hero.isActive ? 'Activo' : 'Inactivo'" nz-icon
+                        [nzType]="hero.isActive ? 'check-circle' : 'close-circle'" [nzTheme]="'fill'"
+                        [style.color]="hero.isActive ? '#52c41a' : '#f5222d'">
+                    </i>
+                </td>
+                <td class="text-center order-cell">
+                    <div class="order-controls">
+                        <span class="order-number">{{ hero.order }}</span>
+                        <div class="order-buttons">
+                            <button nz-button nzType="text" nzSize="small" (click)="moveUp(hero)"
+                                [disabled]="heroes.indexOf(hero) === 0">
+                                <i nz-icon nzType="up" nzTheme="outline"></i>
+                            </button>
+                            <button nz-button nzType="text" nzSize="small" (click)="moveDown(hero)"
+                                [disabled]="heroes.indexOf(hero) === heroes.length - 1">
+                                <i nz-icon nzType="down" nzTheme="outline"></i>
+                            </button>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        @if (!hero.isActive) {
+                        <nz-tooltip nzTitle="Establecer como activo">
+                            <button nz-button nzType="default" nzSize="small" nz-tooltip (click)="setActive(hero.id!)">
+                                <i nz-icon nzType="thunderbolt" nzTheme="outline"></i>
+                            </button>
+                        </nz-tooltip>
+                        }
+                        <button nz-button nzType="default" nzSize="small" (click)="editHero(hero)">Editar</button>
+                        <button nz-button nzType="default" nzDanger nzSize="small" nz-popconfirm
+                            nzPopconfirmTitle="¿Seguro que quieres eliminar este banner?"
+                            (nzOnConfirm)="deleteHero(hero.id)" nzPopconfirmOkText="Sí" nzPopconfirmCancelText="No">
+                            Eliminar
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            }
+        </tbody>
+    </nz-table>
+</div>
+
+<!-- Vista de tarjetas para móviles muy pequeños (opcional) -->
+<div class="card-view-mobile">
+    <div *ngIf="loading" class="loading-container">
+        <nz-spin nzSize="large"></nz-spin>
+    </div>
+
+    <div *ngIf="!loading">
+        <div *ngFor="let hero of heroes" class="hero-card-mobile" [class.active-row]="hero.isActive">
+            <div class="hero-card-header">
+                <div class="hero-card-title">{{ hero.title }}</div>
+                <i [nz-tooltip] [nzTooltipTitle]="hero.isActive ? 'Activo' : 'Inactivo'" nz-icon
+                    [nzType]="hero.isActive ? 'check-circle' : 'close-circle'" [nzTheme]="'fill'"
+                    [style.color]="hero.isActive ? '#52c41a' : '#f5222d'">
+                </i>
+            </div>
+
+            <div class="hero-card-body">
+                <div class="image-preview-cell" style="width: 100%; margin-bottom: 12px;">
+                    <img [src]="hero.imageUrl" alt="Banner" (error)="handleImageError($event)"
+                        style="width: 100%; height: auto; max-height: 80px; object-fit: contain;" />
                     @if (hero.isGif) {
                     <nz-badge nzStatus="processing" nzText="GIF" class="gif-badge"></nz-badge>
                     }
                     @if (hero.mobileImageUrl) {
-                    <nz-tooltip nzTitle="'Tiene versión móvil'">
-                        <span nz-tooltip class="mobile-badge">
-                            <i nz-icon nzType="mobile" nzTheme="outline"></i>
-                        </span>
-                    </nz-tooltip>
+                    <span nz-tooltip nzTooltipTitle="Tiene versión móvil" class="mobile-badge">
+                        <i nz-icon nzType="mobile" nzTheme="outline"></i>
+                    </span>
                     }
                 </div>
-            </td>
-            <td>
-                <div class="title-cell">
-                    <div class="hero-title">{{ hero.title }}</div>
+
+                <div class="hero-card-info">
                     <div class="hero-subtitle">{{ hero.subtitle }}</div>
+
+                    <div class="cta-cell">
+                        <div class="cta-text">{{ hero.ctaText }}</div>
+                        <div class="cta-link text-truncate">
+                            <i nz-icon nzType="link" nzTheme="outline"></i>
+                            {{ hero.ctaLink }}
+                        </div>
+                    </div>
 
                     @if (hero.startDate || hero.endDate) {
                     <div class="dates-info">
@@ -49,65 +161,56 @@
                         }
                     </div>
                     }
-                </div>
-            </td>
-            <td>
-                <div class="cta-cell">
-                    <div class="cta-text">{{ hero.ctaText }}</div>
-                    <div class="cta-link text-truncate">
-                        <i nz-icon nzType="link" nzTheme="outline"></i>
-                        {{ hero.ctaLink }}
-                    </div>
-                </div>
-            </td>
-            <td class="text-center">
-                <i [nz-tooltip] [nzTooltipTitle]="hero.isActive ? 'Activo' : 'Inactivo'" nz-icon
-                    [nzType]="hero.isActive ? 'check-circle' : 'close-circle'" [nzTheme]="'fill'"
-                    [style.color]="hero.isActive ? '#52c41a' : '#f5222d'">
-                </i>
-            </td>
-            <td class="text-center order-cell">
-                <div class="order-controls">
-                    <span class="order-number">{{ hero.order }}</span>
-                    <div class="order-buttons">
-                        <button nz-button nzType="text" nzSize="small" (click)="moveUp(hero)"
-                            [disabled]="heroes.indexOf(hero) === 0">
-                            <i nz-icon nzType="up" nzTheme="outline"></i>
-                        </button>
-                        <button nz-button nzType="text" nzSize="small" (click)="moveDown(hero)"
-                            [disabled]="heroes.indexOf(hero) === heroes.length - 1">
-                            <i nz-icon nzType="down" nzTheme="outline"></i>
-                        </button>
-                    </div>
-                </div>
-            </td>
-            <td>
-                <div class="action-buttons">
-                    @if (!hero.isActive) {
-                    <nz-tooltip nzTitle="Establecer como activo">
-                        <button nz-button nzType="default" nzSize="small" nz-tooltip (click)="setActive(hero.id!)">
-                            <i nz-icon nzType="thunderbolt" nzTheme="outline"></i>
-                        </button>
-                    </nz-tooltip>
-                    }
-                    <button nz-button nzType="default" nzSize="small" (click)="editHero(hero)">Editar</button>
-                    <button nz-button nzType="default" nzDanger nzSize="small" nz-popconfirm
-                        nzPopconfirmTitle="¿Seguro que quieres eliminar este banner?"
-                        (nzOnConfirm)="deleteHero(hero.id)" nzPopconfirmOkText="Sí" nzPopconfirmCancelText="No">
-                        Eliminar
-                    </button>
-                </div>
-            </td>
-        </tr>
-        }
-    </tbody>
-</nz-table>
 
+                    <div class="order-controls"
+                        style="flex-direction: row; justify-content: flex-start; margin-top: 8px;">
+                        <span>Orden: </span>
+                        <span class="order-number">{{ hero.order }}</span>
+                        <div class="order-buttons" style="margin-left: 8px;">
+                            <button nz-button nzType="text" nzSize="small" (click)="moveUp(hero)"
+                                [disabled]="heroes.indexOf(hero) === 0">
+                                <i nz-icon nzType="up" nzTheme="outline"></i>
+                            </button>
+                            <button nz-button nzType="text" nzSize="small" (click)="moveDown(hero)"
+                                [disabled]="heroes.indexOf(hero) === heroes.length - 1">
+                                <i nz-icon nzType="down" nzTheme="outline"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-card-footer">
+                @if (!hero.isActive) {
+                <button nz-button nzType="default" nzSize="small" (click)="setActive(hero.id!)">
+                    <i nz-icon nzType="thunderbolt" nzTheme="outline"></i> Activar
+                </button>
+                }
+                <button nz-button nzType="primary" nzSize="small" (click)="editHero(hero)">
+                    <i nz-icon nzType="edit" nzTheme="outline"></i> Editar
+                </button>
+                <button nz-button nzType="primary" nzDanger nzSize="small" nz-popconfirm
+                    nzPopconfirmTitle="¿Seguro que quieres eliminar este banner?" (nzOnConfirm)="deleteHero(hero.id)"
+                    nzPopconfirmOkText="Sí" nzPopconfirmCancelText="No">
+                    <i nz-icon nzType="delete" nzTheme="outline"></i> Eliminar
+                </button>
+            </div>
+        </div>
+
+        <!-- Paginación para móvil -->
+        <div style="display: flex; justify-content: center; margin-top: 16px;">
+            <nz-pagination [nzPageIndex]="1" [nzTotal]="heroes.length" [nzPageSize]="5" nzSimple>
+            </nz-pagination>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para crear/editar banner -->
 <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Banner' : 'Nuevo Banner'" [nzOkLoading]="saving"
-    (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="900">
+    (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="900" [nzFooter]="modalFooter">
     <ng-container *nzModalContent>
         <form nz-form [nzLayout]="'vertical'">
-            <div nz-row [nzGutter]="16">
+            <div nz-row [nzGutter]="[16, 0]">
                 <!-- Columna izquierda -->
                 <div nz-col [nzXs]="24" [nzMd]="12">
                     <nz-form-item>
@@ -144,7 +247,7 @@
                     </nz-form-item>
 
                     <div nz-row [nzGutter]="16">
-                        <div nz-col [nzSpan]="12">
+                        <div nz-col [nzXs]="24" [nzSm]="12">
                             <nz-form-item>
                                 <nz-form-label>Color de fondo</nz-form-label>
                                 <nz-form-control>
@@ -153,7 +256,7 @@
                                 </nz-form-control>
                             </nz-form-item>
                         </div>
-                        <div nz-col [nzSpan]="12">
+                        <div nz-col [nzXs]="24" [nzSm]="12">
                             <nz-form-item>
                                 <nz-form-label>Color de texto</nz-form-label>
                                 <nz-form-control>
@@ -166,8 +269,8 @@
 
                 <!-- Columna derecha -->
                 <div nz-col [nzXs]="24" [nzMd]="12">
-                    <div nz-row [nzGutter]="16">
-                        <div nz-col [nzSpan]="8">
+                    <div nz-row [nzGutter]="[16, 0]">
+                        <div nz-col [nzXs]="24" [nzSm]="8">
                             <nz-form-item>
                                 <nz-form-label>Activo</nz-form-label>
                                 <nz-form-control>
@@ -175,7 +278,7 @@
                                 </nz-form-control>
                             </nz-form-item>
                         </div>
-                        <div nz-col [nzSpan]="8">
+                        <div nz-col [nzXs]="24" [nzSm]="8">
                             <nz-form-item>
                                 <nz-form-label>Es un GIF</nz-form-label>
                                 <nz-form-control>
@@ -183,7 +286,7 @@
                                 </nz-form-control>
                             </nz-form-item>
                         </div>
-                        <div nz-col [nzSpan]="8">
+                        <div nz-col [nzXs]="24" [nzSm]="8">
                             <nz-form-item>
                                 <nz-form-label>Orden</nz-form-label>
                                 <nz-form-control>
@@ -195,7 +298,7 @@
                     </div>
 
                     <div nz-row [nzGutter]="16">
-                        <div nz-col [nzSpan]="12">
+                        <div nz-col [nzXs]="24" [nzSm]="12">
                             <nz-form-item>
                                 <nz-form-label>Fecha de inicio</nz-form-label>
                                 <nz-form-control>
@@ -204,7 +307,7 @@
                                 </nz-form-control>
                             </nz-form-item>
                         </div>
-                        <div nz-col [nzSpan]="12">
+                        <div nz-col [nzXs]="24" [nzSm]="12">
                             <nz-form-item>
                                 <nz-form-label>Fecha de fin</nz-form-label>
                                 <nz-form-control>
@@ -252,6 +355,14 @@
             </div>
         </form>
     </ng-container>
-</nz-modal>
 
-<app-review-management></app-review-management>
+    <!-- Footer personalizado para el modal responsivo -->
+    <ng-template #modalFooter>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+            <button nz-button (click)="closeModal()" [disabled]="saving">Cancelar</button>
+            <button nz-button nzType="primary" (click)="handleSubmit()" [nzLoading]="saving">
+                {{ isEditMode ? 'Actualizar' : 'Guardar' }}
+            </button>
+        </div>
+    </ng-template>
+</nz-modal>

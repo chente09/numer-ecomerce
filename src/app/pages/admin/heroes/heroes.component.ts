@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -18,9 +18,13 @@ import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzColorPickerModule } from 'ng-zorro-antd/color-picker';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 
-import { HeroService, HeroItem } from '../../../services/admin/hero/hero.service';
+import {
+  HeroService,
+  HeroItem,
+} from '../../../services/admin/hero/hero.service';
 import { Subscription } from 'rxjs';
-import { ReviewManagementComponent } from "../review-management/review-management.component";
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 
 @Component({
   selector: 'app-heroes',
@@ -43,10 +47,11 @@ import { ReviewManagementComponent } from "../review-management/review-managemen
     NzBadgeModule,
     NzColorPickerModule,
     NzInputNumberModule,
-    ReviewManagementComponent
-],
+    NzPaginationModule,
+    NzSpinModule,
+  ],
   templateUrl: './heroes.component.html',
-  styleUrls: ['./heroes.component.css']
+  styleUrls: ['./heroes.component.css'],
 })
 export class HeroesComponent implements OnInit, OnDestroy {
   heroes: HeroItem[] = [];
@@ -65,15 +70,45 @@ export class HeroesComponent implements OnInit, OnDestroy {
   mainImageError: string | null = null;
   mobileImageError: string | null = null;
 
+  isMobileView = false;
+  currentViewportWidth = 0;
+  fallbackImageUrl = 'assets/placeholder.png';
+
   private subscription = new Subscription();
 
   constructor(
     private heroService: HeroService,
     private message: NzMessageService
-  ) { }
+  ) {
+    this.detectViewportSize();
+  }
+
+  // Detectar cambios de tamaño de ventana
+  @HostListener('window:resize', ['$event'])
+  onResize(event: any) {
+    this.detectViewportSize();
+  }
+
+  detectScreenSize() {
+    this.isMobileView = window.innerWidth <= 480;
+  }
+
+  // Método para determinar el tamaño del viewport
+  detectViewportSize() {
+    this.currentViewportWidth = window.innerWidth;
+    this.isMobileView = this.currentViewportWidth <= 480;
+  }
+
+  // Método para manejar errores de carga de imágenes
+  handleImageError(event: Event): void {
+    const imgElement = event.target as HTMLImageElement;
+    imgElement.src = 'assets/placeholder.png'; // Reemplaza con tu imagen de fallback
+    imgElement.onerror = null;
+  }
 
   ngOnInit(): void {
     this.fetchHeroes();
+    this.detectScreenSize();
   }
 
   fetchHeroes(): void {
@@ -92,14 +127,21 @@ export class HeroesComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.message.error('Error al cargar los banners');
           this.loading = false;
-        }
+        },
       })
     );
   }
 
   ngOnDestroy(): void {
-    // Importante: cancelar todas las suscripciones al destruir el componente
+    // Cancelar suscripciones
     this.subscription.unsubscribe();
+
+    // Liberar URLs de objeto
+    [...this.mainFileList, ...this.mobileFileList].forEach((file) => {
+      if (file.url && file.url.startsWith('blob:')) {
+        URL.revokeObjectURL(file.url);
+      }
+    });
   }
 
   openModal(): void {
@@ -107,7 +149,7 @@ export class HeroesComponent implements OnInit, OnDestroy {
     this.form = {
       isActive: false,
       isGif: false,
-      order: this.heroes.length + 1
+      order: this.heroes.length + 1,
     };
     this.mainFileList = [];
     this.mobileFileList = [];
@@ -118,6 +160,19 @@ export class HeroesComponent implements OnInit, OnDestroy {
   }
 
   closeModal(): void {
+    // Liberar URLs de objeto si existen para evitar fugas de memoria
+    this.mainFileList.forEach((file) => {
+      if (file.url && file.url.startsWith('blob:')) {
+        URL.revokeObjectURL(file.url);
+      }
+    });
+
+    this.mobileFileList.forEach((file) => {
+      if (file.url && file.url.startsWith('blob:')) {
+        URL.revokeObjectURL(file.url);
+      }
+    });
+
     this.modalVisible = false;
   }
 
@@ -125,9 +180,12 @@ export class HeroesComponent implements OnInit, OnDestroy {
   beforeUploadMain = (file: NzUploadFile): boolean => {
     this.mainImageError = null;
 
-    const isImage = file.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || '');
+    const isImage =
+      file.type?.startsWith('image/') ||
+      /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || '');
     if (!isImage) {
-      this.mainImageError = 'Solo puedes subir archivos de imagen (.jpg, .png, .gif, .webp)';
+      this.mainImageError =
+        'Solo puedes subir archivos de imagen (.jpg, .png, .gif, .webp)';
       return false;
     }
 
@@ -145,7 +203,10 @@ export class HeroesComponent implements OnInit, OnDestroy {
     }
 
     // Actualizar formulario para GIF automáticamente si el archivo es un GIF
-    if (file.type === 'image/gif' || file.name?.toLowerCase().endsWith('.gif')) {
+    if (
+      file.type === 'image/gif' ||
+      file.name?.toLowerCase().endsWith('.gif')
+    ) {
       this.form.isGif = true;
     }
 
@@ -157,8 +218,8 @@ export class HeroesComponent implements OnInit, OnDestroy {
           uid: `${Date.now()}-${file.name}`,
           name: file.name || 'imagen.jpg',
           status: 'done',
-          url: objectUrl
-        }
+          url: objectUrl,
+        },
       ];
       this.mainImageFile = actualFile;
     } catch (e) {
@@ -173,9 +234,12 @@ export class HeroesComponent implements OnInit, OnDestroy {
   beforeUploadMobile = (file: NzUploadFile): boolean => {
     this.mobileImageError = null;
 
-    const isImage = file.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || '');
+    const isImage =
+      file.type?.startsWith('image/') ||
+      /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || '');
     if (!isImage) {
-      this.mobileImageError = 'Solo puedes subir archivos de imagen (.jpg, .png, .gif, .webp)';
+      this.mobileImageError =
+        'Solo puedes subir archivos de imagen (.jpg, .png, .gif, .webp)';
       return false;
     }
 
@@ -200,8 +264,8 @@ export class HeroesComponent implements OnInit, OnDestroy {
           uid: `${Date.now()}-${file.name}`,
           name: file.name || 'imagen_mobile.jpg',
           status: 'done',
-          url: objectUrl
-        }
+          url: objectUrl,
+        },
       ];
       this.mobileImageFile = actualFile;
     } catch (e) {
@@ -232,8 +296,15 @@ export class HeroesComponent implements OnInit, OnDestroy {
   };
 
   async handleSubmit(): Promise<void> {
-    if (!this.form.title || !this.form.subtitle || !this.form.ctaText || !this.form.ctaLink) {
-      this.message.warning('Los campos de título, subtítulo, texto y enlace del botón son obligatorios.');
+    if (
+      !this.form.title ||
+      !this.form.subtitle ||
+      !this.form.ctaText ||
+      !this.form.ctaLink
+    ) {
+      this.message.warning(
+        'Los campos de título, subtítulo, texto y enlace del botón son obligatorios.'
+      );
       return;
     }
 
@@ -276,7 +347,7 @@ export class HeroesComponent implements OnInit, OnDestroy {
       ...hero,
       // Convertir fechas a objetos Date si vienen como timestamps
       startDate: hero.startDate ? new Date(hero.startDate) : undefined,
-      endDate: hero.endDate ? new Date(hero.endDate) : undefined
+      endDate: hero.endDate ? new Date(hero.endDate) : undefined,
     };
     this.editingId = hero.id ?? null;
     this.isEditMode = true;
@@ -289,8 +360,8 @@ export class HeroesComponent implements OnInit, OnDestroy {
           uid: '-1',
           name: 'imagen actual',
           status: 'done',
-          url: hero.imageUrl
-        }
+          url: hero.imageUrl,
+        },
       ];
     } else {
       this.mainFileList = [];
@@ -303,8 +374,8 @@ export class HeroesComponent implements OnInit, OnDestroy {
           uid: '-1',
           name: 'imagen móvil actual',
           status: 'done',
-          url: hero.mobileImageUrl
-        }
+          url: hero.mobileImageUrl,
+        },
       ];
     } else {
       this.mobileFileList = [];
@@ -327,18 +398,23 @@ export class HeroesComponent implements OnInit, OnDestroy {
       this.message.success('Banner establecido como activo');
       this.fetchHeroes();
     } catch (error: any) {
-      this.message.error(error.message || 'Error al establecer el banner como activo');
+      this.message.error(
+        error.message || 'Error al establecer el banner como activo'
+      );
     }
   }
 
   // Método auxiliar para mover un héroe hacia arriba (menor orden)
   async moveUp(hero: HeroItem): Promise<void> {
-    const index = this.heroes.findIndex(h => h.id === hero.id);
+    const index = this.heroes.findIndex((h) => h.id === hero.id);
     if (index <= 0) return; // Ya está en la primera posición
 
-    const newOrder = [...this.heroes.map(h => h.id!)];
+    const newOrder = [...this.heroes.map((h) => h.id!)];
     // Intercambiar posiciones
-    [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
+    [newOrder[index], newOrder[index - 1]] = [
+      newOrder[index - 1],
+      newOrder[index],
+    ];
 
     try {
       await this.heroService.updateHeroesOrder(newOrder);
@@ -351,12 +427,15 @@ export class HeroesComponent implements OnInit, OnDestroy {
 
   // Método auxiliar para mover un héroe hacia abajo (mayor orden)
   async moveDown(hero: HeroItem): Promise<void> {
-    const index = this.heroes.findIndex(h => h.id === hero.id);
+    const index = this.heroes.findIndex((h) => h.id === hero.id);
     if (index >= this.heroes.length - 1) return; // Ya está en la última posición
 
-    const newOrder = [...this.heroes.map(h => h.id!)];
+    const newOrder = [...this.heroes.map((h) => h.id!)];
     // Intercambiar posiciones
-    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    [newOrder[index], newOrder[index + 1]] = [
+      newOrder[index + 1],
+      newOrder[index],
+    ];
 
     try {
       await this.heroService.updateHeroesOrder(newOrder);
@@ -371,5 +450,9 @@ export class HeroesComponent implements OnInit, OnDestroy {
   formatDate(date?: Date): string {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString();
+  }
+
+  trackById(index: number, item: any): string {
+    return item.id;
   }
 }

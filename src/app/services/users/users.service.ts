@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { 
+import {
   Auth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -9,8 +9,8 @@ import {
   User,
   deleteUser,
   authState,
-  setPersistence, 
-  browserSessionPersistence, 
+  setPersistence,
+  browserSessionPersistence,
   browserLocalPersistence,
   sendEmailVerification,
   sendPasswordResetEmail
@@ -41,15 +41,15 @@ export class UsersService {
     });
   }
 
-   // Método para guardar datos del usuario en Firestore
+  // Método para guardar datos del usuario en Firestore
   private async saveUserData(user: User): Promise<void> {
     try {
       const db = getFirestore();
       const userRef = doc(db, 'users', user.uid);
-      
+
       // Verificar si el usuario ya existe
       const userSnap = await getDoc(userRef);
-      
+
       if (!userSnap.exists()) {
         // Crear un nuevo registro si no existe
         await setDoc(userRef, {
@@ -74,11 +74,11 @@ export class UsersService {
   }
 
   // Métodos de registro y autenticación
-  register({email, password}: LoginInfo): Promise<any> {
+  register({ email, password }: LoginInfo): Promise<any> {
     return createUserWithEmailAndPassword(this.auth, email, password);
   }
 
-  login({email, password}: LoginInfo): Promise<any> {
+  login({ email, password }: LoginInfo): Promise<any> {
     return signInWithEmailAndPassword(this.auth, email, password);
   }
 
@@ -86,9 +86,9 @@ export class UsersService {
     const result = await signInWithPopup(this.auth, new GoogleAuthProvider());
     // No necesitamos llamar a saveUserData aquí porque se dispara automáticamente con la suscripción
     return result;
-  }   
+  }
 
-  logout(): Promise<void> { 
+  logout(): Promise<void> {
     return signOut(this.auth);
   }
 
@@ -136,7 +136,7 @@ export class UsersService {
   async getUserRoles(): Promise<string[]> {
     const user = this.auth.currentUser;
     if (!user) return [];
-    
+
     try {
       const db = getFirestore();
       const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -155,7 +155,7 @@ export class UsersService {
   // Eliminación de usuarios
   async deleteRegister(uid: string): Promise<any> {
     const currentUser = this.auth.currentUser;
-    
+
     // Solo permite eliminar si es el mismo usuario o es un admin
     if (currentUser?.uid === uid || await this.hasRole('admin')) {
       if (currentUser?.uid === uid) {
@@ -170,7 +170,7 @@ export class UsersService {
         return Promise.resolve();
       }
     }
-    
+
     return Promise.reject('No autorizado para eliminar este usuario');
   }
 
@@ -178,14 +178,14 @@ export class UsersService {
   async canAccessRoute(route: string): Promise<boolean> {
     // Implementa lógica basada en roles para verificar acceso
     // Ejemplo simple:
-    const routePermissions: {[key: string]: string[]} = {
+    const routePermissions: { [key: string]: string[] } = {
       '/admin': ['admin'],
       '/procesos': ['admin', 'editor'],
       // Añade otras rutas según sea necesario
     };
 
     if (!routePermissions[route]) return true; // Si no hay restricciones específicas
-    
+
     const roles = await this.getUserRoles();
     return routePermissions[route].some(role => roles.includes(role));
   }
@@ -202,10 +202,10 @@ export class UsersService {
         email: user.email,
         action,
         resource,
-        details,
+        details: details === undefined ? null : details,
         timestamp: new Date()
       };
-      
+
       // Añadir a una colección de logs
       const logCollection = collection(db, 'user_activity_logs');
       await addDoc(logCollection, logData);
@@ -213,4 +213,56 @@ export class UsersService {
       console.error('Error registrando actividad:', error);
     }
   }
+
+  // Guardar perfil de usuario
+  async saveUserProfile(userData: any): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No hay usuario autenticado');
+
+    try {
+      const db = getFirestore();
+      const userRef = doc(db, 'users', user.uid);
+
+      // Actualizar datos de usuario
+      await setDoc(userRef, userData, { merge: true });
+
+      // Registrar actividad
+      await this.logUserActivity('update_profile', 'user_data');
+    } catch (error) {
+      console.error('Error guardando perfil:', error);
+      throw error;
+    }
+  }
+
+  // Obtener datos completos del perfil
+  async getUserProfile(): Promise<any> {
+    const user = this.auth.currentUser;
+    if (!user) return null;
+
+    try {
+      const db = getFirestore();
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        return userSnap.data();
+      }
+      return null;
+    } catch (error) {
+      console.error('Error obteniendo perfil:', error);
+      throw error;
+    }
+  }
+
+  // Verificar si el perfil está completo
+  async isProfileComplete(): Promise<boolean> {
+    try {
+      const userData = await this.getUserProfile();
+      return userData?.profileCompleted === true;
+    } catch (error) {
+      console.error('Error verificando perfil:', error);
+      return false;
+    }
+  }
+
 }

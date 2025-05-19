@@ -1,33 +1,36 @@
-/* admin-layout.component.scss */
+/* admin-layout.component.css */
 .admin-layout {
     min-height: 100vh;
 }
 
+/* Sidebar Styles */
 .sidebar-logo {
     position: relative;
     height: 64px;
-    padding-left: 24px;
+    padding-left: 16px;
     overflow: hidden;
     line-height: 64px;
     background: #001529;
     transition: all .3s;
+    display: flex;
+    align-items: center;
+}
 
-    img {
-        display: inline-block;
-        height: 32px;
-        width: 32px;
-        vertical-align: middle;
-        margin-right: 8px;
-    }
+.sidebar-logo img {
+    display: inline-block;
+    height: 32px;
+    width: 32px;
+    vertical-align: middle;
+}
 
-    h1 {
-        display: inline-block;
-        margin: 0 0 0 8px;
-        color: #fff;
-        font-weight: 600;
-        font-size: 18px;
-        vertical-align: middle;
-    }
+.sidebar-logo h1 {
+    display: inline-block;
+    margin: 0 0 0 12px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 18px;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 
 .menu-sidebar {
@@ -37,23 +40,40 @@
     box-shadow: 2px 0 6px rgba(0, 21, 41, .35);
 }
 
+/* Header Styles */
 nz-header {
     padding: 0;
     width: 100%;
     z-index: 2;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 21, 41, .08);
+    position: sticky;
+    top: 0;
+}
+
+.header-wrapper {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #fff;
-    box-shadow: 0 1px 4px rgba(0, 21, 41, .08);
+    width: 100%;
+    height: 64px;
+    padding: 0 16px;
 }
 
 .header-trigger {
     height: 64px;
-    padding: 20px 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
     font-size: 20px;
     cursor: pointer;
-    transition: all .3s, padding 0s;
+    transition: all .3s;
+}
+
+.trigger {
+    font-size: 18px;
+    line-height: 64px;
+    padding: 0 24px;
 }
 
 .trigger:hover {
@@ -63,7 +83,6 @@ nz-header {
 .header-actions {
     display: flex;
     align-items: center;
-    padding-right: 24px;
     gap: 16px;
 }
 
@@ -75,21 +94,201 @@ nz-header {
 
 .username {
     font-size: 14px;
+    margin-right: 4px;
+}
+
+/* Mobile menu trigger - hidden by default */
+.mobile-menu-trigger {
+    display: none;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* Breadcrumb container */
+.breadcrumb-container {
+    padding: 16px 24px 0;
+    background: #fff;
+}
+
+/* Content Styles */
+.main-content-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 nz-content {
-    margin: 24px;
-    padding: 24px;
-    background: #fff;
-    min-height: 280px;
+    flex: 1;
+    margin: 16px;
 }
 
 .inner-content {
     padding: 24px;
     background: #fff;
-    min-height: 280px;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    min-height: calc(100% - 48px);
 }
 
+/* Footer Styles */
 nz-footer {
     text-align: center;
+    padding: 16px 50px;
+    color: rgba(0, 0, 0, 0.65);
+    font-size: 14px;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.footer-rights {
+    white-space: nowrap;
+}
+
+/* Special Styles */
+.go-to-site {
+    margin-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 10px;
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+    .inner-content {
+        padding: 16px;
+    }
+    
+    nz-content {
+        margin: 12px;
+    }
+    
+    .breadcrumb-container {
+        padding: 12px 16px 0;
+    }
+    
+    .username {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Ocultar el sider por defecto en móviles */
+    .menu-sidebar {
+        position: fixed;
+        z-index: 999;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    /* Mostrar el sider cuando está desplegado */
+    .menu-sidebar:not(.ant-layout-sider-collapsed) {
+        transform: translateX(0);
+    }
+    
+    /* Mostrar el botón móvil y ocultar el normal */
+    .header-trigger {
+        display: none;
+    }
+    
+    .mobile-menu-trigger {
+        display: block;
+    }
+    
+    /* Ajustes para el header */
+    .header-wrapper {
+        padding: 0 12px;
+    }
+    
+    .header-user {
+        gap: 4px;
+    }
+    
+    /* Ocultar el nombre de usuario en pantallas muy pequeñas */
+    .username {
+        max-width: 80px;
+    }
+    
+    /* Ajustes para el contenido */
+    nz-content {
+        margin: 8px;
+    }
+    
+    .inner-content {
+        padding: 12px;
+    }
+    
+    /* Ajustes para el footer */
+    nz-footer {
+        padding: 12px;
+    }
+    
+    .footer-content {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Más ajustes para pantallas muy pequeñas */
+    .inner-content {
+        padding: 8px;
+    }
+    
+    .username {
+        display: none;
+    }
+    
+    nz-footer {
+        font-size: 12px;
+        padding: 8px;
+    }
+    
+    /* Ajustar altura del header para pantallas pequeñas */
+    .header-wrapper {
+        height: 56px;
+    }
+    
+    /* Ajustar espaciado en el sidebar */
+    .sidebar-logo {
+        height: 56px;
+        line-height: 56px;
+    }
+    
+    .sidebar-logo h1 {
+        font-size: 16px;
+    }
+}
+
+/* Overlay para cerrar el menú al hacer clic fuera en móviles */
+.menu-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 998;
+}
+
+@media (max-width: 768px) {
+    .menu-sidebar:not(.ant-layout-sider-collapsed) + .menu-overlay {
+        display: block;
+    }
+}
+
+/* Animaciones y transiciones */
+.menu-sidebar, 
+.inner-content,
+.trigger,
+.header-trigger,
+.mobile-menu-trigger {
+    transition: all 0.3s;
 }

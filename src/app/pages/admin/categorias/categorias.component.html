@@ -1,84 +1,150 @@
-<nz-card nzTitle="Administrar Categorías" class="mb-4">
-    <button nz-button nzType="primary" (click)="openModal()">Nueva Categoría</button>
-</nz-card>
+<div class="categories-container">
+    <!-- Encabezado de la sección -->
+    <nz-card nzTitle="Administrar Categorías" class="mb-4 header-card">
+        <div class="card-actions">
+            <button nz-button nzType="primary" (click)="openModal()">
+                <span nz-icon nzType="plus"></span>
+                <span class="button-text">Nueva Categoría</span>
+            </button>
+        </div>
+    </nz-card>
 
-<nz-table #tabla [nzData]="categories" [nzBordered]="true" [nzLoading]="loading" [nzShowPagination]="true"
-    [nzPageSize]="5">
-    <thead>
-        <tr>
-            <th>Imagen</th>
-            <th>Nombre</th>
-            <th>Descripción</th>
-            <th>Slug</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        @for (cat of tabla.data; track cat.id) {
-        <tr>
-            <td>
-                <img [src]="cat.imageUrl" width="60" style="border-radius: 4px" />
-            </td>
-            <td>{{ cat.name }}</td>
-            <td>{{ cat.description }}</td>
-            <td>{{ cat.slug }}</td>
-            <td>
-                <button nz-button nzType="link" (click)="editCategory(cat)">Editar</button>
-                <nz-popconfirm nzTitle="¿Seguro que quieres eliminar esta categoría?"
-                    (nzOnConfirm)="deleteCategory(cat.id)" nzOkText="Sí" nzCancelText="No">
-                    <button nz-button nzType="link" nzDanger>Eliminar</button>
-                </nz-popconfirm>
-                <button nz-button nzType="link" nzDanger nz-popconfirm
-                    nzPopconfirmTitle="¿Seguro que quieres eliminar?" (nzOnConfirm)="deleteCategory(cat.id)">Eliminar
-                </button>
-            </td>
-        </tr>
-        }
-    </tbody>
-</nz-table>
+    <!-- Mensaje de sin datos - independiente del estado de carga -->
+    <nz-empty *ngIf="categories?.length === 0" nzNotFoundContent="No hay categorías disponibles"
+        [nzNotFoundFooter]="emptyButton">
+    </nz-empty>
+    <ng-template #emptyButton>
+        <button nz-button nzType="primary" (click)="openModal()">Crear primera categoría</button>
+    </ng-template>
 
-<nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Categoría' : 'Nueva Categoría'"
-    [nzOkLoading]="saving" (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()">
-    <ng-container *nzModalContent>
-        <form nz-form [nzLayout]="'vertical'">
-            <nz-form-item>
-                <nz-form-label>Nombre</nz-form-label>
-                <nz-form-control>
-                    <input nz-input [(ngModel)]="form.name" name="name" required placeholder="Ej. Escalada" />
-                </nz-form-control>
-            </nz-form-item>
+    <!-- Tabla de categorías - sin condición de carga -->
+    <div class="table-responsive" *ngIf="categories && categories.length > 0">
+        <nz-table #tabla [nzData]="categories" [nzBordered]="true" [nzLoading]="false" [nzShowPagination]="true"
+            [nzPageSize]="5">
+            <thead>
+                <tr>
+                    <th nzWidth="auto">Imagen</th>
+                    <th nzWidth="auto">Nombre</th>
+                    <th nzWidth="auto" class="hide-sm">Descripción</th>
+                    <th nzWidth="auto" class="hide-md">Slug</th>
+                    <th nzWidth="auto">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let cat of tabla.data" [class.highlight-row]="selectedCategory?.id === cat.id">
+                    <td>
+                        <nz-avatar [nzSrc]="cat.imageUrl" nzShape="square" nzSize="large" [nzAlt]="cat.name"
+                            (error)="handleImageError($event)"></nz-avatar>
+                    </td>
+                    <td>{{ cat.name }}</td>
+                    <td class="hide-sm">
+                        <span class="truncate-text" nz-tooltip [nzTooltipTitle]="cat.description">{{ cat.description
+                            }}</span>
+                    </td>
+                    <td class="hide-md">{{ cat.slug }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button nz-button nzSize="small" (click)="editCategory(cat)" nz-tooltip
+                                nzTooltipTitle="Editar">
+                                <span nz-icon nzType="edit"></span>
+                            </button>
+                            <button nz-button nz-popconfirm
+                                nzPopconfirmTitle="¿Seguro que quieres eliminar esta categoría?"
+                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteCategory(cat.id)" 
+                                nzSize="small" nz-tooltip nzTooltipTitle="Eliminar">
+                                <i nz-icon nzType="delete" nzTheme="outline"></i>
+                            </button>
 
-            <nz-form-item>
-                <nz-form-label>Descripción</nz-form-label>
-                <nz-form-control>
-                    <textarea nz-input [(ngModel)]="form.description" name="description" required
-                        placeholder="Describe brevemente la categoría"></textarea>
-                </nz-form-control>
-            </nz-form-item>
-
-            <nz-form-item>
-                <nz-form-label>Slug</nz-form-label>
-                <nz-form-control>
-                    <input nz-input [(ngModel)]="form.slug" name="slug" required placeholder="Ej. escalada" />
-                </nz-form-control>
-            </nz-form-item>
-
-            <nz-form-item>
-                <nz-form-label>Imagen</nz-form-label>
-                <nz-form-control>
-                    <nz-upload [nzFileList]="fileList" [nzBeforeUpload]="beforeUpload"
-                        [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }" [nzPreview]="handlePreview"
-                        [nzRemove]="handleRemove" nzListType="picture-card">
-                        <div *ngIf="fileList.length < 1">
-                            <span nz-icon nzType="plus"></span>
-                            <div class="ant-upload-text">Subir</div>
+                            <!-- Botón de vista rápida para mostrar detalles en móvil -->
+                            <button nz-button  nzSize="small" (click)="showDetails(cat)"
+                                nz-tooltip nzTooltipTitle="Ver detalles">
+                                <i nz-icon nzType="eye" nzTheme="outline"></i>
+                            </button>
                         </div>
-                    </nz-upload>
-                    <div *ngIf="imageErrorMessage" style="color: red; margin-top: 8px;">
-                        {{ imageErrorMessage }}
-                    </div>
-                </nz-form-control>
-            </nz-form-item>
-        </form>
-    </ng-container>
-</nz-modal>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+    </div>
+
+    <!-- Modal para crear/editar (ahora con Reactive Forms) -->
+    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Categoría' : 'Nueva Categoría'"
+        [nzOkLoading]="saving" (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="modalWidth" nzCentered>
+        <ng-container *nzModalContent>
+            <form [formGroup]="categoryForm" nz-form nzLayout="vertical">
+                <nz-form-item>
+                    <nz-form-label nzRequired>Nombre</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingresa un nombre válido">
+                        <input nz-input formControlName="name" placeholder="Ej. Escalada" (blur)="generateSlug()" />
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label nzRequired>Descripción</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingresa una descripción">
+                        <textarea nz-input formControlName="description" placeholder="Describe brevemente la categoría"
+                            [nzAutosize]="{ minRows: 3, maxRows: 6 }"></textarea>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label nzRequired>Slug</nz-form-label>
+                    <nz-form-control nzErrorTip="El slug debe contener solo letras minúsculas, números y guiones">
+                        <input nz-input formControlName="slug" placeholder="Ej. escalada" />
+                        <div class="form-help-text">
+                            URL amigable de la categoría (sin espacios ni caracteres especiales)
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Imagen <span *ngIf="!isEditMode" class="required-mark">*</span></nz-form-label>
+                    <nz-form-control>
+                        <div class="upload-container">
+                            <nz-upload [nzFileList]="fileList" [nzBeforeUpload]="beforeUpload"
+                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemove" nzListType="picture-card">
+                                <div *ngIf="fileList.length < 1">
+                                    <span nz-icon nzType="plus"></span>
+                                    <div class="ant-upload-text">Subir</div>
+                                </div>
+                            </nz-upload>
+                        </div>
+                        <div *ngIf="imageErrorMessage" class="error-message">
+                            {{ imageErrorMessage }}
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+            </form>
+        </ng-container>
+    </nz-modal>
+
+    <!-- Modal de Detalles para móvil (mejorado) -->
+    <nz-modal [(nzVisible)]="detailsModalVisible" nzTitle="Detalles de Categoría"
+        (nzOnCancel)="detailsModalVisible = false" [nzFooter]="null" [nzWidth]="320" nzCentered>
+        <ng-container *nzModalContent>
+            <div *ngIf="selectedCategory" class="category-details">
+                <div class="detail-image">
+                    <img [src]="selectedCategory.imageUrl" [alt]="selectedCategory.name"
+                        (error)="handleImageError($event)">
+                </div>
+                <div class="detail-content">
+                    <h3>{{ selectedCategory.name }}</h3>
+                    <p><strong>Descripción:</strong> {{ selectedCategory.description }}</p>
+                    <p><strong>Slug:</strong> {{ selectedCategory.slug }}</p>
+                </div>
+                <div class="detail-actions">
+                    <button nz-button 
+                        (click)="editCategory(selectedCategory); detailsModalVisible = false">
+                        <span nz-icon nzType="edit"></span> Editar
+                    </button>
+                    <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar esta categoría?"
+                        nzPopconfirmPlacement="top"
+                        (nzOnConfirm)="deleteCategory(selectedCategory.id); detailsModalVisible = false">
+                        <span nz-icon nzType="delete"></span> Eliminar
+                    </button>
+                </div>
+            </div>
+        </ng-container>
+    </nz-modal>
+</div>

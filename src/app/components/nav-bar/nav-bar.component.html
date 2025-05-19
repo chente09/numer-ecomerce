@@ -18,6 +18,8 @@
                 <div nz-col>
                     <div class="top-links">
                         <a routerLink="/servicio-cliente">Servicio al Cliente</a>
+                        <!-- Solo mostrar "Mi cuenta" si el usuario está autenticado -->
+                        <a *ngIf="currentUser" routerLink="/perfil">Mi cuenta</a>
                     </div>
                 </div>
             </div>
@@ -45,9 +47,9 @@
                 <div nz-col nzFlex="auto" class="nav-container" [class.mobile-menu-open]="mobileMenuOpen">
                     <ul nz-menu nzMode="horizontal" class="nav-menu">
                         <li nz-menu-item *ngFor="let item of navItems">
-                            <a [routerLink]="item.link" [fragment]="item.fragment" routerLinkActive="active"
+                            <a [routerLink]="item.link" routerLinkActive="active"
                                 [routerLinkActiveOptions]="{exact: true}" (click)="closeMenuOnMobile()">
-                                {{ item.label }} 
+                                {{ item.label }}
                             </a>
                         </li>
                     </ul>
@@ -60,14 +62,46 @@
                             <i class="bi bi-search"></i>
                         </a>
                         <a class="icon-link" routerLink="/carrito">
-                            <nz-badge [nzCount]="cartCount" >
+                            <nz-badge [nzCount]="cartCount">
                                 <i class="bi bi-bag" style="font-size: 18px; color: aliceblue;"></i>
-                                
                             </nz-badge>
                         </a>
-                        <a class="icon-link">
+
+                        <!-- Usuario no autenticado -->
+                        <a *ngIf="!currentUser" class="icon-link" (click)="loginWithGoogle()">
                             <i class="bi bi-person"></i>
                         </a>
+
+                        <!-- Usuario autenticado -->
+                        <a *ngIf="currentUser" class="icon-link" nz-dropdown [nzDropdownMenu]="userMenu">
+                            <ng-container *ngIf="currentUser.photoURL; else defaultAvatar">
+                                <nz-avatar [nzSrc]="currentUser.photoURL" nzSize="small"></nz-avatar>
+                            </ng-container>
+                            <ng-template #defaultAvatar>
+                                <i class="bi bi-person-circle"></i>
+                            </ng-template>
+                        </a>
+                        <nz-dropdown-menu #userMenu="nzDropdownMenu">
+                            <ul nz-menu>
+                                <li nz-menu-item [nzDisabled]="true" class="user-email-item">
+                                    {{ currentUser?.displayName || currentUser?.email }}
+                                </li>
+                                <li nz-menu-divider></li>
+                                <li nz-menu-item (click)="navigateToProfile()">
+                                    <i nz-icon nzType="user" nzTheme="outline"></i> Mi Perfil
+                                </li>
+                                <li nz-menu-item *ngIf="!isProfileComplete()" (click)="navigateToCompletarPerfil()">
+                                    <i nz-icon nzType="form" nzTheme="outline"></i> Completar Perfil
+                                </li>
+                                <li nz-menu-item routerLink="/mis-pedidos">
+                                    <i nz-icon nzType="shopping" nzTheme="outline"></i> Mis Pedidos
+                                </li>
+                                <li nz-menu-divider></li>
+                                <li nz-menu-item (click)="logout()">
+                                    <i nz-icon nzType="logout" nzTheme="outline"></i> Cerrar Sesión
+                                </li>
+                            </ul>
+                        </nz-dropdown-menu>
                     </div>
                 </div>
             </div>

@@ -1,10 +1,13 @@
+/* Estilos base */
 .mb-4 {
   margin-bottom: 1rem;
 }
 
+/* Estilos para botones de acción */
 .action-buttons {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
   justify-content: flex-start;
 }
 
@@ -16,6 +19,11 @@
   object-fit: cover;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.banner-image:hover {
+  transform: scale(1.05);
 }
 
 .image-preview-cell {
@@ -23,6 +31,7 @@
   display: inline-block;
 }
 
+/* Badges y etiquetas */
 .gif-badge {
   position: absolute;
   top: 5px;
@@ -33,6 +42,7 @@
   padding: 0 6px;
   border-radius: 10px;
   font-weight: bold;
+  z-index: 5;
 }
 
 .mobile-badge {
@@ -48,17 +58,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 5;
 }
 
+/* Celdas de contenido */
 .title-cell {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 150px;
 }
 
 .hero-title {
   font-weight: 600;
   font-size: 16px;
+  line-height: 1.4;
 }
 
 .hero-subtitle {
@@ -71,12 +85,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 4px;
+  line-height: 1.4;
 }
 
 .dates-info {
   font-size: 11px;
   color: #888;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
@@ -90,6 +106,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 100px;
 }
 
 .cta-text {
@@ -110,6 +127,7 @@
   white-space: nowrap;
 }
 
+/* Utilidades de texto */
 .text-center {
   text-align: center;
 }
@@ -120,6 +138,7 @@
   white-space: nowrap;
 }
 
+/* Celda de orden */
 .order-cell {
   padding: 6px !important;
 }
@@ -159,7 +178,70 @@
   margin-top: 4px;
 }
 
-/* Responsive table */
+/* Mejoras para el modal */
+:host ::ng-deep .ant-modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+:host ::ng-deep .ant-upload.ant-upload-select-picture-card {
+  width: 100px;
+  height: 100px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+:host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item {
+  width: 100px;
+  height: 100px;
+}
+
+/* Mejoras para formularios responsivos */
+:host ::ng-deep .ant-form-vertical .ant-form-item {
+  margin-bottom: 16px;
+}
+
+:host ::ng-deep .ant-input-number {
+  width: 100%;
+}
+
+/* Tablas responsivas */
+.responsive-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+:host ::ng-deep .ant-table-wrapper {
+  overflow-x: auto;
+}
+
+:host ::ng-deep table {
+  min-width: 800px;
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+
+/* Tablets grandes (992px y menos) */
+@media (max-width: 992px) {
+  :host ::ng-deep .ant-modal {
+    max-width: calc(100vw - 32px) !important;
+  }
+  
+  :host ::ng-deep .ant-table {
+    font-size: 13px;
+  }
+  
+  .banner-image {
+    max-width: 150px;
+    height: 50px;
+  }
+  
+  .hero-title {
+    font-size: 15px;
+  }
+}
+
+/* Tablets (768px y menos) */
 @media (max-width: 768px) {
   .banner-image {
     max-width: 120px;
@@ -172,6 +254,8 @@
   
   .hero-subtitle {
     font-size: 11px;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
   }
   
   .cta-text {
@@ -183,12 +267,205 @@
     max-width: 100px;
   }
   
-  .action-buttons {
+  .dates-info {
+    font-size: 10px;
     flex-direction: column;
-    gap: 4px;
+    align-items: flex-start;
+    gap: 2px;
   }
   
   .order-number {
     font-size: 14px;
+  }
+  
+  :host ::ng-deep .ant-table-thead > tr > th,
+  :host ::ng-deep .ant-table-tbody > tr > td {
+    padding: 10px 8px;
+  }
+  
+  /* Ajustar botones en modalidad tablet */
+  :host ::ng-deep .ant-btn {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}
+
+/* Teléfonos móviles grandes (576px y menos) */
+@media (max-width: 576px) {
+  .action-buttons {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+  
+  .action-buttons button {
+    width: 100%;
+  }
+  
+  .banner-image {
+    max-width: 100px;
+    height: 35px;
+  }
+  
+  .gif-badge {
+    font-size: 8px;
+    padding: 0 4px;
+  }
+  
+  .mobile-badge {
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+  }
+  
+  /* Hacer los formularios del modal responsivos */
+  :host ::ng-deep .ant-modal {
+    width: 96% !important;
+    max-width: 450px;
+  }
+  
+  /* Ajustes para el formulario */
+  :host ::ng-deep .ant-form-item-label {
+    padding-bottom: 4px;
+  }
+  
+  :host ::ng-deep .ant-form-item-label > label {
+    font-size: 13px;
+  }
+  
+  :host ::ng-deep .ant-upload.ant-upload-select-picture-card,
+  :host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item {
+    width: 80px;
+    height: 80px;
+  }
+  
+  :host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item-info {
+    padding: 0;
+  }
+  
+  /* Mejorar la visualización de fechas */
+  :host ::ng-deep .ant-picker {
+    width: 100%;
+  }
+}
+
+/* Teléfonos móviles pequeños (375px y menos) */
+@media (max-width: 375px) {
+  /* Reducir el padding de la tabla para ahorrar espacio */
+  :host ::ng-deep .ant-table-thead > tr > th,
+  :host ::ng-deep .ant-table-tbody > tr > td {
+    padding: 8px 4px;
+  }
+  
+  .banner-image {
+    max-width: 80px;
+    height: 30px;
+  }
+  
+  .title-cell, .cta-cell {
+    min-width: auto;
+  }
+  
+  /* Ajustar botones para que quepan */
+  :host ::ng-deep .ant-btn {
+    padding: 0 8px;
+    font-size: 12px;
+    height: 28px;
+  }
+  
+  /* Reducir tamaño de iconos */
+  :host ::ng-deep .anticon {
+    font-size: 12px;
+  }
+}
+
+/* ===== MEJORAS PARA LA TABLA RESPONSIVA ===== */
+
+/* Contenedor para la tabla responsiva */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mejorar visualización en desplazamiento horizontal */
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.table-view-desktop {
+  display: block;
+}
+
+.card-view-mobile {
+  display: none;
+}
+
+/* Para pantallas pequeñas, convertir la tabla a vista de tarjetas */
+@media (max-width: 480px) {
+  /* Opcional: vista de tarjetas para móvil muy pequeño 
+   * Nota: requiere cambios en el HTML que te mostraré abajo
+   */
+  .card-view-mobile {
+    display: block;
+  }
+  
+  .table-view-desktop {
+    display: none;
+  }
+  
+  .hero-card-mobile {
+    margin-bottom: 16px;
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  
+  .hero-card-header {
+    padding: 12px;
+    background-color: #fafafa;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .hero-card-title {
+    font-weight: 600;
+    font-size: 15px;
+  }
+  
+  .hero-card-body {
+    padding: 12px;
+  }
+  
+  .hero-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .hero-card-footer {
+    padding: 12px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }

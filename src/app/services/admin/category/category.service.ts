@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Firestore, collection, collectionData, doc, addDoc, updateDoc, deleteDoc, getDoc, query, where } from '@angular/fire/firestore';
 import { Storage, ref, uploadBytes, getDownloadURL, deleteObject } from '@angular/fire/storage';
-import { Observable } from 'rxjs';
-import { map, shareReplay } from 'rxjs/operators';
+import { Observable, of, Subject } from 'rxjs';
+import { catchError, map, shareReplay } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface Category {
@@ -19,26 +19,39 @@ export interface Category {
 export class CategoryService {
   private collectionName = 'categories';
   private categoriesCache$?: Observable<Category[]>;
+  
+  // Definir el Subject para notificaciones de caché
+  private cacheInvalidated = new Subject<void>();
+  
+  // Observable público que otros componentes pueden suscribir
+  public cacheInvalidated$ = this.cacheInvalidated.asObservable();
 
   constructor(
     private firestore: Firestore,
     private storage: Storage
-  ) {}
+  ) { }
 
   // Obtener todas las categorías con caché
   getCategories(): Observable<Category[]> {
-  if (!this.categoriesCache$) {
-    const categoriesRef = collection(this.firestore, this.collectionName);
-    this.categoriesCache$ = collectionData(categoriesRef, { idField: 'id' }).pipe(
-      map(data => data as Category[]),   // fuerza el tipo aquí
-      shareReplay(1)
-    );
+    if (!this.categoriesCache$) {
+      const categoriesRef = collection(this.firestore, this.collectionName);
+      this.categoriesCache$ = collectionData(categoriesRef, { idField: 'id' }).pipe(
+        map(data => data as Category[]),
+        shareReplay(1),
+        catchError(error => {
+          console.error('Error fetching categories:', error);
+          return of([]);
+        })
+      );
+    }
+    return this.categoriesCache$;
   }
-  return this.categoriesCache$;
-}
 
-  private invalidateCache() {
+  // Invalidar caché y notificar a los componentes suscritos
+  invalidateCache(): void {
     this.categoriesCache$ = undefined;
+    // Notificar a los componentes suscritos
+    this.cacheInvalidated.next();
   }
 
   // Obtener categoría por slug

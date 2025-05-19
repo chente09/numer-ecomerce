@@ -7,8 +7,12 @@ import { Router, RouterLink, RouterModule } from '@angular/router';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { NzAvatarModule } from 'ng-zorro-antd/avatar';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { CartService } from '../../pasarela-pago/services/cart/cart.service';
+import { UsersService } from '../../services/users/users.service';
 import { Subscription } from 'rxjs';
+import { User } from '@angular/fire/auth';
 
 @Component({
   selector: 'app-nav-bar',
@@ -22,7 +26,8 @@ import { Subscription } from 'rxjs';
     NzGridModule,
     NzButtonModule,
     NzMenuModule,
-    RouterModule
+    RouterModule,
+    NzAvatarModule
   ],
   templateUrl: './nav-bar.component.html',
   styleUrl: './nav-bar.component.css'
@@ -31,10 +36,13 @@ export class NavBarComponent implements OnInit, OnDestroy {
   mobileMenuOpen = false;
   cartCount = 0;
   private cartSubscription: Subscription | null = null;
+  private userSubscription: Subscription | null = null;
   isScrolled = false;
   hideHeader = false;
   lastScrollTop = 0;
   selectedLanguage = { name: 'Ecuador (ES)' };
+  currentUser: User | null = null;
+  isLoggingIn = false;
 
   languages = [
     { code: 'es_ES', name: 'Ecuador (ES)' },
@@ -44,23 +52,33 @@ export class NavBarComponent implements OnInit, OnDestroy {
   navItems = [
     { label: 'TIENDA', link: '/productos' },
     { label: 'NOSOTROS', link: '/nosotros' },
-    { label: 'RESEÑAS', link: '/welcome', fragment: 'resenas' },
+    { label: 'RESEÑAS', link: '/review-form' },
   ];
 
   constructor(
     private cartService: CartService,
-    private router: Router
+    private usersService: UsersService,
+    private router: Router,
+    private message: NzMessageService
   ) { }
 
   ngOnInit() {
     this.cartSubscription = this.cartService.getCartItemCount().subscribe(count => {
       this.cartCount = count;
     });
+
+    // Suscribirse al estado de autenticación
+    this.userSubscription = this.usersService.user$.subscribe(user => {
+      this.currentUser = user;
+    });
   }
 
   ngOnDestroy() {
     if (this.cartSubscription) {
       this.cartSubscription.unsubscribe();
+    }
+    if (this.userSubscription) {
+      this.userSubscription.unsubscribe();
     }
   }
 
@@ -92,4 +110,54 @@ export class NavBarComponent implements OnInit, OnDestroy {
     this.lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
   }
 
+  async loginWithGoogle() {
+    if (this.isLoggingIn) return;
+
+    this.isLoggingIn = true;
+    try {
+      // Usar persistencia local para mantener la sesión activa entre visitas
+      await this.usersService.setLocalPersistence();
+      await this.usersService.loginWithGoogle();
+      this.message.success('Inicio de sesión exitoso');
+
+      // Registrar la actividad de inicio de sesión
+      await this.usersService.logUserActivity('login', 'authentication', { method: 'google' });
+    } catch (error) {
+      console.error('Error al iniciar sesión:', error);
+      this.message.error('No se pudo iniciar sesión. Intente nuevamente.');
+    } finally {
+      this.isLoggingIn = false;
+    }
+  }
+
+  async logout() {
+    try {
+      // Registrar actividad antes de cerrar sesión
+      await this.usersService.logUserActivity('logout', 'authentication');
+      await this.usersService.logout();
+      this.message.success('Sesión cerrada correctamente');
+
+      // Opcional: redirigir a la página principal
+      this.router.navigate(['/welcome']);
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+      this.message.error('Error al cerrar sesión');
+    }
+  }
+
+  navigateToProfile() {
+    this.router.navigate(['/perfil']);
+  }
+
+  navigateToCompletarPerfil() {
+    this.router.navigate(['/completar-perfil']);
+  }
+
+  // Método para verificar si el perfil está completo (implementa la lógica según tu modelo de datos)
+  isProfileComplete(): boolean {
+    // Simularemos que no está completo si no tiene displayName
+    return this.currentUser?.displayName !== null &&
+      this.currentUser?.displayName !== undefined &&
+      this.currentUser?.displayName !== '';
+  }
 }

@@ -1,0 +1,266 @@
+<div class="profile-container">
+    <div *ngIf="loading" class="loading-container">
+        <nz-spin nzSize="large"></nz-spin>
+    </div>
+
+    <div *ngIf="!loading && currentUser" class="profile-content">
+        <nz-card>
+            <div class="profile-header">
+                <div class="avatar-section">
+                    <nz-avatar [nzSize]="80" [nzSrc]="currentUser.photoURL || 'assets/default-avatar.png'"></nz-avatar>
+                </div>
+                <div class="user-info">
+                    <h2 *ngIf="!editMode">
+                        {{ userProfile?.firstName || currentUser.displayName || 'Usuario' }}
+                        {{ userProfile?.lastName || '' }}
+                    </h2>
+                    <p>{{ currentUser.email }}</p>
+
+                    <div *ngIf="!userProfile?.profileCompleted" class="profile-alert">
+                        <i nz-icon nzType="warning" nzTheme="fill"></i>
+                        Por favor, completa tu perfil para realizar compras.
+                    </div>
+                </div>
+            </div>
+
+            <nz-tabset>
+                <!-- Tab de Información Personal -->
+                <nz-tab nzTitle="Información Personal">
+                    <div class="tab-content">
+                        <div *ngIf="!editMode" class="profile-details">
+                            <div class="detail-group">
+                                <h3>Información de contacto</h3>
+
+                                <div class="detail-item">
+                                    <strong>Nombre:</strong>
+                                    <span>{{ userProfile?.firstName || 'No especificado' }}</span>
+                                </div>
+
+                                <div class="detail-item">
+                                    <strong>Apellido:</strong>
+                                    <span>{{ userProfile?.lastName || 'No especificado' }}</span>
+                                </div>
+
+                                <div class="detail-item">
+                                    <strong>Email:</strong>
+                                    <span>{{ currentUser.email }}</span>
+                                </div>
+
+                                <div class="detail-item">
+                                    <strong>Teléfono:</strong>
+                                    <span>{{ userProfile?.phone || 'No especificado' }}</span>
+                                </div>
+
+                                <div class="detail-actions">
+                                    <button nz-button nzType="primary" (click)="toggleEditMode()">
+                                        <i nz-icon nzType="edit"></i> Editar Información
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Formulario de edición -->
+                        <div *ngIf="editMode" class="profile-edit-form">
+                            <form [formGroup]="profileForm">
+                                <div nz-row [nzGutter]="16">
+                                    <div nz-col [nzXs]="24" [nzSm]="12">
+                                        <nz-form-item>
+                                            <nz-form-label>Nombre</nz-form-label>
+                                            <nz-form-control nzErrorTip="Por favor ingresa tu nombre">
+                                                <input nz-input formControlName="firstName" placeholder="Nombre">
+                                            </nz-form-control>
+                                        </nz-form-item>
+                                    </div>
+
+                                    <div nz-col [nzXs]="24" [nzSm]="12">
+                                        <nz-form-item>
+                                            <nz-form-label>Apellido</nz-form-label>
+                                            <nz-form-control nzErrorTip="Por favor ingresa tu apellido">
+                                                <input nz-input formControlName="lastName" placeholder="Apellido">
+                                            </nz-form-control>
+                                        </nz-form-item>
+                                    </div>
+                                </div>
+
+                                <nz-form-item>
+                                    <nz-form-label>Teléfono</nz-form-label>
+                                    <nz-form-control nzErrorTip="Por favor ingresa un número de teléfono válido">
+                                        <input nz-input formControlName="phone" placeholder="Teléfono (10 dígitos)">
+                                    </nz-form-control>
+                                </nz-form-item>
+
+                                <div class="form-actions">
+                                    <button nz-button (click)="toggleEditMode()">Cancelar</button>
+                                    <button nz-button nzType="primary" [disabled]="profileForm.invalid || savingProfile"
+                                        [nzLoading]="savingProfile" (click)="saveProfile()">
+                                        Guardar Cambios
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </nz-tab>
+
+                <!-- Tab de Direcciones -->
+                <nz-tab nzTitle="Direcciones">
+                    <div class="tab-content">
+                        <div class="addresses-header">
+                            <h3>Mis direcciones de entrega</h3>
+                            <button nz-button nzType="primary" (click)="openAddAddress()">
+                                <i nz-icon nzType="plus"></i> Agregar Dirección
+                            </button>
+                        </div>
+
+                        <div *ngIf="loadingAddresses" class="loading-container">
+                            <nz-spin nzSize="small"></nz-spin>
+                        </div>
+
+                        <div *ngIf="!loadingAddresses && addresses.length === 0" class="empty-state">
+                            <nz-empty nzDescription="No tienes direcciones guardadas"></nz-empty>
+                            <button nz-button nzType="primary" (click)="openAddAddress()">
+                                Agregar tu primera dirección
+                            </button>
+                        </div>
+
+                        <div *ngIf="!loadingAddresses && addresses.length > 0" class="addresses-list">
+                            <div *ngFor="let address of addresses" class="address-card">
+                                <div class="address-card-content">
+                                    <div class="address-card-header">
+                                        <h4>{{ address.name }}</h4>
+                                        <nz-tag *ngIf="address.isDefault" nzColor="green">Predeterminada</nz-tag>
+                                    </div>
+
+                                    <div class="address-card-body">
+                                        <p>{{ address.address }}</p>
+                                        <p>{{ address.city }}, {{ address.province }}</p>
+                                        <p>{{ address.postalCode }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="address-card-actions">
+                                    <button nz-button nzType="link" *ngIf="!address.isDefault"
+                                        (click)="setDefaultAddress(address.id)">
+                                        Establecer como predeterminada
+                                    </button>
+                                    <button nz-button nzType="link" (click)="editAddress(address)">
+                                        <i nz-icon nzType="edit"></i> Editar
+                                    </button>
+                                    <button nz-button nzType="link" nzDanger (click)="confirmDeleteAddress(address.id)">
+                                        <i nz-icon nzType="delete"></i> Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nz-tab>
+
+                <!-- Tab de Pedidos -->
+                <nz-tab nzTitle="Mis Pedidos">
+                    <div class="tab-content">
+                        <h3>Pedidos recientes</h3>
+
+                        <div *ngIf="loadingOrders" class="loading-container">
+                            <nz-spin nzSize="small"></nz-spin>
+                        </div>
+
+                        <div *ngIf="!loadingOrders && recentOrders.length === 0" class="empty-state">
+                            <nz-empty nzDescription="No tienes pedidos realizados"></nz-empty>
+                            <a routerLink="/productos" nz-button nzType="primary">Ver Productos</a>
+                        </div>
+
+                        <nz-table *ngIf="!loadingOrders && recentOrders.length > 0" #ordersTable [nzData]="recentOrders"
+                            [nzPageSize]="5" nzShowPagination class="orders-table">
+                            <thead>
+                                <tr>
+                                    <th>Número de Pedido</th>
+                                    <th>Fecha</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let order of ordersTable.data">
+                                    <td>{{ order.id }}</td>
+                                    <td>{{ order.date | date:'dd/MM/yyyy' }}</td>
+                                    <td>${{ order.total | number:'1.2-2' }}</td>
+                                    <td>
+                                        <nz-tag
+                                            [nzColor]="order.status === 'completed' ? 'green' : order.status === 'processing' ? 'blue' : 'orange'">
+                                            {{ order.status === 'completed' ? 'Completado' :
+                                            order.status === 'processing' ? 'En Proceso' : 'Pendiente' }}
+                                        </nz-tag>
+                                    </td>
+                                    <td>
+                                        <button nz-button nzType="primary" nzSize="small"
+                                            (click)="viewOrderDetails(order.id)">
+                                            Ver Detalles
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </nz-table>
+
+                        <div *ngIf="recentOrders.length > 0" class="view-all-orders">
+                            <a routerLink="/mis-pedidos" nz-button>Ver todos mis pedidos</a>
+                        </div>
+                    </div>
+                </nz-tab>
+            </nz-tabset>
+        </nz-card>
+    </div>
+</div>
+
+<!-- Template para modal de dirección -->
+<ng-template #addressModalTemplate>
+    <form [formGroup]="editAddressForm">
+        <nz-form-item>
+            <nz-form-label>Nombre de la dirección</nz-form-label>
+            <nz-form-control nzErrorTip="Por favor ingresa un nombre para esta dirección">
+                <input nz-input formControlName="name" placeholder="Ej: Casa, Trabajo, etc.">
+            </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+            <nz-form-label>Dirección</nz-form-label>
+            <nz-form-control nzErrorTip="Por favor ingresa la dirección">
+                <input nz-input formControlName="address" placeholder="Calle, número, referencias">
+            </nz-form-control>
+        </nz-form-item>
+
+        <div nz-row [nzGutter]="16">
+            <div nz-col [nzXs]="24" [nzSm]="12">
+                <nz-form-item>
+                    <nz-form-label>Ciudad</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingresa la ciudad">
+                        <input nz-input formControlName="city" placeholder="Ciudad">
+                    </nz-form-control>
+                </nz-form-item>
+            </div>
+
+            <div nz-col [nzXs]="24" [nzSm]="12">
+                <nz-form-item>
+                    <nz-form-label>Provincia</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingresa la provincia">
+                        <input nz-input formControlName="province" placeholder="Provincia">
+                    </nz-form-control>
+                </nz-form-item>
+            </div>
+        </div>
+
+        <nz-form-item>
+            <nz-form-label>Código Postal</nz-form-label>
+            <nz-form-control nzErrorTip="Por favor ingresa el código postal">
+                <input nz-input formControlName="postalCode" placeholder="Código postal">
+            </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+            <nz-form-control>
+                <label nz-checkbox formControlName="isDefault">
+                    Establecer como dirección predeterminada
+                </label>
+            </nz-form-control>
+        </nz-form-item>
+    </form>
+</ng-template>

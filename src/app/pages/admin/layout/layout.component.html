@@ -1,49 +1,95 @@
-<!-- admin-layout.component.html -->
 <nz-layout class="admin-layout">
-    <nz-sider class="menu-sidebar" nzCollapsible nzWidth="256px" nzBreakpoint="md" [(nzCollapsed)]="isCollapsed">
+    <!-- Sidebar -->
+    <nz-sider class="menu-sidebar" nzCollapsible nzWidth="256px" nzBreakpoint="md" [(nzCollapsed)]="isCollapsed"
+        [nzTrigger]="null">
         <div class="sidebar-logo">
             <a href="/">
                 <img src="https://i.postimg.cc/k59SjrbJ/Logo-Numer-blanco.png" alt="logo">
-                <h1>NUMER Admin</h1>
+                <h1 *ngIf="!isCollapsed">NUMER Admin</h1>
             </a>
         </div>
         <ul nz-menu nzTheme="dark" nzMode="inline" [nzInlineCollapsed]="isCollapsed">
-            <li nz-menu-item *ngFor="let item of menuItems" routerLinkActive="ant-menu-item-selected">
-                <a [routerLink]="item.path" routerLinkActive="active">
-                    <i nz-icon [nzType]="item.icon"></i>
-                    <span>{{ item.title }}</span>
-                </a>
+            <li nz-menu-item *ngFor="let item of menuItems" [routerLink]="item.path"
+                routerLinkActive="ant-menu-item-selected">
+                <span nz-icon [nzType]="item.icon"></span>
+                <span>{{ item.title }}</span>
+            </li>
+            <!-- Botón para volver al sitio principal -->
+            <li nz-menu-item routerLink="/" class="go-to-site">
+                <span nz-icon nzType="global"></span>
+                <span>Ir al sitio</span>
             </li>
         </ul>
     </nz-sider>
-    <nz-layout>
+
+    <div class="menu-overlay" (click)="closeMenu()"></div>
+    
+    <nz-layout class="main-content-layout">
+        <!-- Header -->
         <nz-header>
-            <div class="header-trigger" (click)="isCollapsed = !isCollapsed">
-                <i class="trigger" nz-icon [nzType]="isCollapsed ? 'menu-unfold' : 'menu-fold'"></i>
-            </div>
-            <div class="header-actions">
-                <span class="header-user">
-                    <nz-avatar nzIcon="user"></nz-avatar>
-                    <span class="username">Administrador</span>
-                </span>
-                <a nz-dropdown [nzDropdownMenu]="menu">
-                    <i nz-icon nzType="more" nzTheme="outline"></i>
-                </a>
-                <nz-dropdown-menu #menu="nzDropdownMenu">
-                    <ul nz-menu>
-                        <li nz-menu-item>Mi Perfil</li>
-                        <li nz-menu-item>Configuración</li>
-                        <li nz-menu-divider></li>
-                        <li nz-menu-item>Cerrar Sesión</li>
-                    </ul>
-                </nz-dropdown-menu>
+            <div class="header-wrapper">
+                <div class="header-trigger" (click)="isCollapsed = !isCollapsed">
+                    <span class="trigger" nz-icon [nzType]="isCollapsed ? 'menu-unfold' : 'menu-fold'"></span>
+                </div>
+
+                <!-- Botón de menú móvil (solo visible en móviles) -->
+                <div class="mobile-menu-trigger" (click)="isCollapsed = !isCollapsed">
+                    <span nz-icon [nzType]="isCollapsed ? 'menu-unfold' : 'menu-fold'"></span>
+                </div>
+
+                <div class="header-actions">
+                    <div class="header-user" *ngIf="!loading; else loadingTpl">
+                        <nz-avatar [nzSrc]="currentUser?.photoURL || 'assets/default-avatar.png'" [nzSize]="32">
+                        </nz-avatar>
+                        <span class="username">{{ userProfile?.firstName || currentUser?.displayName || 'Admin'
+                            }}</span>
+
+                        <a nz-dropdown [nzDropdownMenu]="menu" nzPlacement="bottomRight">
+                            <span nz-icon nzType="down"></span>
+                        </a>
+                        <nz-dropdown-menu #menu="nzDropdownMenu">
+                            <ul nz-menu>
+                                <li nz-menu-item (click)="navigateToProfile()">
+                                    <span nz-icon nzType="user"></span> Mi Perfil
+                                </li>
+                                <li nz-menu-divider></li>
+                                <li nz-menu-item (click)="logout()">
+                                    <span nz-icon nzType="logout"></span> Cerrar Sesión
+                                </li>
+                            </ul>
+                        </nz-dropdown-menu>
+                    </div>
+
+                    <ng-template #loadingTpl>
+                        <nz-skeleton-element nzType="avatar" [nzActive]="true"></nz-skeleton-element>
+                        <nz-skeleton-element nzType="input" [nzActive]="true" [nzSize]="'small'"
+                            style="width: 80px;"></nz-skeleton-element>
+                    </ng-template>
+                </div>
             </div>
         </nz-header>
+
+        <!-- Breadcrumb - opcional para mejorar la navegación -->
+        <div class="breadcrumb-container">
+            <nz-breadcrumb>
+                <nz-breadcrumb-item>Admin</nz-breadcrumb-item>
+                <nz-breadcrumb-item>{{ getActiveSectionName() }}</nz-breadcrumb-item>
+            </nz-breadcrumb>
+        </div>
+
+        <!-- Contenido principal -->
         <nz-content>
             <div class="inner-content">
                 <router-outlet></router-outlet>
             </div>
         </nz-content>
-        <nz-footer>NUMER Admin ©2025 Desarrollado vnenger.com (New Experience Softw) - Todos los derechos reservados </nz-footer>
+
+        <!-- Footer -->
+        <nz-footer>
+            <div class="footer-content">
+                <span>NUMER Admin ©{{ currentYear }} Desarrollado por vnenger.com (New Experience Softw)</span>
+                <span class="footer-rights">Todos los derechos reservados</span>
+            </div>
+        </nz-footer>
     </nz-layout>
 </nz-layout>

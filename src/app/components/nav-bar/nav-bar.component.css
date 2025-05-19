@@ -401,3 +401,40 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
         padding: 0 10px;
     }
 }
+
+/* Estilos para el menú de usuario */
+:host ::ng-deep .user-email-item {
+    color: #999;
+    font-size: 12px;
+    padding: 8px 12px;
+    cursor: default !important;
+}
+
+/* Estilo para el avatar */
+:host ::ng-deep .ant-avatar {
+    margin-right: 0;
+    border: 2px solid white;
+}
+
+/* Efecto hover para botones en dropdown */
+:host ::ng-deep .ant-dropdown-menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+:host ::ng-deep .ant-dropdown-menu-item i {
+    margin-right: 8px;
+}
+
+/* Indicador visual para completar perfil */
+:host ::ng-deep .complete-profile-indicator {
+    color: #ff4d4f;
+    margin-left: 5px;
+    font-size: 8px;
+    vertical-align: super;
+}
+
+/* Estado de carga durante login */
+.loading-state {
+    opacity: 0.7;
+    pointer-events: none;
+}

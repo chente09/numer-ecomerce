@@ -1,0 +1,43 @@
+<div class="complete-profile-container">
+    <h1>Completa tu perfil</h1>
+    <p>Necesitamos algunos datos adicionales para procesar tus pedidos</p>
+
+    <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
+        <div nz-row [nzGutter]="24">
+            <div nz-col [nzSpan]="12">
+                <nz-form-item>
+                    <nz-form-label>Nombre</nz-form-label>
+                    <nz-form-control>
+                        <input nz-input formControlName="firstName" placeholder="Nombre">
+                    </nz-form-control>
+                </nz-form-item>
+            </div>
+
+            <div nz-col [nzSpan]="12">
+                <nz-form-item>
+                    <nz-form-label>Apellido</nz-form-label>
+                    <nz-form-control>
+                        <input nz-input formControlName="lastName" placeholder="Apellido">
+                    </nz-form-control>
+                </nz-form-item>
+            </div>
+        </div>
+
+        <nz-form-item>
+            <nz-form-label>Teléfono</nz-form-label>
+            <nz-form-control>
+                <input nz-input formControlName="phone" placeholder="Teléfono">
+            </nz-form-control>
+        </nz-form-item>
+
+        <h2>Dirección de envío</h2>
+
+        <!-- Campos de dirección -->
+
+        <div class="form-actions">
+            <button nz-button nzType="primary" [disabled]="profileForm.invalid || isSubmitting">
+                Guardar Información
+            </button>
+        </div>
+    </form>
+</div>
