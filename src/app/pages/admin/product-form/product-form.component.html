@@ -24,12 +24,16 @@
 
                         <!-- Categoría -->
                         <nz-form-item>
-                            <nz-form-label nzRequired>Categoría</nz-form-label>
-                            <nz-form-control nzErrorTip="Por favor seleccione una categoría">
-                                <nz-select formControlName="category" nzPlaceHolder="Seleccione una categoría">
-                                    <nz-option *ngFor="let cat of categories" [nzValue]="cat.id"
-                                        [nzLabel]="cat.name"></nz-option>
+                            <nz-form-label nzRequired>Categorías</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor seleccione al menos una categoría">
+                                <nz-select formControlName="categories" nzPlaceHolder="Seleccione categorías"
+                                    nzMode="multiple">
+                                    <nz-option *ngFor="let cat of categories" [nzValue]="cat.id" [nzLabel]="cat.name">
+                                    </nz-option>
                                 </nz-select>
+                                <div class="form-help-text">
+                                    Puede seleccionar múltiples categorías para este producto
+                                </div>
                             </nz-form-control>
                         </nz-form-item>
 
@@ -246,45 +250,49 @@
                 </div>
 
                 <div *ngFor="let colorForm of colorFormsControls; let i = index" class="color-item">
-                    <div nz-row [nzGutter]="16" [formGroup]="colorForm">
-                        <div nz-col [nzXs]="24" [nzSm]="8">
-                            <nz-form-item>
-                                <nz-form-label nzRequired>Nombre</nz-form-label>
-                                <nz-form-control nzErrorTip="Por favor ingrese un nombre">
-                                    <input nz-input formControlName="name" placeholder="Ej. Rojo">
-                                </nz-form-control>
-                            </nz-form-item>
+                    <ng-container *ngIf="colorForm.get('name')">
+                        <div nz-row [nzGutter]="16" [formGroup]="colorForm">
+                            <div nz-row [nzGutter]="16" [formGroup]="colorForm">
+                                <div nz-col [nzXs]="24" [nzSm]="8">
+                                    <nz-form-item>
+                                        <nz-form-label nzRequired>Nombre</nz-form-label>
+                                        <nz-form-control nzErrorTip="Por favor ingrese un nombre">
+                                            <input nz-input formControlName="name" placeholder="Ej. Rojo">
+                                        </nz-form-control>
+                                    </nz-form-item>
+                                </div>
+                                <div nz-col [nzXs]="24" [nzSm]="8">
+                                    <nz-form-item>
+                                        <nz-form-label nzRequired>Código</nz-form-label>
+                                        <nz-form-control nzErrorTip="Por favor seleccione un color">
+                                            <nz-color-picker formControlName="code"></nz-color-picker>
+                                        </nz-form-control>
+                                    </nz-form-item>
+                                </div>
+                                <div nz-col [nzXs]="24" [nzSm]="8">
+                                    <nz-form-item>
+                                        <nz-form-label>Imagen</nz-form-label>
+                                        <nz-form-control>
+                                            <div class="color-image-upload">
+                                                <div class="color-image-preview"
+                                                    *ngIf="colorImages.get(colorForm.get('name')?.value)?.url">
+                                                    <img [src]="colorImages.get(colorForm.get('name')?.value)?.url"
+                                                        alt="Color preview">
+                                                </div>
+                                                <button type="button" nz-button nzSize="small"
+                                                    (click)="colorImageInput.click()">
+                                                    <span nz-icon nzType="upload"></span>
+                                                </button>
+                                                <input type="file" #colorImageInput style="display: none"
+                                                    (change)="onColorImageChange($event, colorForm.get('name')?.value)"
+                                                    accept="image/*">
+                                            </div>
+                                        </nz-form-control>
+                                    </nz-form-item>
+                                </div>
+                            </div>
                         </div>
-                        <div nz-col [nzXs]="24" [nzSm]="8">
-                            <nz-form-item>
-                                <nz-form-label nzRequired>Código</nz-form-label>
-                                <nz-form-control nzErrorTip="Por favor seleccione un color">
-                                    <nz-color-picker formControlName="code"></nz-color-picker>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                        <div nz-col [nzXs]="24" [nzSm]="8">
-                            <nz-form-item>
-                                <nz-form-label>Imagen</nz-form-label>
-                                <nz-form-control>
-                                    <div class="color-image-upload">
-                                        <div class="color-image-preview"
-                                            *ngIf="colorImages.get(colorForm.get('name')?.value)?.url">
-                                            <img [src]="colorImages.get(colorForm.get('name')?.value)?.url"
-                                                alt="Color preview">
-                                        </div>
-                                        <button type="button" nz-button nzSize="small"
-                                            (click)="colorImageInput.click()">
-                                            <span nz-icon nzType="upload"></span>
-                                        </button>
-                                        <input type="file" #colorImageInput style="display: none"
-                                            (change)="onColorImageChange($event, colorForm.get('name')?.value)"
-                                            accept="image/*">
-                                    </div>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                    </div>
+                    </ng-container>
                     <button type="button" nz-button nzType="default" nzDanger (click)="removeColor(i)" nz-tooltip
                         nzTooltipTitle="Eliminar color">
                         <span nz-icon nzType="delete"></span>
@@ -366,8 +374,59 @@
                 </div>
             </nz-tab>
 
-            <!-- Nueva pestaña dedicada al inventario -->
+            <!-- Pestaña de Tecnologías -->
+            <nz-tab nzTitle="Tecnologías">
+                <div class="technologies-content">
+                    <h3>Tecnologías del producto</h3>
+                    <p>Seleccione las tecnologías incluidas en este producto o añada personalizadas:</p>
 
+                    <nz-form-item>
+                        <nz-form-control>
+                            <nz-select formControlName="technologies" nzPlaceHolder="Seleccione tecnologías"
+                                nzMode="multiple" nzAllowClear [nzMaxTagCount]="5"
+                                [nzMaxTagPlaceholder]="tagPlaceHolder">
+                                <nz-option *ngFor="let tech of technologiesOptions" [nzValue]="tech.value"
+                                    [nzLabel]="tech.label">
+                                </nz-option>
+                            </nz-select>
+                            <ng-template #tagPlaceHolder let-selectedList>+{{ selectedList.length }}</ng-template>
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-label>Agregar tecnología personalizada</nz-form-label>
+                        <nz-form-control>
+                            <div class="custom-tech-input">
+                                <input nz-input [(ngModel)]="newTechnology" [ngModelOptions]="{standalone: true}"
+                                    placeholder="Ej. Aislamiento térmico" (keyup.enter)="addCustomTechnology()">
+                                <button nz-button nzType="primary" [disabled]="!newTechnology.trim()"
+                                    (click)="addCustomTechnology()">
+                                    <span nz-icon nzType="plus"></span> Agregar
+                                </button>
+                            </div>
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <div class="tech-visualization">
+                        <h4>Tecnologías seleccionadas</h4>
+                        <div class="tech-tags" *ngIf="productForm.get('technologies')?.value?.length > 0">
+                            <nz-tag *ngFor="let techValue of productForm.get('technologies')?.value" [nzColor]="'blue'"
+                                nzMode="closeable" (nzOnClose)="removeTechnology(techValue)">
+                                {{ getTechnologyLabel(techValue) }}
+                            </nz-tag>
+                        </div>
+                        <nz-empty *ngIf="!productForm.get('technologies')?.value?.length"
+                            nzNotFoundContent="No hay tecnologías seleccionadas" [nzNotFoundFooter]="emptyFooter">
+                        </nz-empty>
+                        <ng-template #emptyFooter>
+                            <span>Seleccione tecnologías para destacar las características especiales del
+                                producto</span>
+                        </ng-template>
+                    </div>
+                </div>
+            </nz-tab>
+
+            <!-- Nueva pestaña dedicada al inventario -->
             <nz-tab nzTitle="Inventario" [nzDisabled]="!showVariantsMatrix">
                 <div *ngIf="colorForms.length > 0 && sizeForms.length > 0" class="inventory-info">
                     <nz-alert nzType="info" nzMessage="El stock se gestiona por combinación color-talla"
@@ -479,7 +538,7 @@
             <button type="button" nz-button nzType="default" (click)="cancelForm()" [disabled]="submitting">
                 Cancelar
             </button>
-            <button type="submit" nz-button nzType="primary" [nzLoading]="submitting">
+            <button type="submit" nz-button nzType="primary" [nzLoading]="submitting" >
                 {{ isEditMode ? 'Actualizar' : 'Crear' }} Producto
             </button>
         </div>

@@ -379,3 +379,26 @@
     color: #999;
     font-weight: normal;
 }
+
+.technologies-content {
+  padding: 16px 0;
+}
+
+.tech-visualization {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.tech-visualization h4 {
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.optional-label {
+  font-size: 12px;
+  color: #999;
+  font-weight: normal;
+}

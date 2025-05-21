@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import {
   Firestore, collection, collectionData, doc, getDoc, where, query,
-  updateDoc, deleteDoc, setDoc, getDocs
+  updateDoc, deleteDoc, setDoc, getDocs,
+  writeBatch
 } from '@angular/fire/firestore';
 import { Observable, from, of, forkJoin, throwError, firstValueFrom } from 'rxjs';
 import { map, catchError, switchMap, tap, take } from 'rxjs/operators';
@@ -382,11 +383,6 @@ export class ProductService {
     }
 
     return from((async () => {
-      // Convertir cualquier 'undefined' a 'null' para Firestore
-      const sanitizedData = Object.entries(productData).reduce((acc, [key, value]) => {
-        acc[key] = value === undefined ? null : value;
-        return acc;
-      }, {} as Record<string, any>);
 
       const updateData: any = {
         ...productData,
@@ -424,11 +420,99 @@ export class ProductService {
       // Actualizar datos del producto
       await this.variantService.updateProductBase(productId, updateData);
 
+      // 1. Actualizar datos básicos del producto
+      await this.variantService.updateProductBase(productId, updateData);
+
+      // 2. IMPORTANTE: Si se enviaron colores y tallas, actualizar las variantes también
+      if (productData.colors && productData.sizes) {
+        console.log('Actualizando variantes con stock:', productData.sizes);
+
+        // Implementar un método para actualizar las variantes
+        await this.updateProductVariants(productId, productData.colors, productData.sizes);
+      }
+
       // Invalidar caché
       this.invalidateProductCache(productId);
     })()).pipe(
       catchError(error => ErrorUtil.handleError(error, `updateProduct(${productId})`))
     );
+  }
+
+  // Método nuevo para actualizar variantes
+  private async updateProductVariants(
+    productId: string,
+    colors: Color[],
+    sizes: Size[]
+  ): Promise<void> {
+    try {
+      // Obtener variantes existentes
+      const existingVariants = await firstValueFrom(this.getProductVariants(productId));
+      const batch = writeBatch(this.firestore);
+
+      // Mapa para buscar variantes existentes
+      const variantMap = new Map<string, ProductVariant>();
+      existingVariants.forEach(v => {
+        const key = `${v.colorName}-${v.sizeName}`;
+        variantMap.set(key, v);
+      });
+
+      // Calcular stock total
+      let totalStock = 0;
+
+      // Recorrer combinaciones de colores y tallas
+      for (const color of colors) {
+        for (const size of sizes) {
+          // Obtener stock de esta combinación
+          const stockEntry = size.colorStocks?.find(cs => cs.colorName === color.name);
+          const stock = stockEntry?.quantity || 0;
+          totalStock += stock;
+
+          // Clave para esta combinación
+          const key = `${color.name}-${size.name}`;
+
+          if (variantMap.has(key)) {
+            // Actualizar variante existente
+            const variant = variantMap.get(key)!;
+            const variantRef = doc(this.firestore, 'productVariants', variant.id);
+            batch.update(variantRef, { stock, updatedAt: new Date() });
+
+            // Eliminar del mapa para saber cuáles borrar después
+            variantMap.delete(key);
+          } else if (stock > 0) {
+            // Crear nueva variante si tiene stock
+            const variantId = uuidv4();
+            const variantRef = doc(this.firestore, 'productVariants', variantId);
+            batch.set(variantRef, {
+              id: variantId,
+              productId,
+              colorName: color.name,
+              colorCode: color.code,
+              sizeName: size.name,
+              stock,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+          }
+        }
+      }
+
+      // Eliminar variantes que ya no existen
+      variantMap.forEach(variant => {
+        const variantRef = doc(this.firestore, 'productVariants', variant.id);
+        batch.delete(variantRef);
+      });
+
+      // Actualizar stock total en el producto
+      const productRef = doc(this.firestore, this.productsCollection, productId);
+      batch.update(productRef, { totalStock, updatedAt: new Date() });
+
+      // Ejecutar todas las operaciones
+      await batch.commit();
+      console.log(`Variantes actualizadas para el producto ${productId}. Stock total: ${totalStock}`);
+    } catch (error) {
+      console.error(`Error al actualizar variantes del producto ${productId}:`, error);
+      throw error;
+    }
   }
 
   /**

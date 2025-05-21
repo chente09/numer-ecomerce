@@ -164,7 +164,7 @@
         [nzWidth]="1000" [nzFooter]="null" (nzOnCancel)="closeModals()" [nzMaskClosable]="false">
         <ng-container *nzModalContent>
             <app-product-form [product]="selectedProduct" [isEditMode]="isEditMode" [categories]="categories"
-                [existingColors]="allColors" [existingSizes]="allSizes" (formSubmitted)="closeModals()"
+                [existingColors]="allColors" [existingSizes]="allSizes" (formSubmitted)="onFormSubmitted($event)"
                 (formCancelled)="closeModals()">
             </app-product-form>
         </ng-container>

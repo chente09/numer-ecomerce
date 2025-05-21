@@ -72,6 +72,8 @@ export interface Product {
     additionalImages?: string[]; 
     rating: number;
     category: string;
+    categories: string[];
+    technologies?: string[]; 
     description?: string;
     isNew?: boolean;
     isBestSeller?: boolean;

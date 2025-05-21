@@ -73,7 +73,7 @@ import { PromotionManagementComponent } from "../promotion-management/promotion-
     ProductInventoryComponent,
     ProductPromotionsComponent,
     PromotionManagementComponent
-],
+  ],
   templateUrl: './product-management.component.html',
   styleUrls: ['./product-management.component.css']
 })
@@ -341,6 +341,29 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     return result.slice(startIndex, endIndex);
   }
 
+  // Añade este método a ProductManagementComponent o actualiza el existente
+  onFormSubmitted(event: { success: boolean, action: string, productId: string }): void {
+    if (event.success) {
+      // Siempre recargar la lista completa
+      this.loadProducts();
+
+      if (event.action === 'update') {
+        // Para actualizaciones, volver a cargar el producto específico con toda su información
+        this.productService.getCompleteProduct(event.productId)
+          .subscribe(product => {
+            if (product) {
+              console.log('Producto actualizado:', product);
+              this.selectedProduct = product;
+              this.cdr.detectChanges();
+            }
+          });
+      } else if (event.action === 'create') {
+        this.closeModals();
+        this.resetSelection();
+      }
+    }
+  }
+
   // Acciones de productos
   openCreateModal(): void {
     this.isEditMode = false;
@@ -362,6 +385,9 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   closeModals(): void {
     this.formModalVisible = false;
     this.detailsModalVisible = false;
+  }
+
+  resetSelection(): void {
     this.selectedProduct = null;
   }
 
