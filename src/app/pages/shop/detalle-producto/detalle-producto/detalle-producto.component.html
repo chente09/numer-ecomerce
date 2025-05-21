@@ -6,8 +6,8 @@
 <div *ngIf="product" class="product-detail-container">
     <div class="product-gallery">
         <div class="main-image-container">
-            <img [src]="selectedVariant?.imageUrl || selectedColor?.imageUrl || product.imageUrl"
-                alt="{{ product.name }}" class="main-product-image" (click)="showImagePreview(product.imageUrl)">
+            <img [src]="currentImageUrl" alt="{{ product.name }}" class="main-product-image"
+                (click)="showImagePreview(currentImageUrl)">
             <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
             <span *ngIf="product.isBestSeller" class="bestseller-badge">MÁS VENDIDO</span>
             <span *ngIf="product.activePromotion" class="sale-badge">OFERTA</span>
@@ -16,7 +16,7 @@
         <!-- Miniaturas de colores -->
         <div class="thumbnails-container">
             <div *ngFor="let color of product.colors" class="thumbnail"
-                [ngClass]="{'active': product.imageUrl === color.imageUrl}" (click)="selectColor(color)">
+                [ngClass]="{'active': selectedColor?.name === color.name}" (click)="selectColor(color)">
                 <img [src]="color.imageUrl" [alt]="color.name">
             </div>
         </div>
@@ -55,9 +55,8 @@
             <div class="option-section">
                 <h3 class="option-title">Colores</h3>
                 <div class="color-options">
-                    
                     <div *ngFor="let color of product.colors" class="color-option"
-                        [ngClass]="{'active': product.imageUrl === color.imageUrl, 'out-of-stock': !hasStockForColor(color)}"
+                        [ngClass]="{'active': selectedColor?.name === color.name, 'out-of-stock': !hasStockForColor(color)}"
                         (click)="selectColor(color)">
                         <div class="color-thumbnail">
                             <img [src]="color.imageUrl" [alt]="color.name">
@@ -75,14 +74,12 @@
                     </button>
                 </div>
                 <div class="size-options">
-                    <div *ngFor="let sizeName of standardSizes" class="size-option"
-                        [ngClass]="{
+                    <div *ngFor="let sizeName of standardSizes" class="size-option" [ngClass]="{
                             'active': selectedSize?.name === sizeName,
                             'unavailable': !isSizeAvailable(sizeName),
                             'out-of-stock': isSizeAvailable(sizeName) && !hasStockForSizeName(sizeName),
                             'low-stock': isSizeAvailable(sizeName) && hasLowStockForSizeName(sizeName)
-                        }"
-                        (click)="handleSizeClick(sizeName)">
+                        }" (click)="handleSizeClick(sizeName)">
                         <span class="size-name">{{ sizeName }}</span>
                     </div>
                 </div>
@@ -135,7 +132,8 @@
 
             <!-- Modal para previsualización de imágenes -->
             <nz-modal [(nzVisible)]="showImageModal" [nzTitle]="undefined" [nzFooter]="null"
-                (nzOnCancel)="closeImagePreview()" nzWidth="auto" [nzCentered]="true" [nzBodyStyle]="{ padding: '0' }" nzClassName="image-preview-modal">
+                (nzOnCancel)="closeImagePreview()" nzWidth="auto" [nzCentered]="true" [nzBodyStyle]="{ padding: '0' }"
+                nzClassName="image-preview-modal">
                 <ng-container *nzModalContent>
                     <div class="image-preview-container">
                         <img [src]="previewImageUrl" alt="Vista ampliada" class="preview-image">

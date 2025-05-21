@@ -1,0 +1,297 @@
+/* Contenedor principal */
+.colors-container {
+    width: 100%;
+    padding: 0 0 24px;
+}
+
+/* Card de encabezado */
+.header-card {
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+/* Muestra del color */
+.color-sample {
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+}
+
+.color-sample:hover {
+    transform: scale(1.2);
+    border-color: #d9d9d9;
+}
+
+/* Highlight para filas seleccionadas */
+.highlight-row {
+    background-color: #f0f7ff !important;
+}
+
+/* Avatar de imágenes con manejo de fallback */
+:host ::ng-deep .ant-avatar {
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+:host ::ng-deep .ant-avatar>img {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+}
+
+:host ::ng-deep .error-image {
+    opacity: 0.6;
+}
+
+.no-image {
+    width: 32px;
+    height: 32px;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
+    border-radius: 4px;
+}
+
+.truncate-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+/* Botones de acción */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    min-width: 120px;
+}
+
+/* Para skeletons de carga */
+.loading-skeleton {
+    padding: 16px;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 16px;
+}
+
+/* Componente de carga de imagen */
+.upload-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+/* Estilos para selector de color */
+.color-picker-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.color-preview {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: 1px solid #d9d9d9;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.color-preview:hover {
+    transform: scale(1.1);
+}
+
+/* Estilos para ayuda de texto en formularios */
+.form-help-text {
+    color: #8c8c8c;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.required-mark {
+    color: #ff4d4f;
+    margin-left: 4px;
+}
+
+/* Estilos para componente de carga */
+:host ::ng-deep .ant-upload-select-picture-card i {
+    font-size: 24px;
+    color: #999;
+}
+
+:host ::ng-deep .ant-upload-select-picture-card .ant-upload-text {
+    margin-top: 6px;
+    color: #666;
+    font-size: 12px;
+}
+
+:host ::ng-deep .ant-upload.ant-upload-select-picture-card {
+    width: 100px;
+    height: 100px;
+    margin: 0;
+}
+
+:host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item {
+    width: 100px;
+    height: 100px;
+    margin: 0;
+}
+
+.error-message {
+    color: #ff4d4f;
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+/* Detalles modal para vista móvil */
+.color-details {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-color {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.color-block {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.color-code {
+    font-family: monospace;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.detail-image {
+    text-align: center;
+    margin-top: 8px;
+}
+
+.detail-image img {
+    max-width: 100%;
+    max-height: 150px;
+    object-fit: contain;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+}
+
+.detail-content h3 {
+    margin-bottom: 12px;
+    font-size: 18px;
+}
+
+.detail-content p {
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+/* Media queries para responsividad */
+@media (max-width: 991px) {
+    .hide-md {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .hide-sm {
+        display: none;
+    }
+
+    .show-sm {
+        display: inline-flex;
+    }
+
+    :host ::ng-deep .ant-table {
+        font-size: 13px;
+    }
+
+    :host ::ng-deep .ant-table th {
+        white-space: nowrap;
+        padding: 8px 6px;
+    }
+
+    :host ::ng-deep .ant-table td {
+        padding: 8px 6px;
+    }
+    
+    /* Mejorar la disposición de los botones en dispositivos móviles */
+    .action-buttons {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    /* Hacer los botones más pequeños en móvil */
+    :host ::ng-deep .action-buttons .ant-btn {
+        padding: 0 6px;
+        height: 28px;
+        font-size: 12px;
+    }
+}
+
+@media (min-width: 768px) {
+    .show-sm {
+        display: none;
+    }
+}
+
+@media (max-width: 575px) {
+    .button-text {
+        display: none;
+    }
+
+    :host ::ng-deep .ant-card-head-title {
+        font-size: 16px;
+    }
+
+    :host ::ng-deep .ant-pagination {
+        font-size: 12px;
+    }
+
+    :host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item,
+    :host ::ng-deep .ant-upload.ant-upload-select-picture-card {
+        width: 80px;
+        height: 80px;
+    }
+    
+    /* Añadir espacio en el elemento modal en móvil */
+    :host ::ng-deep .ant-modal-body {
+        padding: 16px 12px;
+    }
+}

@@ -1,0 +1,204 @@
+<div class="inventory-container">
+    <!-- Spinner mientras carga -->
+    <div *ngIf="loading" class="loading-container">
+        <nz-spin nzSize="large"></nz-spin>
+    </div>
+
+    <!-- Contenido principal de inventario -->
+    <div *ngIf="!loading && product">
+        <nz-card>
+            <div class="inventory-header">
+                <h2>Gestión de Inventario</h2>
+                <p>Producto: <strong>{{ product.name }}</strong></p>
+                <p>Stock Total: <strong>{{ product.totalStock || 0 }}</strong></p>
+            </div>
+
+            <!-- Tabla de variantes -->
+            <nz-table #variantsTable [nzData]="variants" [nzSize]="'small'" [nzShowPagination]="variants.length > 10"
+                [nzPageSize]="10">
+                <thead>
+                    <tr>
+                        <th>Color</th>
+                        <th>Talla</th>
+                        <th>Stock</th>
+                        <th>SKU</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let variant of variantsTable.data; trackBy: trackByVariant">
+                        <td>
+                            <div class="color-cell">
+                                <div class="color-box"
+                                    [style.background-color]="variant.colorCode || getColorByName(variant.colorName)?.code || '#ccc'">
+                                </div>
+                                {{ variant.colorName }}
+                            </div>
+                        </td>
+                        <td>{{ variant.sizeName }}</td>
+                        <td>
+                            <!-- Vista normal (no editando) -->
+                            <div *ngIf="editingVariantId !== variant.id" class="stock-cell">
+                                <nz-tag [nzColor]="getStockStatusColor(variant.stock || 0)">
+                                    {{ variant.stock || 0 }} - {{ getStockStatusText(variant.stock || 0) }}
+                                </nz-tag>
+                                <nz-tag *ngIf="variant.promotionId" nzColor="processing" class="promotion-tag">
+                                    {{ getPromotionBadgeText(variant) }}
+                                </nz-tag>
+                            </div>
+
+                            <!-- Vista de edición -->
+                            <div *ngIf="editingVariantId === variant.id" class="stock-edit-cell">
+                                <nz-input-number [(ngModel)]="editingStock" [nzMin]="0" [nzStep]="1" [nzPrecision]="0"
+                                    style="width: 80px"></nz-input-number>
+                                <button nz-button nzType="primary" nzSize="small" (click)="saveStock(variant)">
+                                    <span nz-icon nzType="check"></span>
+                                </button>
+                                <button nz-button nzType="default" nzSize="small" (click)="cancelEdit()">
+                                    <span nz-icon nzType="close"></span>
+                                </button>
+                            </div>
+                        </td>
+                        <td>{{ variant.sku }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <!-- Botón de editar stock -->
+                                <button nz-button nzType="primary" nzSize="small" (click)="startEditStock(variant)"
+                                    [disabled]="editingVariantId !== null" nz-tooltip nzTooltipTitle="Editar Stock">
+                                    <span nz-icon nzType="edit"></span>
+                                </button>
+
+                                <!-- Botón de transferir stock -->
+                                <!-- <button nz-button nzType="default" nzSize="small"
+                                    (click)="confirmTransferStock(variant)"
+                                    [disabled]="(variant.stock || 0) <= 0 || editingVariantId !== null" nz-tooltip
+                                    nzTooltipTitle="Transferir Stock">
+                                    <span nz-icon nzType="swap"></span>
+                                </button> -->
+
+                                <!-- Botón Aplicar Promoción -->
+                                <button nz-button nzType="default" nzSize="small" (click)="applyPromotion(variant)"
+                                    [disabled]="editingVariantId !== null" nz-tooltip
+                                    nzTooltipTitle="Aplicar Promoción">
+                                    <span nz-icon nzType="tag"></span>
+                                </button>
+                                <button *ngIf="variant.promotionId" nz-button  nzSize="small"
+                                    (click)="removePromotion(variant)" nz-tooltip nzTooltipTitle="Quitar Promoción">
+                                    <span nz-icon nzType="close-circle"></span>
+                                </button>
+
+                                <!-- Botón para ver la imagen de la variante -->
+                                <ng-container *ngIf="variant.imageUrl">
+                                    <button nz-button nzType="default" nzSize="small" nz-popover
+                                        [nzPopoverContent]="variantImageTpl" nzPopoverPlacement="top" nz-tooltip
+                                        nzTooltipTitle="Ver Imagen">
+                                        <span nz-icon nzType="eye"></span>
+                                    </button>
+                                    <ng-template #variantImageTpl>
+                                        <div class="variant-image-preview">
+                                            <img [src]="variant.imageUrl"
+                                                [alt]="variant.colorName + ' ' + variant.sizeName"
+                                                (error)="handleImageError($event)">
+                                        </div>
+                                    </ng-template>
+                                </ng-container>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </nz-table>
+        </nz-card>
+
+        <!-- Sección de ayuda con explicación de estados -->
+        <nz-card class="help-card">
+            <h3>Leyenda de Estados de Stock</h3>
+            <div class="stock-legend">
+                <div class="legend-item">
+                    <nz-tag nzColor="success">En stock</nz-tag>
+                    <span class="legend-description">Stock suficiente</span>
+                </div>
+                <div class="legend-item">
+                    <nz-tag nzColor="warning">Stock bajo</nz-tag>
+                    <span class="legend-description">Menos de 6 unidades</span>
+                </div>
+                <div class="legend-item">
+                    <nz-tag nzColor="error">Sin stock</nz-tag>
+                    <span class="legend-description">No hay unidades disponibles</span>
+                </div>
+            </div>
+        </nz-card>
+    </div>
+
+    <!-- Mensaje si no hay variantes o producto -->
+    <nz-empty *ngIf="!loading && (!product || variants.length === 0)"
+        nzNotFoundContent="No hay variantes disponibles para este producto"></nz-empty>
+</div>
+
+<!-- Modal para aplicar promociones -->
+<nz-modal [(nzVisible)]="promotionModalVisible" nzTitle="Aplicar Promoción a Variante"
+    (nzOnCancel)="cancelApplyPromotion()" [nzFooter]="null" [nzWidth]="600">
+    <ng-container *nzModalContent>
+        <div class="variant-info" *ngIf="selectedVariantForPromotion">
+            <h4>Variante seleccionada:</h4>
+            <p>
+                <strong>Color:</strong> {{ selectedVariantForPromotion.colorName }} |
+                <strong>Talla:</strong> {{ selectedVariantForPromotion.sizeName }} |
+                <strong>SKU:</strong> {{ selectedVariantForPromotion.sku }}
+            </p>
+        </div>
+
+        <nz-divider></nz-divider>
+
+        <div *ngIf="promotions.length === 0" class="empty-promotions">
+            <nz-empty nzNotFoundContent="No hay promociones activas disponibles"
+                [nzNotFoundFooter]="emptyPromotionsFooter">
+            </nz-empty>
+            <ng-template #emptyPromotionsFooter>
+                <button nz-button nzType="primary" routerLink="/admin/promotions">
+                    Crear Promoción
+                </button>
+            </ng-template>
+        </div>
+
+        <nz-table *ngIf="promotions.length > 0" #promotionsTable [nzData]="promotions" [nzShowPagination]="false"
+            [nzScroll]="{ y: '300px' }">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th>Validez</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let promotion of promotionsTable.data">
+                    <td>{{ promotion.name }}</td>
+                    <td>{{ promotion.discountType === 'percentage' ? 'Porcentaje' : 'Fijo' }}</td>
+                    <td>
+                        <span *ngIf="promotion.discountType === 'percentage'">
+                            {{ promotion.discountValue }}%
+                        </span>
+                        <span *ngIf="promotion.discountType === 'fixed'">
+                            ${{ promotion.discountValue.toFixed(2) }}
+                        </span>
+                    </td>
+                    <td>
+                        {{ formatDate(promotion.startDate) }} - {{ formatDate(promotion.endDate) }}
+                    </td>
+                    <td>
+                        <button nz-button nzType="primary" nzSize="small" (click)="confirmApplyPromotion(promotion.id)">
+                            Aplicar
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+
+        <div class="modal-footer" style="margin-top: 16px; text-align: right;">
+            <button nz-button nzType="default" (click)="cancelApplyPromotion()">
+                Cancelar
+            </button>
+        </div>
+    </ng-container>
+</nz-modal>

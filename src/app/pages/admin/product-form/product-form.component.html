@@ -1,0 +1,487 @@
+<div class="product-form-container">
+    <form [formGroup]="productForm" (ngSubmit)="submitForm()" nz-form nzLayout="vertical">
+        <nz-tabset nzType="card">
+            <!-- Pestaña de Información Básica -->
+            <nz-tab nzTitle="Información Básica">
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="16">
+                        <!-- Nombre -->
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre del Producto</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingrese el nombre del producto">
+                                <input nz-input formControlName="name" placeholder="Ej. Camisa Verde">
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Precio -->
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Precio</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingrese un precio válido">
+                                <nz-input-number formControlName="price" [nzMin]="0" [nzStep]="0.01"
+                                    [nzPlaceHolder]="'0.00'" [nzPrecision]="2" style="width: 100%"></nz-input-number>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Categoría -->
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Categoría</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor seleccione una categoría">
+                                <nz-select formControlName="category" nzPlaceHolder="Seleccione una categoría">
+                                    <nz-option *ngFor="let cat of categories" [nzValue]="cat.id"
+                                        [nzLabel]="cat.name"></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Género -->
+
+                        <!-- Agregar después del campo de Colección -->
+                        <nz-form-item>
+                            <nz-form-label>Género</nz-form-label>
+                            <nz-form-control>
+                                <nz-radio-group formControlName="gender">
+                                    <label nz-radio-button *ngFor="let option of genderOptions"
+                                        [nzValue]="option.value">
+                                        {{ option.label }}
+                                    </label>
+                                </nz-radio-group>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Marca -->
+                        <div nz-row [nzGutter]="8" style="margin-bottom: 16px;">
+                            <div nz-col [nzSpan]="12">
+                                <label nz-checkbox [(ngModel)]="autoGenerateSku" [ngModelOptions]="{standalone: true}"
+                                    (ngModelChange)="onAutoGenerateSkuChange($event)">
+                                    Generar SKU automáticamente
+                                </label>
+                            </div>
+                            <div nz-col [nzSpan]="12">
+                                <label nz-checkbox [(ngModel)]="autoGenerateBarcode"
+                                    [ngModelOptions]="{standalone: true}">
+                                    Generar código de barras automáticamente
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- SKU -->
+                        <nz-form-item>
+                            <nz-form-label>SKU</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingrese el SKU">
+                                <input nz-input formControlName="sku" placeholder="Ej. CAM-VRD-001">
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Barcode -->
+                        <nz-form-item>
+                            <nz-form-label>Código de Barras</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="barcode" placeholder="Ej. 5901234123457">
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Descripción -->
+                        <nz-form-item>
+                            <nz-form-label>Descripción</nz-form-label>
+                            <nz-form-control>
+                                <textarea formControlName="description" nz-input rows="4"
+                                    placeholder="Descripción detallada del producto"></textarea>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Características del producto -->
+                        <nz-form-item>
+                            <nz-form-label>Características del Producto <span
+                                    class="optional-label">(opcional)</span></nz-form-label>
+                            <nz-form-control>
+                                <div class="features-container">
+                                    <!-- Lista de características actuales -->
+                                    <div *ngIf="productFeatures.length > 0" class="features-list">
+                                        <nz-tag *ngFor="let feature of productFeatures; let i = index"
+                                            [nzColor]="'blue'" class="feature-tag">
+                                            {{ feature }}
+                                            <span nz-icon nzType="close" (click)="removeFeature(i)"></span>
+                                        </nz-tag>
+                                    </div>
+
+                                    <!-- Input para añadir nuevas características -->
+                                    <div class="feature-input">
+                                        <input nz-input [(ngModel)]="newFeature" [ngModelOptions]="{standalone: true}"
+                                            placeholder="Ej. Con capucha, Impermeable, Manga larga"
+                                            (keyup.enter)="addFeature()">
+                                        <button nz-button nzType="primary" (click)="addFeature()">
+                                            <span nz-icon nzType="plus"></span>
+                                        </button>
+                                    </div>
+
+                                    <div class="form-help-text">
+                                        Añada características específicas de este producto, por ejemplo: "Con capucha",
+                                        "Cierre de cremallera", etc.
+                                    </div>
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="8">
+                        <!-- Imagen Principal -->
+                        <nz-form-item>
+                            <nz-form-label>Imagen Principal <span *ngIf="!isEditMode"
+                                    class="required-asterisk">*</span></nz-form-label>
+                            <nz-form-control>
+                                <div class="image-upload-container">
+                                    <div class="image-preview" *ngIf="mainImageUrl">
+                                        <img [src]="mainImageUrl" alt="Vista previa">
+                                    </div>
+                                    <div class="image-upload-button">
+                                        <button type="button" nz-button (click)="fileInput.click()">
+                                            <span nz-icon nzType="upload"></span>
+                                            <span>{{ mainImageUrl ? 'Cambiar' : 'Subir' }}</span>
+                                        </button>
+                                        <input type="file" #fileInput style="display: none"
+                                            (change)="onMainImageChange($event)" accept="image/*">
+                                    </div>
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Galería de imágenes adicionales -->
+                        <nz-form-item>
+                            <nz-form-label>Imágenes Adicionales <span
+                                    class="optional-label">(opcional)</span></nz-form-label>
+                            <nz-form-control>
+                                <div class="additional-images-container">
+                                    <div class="additional-images-grid">
+                                        <!-- Mostrar imágenes actuales -->
+                                        <div *ngFor="let img of additionalImages; let i = index"
+                                            class="additional-image-item">
+                                            <div class="image-preview">
+                                                <img [src]="img.url" alt="Imagen adicional">
+                                                <button type="button" class="remove-image-btn"
+                                                    (click)="removeAdditionalImage(i)" nz-tooltip
+                                                    nzTooltipTitle="Eliminar">
+                                                    <span nz-icon nzType="delete"></span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Botón para añadir más imágenes (si hay menos del máximo) -->
+                                        <div *ngIf="additionalImages.length < maxAdditionalImages"
+                                            class="add-image-btn">
+                                            <button type="button" nz-button (click)="additionalImagesInput.click()">
+                                                <span nz-icon nzType="plus"></span>
+                                                <span>Añadir imagen</span>
+                                            </button>
+                                            <input type="file" #additionalImagesInput style="display: none"
+                                                (change)="onAdditionalImageChange($event)" accept="image/*" multiple>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-help-text">
+                                        Puede subir hasta {{ maxAdditionalImages }} imágenes adicionales para mostrar
+                                        más vistas del producto.
+                                    </div>
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Temporada y Colección -->
+                        <nz-form-item>
+                            <nz-form-label>Temporada</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="season" nzPlaceHolder="Seleccione una temporada"
+                                    nzAllowClear>
+                                    <nz-option *ngFor="let season of seasons" [nzValue]="season"
+                                        [nzLabel]="season"></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Colección</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="collection" nzPlaceHolder="Seleccione una colección"
+                                    nzAllowClear>
+                                    <nz-option *ngFor="let collection of collections" [nzValue]="collection"
+                                        [nzLabel]="collection"></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Opciones de Producto -->
+                        <nz-form-item>
+                            <nz-form-label>Opciones</nz-form-label>
+                            <nz-form-control>
+                                <div>
+                                    <label nz-checkbox formControlName="isNew">Marcar como Nuevo</label>
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <label nz-checkbox formControlName="isBestSeller">Marcar como Bestseller</label>
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+            </nz-tab>
+
+            <!-- Pestaña de Colores -->
+            <nz-tab nzTitle="Colores">
+                <div class="tab-header">
+                    <button type="button" nz-button nzType="default" (click)="addColor()">
+                        <span nz-icon nzType="plus"></span> Agregar Color
+                    </button>
+                </div>
+                <div class="existing-colors" *ngIf="existingColors && existingColors.length > 0">
+                    <h4>Colores Disponibles</h4>
+                    <div class="color-chips">
+                        <div *ngFor="let color of existingColors" class="existing-color-item" nz-tooltip
+                            [nzTooltipTitle]="color.name" (click)="addExistingColor(color)">
+                            <div class="color-chip" [style.background-color]="color.code"></div>
+                            <span class="color-name">{{ color.name }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div *ngIf="colorForms.length === 0" class="empty-message">
+                    <nz-empty nzNotFoundContent="No hay colores agregados"></nz-empty>
+                </div>
+
+                <div *ngFor="let colorForm of colorFormsControls; let i = index" class="color-item">
+                    <div nz-row [nzGutter]="16" [formGroup]="colorForm">
+                        <div nz-col [nzXs]="24" [nzSm]="8">
+                            <nz-form-item>
+                                <nz-form-label nzRequired>Nombre</nz-form-label>
+                                <nz-form-control nzErrorTip="Por favor ingrese un nombre">
+                                    <input nz-input formControlName="name" placeholder="Ej. Rojo">
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzXs]="24" [nzSm]="8">
+                            <nz-form-item>
+                                <nz-form-label nzRequired>Código</nz-form-label>
+                                <nz-form-control nzErrorTip="Por favor seleccione un color">
+                                    <nz-color-picker formControlName="code"></nz-color-picker>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzXs]="24" [nzSm]="8">
+                            <nz-form-item>
+                                <nz-form-label>Imagen</nz-form-label>
+                                <nz-form-control>
+                                    <div class="color-image-upload">
+                                        <div class="color-image-preview"
+                                            *ngIf="colorImages.get(colorForm.get('name')?.value)?.url">
+                                            <img [src]="colorImages.get(colorForm.get('name')?.value)?.url"
+                                                alt="Color preview">
+                                        </div>
+                                        <button type="button" nz-button nzSize="small"
+                                            (click)="colorImageInput.click()">
+                                            <span nz-icon nzType="upload"></span>
+                                        </button>
+                                        <input type="file" #colorImageInput style="display: none"
+                                            (change)="onColorImageChange($event, colorForm.get('name')?.value)"
+                                            accept="image/*">
+                                    </div>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                    </div>
+                    <button type="button" nz-button nzType="default" nzDanger (click)="removeColor(i)" nz-tooltip
+                        nzTooltipTitle="Eliminar color">
+                        <span nz-icon nzType="delete"></span>
+                    </button>
+                    <nz-divider></nz-divider>
+                </div>
+            </nz-tab>
+
+            <!-- Pestaña de Tallas -->
+            <nz-tab nzTitle="Tallas">
+                <!-- Contenido actual de la pestaña de tallas, sin la matriz de variantes -->
+                <div class="tab-header">
+                    <button type="button" nz-button nzType="default" (click)="addSize()">
+                        <span nz-icon nzType="plus"></span> Agregar Talla
+                    </button>
+                </div>
+
+                <div class="existing-sizes" *ngIf="existingSizes && existingSizes.length > 0">
+                    <h4>Tallas Disponibles</h4>
+                    <div class="size-chips">
+                        <nz-tag *ngFor="let size of existingSizes" (click)="addExistingSize(size)" [nzColor]="'blue'"
+                            style="cursor: pointer; margin: 4px;">
+                            {{ size.name }}
+                        </nz-tag>
+                    </div>
+                </div>
+
+                <div *ngIf="sizeForms.length === 0" class="empty-message">
+                    <nz-empty nzNotFoundContent="No hay tallas agregadas"></nz-empty>
+                </div>
+
+                <div *ngFor="let sizeForm of sizeFormsControls; let i = index" class="size-item">
+                    <div nz-row [nzGutter]="16" [formGroup]="sizeForm">
+                        <div nz-col [nzXs]="24" [nzSm]="8">
+                            <nz-form-item>
+                                <nz-form-label nzRequired>Nombre</nz-form-label>
+                                <nz-form-control nzErrorTip="Por favor ingrese un nombre">
+                                    <input nz-input formControlName="name" placeholder="Ej. S, M, L, XL">
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <!-- Oculto o deshabilitado cuando se usa la matriz -->
+                        <div nz-col [nzXs]="24" [nzSm]="8" *ngIf="!showVariantsMatrix">
+                            <nz-form-item>
+                                <nz-form-label>Stock General</nz-form-label>
+                                <nz-form-control nzErrorTip="Por favor ingrese un valor válido">
+                                    <nz-input-number formControlName="stock" [nzMin]="0" [nzStep]="1" [nzPrecision]="0"
+                                        style="width: 100%" [nzDisabled]="showVariantsMatrix"></nz-input-number>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzXs]="24" [nzSm]="8">
+                            <nz-form-item>
+                                <nz-form-label>Imagen</nz-form-label>
+                                <nz-form-control>
+                                    <div class="size-image-upload">
+                                        <div class="size-image-preview"
+                                            *ngIf="sizeImages.get(sizeForm.get('name')?.value)?.url">
+                                            <img [src]="sizeImages.get(sizeForm.get('name')?.value)?.url"
+                                                alt="Size preview">
+                                        </div>
+                                        <button type="button" nz-button nzSize="small" (click)="sizeImageInput.click()">
+                                            <span nz-icon nzType="upload"></span>
+                                        </button>
+                                        <input type="file" #sizeImageInput style="display: none"
+                                            (change)="onSizeImageChange($event, sizeForm.get('name')?.value)"
+                                            accept="image/*">
+                                    </div>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                    </div>
+
+                    <button type="button" nz-button nzType="default" nzDanger (click)="removeSize(i)" nz-tooltip
+                        nzTooltipTitle="Eliminar talla">
+                        <span nz-icon nzType="delete"></span>
+                    </button>
+                    <nz-divider></nz-divider>
+                </div>
+            </nz-tab>
+
+            <!-- Nueva pestaña dedicada al inventario -->
+
+            <nz-tab nzTitle="Inventario" [nzDisabled]="!showVariantsMatrix">
+                <div *ngIf="colorForms.length > 0 && sizeForms.length > 0" class="inventory-info">
+                    <nz-alert nzType="info" nzMessage="El stock se gestiona por combinación color-talla"
+                        nzDescription="Puede gestionar el stock específico para cada combinación color-talla en la matriz de abajo."
+                        nzShowIcon>
+                    </nz-alert>
+                </div>
+                <div *ngIf="colorForms.length === 0 || sizeForms.length === 0" class="empty-message">
+                    <nz-alert nzType="info"
+                        nzMessage="Para gestionar el inventario, primero debe agregar al menos un color y una talla en las pestañas correspondientes."
+                        nzShowIcon></nz-alert>
+                </div>
+
+                <div *ngIf="showVariantsMatrix" class="variants-matrix-container">
+                    <h3>Gestión de Inventario por Variante</h3>
+                    <p>Configure el stock para cada combinación de color y talla:</p>
+
+                    <div class="variants-table-container">
+                        <table class="variants-table">
+                            <thead>
+                                <tr>
+                                    <th>Talla / Color</th>
+                                    <th *ngFor="let color of colorFormsControls">
+                                        <div class="color-header">
+                                            <span class="color-indicator"
+                                                [style.background-color]="color.get('code')?.value"></span>
+                                            {{color.get('name')?.value}}
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let row of variantsMatrix">
+                                    <td class="size-cell">{{row.size}}</td>
+                                    <td *ngFor="let variant of row.colorVariants">
+                                        <nz-input-number [ngModel]="variant.stock" [ngModelOptions]="{standalone: true}"
+                                            [nzMin]="0" [nzMax]="9999" [nzStep]="1" [nzSize]="'small'"
+                                            (ngModelChange)="updateVariantStock(variant.colorName, variant.sizeName, $event)">
+                                        </nz-input-number>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="total-stock-info">
+                        <nz-alert nzType="info" [nzMessage]="'Stock total: ' + totalStock + ' unidades'"
+                            nzShowIcon></nz-alert>
+                    </div>
+                </div>
+            </nz-tab>
+
+            <!-- Pestaña SEO y Metadatos -->
+            <nz-tab nzTitle="SEO y Etiquetas">
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label>Título SEO</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="metaTitle" placeholder="Título para SEO">
+                                <div class="form-help-text">
+                                    Título optimizado para SEO - si se deja vacío, se usará el nombre del producto
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Descripción SEO</nz-form-label>
+                            <nz-form-control>
+                                <textarea nz-input formControlName="metaDescription" rows="4"
+                                    placeholder="Descripción para SEO"></textarea>
+                                <div class="form-help-text">
+                                    Descripción corta para SEO - si se deja vacío, se usará un extracto de la
+                                    descripción
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label>Palabras clave</nz-form-label>
+                            <nz-form-control>
+                                <textarea nz-input formControlName="searchKeywords" rows="4"
+                                    placeholder="Palabras clave separadas por comas"></textarea>
+                                <div class="form-help-text">
+                                    Palabras clave para mejorar la búsqueda (separadas por comas)
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Etiquetas</nz-form-label>
+                            <nz-form-control>
+                                <textarea nz-input formControlName="tags" rows="4"
+                                    placeholder="Etiquetas separadas por comas"></textarea>
+                                <div class="form-help-text">
+                                    Etiquetas para clasificar el producto (separadas por comas)
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+            </nz-tab>
+        </nz-tabset>
+
+        <!-- Botones de acción -->
+        <div class="form-actions">
+            <button type="button" nz-button nzType="default" (click)="cancelForm()" [disabled]="submitting">
+                Cancelar
+            </button>
+            <button type="submit" nz-button nzType="primary" [nzLoading]="submitting">
+                {{ isEditMode ? 'Actualizar' : 'Crear' }} Producto
+            </button>
+        </div>
+    </form>
+</div>

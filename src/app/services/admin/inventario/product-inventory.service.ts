@@ -1,24 +1,29 @@
 import { Injectable } from '@angular/core';
-import { Firestore, doc, updateDoc, getDoc, writeBatch, increment } from '@angular/fire/firestore';
-import { Observable, from, throwError } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { Firestore, doc, updateDoc, getDoc, writeBatch, increment, DocumentReference, collection, query, where, getDocs, DocumentData } from '@angular/fire/firestore';
+import { Observable, from, throwError, of, forkJoin } from 'rxjs';
+import { map, catchError, switchMap, tap } from 'rxjs/operators';
 
-// Importar según tu estructura de proyecto
-import { ProductVariantService } from '../productVariante/product-variant.service';
-import { Product, ProductVariant } from '../../../models/models'; // Asegúrate de que tienes estas interfaces definidas
+// Importar utilidades
+import { ErrorUtil } from '../../../utils/error-util';
+import { TimestampUtil } from '../../../utils/timestamp-util';
+import { CacheService } from '../cache/cache.service';
 
-interface StockUpdate {
+// Importar modelos
+import { Product, ProductVariant } from '../../../models/models';
+
+// Interfaces para el servicio de inventario
+export interface StockUpdate {
   productId: string;
   variantId: string;
-  quantity: number;
+  quantity: number; // Positivo para incrementar, negativo para decrementar
 }
 
-interface SaleItem {
+export interface SaleItem {
   variantId: string;
   quantity: number;
 }
 
-interface StockCheckResult {
+export interface StockCheckResult {
   available: boolean;
   unavailableItems: {
     variantId: string;
@@ -27,15 +32,49 @@ interface StockCheckResult {
   }[];
 }
 
+export interface StockTransfer {
+  sourceVariantId: string;
+  targetVariantId: string;
+  quantity: number;
+}
+
+export interface InventorySummary {
+  totalProducts: number;
+  totalVariants: number;
+  totalStock: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  categories: { [category: string]: number };
+}
+
+export interface LowStockProduct {
+  productId: string;
+  productName: string;
+  sku: string;
+  variants: {
+    variantId: string;
+    colorName: string;
+    sizeName: string;
+    currentStock: number;
+  }[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ProductInventoryService {
   private productsCollection = 'products';
+  private variantsCollection = 'productVariants';
+  private readonly lowStockThreshold = 5;
+
+  // Claves de caché
+  private readonly variantCacheKey = 'product_variants';
+  private readonly inventorySummaryCacheKey = 'inventory_summary';
+  private readonly lowStockCacheKey = 'low_stock_products';
 
   constructor(
     private firestore: Firestore,
-    private variantService: ProductVariantService
+    private cacheService: CacheService
   ) { }
 
   /**
@@ -43,28 +82,32 @@ export class ProductInventoryService {
    */
   checkVariantsAvailability(items: SaleItem[]): Observable<StockCheckResult> {
     if (!items || items.length === 0) {
-      return from(Promise.resolve({ available: true, unavailableItems: [] }));
+      return of({ available: true, unavailableItems: [] });
     }
 
-    const checks = items.map(item =>
-      this.variantService.getVariantById(item.variantId).then(variant => {
-        if (!variant) {
+    // Obtener cada variante para verificar stock
+    const variantChecks = items.map(item =>
+      this.getVariantById(item.variantId).pipe(
+        map(variant => {
+          if (!variant) {
+            return {
+              variantId: item.variantId,
+              requested: item.quantity,
+              available: 0
+            };
+          }
+
           return {
             variantId: item.variantId,
             requested: item.quantity,
-            available: 0
+            available: variant.stock || 0
           };
-        }
-
-        return {
-          variantId: item.variantId,
-          requested: item.quantity,
-          available: variant.stock || 0
-        };
-      })
+        })
+      )
     );
 
-    return from(Promise.all(checks)).pipe(
+    // Combinar todos los resultados para dar una respuesta única
+    return forkJoin(variantChecks).pipe(
       map(results => {
         const unavailableItems = results.filter(item =>
           item.available < item.requested
@@ -75,10 +118,7 @@ export class ProductInventoryService {
           unavailableItems
         };
       }),
-      catchError(error => {
-        console.error('Error al verificar disponibilidad:', error);
-        return throwError(() => new Error(`Error al verificar disponibilidad: ${error.message}`));
-      })
+      catchError(error => ErrorUtil.handleError(error, 'checkVariantsAvailability'))
     );
   }
 
@@ -93,403 +133,526 @@ export class ProductInventoryService {
           return throwError(() => new Error('No hay suficiente stock para completar la venta'));
         }
 
-        return from(this.processSale(productId, items));
+        return this.processSale(productId, items);
       }),
-      catchError(error => {
-        console.error('Error al registrar venta:', error);
-        return throwError(() => new Error(`Error al registrar venta: ${error.message}`));
-      })
+      catchError(error => ErrorUtil.handleError(error, 'registerSale'))
     );
   }
 
   /**
    * Procesa una venta actualizando inventario
    */
-  private async processSale(productId: string, items: SaleItem[]): Promise<void> {
-    await this.variantService.registerSale(productId, items);
+  private processSale(productId: string, items: SaleItem[]): Observable<void> {
+    return from((async () => {
+      const batch = writeBatch(this.firestore);
+      let totalQuantity = 0;
+
+      // Actualizar stock de cada variante
+      for (const item of items) {
+        const variantRef = doc(this.firestore, this.variantsCollection, item.variantId);
+        batch.update(variantRef, {
+          stock: increment(-item.quantity),
+          lastSaleDate: new Date()
+        });
+        totalQuantity += item.quantity;
+      }
+
+      // Actualizar el producto
+      const productRef = doc(this.firestore, this.productsCollection, productId);
+      batch.update(productRef, {
+        totalStock: increment(-totalQuantity),
+        sales: increment(totalQuantity),
+        lastSaleDate: new Date()
+      });
+
+      // Actualizar puntuación de popularidad
+      const productDoc = await getDoc(productRef);
+      if (productDoc.exists()) {
+        const productData = productDoc.data();
+        // Usar acceso seguro a propiedades con corchetes
+        const views = productData && 'views' in productData ? productData['views'] || 0 : 0;
+        const previousSales = productData && 'sales' in productData ? productData['sales'] || 0 : 0;
+        const newSales = previousSales + totalQuantity;
+
+        const popularityScore = (newSales * 5) + (views * 0.1);
+        batch.update(productRef, { popularityScore });
+      }
+
+      await batch.commit();
+
+      // Invalidar caché relacionado al inventario
+      this.invalidateInventoryCache(undefined, productId);
+    })()).pipe(
+      catchError(error => ErrorUtil.handleError(error, 'processSale'))
+    );
   }
 
   /**
    * Actualiza el stock de una variante
    */
   updateStock(update: StockUpdate): Observable<void> {
-    return from(
-      Promise.all([
-        // Actualizar stock de la variante
-        this.variantService.updateStockQuantity(update.variantId, update.quantity),
+    if (!update || !update.productId || !update.variantId) {
+      return throwError(() => new Error('Datos de actualización de stock incorrectos'));
+    }
 
-        // Actualizar stock total y fecha de reabastecimiento del producto
-        this.updateProductStock(update.productId, update.quantity)
-      ])
-    ).pipe(
-      map(() => undefined),
-      catchError(error => {
-        console.error('Error al actualizar stock:', error);
-        return throwError(() => new Error(`Error al actualizar stock: ${error.message}`));
-      })
+    return from((async () => {
+      const batch = writeBatch(this.firestore);
+
+      // Actualizar stock de la variante
+      const variantRef = doc(this.firestore, this.variantsCollection, update.variantId);
+      batch.update(variantRef, {
+        stock: increment(update.quantity),
+        lastUpdateDate: new Date()
+      });
+
+      // Actualizar stock total del producto
+      const productRef = doc(this.firestore, this.productsCollection, update.productId);
+      batch.update(productRef, {
+        totalStock: increment(update.quantity),
+        lastRestockDate: update.quantity > 0 ? new Date() : null
+      });
+
+      await batch.commit();
+
+      // Invalidar caché relacionado al inventario
+      this.invalidateInventoryCache(update.variantId, update.productId);
+    })()).pipe(
+      catchError(error => ErrorUtil.handleError(error, 'updateStock'))
     );
   }
 
   /**
-   * Actualiza el stock total de un producto
+   * Actualiza el stock de múltiples variantes en una sola operación
    */
-  private async updateProductStock(productId: string, quantity: number): Promise<void> {
-    const productRef = doc(this.firestore, this.productsCollection, productId);
-    await updateDoc(productRef, {
-      totalStock: increment(quantity),
-      lastRestockDate: new Date()
+  updateStockBatch(updates: StockUpdate[]): Observable<void> {
+    if (!updates || updates.length === 0) {
+      return of(undefined);
+    }
+
+    return from((async () => {
+      const batch = writeBatch(this.firestore);
+
+      // Agrupar las actualizaciones por producto para calcular el stock total
+      const productStockChanges = new Map<string, number>();
+
+      // Aplicar cada actualización a nivel de variante
+      for (const update of updates) {
+        if (!update.productId || !update.variantId) continue;
+
+        // Actualizar variante
+        const variantRef = doc(this.firestore, this.variantsCollection, update.variantId);
+        batch.update(variantRef, {
+          stock: increment(update.quantity),
+          lastUpdateDate: new Date()
+        });
+
+        // Acumular cambio para el producto
+        const currentChange = productStockChanges.get(update.productId) || 0;
+        productStockChanges.set(update.productId, currentChange + update.quantity);
+      }
+
+      // Actualizar los productos con el cambio acumulado
+      for (const [productId, stockChange] of productStockChanges.entries()) {
+        const productRef = doc(this.firestore, this.productsCollection, productId);
+        const updates: any = { totalStock: increment(stockChange) };
+
+        // Si es un reabastecimiento (stockChange > 0), actualizar la fecha
+        if (stockChange > 0) {
+          updates.lastRestockDate = new Date();
+        }
+
+        batch.update(productRef, updates);
+      }
+
+      await batch.commit();
+
+      // Invalidar el caché
+      updates.forEach(update => {
+        this.invalidateInventoryCache(update.variantId, update.productId);
+      });
+    })()).pipe(
+      catchError(error => ErrorUtil.handleError(error, 'updateStockBatch'))
+    );
+  }
+
+  /**
+   * Transfiere stock entre variantes 
+   * (útil para corregir errores o mover inventario)
+   */
+  transferStock(transfer: StockTransfer): Observable<void> {
+    if (!transfer || !transfer.sourceVariantId || !transfer.targetVariantId || transfer.quantity <= 0) {
+      return throwError(() => new Error('Datos de transferencia incorrectos'));
+    }
+
+    // Obtener información de ambas variantes
+    return forkJoin({
+      source: this.getVariantById(transfer.sourceVariantId),
+      target: this.getVariantById(transfer.targetVariantId)
+    }).pipe(
+      switchMap(({ source, target }) => {
+        // Verificar que ambas variantes existen
+        if (!source) {
+          return throwError(() => new Error(`La variante de origen ${transfer.sourceVariantId} no existe`));
+        }
+        if (!target) {
+          return throwError(() => new Error(`La variante de destino ${transfer.targetVariantId} no existe`));
+        }
+
+        // Verificar stock suficiente
+        if ((source.stock || 0) < transfer.quantity) {
+          return throwError(() => new Error(`Stock insuficiente en la variante de origen (disponible: ${source.stock})`));
+        }
+
+        return from((async () => {
+          const batch = writeBatch(this.firestore);
+
+          // Decrementar stock en variante origen
+          const sourceRef = doc(this.firestore, this.variantsCollection, transfer.sourceVariantId);
+          batch.update(sourceRef, {
+            stock: increment(-transfer.quantity),
+            lastUpdateDate: new Date()
+          });
+
+          // Incrementar stock en variante destino
+          const targetRef = doc(this.firestore, this.variantsCollection, transfer.targetVariantId);
+          batch.update(targetRef, {
+            stock: increment(transfer.quantity),
+            lastUpdateDate: new Date()
+          });
+
+          // Si las variantes pertenecen a diferentes productos, actualizar totales
+          if (source.productId !== target.productId) {
+            // Decrementar en producto origen
+            const sourceProductRef = doc(this.firestore, this.productsCollection, source.productId);
+            batch.update(sourceProductRef, { totalStock: increment(-transfer.quantity) });
+
+            // Incrementar en producto destino
+            const targetProductRef = doc(this.firestore, this.productsCollection, target.productId);
+            batch.update(targetProductRef, { totalStock: increment(transfer.quantity) });
+          }
+
+          await batch.commit();
+
+          // Invalidar caché
+          this.invalidateInventoryCache(transfer.sourceVariantId, source?.productId);
+          this.invalidateInventoryCache(transfer.targetVariantId, target?.productId);
+        })());
+      }),
+      catchError(error => ErrorUtil.handleError(error, 'transferStock'))
+    );
+  }
+
+  /**
+   * Obtiene una variante por su ID
+   */
+  getVariantById(variantId: string): Observable<ProductVariant | undefined> {
+    if (!variantId) {
+      return of(undefined);
+    }
+
+    const cacheKey = `${this.variantCacheKey}_${variantId}`;
+    return this.cacheService.getCached<ProductVariant | undefined>(cacheKey, () => {
+      return from((async () => {
+        const variantRef = doc(this.firestore, this.variantsCollection, variantId);
+        const variantSnap = await getDoc(variantRef);
+
+        if (variantSnap.exists()) {
+          const data = variantSnap.data();
+          return {
+            id: variantSnap.id,
+            ...data
+          } as ProductVariant;
+        }
+
+        return undefined;
+      })()).pipe(
+        catchError(error => ErrorUtil.handleError(error, `getVariantById(${variantId})`))
+      );
     });
   }
 
   /**
    * Obtiene productos con bajo stock
    */
-  getLowStockProducts(threshold: number = 5): Observable<{
-    productId: string;
-    productName: string;
-    sku: string;
-    variants: {
-      variantId: string;
-      colorName: string;
-      sizeName: string;
-      currentStock: number;
-    }[]
-  }[]> {
-    return new Observable(observer => {
-      // Obtener todas las variantes con stock bajo
-      (async () => {
+  getLowStockProducts(threshold: number = this.lowStockThreshold): Observable<LowStockProduct[]> {
+    const cacheKey = `${this.lowStockCacheKey}_${threshold}`;
+
+    return this.cacheService.getCached<LowStockProduct[]>(cacheKey, () => {
+      return from((async () => {
         try {
-          const productsMap = new Map<string, {
-            productId: string;
-            productName: string;
-            sku: string;
-            variants: {
-              variantId: string;
-              colorName: string;
-              sizeName: string;
-              currentStock: number;
-            }[]
-          }>();
+          const productsMap = new Map<string, LowStockProduct>();
 
-          // Obtenemos todas las variantes con stock bajo
-          const variants = await this.variantService.getLowStockVariants(threshold);
+          // Obtener todas las variantes con stock bajo
+          const variantsRef = collection(this.firestore, this.variantsCollection);
+          const q = query(
+            variantsRef,
+            where('stock', '<=', threshold),
+            where('stock', '>', 0)
+          );
 
-          if (!variants || variants.length === 0) {
-            observer.next([]);
-            observer.complete();
-            return;
+          const variantsSnap = await getDocs(q);
+          const variants = variantsSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as ProductVariant));
+
+          if (variants.length === 0) {
+            return [];
           }
 
-          // Agrupamos las variantes por productId
+          // Agrupar las variantes por producto
           for (const variant of variants) {
-            // Verificar que variant y productId existen
-            if (!variant || !variant.productId) continue;
+            if (!variant.productId) continue;
 
             const productId = variant.productId;
 
             if (!productsMap.has(productId)) {
-              // Si es la primera variante de este producto, obtenemos detalles del producto
+              // Obtener datos básicos del producto
               const productRef = doc(this.firestore, this.productsCollection, productId);
               const productSnap = await getDoc(productRef);
 
               if (productSnap.exists()) {
                 const productData = productSnap.data();
+
+                // Corregir acceso a propiedades usando notación de corchetes
+                const productName = productData && 'name' in productData ? String(productData['name']) : 'Producto sin nombre';
+                const productSku = productData && 'sku' in productData ? String(productData['sku']) : '';
+
                 productsMap.set(productId, {
                   productId,
-                  productName: productData && typeof productData === 'object' && 'name' in productData ?
-                    String(productData['name']) : 'Producto sin nombre',
-                  sku: productData && typeof productData === 'object' && 'sku' in productData ?
-                    String(productData['sku']) : '',
+                  productName,
+                  sku: productSku,
                   variants: []
                 });
+              } else {
+                // Si no existe el producto, omitir esta variante
+                continue;
               }
             }
 
-            // Agregamos la variante a su producto correspondiente
+            // Agregar la variante a su producto
             const productEntry = productsMap.get(productId);
             if (productEntry) {
-              // Verificar que los campos de la variante existen
               productEntry.variants.push({
-                variantId: variant.id || '',
+                variantId: variant.id,
                 colorName: variant.colorName || '',
                 sizeName: variant.sizeName || '',
-                currentStock: typeof variant.stock === 'number' ? variant.stock : 0
+                currentStock: variant.stock || 0
               });
             }
           }
 
-          // Convertimos el mapa a array para devolver el resultado
-          const result = Array.from(productsMap.values());
-          observer.next(result);
-          observer.complete();
-        } catch (error: unknown) {
-          // Manejo seguro del error desconocido
-          let errorMessage = 'Error desconocido';
-
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          } else if (typeof error === 'string') {
-            errorMessage = error;
-          } else if (error !== null && error !== undefined) {
-            try {
-              errorMessage = JSON.stringify(error);
-            } catch {
-              errorMessage = String(error);
-            }
-          }
-
-          console.error('Error al obtener productos con bajo stock:', errorMessage);
-          observer.error(new Error(`Error al obtener productos con bajo stock: ${errorMessage}`));
+          // Convertir el mapa a un array
+          return Array.from(productsMap.values());
+        } catch (error) {
+          throw error;
         }
-      })();
+      })()).pipe(
+        catchError(error => ErrorUtil.handleError(error, 'getLowStockProducts'))
+      );
     });
   }
 
   /**
-   * Obtiene un informe de inventario (resumen del stock)
+   * Obtiene un informe general del inventario
    */
-  getInventoryReport(): Observable<{
-    totalProducts: number;
-    totalVariants: number;
-    totalStock: number;
-    lowStockCount: number;
-    outOfStockCount: number;
-    categories: { [category: string]: number };
-  }> {
-    return new Observable(observer => {
-      (async () => {
+  getInventorySummary(): Observable<InventorySummary> {
+    return this.cacheService.getCached<InventorySummary>(this.inventorySummaryCacheKey, () => {
+      return from((async () => {
         try {
-          // Obtener todas las variantes
-          const variants = await this.variantService.getAllVariants();
+          // 1. Obtener todas las variantes
+          const variantsRef = collection(this.firestore, this.variantsCollection);
+          const variantsSnap = await getDocs(variantsRef);
+          const variants = variantsSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as ProductVariant));
 
-          // Mapear variantes por productId
-          const productVariantsMap = new Map<string, ProductVariant[]>();
-          const productIdSet = new Set<string>();
+          // 2. Obtener datos de todos los productos relacionados
+          const productIds = new Set<string>();
+          variants.forEach(variant => {
+            if (variant.productId) {
+              productIds.add(variant.productId);
+            }
+          });
 
-          for (const variant of variants) {
-            if (variant && variant.productId) {
-              productIdSet.add(variant.productId);
-
-              if (!productVariantsMap.has(variant.productId)) {
-                productVariantsMap.set(variant.productId, []);
-              }
-
-              const variantArray = productVariantsMap.get(variant.productId);
-              if (variantArray) {
-                variantArray.push(variant);
-              }
+          const productsData: DocumentData[] = [];
+          for (const productId of productIds) {
+            const productRef = doc(this.firestore, this.productsCollection, productId);
+            const productSnap = await getDoc(productRef);
+            if (productSnap.exists()) {
+              productsData.push({
+                id: productSnap.id,
+                ...productSnap.data()
+              });
             }
           }
 
-          // Obtener detalles de productos
-          const productsPromises = Array.from(productIdSet).map(async (productId: string) => {
-            const productRef = doc(this.firestore, this.productsCollection, productId);
-            const productSnap = await getDoc(productRef);
-
-            if (productSnap.exists()) {
-              const productData = productSnap.data() as Partial<Product>;
-              return {
-                id: productId,
-                category: productData.category || 'Sin categoría',
-                variants: productVariantsMap.get(productId) || []
-              };
-            }
-            return null;
-          });
-
-          const products = (await Promise.all(productsPromises)).filter(Boolean);
-
-          // Calcular estadísticas
-          const categories: { [category: string]: number } = {};
+          // 3. Calcular métricas
           let totalStock = 0;
           let lowStockCount = 0;
           let outOfStockCount = 0;
+          const categories: { [category: string]: number } = {};
 
-          for (const product of products) {
-            // Asegurarse de que product no es null (TypeScript safety)
-            if (!product) continue;
+          // Procesar variantes
+          variants.forEach(variant => {
+            const stock = variant.stock || 0;
+            totalStock += stock;
 
-            // Contar por categoría con comprobación segura
-            const category = product.category || 'Sin categoría';
-            categories[category] = (categories[category] || 0) + 1;
-
-            // Verificar que product.variants existe y es un array
-            const variants = Array.isArray(product.variants) ? product.variants : [];
-
-            // Calcular stock por variante
-            for (const variant of variants) {
-              const stock = typeof variant.stock === 'number' ? variant.stock : 0;
-              totalStock += stock;
-
-              if (stock === 0) {
-                outOfStockCount++;
-              } else if (stock <= 5) {
-                lowStockCount++;
-              }
+            if (stock === 0) {
+              outOfStockCount++;
+            } else if (stock <= this.lowStockThreshold) {
+              lowStockCount++;
             }
-          }
+          });
 
-          observer.next({
-            totalProducts: products.length,
+          // Contar por categoría - Usar TimestampUtil para fechas
+          productsData.forEach(product => {
+            // Usar corchetes para acceder a propiedades
+            const category = product && 'category' in product ? String(product['category']) : 'Sin categoría';
+
+            // Usar TimestampUtil en caso de tener fechas
+            if (product && 'createdAt' in product) {
+              // Ejemplo de uso de TimestampUtil
+              const createdDate = TimestampUtil.toDate(product['createdAt']);
+              // Podríamos hacer algo con esta fecha si fuera necesario
+            }
+
+            categories[category] = (categories[category] || 0) + 1;
+          });
+
+          // 4. Retornar resumen
+          return {
+            totalProducts: productsData.length,
             totalVariants: variants.length,
             totalStock,
             lowStockCount,
             outOfStockCount,
             categories
-          });
-          observer.complete();
-        } catch (error: unknown) {
-          // Manejo seguro del error desconocido
-          let errorMessage = 'Error desconocido';
-
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          } else if (typeof error === 'string') {
-            errorMessage = error;
-          } else if (error !== null && error !== undefined) {
-            try {
-              errorMessage = JSON.stringify(error);
-            } catch {
-              errorMessage = String(error);
-            }
-          }
-
-          console.error('Error al generar informe de inventario:', errorMessage);
-          observer.error(new Error(`Error al generar informe de inventario: ${errorMessage}`));
+          };
+        } catch (error) {
+          throw error;
         }
-      })();
+      })()).pipe(
+        catchError(error => ErrorUtil.handleError(error, 'getInventorySummary'))
+      );
     });
   }
 
   /**
-   * Actualiza el stock de múltiples variantes en una sola operación
+   * Obtiene variantes sin stock
    */
-  updateStockBatch(updates: { variantId: string; quantity: number }[]): Observable<void> {
-    if (!updates || updates.length === 0) {
-      return from(Promise.resolve());
-    }
+  getOutOfStockVariants(): Observable<ProductVariant[]> {
+    const cacheKey = `${this.variantCacheKey}_out_of_stock`;
 
-    return from(
-      (async () => {
-        const batch = writeBatch(this.firestore);
-        const variantUpdates = new Map<string, number>();
+    return this.cacheService.getCached<ProductVariant[]>(cacheKey, () => {
+      return from((async () => {
+        const variantsRef = collection(this.firestore, this.variantsCollection);
+        const q = query(variantsRef, where('stock', '==', 0));
 
-        // Agrupar actualizaciones por variante
-        for (const update of updates) {
-          variantUpdates.set(update.variantId, update.quantity);
-        }
+        const variantsSnap = await getDocs(q);
+        return variantsSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ProductVariant));
+      })()).pipe(
+        catchError(error => ErrorUtil.handleError(error, 'getOutOfStockVariants'))
+      );
+    });
+  }
 
-        // Obtener información de las variantes para actualizar también los productos
-        const variantDocs = await Promise.all(
-          Array.from(variantUpdates.keys()).map(variantId =>
-            this.variantService.getVariantById(variantId)
-          )
+  /**
+   * Obtiene variantes con stock bajo
+   */
+  getLowStockVariants(threshold: number = this.lowStockThreshold): Observable<ProductVariant[]> {
+    const cacheKey = `${this.variantCacheKey}_low_stock_${threshold}`;
+
+    return this.cacheService.getCached<ProductVariant[]>(cacheKey, () => {
+      return from((async () => {
+        const variantsRef = collection(this.firestore, this.variantsCollection);
+        const q = query(
+          variantsRef,
+          where('stock', '<=', threshold),
+          where('stock', '>', 0)
         );
 
-        // Agrupar por producto para actualizar stock total
-        const productStockUpdates = new Map<string, number>();
+        const variantsSnap = await getDocs(q);
+        return variantsSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ProductVariant));
+      })()).pipe(
+        catchError(error => ErrorUtil.handleError(error, 'getLowStockVariants'))
+      );
+    });
+  }
 
-        for (const variant of variantDocs) {
-          if (!variant || !variant.productId) continue;
+  /**
+   * Obtiene todas las variantes de un producto
+   */
+  getVariantsByProductId(productId: string): Observable<ProductVariant[]> {
+    if (!productId) {
+      return of([]);
+    }
 
-          const quantity = variantUpdates.get(variant.id) || 0;
+    const cacheKey = `${this.variantCacheKey}_product_${productId}`;
 
-          // Actualizar cada variante
-          const variantRef = doc(this.firestore, 'productVariants', variant.id);
-          batch.update(variantRef, { stock: increment(quantity) });
+    return this.cacheService.getCached<ProductVariant[]>(cacheKey, () => {
+      return from((async () => {
+        const variantsRef = collection(this.firestore, this.variantsCollection);
+        const q = query(variantsRef, where('productId', '==', productId));
 
-          // Sumar al total del producto
-          if (!productStockUpdates.has(variant.productId)) {
-            productStockUpdates.set(variant.productId, 0);
-          }
+        const variantsSnap = await getDocs(q);
+        return variantsSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ProductVariant));
+      })()).pipe(
+        catchError(error => ErrorUtil.handleError(error, `getVariantsByProductId(${productId})`))
+      );
+    });
+  }
 
-          const currentValue = productStockUpdates.get(variant.productId) || 0;
-          productStockUpdates.set(variant.productId, currentValue + quantity);
-        }
+  /**
+   * Incrementa el contador de vistas de un producto
+   */
+  incrementProductViews(productId: string): Observable<void> {
+    if (!productId) {
+      return throwError(() => new Error('ID de producto no válido'));
+    }
 
-        // Actualizar stock total de cada producto
-        for (const [productId, stockChange] of productStockUpdates.entries()) {
-          const productRef = doc(this.firestore, this.productsCollection, productId);
-          batch.update(productRef, {
-            totalStock: increment(stockChange),
-            lastRestockDate: new Date()
-          });
-        }
-
-        await batch.commit();
-      })()
-    ).pipe(
-      map(() => undefined),
-      catchError(error => {
-        console.error('Error al actualizar stock en lote:', error);
-        return throwError(() => new Error(`Error al actualizar stock: ${error.message}`));
-      })
+    return from((async () => {
+      const productRef = doc(this.firestore, this.productsCollection, productId);
+      await updateDoc(productRef, {
+        views: increment(1),
+        lastViewDate: new Date()
+      });
+    })()).pipe(
+      catchError(error => ErrorUtil.handleError(error, `incrementProductViews(${productId})`))
     );
   }
 
   /**
-   * Transfiere stock entre variantes (útil para corregir errores)
-   */
-  transferStock(
-    sourceVariantId: string,
-    targetVariantId: string,
-    quantity: number
-  ): Observable<void> {
-    if (quantity <= 0) {
-      return throwError(() => new Error('La cantidad a transferir debe ser mayor a cero'));
+ * Invalida los cachés relacionados con el inventario de forma específica
+ * @param variantId ID de la variante para invalidación específica (opcional)
+ * @param productId ID del producto para invalidación específica (opcional)
+ */
+  private invalidateInventoryCache(variantId?: string, productId?: string): void {
+    // Siempre invalidar cachés principales
+    this.cacheService.invalidate(this.inventorySummaryCacheKey);
+    this.cacheService.invalidate(this.lowStockCacheKey);
+
+    // Si tenemos información específica, invalidar esas claves
+    if (variantId) {
+      this.cacheService.invalidate(`${this.variantCacheKey}_${variantId}`);
     }
 
-    return from(
-      (async () => {
-        // Obtener variantes de origen y destino
-        const [sourceVariant, targetVariant] = await Promise.all([
-          this.variantService.getVariantById(sourceVariantId),
-          this.variantService.getVariantById(targetVariantId)
-        ]);
+    if (productId) {
+      this.cacheService.invalidate(`${this.variantCacheKey}_product_${productId}`);
 
-        if (!sourceVariant) {
-          throw new Error(`La variante de origen ${sourceVariantId} no existe`);
-        }
-
-        if (!targetVariant) {
-          throw new Error(`La variante de destino ${targetVariantId} no existe`);
-        }
-
-        // Verificar stock suficiente
-        if ((sourceVariant.stock || 0) < quantity) {
-          throw new Error(`Stock insuficiente en la variante de origen (disponible: ${sourceVariant.stock})`);
-        }
-
-        // Si las variantes pertenecen al mismo producto, no hay cambio en el stock total
-        const isSameProduct = sourceVariant.productId === targetVariant.productId;
-
-        const batch = writeBatch(this.firestore);
-
-        // Actualizar variante de origen (decrementar)
-        const sourceRef = doc(this.firestore, 'productVariants', sourceVariantId);
-        batch.update(sourceRef, { stock: increment(-quantity) });
-
-        // Actualizar variante de destino (incrementar)
-        const targetRef = doc(this.firestore, 'productVariants', targetVariantId);
-        batch.update(targetRef, { stock: increment(quantity) });
-
-        // Actualizar productos si son diferentes
-        if (!isSameProduct) {
-          const sourceProductRef = doc(this.firestore, this.productsCollection, sourceVariant.productId);
-          batch.update(sourceProductRef, { totalStock: increment(-quantity) });
-
-          const targetProductRef = doc(this.firestore, this.productsCollection, targetVariant.productId);
-          batch.update(targetProductRef, { totalStock: increment(quantity) });
-        }
-
-        await batch.commit();
-      })()
-    ).pipe(
-      map(() => undefined),
-      catchError(error => {
-        console.error('Error al transferir stock:', error);
-        return throwError(() => new Error(`Error al transferir stock: ${error.message}`));
-      })
-    );
+      // También podríamos invalidar listas relacionadas
+      this.cacheService.invalidate(`${this.variantCacheKey}_out_of_stock`);
+      this.cacheService.invalidate(`${this.variantCacheKey}_low_stock_${this.lowStockThreshold}`);
+    }
   }
 }

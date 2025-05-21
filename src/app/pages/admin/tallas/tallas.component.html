@@ -1,0 +1,201 @@
+<div class="sizes-container">
+    <!-- Encabezado de la sección -->
+    <nz-card nzTitle="Administrar Tallas" class="mb-4 header-card">
+        <div class="card-actions">
+            <button nz-button nzType="primary" (click)="openModal()">
+                <span nz-icon nzType="plus"></span>
+                <span class="button-text">Nueva Talla</span>
+            </button>
+        </div>
+    </nz-card>
+
+    <!-- Mensaje de sin datos -->
+    <nz-empty *ngIf="sizes?.length === 0 && !loading" nzNotFoundContent="No hay tallas disponibles"
+        [nzNotFoundFooter]="emptyButton">
+    </nz-empty>
+    <ng-template #emptyButton>
+        <button nz-button nzType="primary" (click)="openModal()">Crear primera talla</button>
+    </ng-template>
+
+    <!-- Tabla de tallas -->
+    <div class="table-responsive" *ngIf="sizes && sizes.length > 0">
+        <nz-table #tabla [nzData]="sizes" [nzBordered]="true" [nzShowPagination]="true" [nzPageSize]="10">
+            <thead>
+                <tr>
+                    <th nzWidth="auto">Imagen</th>
+                    <th nzWidth="auto">Nombre</th>
+                    <th nzWidth="auto" class="hide-sm">Stock</th>
+                    <th nzWidth="auto" class="hide-md">Categorías</th>
+                    <th nzWidth="auto" class="hide-sm">Estado</th>
+                    <th nzWidth="auto">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let size of tabla.data" [class.highlight-row]="selectedSize?.id === size.id"
+                    [class.inactive-row]="!size.active">
+                    <td>
+                        <nz-avatar *ngIf="size.imageUrl" [nzSrc]="size.imageUrl" nzShape="square" nzSize="large"
+                            [nzAlt]="size.name" (error)="handleImageError($event)"></nz-avatar>
+                        <div *ngIf="!size.imageUrl" class="no-image">
+                            <span nz-icon nzType="picture" nzTheme="outline"></span>
+                        </div>
+                    </td>
+                    <td>{{ size.name }}</td>
+                    <td class="hide-sm">{{ size.stock || 0 }}</td>
+                    <td class="hide-md">
+                        <span class="truncate-text" nz-tooltip [nzTooltipTitle]="getCategoryNames(size.categories ?? [])">
+                            {{ getCategoryNames(size.categories ?? []) }}
+                        </span>
+                    </td>
+                    <td class="hide-sm">
+                        <nz-tag [nzColor]="size.active ? 'success' : 'default'">
+                            {{ size.active ? 'Activo' : 'Inactivo' }}
+                        </nz-tag>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button nz-button nzSize="small" (click)="editSize(size)" nz-tooltip
+                                nzTooltipTitle="Editar">
+                                <span nz-icon nzType="edit"></span>
+                            </button>
+                            <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar esta talla?"
+                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteSize(size.id)" nzSize="small"
+                                nz-tooltip nzTooltipTitle="Eliminar">
+                                <i nz-icon nzType="delete" nzTheme="outline"></i>
+                            </button>
+
+                            <!-- Botón de vista rápida para mostrar detalles en móvil -->
+                            <button nz-button nzSize="small" (click)="showDetails(size)" nz-tooltip
+                                nzTooltipTitle="Ver detalles" class="show-sm">
+                                <i nz-icon nzType="eye" nzTheme="outline"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+    </div>
+
+    <!-- Modal para crear/editar -->
+    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Talla' : 'Nueva Talla'"
+        [nzOkLoading]="saving" (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="modalWidth" nzCentered>
+        <ng-container *nzModalContent>
+            <form [formGroup]="sizeForm" nz-form nzLayout="vertical">
+                <nz-form-item>
+                    <nz-form-label nzRequired>Nombre</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingrese un nombre para la talla">
+                        <input nz-input formControlName="name" placeholder="Ej. S, M, L, XL, 38, 40, etc." />
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Descripción</nz-form-label>
+                    <nz-form-control>
+                        <textarea nz-input formControlName="description"
+                            placeholder="Descripción de la talla (opcional)"
+                            [nzAutosize]="{ minRows: 2, maxRows: 6 }"></textarea>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Stock General</nz-form-label>
+                    <nz-form-control>
+                        <nz-input-number formControlName="stock" [nzMin]="0" [nzStep]="1"
+                            [nzPrecision]="0"></nz-input-number>
+                        <div class="form-help-text">
+                            Stock general para esta talla. Podrá configurar stock por color en productos específicos.
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Categorías Aplicables</nz-form-label>
+                    <nz-form-control>
+                        <nz-select formControlName="categories" nzMode="multiple" nzPlaceHolder="Seleccionar categorías"
+                            [nzLoading]="categoriesLoading">
+                            <nz-option *ngFor="let category of categories" [nzValue]="category.id"
+                                [nzLabel]="category.name"></nz-option>
+                        </nz-select>
+                        <div class="form-help-text">
+                            Categorías donde esta talla estará disponible
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Orden</nz-form-label>
+                    <nz-form-control>
+                        <nz-input-number formControlName="order" [nzMin]="0" [nzStep]="1"
+                            [nzPrecision]="0"></nz-input-number>
+                        <div class="form-help-text">
+                            Orden de aparición (menor número = aparece primero)
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Estado</nz-form-label>
+                    <nz-form-control>
+                        <nz-switch formControlName="active" nzCheckedChildren="Activo"
+                            nzUnCheckedChildren="Inactivo"></nz-switch>
+                        <div class="form-help-text">
+                            Las tallas inactivas no se mostrarán en la tienda
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Imagen (opcional)</nz-form-label>
+                    <nz-form-control>
+                        <div class="upload-container">
+                            <nz-upload [nzFileList]="fileList" [nzBeforeUpload]="beforeUpload"
+                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemove" nzListType="picture-card">
+                                <div *ngIf="fileList.length < 1">
+                                    <span nz-icon nzType="plus"></span>
+                                    <div class="ant-upload-text">Subir</div>
+                                </div>
+                            </nz-upload>
+                        </div>
+                        <div *ngIf="imageErrorMessage" class="error-message">
+                            {{ imageErrorMessage }}
+                        </div>
+                        <div class="form-help-text">
+                            Sube una imagen representativa de la talla (opcional)
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+            </form>
+        </ng-container>
+    </nz-modal>
+
+    <!-- Modal de Detalles para móvil -->
+    <nz-modal [(nzVisible)]="detailsModalVisible" nzTitle="Detalles de la Talla"
+        (nzOnCancel)="detailsModalVisible = false" [nzFooter]="null" [nzWidth]="320" nzCentered>
+        <ng-container *nzModalContent>
+            <div *ngIf="selectedSize" class="size-details">
+                <div *ngIf="selectedSize.imageUrl" class="detail-image">
+                    <img [src]="selectedSize.imageUrl" [alt]="selectedSize.name" (error)="handleImageError($event)">
+                </div>
+                <div class="detail-content">
+                    <h3>{{ selectedSize.name }}</h3>
+                    <p *ngIf="selectedSize.description"><strong>Descripción:</strong> {{ selectedSize.description }}</p>
+                    <p><strong>Stock:</strong> {{ selectedSize.stock || 0 }}</p>
+                    <p><strong>Estado:</strong> {{ selectedSize.active ? 'Activo' : 'Inactivo' }}</p>
+                    <p><strong>Categorías:</strong> {{ getCategoryNames(selectedSize.categories ?? []) }}</p>
+                    <p><strong>Orden:</strong> {{ selectedSize.order || 0 }}</p>
+                </div>
+                <div class="detail-actions">
+                    <button nz-button (click)="editSize(selectedSize); detailsModalVisible = false">
+                        <span nz-icon nzType="edit"></span> Editar
+                    </button>
+                    <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar esta talla?"
+                        nzPopconfirmPlacement="top"
+                        (nzOnConfirm)="deleteSize(selectedSize.id); detailsModalVisible = false">
+                        <span nz-icon nzType="delete"></span> Eliminar
+                    </button>
+                </div>
+            </div>
+        </ng-container>
+    </nz-modal>
+</div>

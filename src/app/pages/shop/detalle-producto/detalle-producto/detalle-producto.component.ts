@@ -4,7 +4,7 @@ import { CategoryService, Category } from '../../../../services/admin/category/c
 import { ProductVariantService } from '../../../../services/admin/productVariante/product-variant.service';
 import { CartService } from '../../../../pasarela-pago/services/cart/cart.service';
 import { Product, Color, Size, ProductVariant } from '../../../../models/models';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -12,7 +12,9 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { FormsModule } from '@angular/forms';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { Router } from '@angular/router';
+import { ProductPriceService } from '../../../../services/admin/price/product-price.service';
+import { ProductInventoryService } from '../../../../services/admin/inventario/product-inventory.service';
+import { Observable, catchError, finalize, of, switchMap, take } from 'rxjs';
 
 @Component({
   selector: 'app-detalle-producto',
@@ -57,15 +59,16 @@ export class DetalleProductoComponent implements OnInit {
   relatedProducts: Product[] = [];
   currentImageUrl: string = '';
 
-
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private productService: ProductService,
     private categoryService: CategoryService,
     private productVariantService: ProductVariantService,
+    private productPriceService: ProductPriceService,
+    private inventoryService: ProductInventoryService,
     private modalService: NzModalService,
-    private cartService: CartService,
-    private router: Router
+    private cartService: CartService
   ) { }
 
   ngOnInit(): void {
@@ -88,14 +91,36 @@ export class DetalleProductoComponent implements OnInit {
   loadProduct(productId: string): void {
     this.productsLoading = true;
 
-    this.productService.getProductById(productId)
-      .then(product => {
-        this.product = product;
+    // Usar el servicio de producto con su método Observable en lugar de Promise
+    this.productService.getCompleteProduct(productId)
+      .pipe(
+        // Aplicar precios con descuento
+        switchMap(product => {
+          if (!product) return of(null);
+          return this.productPriceService.calculateDiscountedPriceAsync(productId)
+            .pipe(
+              catchError(error => {
+                console.error('Error al obtener precios con descuento:', error);
+                return of(product);
+              })
+            );
+        }),
+        finalize(() => {
+          this.productsLoading = false;
+        })
+      )
+      .subscribe({
+        next: (product) => {
+          if (!product) {
+            console.error('Producto no encontrado');
+            this.productsLoading = false;
+            return;
+          }
 
-        // Inicializar selecciones por defecto
-        if (product) {
-          // Cargar datos de categoría
+          this.product = product;
           this.currentImageUrl = product.imageUrl;
+
+          // Inicializar selecciones por defecto
           this.loadCategoryInfo(product.category);
 
           if (product.colors.length > 0) {
@@ -108,42 +133,56 @@ export class DetalleProductoComponent implements OnInit {
 
           // Cargar productos relacionados
           this.loadRelatedProducts(product.category, productId);
-        }
 
-        this.productsLoading = false;
-      })
-      .catch(error => {
-        console.error('Error al cargar el producto:', error);
-        this.productsLoading = false;
+          // Incrementar vistas (en segundo plano)
+          this.incrementProductViews(productId);
+        },
+        error: (error) => {
+          console.error('Error al cargar el producto:', error);
+          this.productsLoading = false;
+          this.modalService.error({
+            nzTitle: 'Error',
+            nzContent: 'No se pudo cargar el producto. Por favor, inténtelo de nuevo más tarde.'
+          });
+        }
+      });
+  }
+
+  // Incrementar vistas del producto
+  incrementProductViews(productId: string): void {
+    this.inventoryService.incrementProductViews(productId)
+      .subscribe({
+        error: (error) => {
+          console.error('Error al incrementar vistas:', error);
+          // No mostramos error al usuario porque esto se ejecuta en segundo plano
+        }
       });
   }
 
   // Cargar información de la categoría usando el servicio
   loadCategoryInfo(categoryId: string): void {
     this.categoryService.getCategoryById(categoryId)
-      .then(category => {
-        if (category) {
-          this.categoryName = category.name;
-          this.categoryDescription = category.description;
+      .subscribe({
+        next: (category) => {
+          if (category) {
+            this.categoryName = category.name;
+            this.categoryDescription = category.description;
+          }
+        },
+        error: (error) => {
+          console.error('Error al cargar la categoría:', error);
         }
-      })
-      .catch(error => {
-        console.error('Error al cargar la categoría:', error);
       });
   }
 
   // Método para cargar productos relacionados
   loadRelatedProducts(category: string, currentProductId: string): void {
-    // Si tu servicio devuelve un Observable (típico en Angular)
-    this.productService.getProductsByCategory(category)
+    this.productService.getRelatedProducts({ category, id: currentProductId } as Product, 4)
       .subscribe({
-        next: (products: Product[]) => {
-          // Filtrar para excluir el producto actual
-          this.relatedProducts = products
-            .filter(p => p.id !== currentProductId)
-            .slice(0, 4);
+        next: (products) => {
+          this.relatedProducts = products;
         },
-        error: (error: any) => {
+        error: (error) => {
           console.error('Error al cargar productos relacionados:', error);
         }
       });
@@ -151,16 +190,20 @@ export class DetalleProductoComponent implements OnInit {
 
   // Métodos para manejar selecciones
   selectColor(color: Color): void {
-    this.selectedColor = color;
+  this.selectedColor = color;
 
-    // Actualizar la imagen del producto para mantener la compatibilidad con el HTML
-    if (this.product && color.imageUrl) {
-      this.product.imageUrl = color.imageUrl;
-    }
-
-    this.updateSelectedVariant();
+  // Actualizar la imagen del producto 
+  if (color.imageUrl) {
+    this.currentImageUrl = color.imageUrl;
+  } else if (this.product) {
+    this.currentImageUrl = this.product.imageUrl;
   }
 
+  this.updateSelectedVariant();
+
+  // Añade este log para facilitar la depuración
+  console.log('Color seleccionado:', color.name, 'imagen:', this.currentImageUrl);
+}
 
   // Versión mejorada para seleccionar una talla con validación de stock
   selectSize(size: Size): void {
@@ -219,6 +262,7 @@ export class DetalleProductoComponent implements OnInit {
 
     return this.hasLowStockForSize(size);
   }
+
   ngAfterViewInit(): void {
     // Verificar si se necesita scroll en la tabla
     this.checkTableScroll();
@@ -258,7 +302,6 @@ export class DetalleProductoComponent implements OnInit {
       this.checkTableScroll();
     }, 300);
   }
-
 
   // Método auxiliar para obtener los colores disponibles para una talla
   getAvailableColorsForSize(size: Size): Color[] {
@@ -406,8 +449,8 @@ export class DetalleProductoComponent implements OnInit {
   }
 
   // Agregar al carrito
-  // En DetalleProductoComponent
-  async addToCart(): Promise<void> {
+  // Agregar al carrito - Versión corregida
+  addToCart(): void {
     if (!this.product || !this.selectedVariant) {
       this.modalService.warning({
         nzTitle: 'No se pudo agregar el producto',
@@ -416,60 +459,70 @@ export class DetalleProductoComponent implements OnInit {
       return;
     }
 
-    console.log('Producto completo:', this.product);
-    console.log('Todas las variantes del producto:', this.product.variants);
-    console.log('Variante seleccionada en UI:', this.selectedVariant);
-    console.log('Stock mostrado en UI:', this.selectedVariant.stock);
-    console.log('ID de la variante a enviar:', this.selectedVariant.id);
+    // Verificar stock en tiempo real
+    this.inventoryService.checkVariantsAvailability([
+      { variantId: this.selectedVariant.id, quantity: this.quantity }
+    ]).pipe(
+      take(1)
+    ).subscribe({
+      next: (result) => {
+        if (result.available) {
+          // Si hay stock disponible, agregar al carrito
+          this.cartService.addToCart(
+            this.product!.id,
+            this.selectedVariant!.id,
+            this.quantity,
+            this.product,
+            this.selectedVariant
+          ).subscribe({
+            next: (success: boolean) => {
+              if (success) {
+                this.modalService.success({
+                  nzTitle: 'Producto añadido al carrito',
+                  nzContent: `Has agregado ${this.quantity} unidad(es) de ${this.product!.name} a tu carrito.`,
+                  nzOkText: 'Ir al carrito',
+                  nzCancelText: 'Continuar comprando',
+                  nzOnOk: () => {
+                    this.router.navigate(['/carrito']);
+                  }
+                });
+              } else {
+                this.modalService.error({
+                  nzTitle: 'Error',
+                  nzContent: 'No se pudo agregar el producto al carrito.'
+                });
+              }
+            },
+            error: (error: unknown) => {
+              console.error('Error al agregar al carrito:', error);
+              this.modalService.error({
+                nzTitle: 'Error',
+                nzContent: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta nuevamente.'
+              });
+            }
+          });
+        } else {
+          // Si no hay suficiente stock
+          const unavailableItem = result.unavailableItems[0];
+          this.modalService.warning({
+            nzTitle: 'Stock insuficiente',
+            nzContent: `Solo hay ${unavailableItem.available} unidades disponibles de este producto.`
+          });
 
-    try {
-      // Aquí podemos intentar un enfoque alternativo:
-      // En lugar de buscar por ID, busquemos la variante directamente del producto
-      const matchingVariant = this.product.variants.find(v =>
-        v.id === this.selectedVariant!.id
-      );
-
-      if (!matchingVariant) {
-        console.error('No se encontró la variante en el producto');
-        this.modalService.error({
-          nzTitle: 'Error',
-          nzContent: 'Variante no encontrada en el producto.'
-        });
-        return;
-      }
-
-      // Usar directamente la información de la variante del producto
-      const success = await this.cartService.addToCart(
-        this.product.id,
-        this.selectedVariant.id,
-        this.quantity,
-        this.product,           // Pasar el producto completo
-        this.selectedVariant
-      );
-
-      if (success) {
-        this.modalService.success({
-          nzTitle: 'Producto añadido al carrito',
-          nzContent: `Has agregado ${this.quantity} unidad(es) de ${this.product.name} a tu carrito.`,
-          nzOkText: 'Ir al carrito',
-          nzCancelText: 'Continuar comprando',
-          nzOnOk: () => {
-            this.router.navigate(['/carrito']);
+          // Actualizar la cantidad disponible
+          if (this.selectedVariant && unavailableItem.available > 0) {
+            this.quantity = unavailableItem.available;
           }
-        });
-      } else {
+        }
+      },
+      error: (error: unknown) => {
+        console.error('Error al verificar stock:', error);
         this.modalService.error({
           nzTitle: 'Error',
-          nzContent: 'No se pudo agregar el producto al carrito. Verifica el stock disponible.'
+          nzContent: 'Ocurrió un error al verificar la disponibilidad del producto. Por favor, intenta nuevamente.'
         });
       }
-    } catch (error) {
-      console.error('Error al procesar la solicitud:', error);
-      this.modalService.error({
-        nzTitle: 'Error',
-        nzContent: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta nuevamente.'
-      });
-    }
+    });
   }
 
   // Toggle wishlist
@@ -495,7 +548,7 @@ export class DetalleProductoComponent implements OnInit {
     return this.product.sizes.map(size => size.name).join(', ');
   }
 
-  // Método para generar array para mostrar las estrellas de rating (por si no usas nz-rate)
+  // Método para generar array para mostrar las estrellas de rating
   getStarsArray(rating: number): number[] {
     return Array(5).fill(0).map((_, i) => i < Math.floor(rating) ? 1 : 0);
   }

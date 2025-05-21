@@ -1,0 +1,224 @@
+<div class="promotions-container">
+    <!-- Encabezado de la sección -->
+    <nz-card nzTitle="Administrar Promociones" class="mb-4 header-card">
+        <div class="card-actions">
+            <button nz-button nzType="primary" (click)="openCreatePromotionModal()">
+                <span nz-icon nzType="plus"></span>
+                <span class="button-text">Nueva Promoción</span>
+            </button>
+        </div>
+    </nz-card>
+
+    <!-- Spinner mientras carga -->
+    <div *ngIf="loading" class="loading-container">
+        <nz-spin nzSize="large"></nz-spin>
+    </div>
+
+    <!-- Tabla de promociones -->
+    <nz-card *ngIf="!loading">
+        <div *ngIf="promotions.length === 0" class="empty-state">
+            <nz-empty nzNotFoundContent="No hay promociones disponibles" [nzNotFoundFooter]="emptyButton">
+            </nz-empty>
+            <ng-template #emptyButton>
+                <button nz-button nzType="primary" (click)="openCreatePromotionModal()">Crear primera promoción</button>
+            </ng-template>
+        </div>
+
+        <nz-table #promotionsTable [nzData]="promotions" [nzBordered]="true" [nzShowPagination]="promotions.length > 10"
+            [nzPageSize]="pageSize" *ngIf="promotions.length > 0">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Estado</th>
+                    <th>Aplica a</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let promotion of promotionsTable.data">
+                    <td>
+                        <div class="promotion-name">
+                            <strong>{{ promotion.name }}</strong>
+                            <div *ngIf="promotion.description" class="promotion-description">
+                                {{ promotion.description }}
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ formatDiscountType(promotion.discountType) }}</td>
+                    <td>{{ formatDiscountValue(promotion) }}</td>
+                    <td>{{ formatDate(promotion.startDate) }}</td>
+                    <td>{{ formatDate(promotion.endDate) }}</td>
+                    <td>
+                        <nz-tag [nzColor]="promotion.isActive ? 'green' : 'default'">
+                            {{ promotion.isActive ? 'Activa' : 'Inactiva' }}
+                        </nz-tag>
+                    </td>
+                    <td>
+                        <div class="applies-to">
+                            <div *ngIf="promotion.applicableCategories?.length">
+                                <strong>Categorías:</strong> {{ getCategoryNames(promotion.applicableCategories ?? []) }}
+                            </div>
+                            <div *ngIf="promotion.applicableProductIds?.length">
+                                <strong>Productos:</strong> {{ getProductNames(promotion.applicableProductIds ?? []) }}
+                            </div>
+                            <div
+                                *ngIf="!promotion.applicableCategories?.length && !promotion.applicableProductIds?.length">
+                                Todos los productos
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button nz-button nzType="primary" nzSize="small"
+                                (click)="openEditPromotionModal(promotion)" nz-tooltip nzTooltipTitle="Editar">
+                                <span nz-icon nzType="edit"></span>
+                            </button>
+                            <button nz-button nzType="primary" nzDanger nzSize="small" nz-popconfirm
+                                nzPopconfirmTitle="¿Está seguro de eliminar esta promoción?"
+                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deletePromotion(promotion.id)" nz-tooltip
+                                nzTooltipTitle="Eliminar">
+                                <span nz-icon nzType="delete"></span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+    </nz-card>
+
+    <!-- Modal de formulario para crear/editar promoción -->
+    <nz-modal [(nzVisible)]="formModalVisible" [nzTitle]="isEditMode ? 'Editar Promoción' : 'Nueva Promoción'"
+        [nzWidth]="720" [nzOkText]="'Guardar'" [nzCancelText]="'Cancelar'" [nzOkLoading]="submitting"
+        (nzOnCancel)="closeFormModal()" (nzOnOk)="submitForm()">
+        <ng-container *nzModalContent>
+            <form [formGroup]="promotionForm" nz-form [nzLayout]="'vertical'">
+                <div nz-row [nzGutter]="16">
+                    <!-- Detalles básicos -->
+                    <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingrese un nombre">
+                                <input nz-input formControlName="name" placeholder="Nombre de la promoción" />
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Descripción</nz-form-label>
+                            <nz-form-control>
+                                <textarea nz-input formControlName="description"
+                                    [nzAutosize]="{ minRows: 2, maxRows: 6 }"
+                                    placeholder="Descripción opcional"></textarea>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Tipo de descuento</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor seleccione un tipo de descuento">
+                                <nz-radio-group formControlName="discountType">
+                                    <label nz-radio-button [nzValue]="'percentage'">Porcentaje (%)</label>
+                                    <label nz-radio-button [nzValue]="'fixed'">Monto fijo ($)</label>
+                                </nz-radio-group>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Valor del descuento</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingrese un valor válido">
+                                <nz-input-number formControlName="discountValue" [nzMin]="0" [nzStep]="1"
+                                    [nzPrecision]="2"
+                                    [nzPlaceHolder]="promotionForm.get('discountType')?.value === 'percentage' ? 'Ej: 10 (%)' : 'Ej: 5.99 ($)'"
+                                    style="width: 100%"></nz-input-number>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item *ngIf="promotionForm.get('discountType')?.value === 'percentage'">
+                            <nz-form-label>Descuento máximo ($)</nz-form-label>
+                            <nz-form-control>
+                                <nz-input-number formControlName="maxDiscountAmount" [nzMin]="0" [nzStep]="1"
+                                    [nzPrecision]="2" placeholder="Límite máximo del descuento"
+                                    style="width: 100%"></nz-input-number>
+                                <div class="form-help-text">
+                                    Opcional: Limita el valor máximo del descuento porcentual
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Fechas y aplicabilidad -->
+                    <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Fecha de inicio</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor seleccione una fecha de inicio">
+                                <nz-date-picker formControlName="startDate" [nzDisabledDate]="disabledStartDate"
+                                    nzFormat="dd/MM/yyyy" style="width: 100%"></nz-date-picker>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Fecha de fin</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor seleccione una fecha de fin">
+                                <nz-date-picker formControlName="endDate" [nzDisabledDate]="disabledEndDate"
+                                    nzFormat="dd/MM/yyyy" style="width: 100%"></nz-date-picker>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Aplicable a categorías</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="applicableCategories" nzMode="multiple" nzAllowClear
+                                    nzPlaceHolder="Seleccionar categorías" [nzMaxTagCount]="3" style="width: 100%">
+                                    <nz-option *ngFor="let category of categories" [nzLabel]="category.name"
+                                        [nzValue]="category.id">
+                                    </nz-option>
+                                </nz-select>
+                                <div class="form-help-text">
+                                    Opcional: Si no selecciona ninguna, aplica a todas las categorías
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Aplicable a productos</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="applicableProductIds" nzMode="multiple" nzAllowClear
+                                    nzPlaceHolder="Seleccionar productos" [nzMaxTagCount]="2" style="width: 100%">
+                                    <nz-option *ngFor="let product of products" [nzLabel]="product.name"
+                                        [nzValue]="product.id">
+                                    </nz-option>
+                                </nz-select>
+                                <div class="form-help-text">
+                                    Opcional: Si no selecciona ninguno, aplica a todos los productos
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Monto mínimo de compra</nz-form-label>
+                            <nz-form-control>
+                                <nz-input-number formControlName="minPurchaseAmount" [nzMin]="0" [nzStep]="1"
+                                    [nzPrecision]="2" placeholder="Monto mínimo opcional"
+                                    style="width: 100%"></nz-input-number>
+                                <div class="form-help-text">
+                                    Opcional: Compra mínima para aplicar la promoción
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Estado</nz-form-label>
+                            <nz-form-control>
+                                <nz-switch formControlName="isActive" [nzCheckedChildren]="'Activa'"
+                                    [nzUnCheckedChildren]="'Inactiva'">
+                                </nz-switch>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+            </form>
+        </ng-container>
+    </nz-modal>
+</div>

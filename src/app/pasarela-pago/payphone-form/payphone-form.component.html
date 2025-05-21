@@ -1,17 +1,17 @@
 <div class="payphone-container">
   <h2 class="payment-title">Procesar Pago</h2>
   
-  <!-- Loader -->
-  <div *ngIf="isLoading" class="loading-container">
+  <!-- Loader - Adaptado para usar el observable isLoading$ -->
+  <div *ngIf="isLoading$ | async" class="loading-container">
     <nz-spin nzTip="Conectando con el servicio de pago..."></nz-spin>
   </div>
   
-  <!-- Error message -->
-  <div *ngIf="error" class="error-container">
+  <!-- Error message - Adaptado para usar el observable error$ -->
+  <div *ngIf="error$ | async as errorMessage" class="error-container">
     <nz-alert
       nzType="error"
       nzMessage="Error de pago"
-      [nzDescription]="error"
+      [nzDescription]="errorMessage"
       nzShowIcon
     ></nz-alert>
     
@@ -22,17 +22,24 @@
     </div>
   </div>
   
-  <!-- Payment container -->
-  <div *ngIf="!isLoading && !error" class="payment-content">
+  <!-- Payment container - Adaptado para usar observables -->
+  <div *ngIf="(isLoading$ | async) === false && !(error$ | async)" class="payment-content">
     <div class="payment-info">
       <p>Selecciona tu método de pago preferido y completa la información solicitada.</p>
       <p>Tu transacción está protegida con encriptación segura.</p>
+      <p *ngIf="transactionId" class="transaction-id">
+        ID de transacción: <strong>{{ transactionId }}</strong>
+      </p>
     </div>
     
     <!-- Payphone button container -->
     <div id="pp-button" class="payphone-button-container"></div>
     
     <div class="payment-footer">
+      <div class="security-info">
+        <i nz-icon nzType="lock" nzTheme="outline"></i>
+        Pago 100% seguro. Tus datos están protegidos.
+      </div>
       <button nz-button (click)="volverAlCarrito()">
         Cancelar y volver al carrito
       </button>

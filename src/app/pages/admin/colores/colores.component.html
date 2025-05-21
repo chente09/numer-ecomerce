@@ -1,0 +1,164 @@
+<div class="colors-container">
+    <!-- Encabezado de la sección -->
+    <nz-card nzTitle="Administrar Colores" class="mb-4 header-card">
+        <div class="card-actions">
+            <button nz-button nzType="primary" (click)="openModal()">
+                <span nz-icon nzType="plus"></span>
+                <span class="button-text">Nuevo Color</span>
+            </button>
+        </div>
+    </nz-card>
+
+    <!-- Mensaje de sin datos -->
+    <nz-empty *ngIf="colors?.length === 0 && !loading" nzNotFoundContent="No hay colores disponibles"
+        [nzNotFoundFooter]="emptyButton">
+    </nz-empty>
+    <ng-template #emptyButton>
+        <button nz-button nzType="primary" (click)="openModal()">Crear primer color</button>
+    </ng-template>
+
+
+    <!-- Tabla de colores -->
+    <div class="table-responsive" *ngIf="colors && colors.length > 0">
+        <nz-table #tabla [nzData]="colors" [nzBordered]="true" [nzShowPagination]="true" [nzPageSize]="10">
+            <thead>
+                <tr>
+                    <th nzWidth="70px">Muestra</th>
+                    <th nzWidth="auto">Imagen</th>
+                    <th nzWidth="auto">Nombre</th>
+                    <th nzWidth="auto" class="hide-sm">Código</th>
+                    <th nzWidth="auto" class="hide-md">Descripción</th>
+                    <th nzWidth="auto">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let color of tabla.data" [class.highlight-row]="selectedColor?.id === color.id">
+                    <td>
+                        <div class="color-sample" [style.background-color]="color.code"></div>
+                    </td>
+                    <td>
+                        <nz-avatar *ngIf="color.imageUrl" [nzSrc]="color.imageUrl" nzShape="square" nzSize="large"
+                            [nzAlt]="color.name" (error)="handleImageError($event)"></nz-avatar>
+                        <div *ngIf="!color.imageUrl" class="no-image">
+                            <span nz-icon nzType="picture" nzTheme="outline"></span>
+                        </div>
+                    </td>
+                    <td>{{ color.name }}</td>
+                    <td class="hide-sm">{{ color.code }}</td>
+                    <td class="hide-md">
+                        <span class="truncate-text" nz-tooltip
+                            [nzTooltipTitle]="color.description || 'Sin descripción'">
+                            {{ color.description || 'Sin descripción' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button nz-button nzSize="small" (click)="editColor(color)" nz-tooltip
+                                nzTooltipTitle="Editar">
+                                <span nz-icon nzType="edit"></span>
+                            </button>
+                            <button nz-button nz-popconfirm
+                                nzPopconfirmTitle="¿Seguro que quieres eliminar este color?"
+                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteColor(color.id)" nzSize="small"
+                                nz-tooltip nzTooltipTitle="Eliminar">
+                                <i nz-icon nzType="delete" nzTheme="outline"></i>
+                            </button>
+
+                            <!-- Botón de vista rápida para mostrar detalles en móvil -->
+                            <button nz-button nzSize="small" (click)="showDetails(color)" nz-tooltip
+                                nzTooltipTitle="Ver detalles" class="show-sm">
+                                <i nz-icon nzType="eye" nzTheme="outline"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+    </div>
+
+    <!-- Modal para crear/editar -->
+    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Color' : 'Nuevo Color'"
+        [nzOkLoading]="saving" (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="modalWidth" nzCentered>
+        <ng-container *nzModalContent>
+            <form [formGroup]="colorForm" nz-form nzLayout="vertical">
+                <nz-form-item>
+                    <nz-form-label nzRequired>Nombre</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingrese un nombre para el color">
+                        <input nz-input formControlName="name" placeholder="Ej. Rojo Carmesí" />
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label nzRequired>Código Hexadecimal</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingrese un código hexadecimal válido (ej. #FF0000)">
+                        <div class="color-picker-container">
+                            <input nz-input formControlName="code" placeholder="#FF0000" (blur)="suggestColorName(colorForm.get('code')?.value)" />
+                            <div class="color-preview" id="colorPreview" [style.background-color]="colorForm.get('code')?.value"></div>
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Descripción</nz-form-label>
+                    <nz-form-control>
+                        <textarea nz-input formControlName="description" placeholder="Descripción del color (opcional)"
+                            [nzAutosize]="{ minRows: 2, maxRows: 6 }"></textarea>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Imagen (opcional)</nz-form-label>
+                    <nz-form-control>
+                        <div class="upload-container">
+                            <nz-upload [nzFileList]="fileList" [nzBeforeUpload]="beforeUpload"
+                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemove" nzListType="picture-card">
+                                <div *ngIf="fileList.length < 1">
+                                    <span nz-icon nzType="plus"></span>
+                                    <div class="ant-upload-text">Subir</div>
+                                </div>
+                            </nz-upload>
+                        </div>
+                        <div *ngIf="imageErrorMessage" class="error-message">
+                            {{ imageErrorMessage }}
+                        </div>
+                        <div class="form-help-text">
+                            Sube una imagen representativa del color (opcional)
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+            </form>
+        </ng-container>
+    </nz-modal>
+
+    <!-- Modal de Detalles para móvil -->
+    <nz-modal [(nzVisible)]="detailsModalVisible" nzTitle="Detalles del Color"
+        (nzOnCancel)="detailsModalVisible = false" [nzFooter]="null" [nzWidth]="320" nzCentered>
+        <ng-container *nzModalContent>
+            <div *ngIf="selectedColor" class="color-details">
+                <div class="detail-color">
+                    <div class="color-block" [style.background-color]="selectedColor.code"></div>
+                    <div class="color-code">{{ selectedColor.code }}</div>
+                </div>
+                <div *ngIf="selectedColor.imageUrl" class="detail-image">
+                    <img [src]="selectedColor.imageUrl" [alt]="selectedColor.name"
+                        (error)="handleImageError($event)">
+                </div>
+                <div class="detail-content">
+                    <h3>{{ selectedColor.name }}</h3>
+                    <p *ngIf="selectedColor.description"><strong>Descripción:</strong> {{ selectedColor.description }}</p>
+                </div>
+                <div class="detail-actions">
+                    <button nz-button (click)="editColor(selectedColor); detailsModalVisible = false">
+                        <span nz-icon nzType="edit"></span> Editar
+                    </button>
+                    <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar este color?"
+                        nzPopconfirmPlacement="top"
+                        (nzOnConfirm)="deleteColor(selectedColor.id); detailsModalVisible = false">
+                        <span nz-icon nzType="delete"></span> Eliminar
+                    </button>
+                </div>
+            </div>
+        </ng-container>
+    </nz-modal>
+</div>

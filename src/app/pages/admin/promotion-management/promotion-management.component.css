@@ -1,0 +1,70 @@
+.promotions-container {
+    max-width: 100%;
+    padding-bottom: 24px;
+}
+
+.header-card {
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+
+.promotion-name {
+    display: flex;
+    flex-direction: column;
+}
+
+.promotion-description {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.applies-to {
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.form-help-text {
+    color: #888;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.empty-state {
+    padding: 20px;
+    text-align: center;
+}
+
+/* Responsive styles */
+@media (max-width: 767px) {
+    .action-buttons {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 575px) {
+    .button-text {
+        display: none;
+    }
+}

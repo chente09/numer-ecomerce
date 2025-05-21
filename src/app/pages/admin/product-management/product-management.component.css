@@ -1,255 +1,101 @@
-/* Estilos generales */
-.product-management-container {
-    padding: 16px;
+.products-container {
+    padding-bottom: 24px;
 }
 
-.text-right {
-    text-align: right;
-}
-
-.text-danger {
-    color: #ff4d4f;
-}
-
-.mb-3 {
+.header-card {
     margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.mb-4 {
-    margin-bottom: 24px;
-}
-
-.mt-3 {
-    margin-top: 16px;
-}
-
-.ml-1 {
-    margin-left: 4px;
-}
-
-.ml-2 {
-    margin-left: 8px;
-}
-
-/* Estilos de tarjetas y tablas */
-.color-form-item,
-.size-form-item {
-    margin-bottom: 16px;
-}
-
-.expanded-row-content {
-    padding: 16px;
-}
-
-.variant-item {
-    margin-bottom: 16px;
-}
-
-/* Estilos para colores */
-.color-display {
+.card-actions {
     display: flex;
-    align-items: center;
-}
-
-.color-square {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    margin-right: 8px;
-    border: 1px solid #d9d9d9;
-}
-
-.color-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
-.color-item {
-    display: flex;
-    align-items: center;
-}
-
-/* Estilos para imágenes */
-.image-upload-container {
-    display: flex;
-    flex-direction: column;
+    justify-content: flex-start;
     gap: 8px;
 }
 
-.image-preview {
-    width: 100%;
-    height: 150px;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    overflow: hidden;
+.filter-form {
     margin-bottom: 8px;
 }
 
-.image-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+.product-name {
+    font-weight: 500;
 }
 
-/* Estilos para las estadísticas */
-.sales-history-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.sales-history-table th,
-.sales-history-table td {
-    padding: 8px;
-    text-align: left;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.sales-history-table th {
-    background-color: #fafafa;
-}
-
-/* Responsive Styles */
-@media (max-width: 768px) {
-    .nz-form-item {
-        margin-bottom: 16px;
-    }
-}
-
-/* Estilos para precios con descuento */
-.price-container {
+.product-price {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
 }
 
 .original-price {
     text-decoration: line-through;
     color: #999;
-    font-size: 0.85em;
+    font-size: 12px;
 }
 
 .current-price {
-    font-weight: bold;
-    color: #f50;
+    font-weight: 500;
 }
 
-/* Estilos para colores */
-.color-square {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    display: inline-block;
-    margin-right: 8px;
-    border: 1px solid #d9d9d9;
-}
-
-.color-display {
+.action-buttons {
     display: flex;
-    align-items: center;
-}
-
-.color-list {
-    display: flex;
-    flex-wrap: wrap;
     gap: 8px;
+    flex-wrap: nowrap;
 }
 
-.color-item {
-    display: flex;
-    align-items: center;
-}
-
-/* Estilos para formulario de producto */
-.image-upload-container {
+.product-details {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    gap: 16px;
 }
 
-.image-preview {
-    width: 100%;
-    max-width: 200px;
-    height: 200px;
-    margin-bottom: 16px;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.image-preview img {
+.detail-image img {
     max-width: 100%;
-    max-height: 100%;
+    max-height: 200px;
     object-fit: contain;
+    border-radius: 4px;
 }
 
-.upload-button {
-    margin-bottom: 16px;
+.detail-content h3 {
+    margin-bottom: 12px;
+    font-size: 18px;
 }
 
-/* Estilos para variantes y promociones */
-.variant-item {
-    margin-bottom: 16px;
+.detail-content p {
+    margin-bottom: 8px;
+    font-size: 14px;
 }
 
-.expanded-row-content {
-    padding: 16px;
-}
-
-.promo-dates {
-    font-size: 0.8em;
-    color: #999;
-    margin-top: 2px;
-}
-
-/* Utilidades */
-.text-right {
-    text-align: right;
-}
-
-.text-danger {
-    color: #f5222d;
-}
-
-.ml-1 {
-    margin-left: 4px;
-}
-
-.ml-2 {
-    margin-left: 8px;
-}
-
-.mb-3 {
-    margin-bottom: 16px;
-}
-
-.mt-2 {
+.detail-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
     margin-top: 8px;
 }
 
-.price-container {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+/* Responsive styles */
+@media (max-width: 991px) {
+    .hide-md {
+        display: none;
+    }
 }
 
-.original-price {
-    text-decoration: line-through;
-    color: #999;
-    font-size: 0.85em;
+@media (max-width: 767px) {
+    .hide-sm {
+        display: none;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .action-buttons button {
+        padding: 0 4px;
+    }
 }
 
-.current-price {
-    font-weight: bold;
-    color: #f50;
-}
-
-.promo-dates {
-    font-size: 0.8em;
-    color: #999;
-    margin-top: 2px;
+@media (max-width: 575px) {
+    .button-text {
+        display: none;
+    }
 }

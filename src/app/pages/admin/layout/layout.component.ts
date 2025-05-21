@@ -75,8 +75,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
     },
     {
       level: 1,
-      title: 'Héroes',
-      icon: 'trophy',
+      title: 'Banners',
+      icon: 'picture',
       path: '/admin/heroes'
     },
     {

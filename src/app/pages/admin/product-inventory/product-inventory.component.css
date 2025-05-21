@@ -1,0 +1,173 @@
+.inventory-container {
+    padding: 16px 0;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+}
+
+.inventory-header {
+    margin-bottom: 16px;
+}
+
+.color-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.color-box {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid #d9d9d9;
+}
+
+.stock-cell {
+    display: flex;
+    align-items: center;
+}
+
+.stock-edit-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.help-card {
+    margin-top: 16px;
+}
+
+.stock-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-description {
+    font-size: 14px;
+    color: #8c8c8c;
+}
+
+.variant-image-preview {
+    width: 120px;
+    height: 120px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.variant-image-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Error image handler */
+.error-image {
+    opacity: 0.5;
+}
+
+.variant-info {
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.empty-promotions {
+  padding: 24px 0;
+}
+
+.variant-image-preview {
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.variant-image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.modal-footer {
+  margin-top: 16px;
+  text-align: right;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.empty-promotions {
+  padding: 24px 0;
+  text-align: center;
+}
+
+.variant-info {
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.variant-image-preview {
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.variant-image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Estilo para variantes con promociones */
+.has-promotion {
+  background-color: rgba(24, 144, 255, 0.05);
+}
+
+.has-promotion:hover {
+  background-color: rgba(24, 144, 255, 0.1);
+}
+
+.promotion-tag {
+  margin-left: 8px;
+}
+
+/* Tooltip para las promociones */
+.promotion-tooltip {
+  max-width: 300px;
+}

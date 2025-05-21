@@ -443,15 +443,14 @@ export class HeroService {
   private async uploadImage(file: File, type: string): Promise<string> {
     const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
     const path = `heroes/${uniqueId}/${type}.webp`; // Siempre usar webp para mejor rendimiento
-    
+
     // Usar compressImage del ProductImageService
     try {
-      // Esta es la solución óptima: usar el servicio existente
-      const result = await this.imageService.uploadCompressedImage(path, file);
-      return result.url;
+      // Ahora uploadCompressedImage devuelve directamente el string de la URL
+      return await this.imageService.uploadCompressedImage(path, file);
     } catch (error) {
       console.error('Error al comprimir imagen con ProductImageService:', error);
-      
+
       // Fallback a la implementación original si algo falla
       const storageRef = ref(this.storage, path);
       await uploadBytes(storageRef, file);

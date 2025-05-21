@@ -10,15 +10,14 @@ interface ImageUploadResult {
   providedIn: 'root'
 })
 export class ProductImageService {
-  constructor(private storage: Storage) {}
+  constructor(private storage: Storage) { }
 
   /**
    * Sube la imagen principal de un producto
    */
   async uploadProductImage(productId: string, file: File): Promise<string> {
     const path = `products/${productId}/main.webp`;
-    const result = await this.uploadCompressedImage(path, file);
-    return result.url;
+    return this.uploadCompressedImage(path, file);
   }
 
   /**
@@ -44,8 +43,8 @@ export class ProductImageService {
           const colorPromise = this.uploadCompressedImage(
             `products/${productId}/colors/${updatedColors[i].name.toLowerCase()}.webp`,
             colorFile
-          ).then(result => {
-            updatedColors[colorIndex].imageUrl = result.url;
+          ).then(url => {
+            updatedColors[colorIndex].imageUrl = url;
           });
           uploadPromises.push(colorPromise);
         }
@@ -61,8 +60,8 @@ export class ProductImageService {
           const sizePromise = this.uploadCompressedImage(
             `products/${productId}/sizes/${updatedSizes[i].name.toLowerCase()}.webp`,
             sizeFile
-          ).then(result => {
-            updatedSizes[sizeIndex].imageUrl = result.url;
+          ).then(url => {
+            updatedSizes[sizeIndex].imageUrl = url;
           });
           uploadPromises.push(sizePromise);
         }
@@ -80,8 +79,16 @@ export class ProductImageService {
    */
   async uploadVariantImage(productId: string, variantId: string, file: File): Promise<string> {
     const path = `products/${productId}/variants/${variantId}.webp`;
-    const result = await this.uploadCompressedImage(path, file);
-    return result.url;
+    return this.uploadCompressedImage(path, file);
+  }
+
+  async uploadAdditionalImages(productId: string, files: File[]): Promise<string[]> {
+    const uploadPromises = files.map((file, index) => {
+      const path = `products/${productId}/gallery/image_${index + 1}.webp`;
+      return this.uploadCompressedImage(path, file);
+    });
+
+    return Promise.all(uploadPromises);
   }
 
   /**
@@ -108,8 +115,18 @@ export class ProductImageService {
 
   /**
    * Sube imagen con compresión y formato webp
+   * Retorna directamente la URL de la imagen
    */
-  public async uploadCompressedImage(path: string, file: File): Promise<ImageUploadResult> {
+  public async uploadCompressedImage(path: string, file: File): Promise<string> {
+    const result = await this.uploadCompressedImageWithDetails(path, file);
+    return result.url;
+  }
+
+  /**
+   * Versión que devuelve tanto la URL como el path
+   * Útil para operaciones internas o casos donde se necesita el path
+   */
+  public async uploadCompressedImageWithDetails(path: string, file: File): Promise<ImageUploadResult> {
     const compressed = await this.compressImage(file);
     const storageRef = ref(this.storage, path);
     await uploadBytes(storageRef, compressed);

@@ -18,8 +18,11 @@ import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
-import { EMPTY, Subject, catchError, of } from 'rxjs';
-import { takeUntil, finalize } from 'rxjs/operators';
+import { EMPTY, Subject, catchError, of, finalize, take, firstValueFrom } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { ColoresComponent } from "../colores/colores.component";
+import { TallasComponent } from "../tallas/tallas.component";
+import { CacheService } from '../../../services/admin/cache/cache.service';
 
 @Component({
   selector: 'app-categorias',
@@ -39,8 +42,10 @@ import { takeUntil, finalize } from 'rxjs/operators';
     NzAvatarModule,
     NzToolTipModule,
     NzEmptyModule,
-    NzSkeletonModule
-  ],
+    NzSkeletonModule,
+    ColoresComponent,
+    TallasComponent
+],
   templateUrl: './categorias.component.html',
   styleUrls: ['./categorias.component.css']
 })
@@ -73,6 +78,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     private sanitizer: DomSanitizer,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef,
+    private cacheService: CacheService,
     private zone: NgZone // Añadido NgZone para forzar la ejecución fuera de zonas
   ) { 
     // Crear imagen de fallback
@@ -94,7 +100,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     
     // Suscribirse a las notificaciones de invalidación de caché
-    this.categoryService.cacheInvalidated$
+    this.cacheService.getInvalidationNotifier(this.categoryService['cacheKey'])
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.fetchCategories();
@@ -110,22 +116,13 @@ export class CategoriasComponent implements OnInit, OnDestroy {
   }
 
   fetchCategories(): void {
+    this.loading = true;
     
     // Ejecutar fuera de zona de Angular para evitar ciclos de detección de cambios innecesarios
     this.zone.runOutsideAngular(() => {
       this.categoryService.getCategories()
         .pipe(
           takeUntil(this.destroy$),
-          catchError(error => {
-            console.error('Error al cargar categorías:', error);
-            
-            // Volver a la zona de Angular para mostrar el mensaje de error
-            this.zone.run(() => {
-              this.message.error('Error al cargar categorías. Intente nuevamente.');
-            });
-            
-            return of([]);
-          }),
           finalize(() => {
             console.log('Finalizando carga de categorías');
             
@@ -142,6 +139,16 @@ export class CategoriasComponent implements OnInit, OnDestroy {
             // Volver a la zona de Angular para actualizar los datos
             this.zone.run(() => {
               this.categories = data || [];
+              this.cdr.detectChanges();
+            });
+          },
+          error: (error) => {
+            console.error('Error al cargar categorías:', error);
+            
+            // Volver a la zona de Angular para mostrar el mensaje de error
+            this.zone.run(() => {
+              this.message.error('Error al cargar categorías. Intente nuevamente.');
+              this.loading = false;
               this.cdr.detectChanges();
             });
           }
@@ -241,7 +248,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     return true;
   };
 
-  async handleSubmit(): Promise<void> {
+  handleSubmit(): void {
     // Marcar todos los campos como tocados para mostrar errores
     Object.keys(this.categoryForm.controls).forEach(key => {
       this.categoryForm.get(key)?.markAsDirty();
@@ -266,42 +273,61 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     
     const formData = this.categoryForm.value;
 
-    try {
-      if (this.isEditMode && this.editingId) {
-        await this.categoryService.updateCategory(
-          this.editingId,
-          formData,
-          this.imageFile || undefined
-        );
-        this.message.success('Categoría actualizada correctamente.');
-      } else {
-        await this.categoryService.createCategory(
-          {
-            name: formData.name,
-            description: formData.description,
-            slug: formData.slug
-          },
-          this.imageFile!
-        );
-        this.message.success('Categoría creada correctamente.');
-      }
-
-      // Después de guardar exitosamente
-      this.modalVisible = false;
-      
-      // No es necesario llamar a fetchCategories() aquí porque la invalidación de caché
-      // ya disparará la recarga a través de la suscripción en ngOnInit
-      this.categoryService.invalidateCache();
-    } catch (error: any) {
-      console.error('Error al guardar categoría:', error);
-      this.message.error(error.message || 'Error al guardar la categoría. Intente nuevamente.');
-    } finally {
-      this.saving = false;
-      this.cdr.detectChanges();
+    if (this.isEditMode && this.editingId) {
+      // Actualizar categoría existente
+      this.categoryService.updateCategory(
+        this.editingId,
+        formData,
+        this.imageFile || undefined
+      ).pipe(
+        take(1),
+        finalize(() => {
+          this.saving = false;
+          this.cdr.detectChanges();
+        })
+      ).subscribe({
+        next: () => {
+          this.message.success('Categoría actualizada correctamente.');
+          this.modalVisible = false;
+          // No es necesario llamar a fetchCategories() aquí porque
+          // updateCategory ya invalida la caché
+        },
+        error: (error) => {
+          console.error('Error al actualizar categoría:', error);
+          this.message.error(error.message || 'Error al actualizar la categoría. Intente nuevamente.');
+        }
+      });
+    } else {
+      // Crear nueva categoría
+      this.categoryService.createCategory(
+        {
+          name: formData.name,
+          description: formData.description,
+          slug: formData.slug
+        },
+        this.imageFile!
+      ).pipe(
+        take(1),
+        finalize(() => {
+          this.saving = false;
+          this.cdr.detectChanges();
+        })
+      ).subscribe({
+        next: () => {
+          this.message.success('Categoría creada correctamente.');
+          this.modalVisible = false;
+          // No es necesario llamar a fetchCategories() aquí porque
+          // createCategory ya invalida la caché
+        },
+        error: (error) => {
+          console.error('Error al crear categoría:', error);
+          this.message.error(error.message || 'Error al crear la categoría. Intente nuevamente.');
+        }
+      });
     }
   }
 
-  editCategory(category: Category): void {
+  async editCategory(category: Category): Promise<void> {
     this.categoryForm.setValue({
       name: category.name || '',
       description: category.description || '',
@@ -326,15 +352,20 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  async deleteCategory(id: string): Promise<void> {
-    try {
-      await this.categoryService.deleteCategory(id);
-      this.message.success('Categoría eliminada correctamente.');
-      // No es necesario llamar a fetchCategories() explícitamente
-    } catch (error: any) {
-      console.error('Error al eliminar categoría:', error);
-      this.message.error(error.message || 'Error al eliminar la categoría. Intente nuevamente.');
-    }
+  deleteCategory(id: string): void {
+    this.categoryService.deleteCategory(id).pipe(
+      take(1)
+    ).subscribe({
+      next: () => {
+        this.message.success('Categoría eliminada correctamente.');
+        // No es necesario llamar a fetchCategories() porque
+        // deleteCategory ya invalida la caché
+      },
+      error: (error) => {
+        console.error('Error al eliminar categoría:', error);
+        this.message.error(error.message || 'Error al eliminar la categoría. Intente nuevamente.');
+      }
+    });
   }
 
   // Método para adaptar el ancho del modal según el tamaño de pantalla

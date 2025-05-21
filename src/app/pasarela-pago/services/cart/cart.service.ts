@@ -1,10 +1,9 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, firstValueFrom, map, tap } from 'rxjs';
+import { BehaviorSubject, Observable, firstValueFrom, map, tap, catchError, from, of, throwError, switchMap, forkJoin } from 'rxjs';
 import { Product, ProductVariant } from '../../../models/models';
 import { ProductService } from '../../../services/admin/product/product.service';
-import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
-import { ProductVariantService } from '../../../services/admin/productVariante/product-variant.service';
-import { doc, increment, updateDoc } from '@angular/fire/firestore';
+import { ProductInventoryService, SaleItem } from '../../../services/admin/inventario/product-inventory.service';
+import { ErrorUtil } from '../../../utils/error-util';
 
 export interface CartItem {
   productId: string;
@@ -25,6 +24,28 @@ export interface Cart {
   discount: number;
   total: number;
 }
+
+export interface CheckoutResult {
+  success: boolean;
+  orderId?: string;
+  error?: string;
+}
+
+// La interfaz que debe implementar el CartService
+export interface ICartService {
+  // Observable para acceder al estado actual del carrito
+  cart$: Observable<Cart>;
+
+  // Métodos para gestionar el carrito
+  addToCart(item: CartItem): Observable<Cart>;
+  removeFromCart(variantId: string): Observable<Cart>;
+  updateQuantity(variantId: string, quantity: number): Observable<Cart>;
+  clearCart(): Observable<Cart>;
+
+  // Método para finalizar la compra
+  checkout(): Observable<CheckoutResult>;
+}
+
 
 @Injectable({
   providedIn: 'root'
@@ -49,8 +70,7 @@ export class CartService {
 
   constructor(
     private productService: ProductService,
-    private inventoryService: ProductInventoryService,
-    private productVariantService: ProductVariantService
+    private inventoryService: ProductInventoryService
   ) {
     // Intentar recuperar el carrito del localStorage al iniciar
     this.loadCartFromStorage();
@@ -65,41 +85,69 @@ export class CartService {
 
   /**
    * Agrega un producto al carrito
+   * @returns Observable que emite true si se agregó correctamente, false si no
    */
-  async addToCart(productId: string, variantId: string, quantity: number, productData?: Product, variantData?: ProductVariant): Promise<boolean> {
+  addToCart(
+    productId: string,
+    variantId: string,
+    quantity: number,
+    productData?: Product,
+    variantData?: ProductVariant
+  ): Observable<boolean> {
+    // Usar los datos proporcionados si están disponibles, o buscarlos si no
+    if (productData && variantData) {
+      return this.processAddToCart(productId, variantId, quantity, productData, variantData);
+    } else {
+      // Verificar disponibilidad de stock
+      return this.checkStock(variantId, quantity).pipe(
+        switchMap(stockCheck => {
+          if (!stockCheck.available) {
+            console.error('No hay suficiente stock disponible', stockCheck);
+            return of(false);
+          }
+
+          // Cargar datos completos del producto
+          return this.productService.getProductById(productId).pipe(
+            switchMap(product => {
+              if (!product) {
+                console.error('Producto no encontrado');
+                return of(false);
+              }
+
+              // Encontrar la variante
+              return this.productService.getVariantById(variantId).pipe(
+                switchMap(variant => {
+                  if (!variant) {
+                    console.error('Variante no encontrada');
+                    return of(false);
+                  }
+
+                  // Proceder con la adición al carrito
+                  return this.processAddToCart(productId, variantId, quantity, product, variant);
+                })
+              );
+            })
+          );
+        }),
+        catchError(error => {
+          ErrorUtil.handleError(error, 'addToCart');
+          return of(false);
+        })
+      );
+    }
+  }
+
+  /**
+   * Procesa la adición de un producto al carrito (lógica interna)
+   */
+  private processAddToCart(
+    productId: string,
+    variantId: string,
+    quantity: number,
+    product: Product,
+    variant: ProductVariant
+  ): Observable<boolean> {
     try {
-
-      // Usar los datos proporcionados si están disponibles, o buscarlos si no
-      let product: Product | undefined;
-      let variant: ProductVariant | undefined;
-
-      if (productData && variantData) {
-        // Usar los datos proporcionados
-        product = productData;
-        variant = variantData;
-      } else {
-        // Verificar disponibilidad de stock
-        const stockCheck = await this.checkStock(variantId, quantity);
-        if (!stockCheck.available) {
-          console.error('No hay suficiente stock disponible', stockCheck);
-          return false;
-        }
-
-        // Cargar datos completos del producto
-        product = await this.productService.getProductById(productId);
-        if (!product) {
-          console.error('Producto no encontrado');
-          return false;
-        }
-
-        // Encontrar la variante seleccionada
-        variant = product.variants.find(v => v.id === variantId);
-        if (!variant) {
-          console.error('Variante no encontrada');
-          return false;
-        }
-      }
-
       // Obtener el precio actual (considerando descuentos)
       const unitPrice = product.currentPrice || product.price;
 
@@ -112,19 +160,30 @@ export class CartService {
       );
 
       if (existingItemIndex !== -1) {
-        // Actualizar cantidad si ya existe
+        // Si el item ya existe, verificar stock para la nueva cantidad total
         const newQuantity = currentCart.items[existingItemIndex].quantity + quantity;
 
-        // Verificar stock para la nueva cantidad total
-        const stockCheckForUpdate = await this.checkStock(variantId, newQuantity);
-        if (!stockCheckForUpdate.available) {
-          console.error('No hay suficiente stock para la cantidad solicitada', stockCheckForUpdate);
-          return false;
-        }
+        return this.checkStock(variantId, newQuantity).pipe(
+          map(stockCheck => {
+            if (!stockCheck.available) {
+              console.error('No hay suficiente stock para la cantidad solicitada', stockCheck);
+              return false;
+            }
 
-        // Actualizar el item existente
-        currentCart.items[existingItemIndex].quantity = newQuantity;
-        currentCart.items[existingItemIndex].totalPrice = newQuantity * unitPrice;
+            // Actualizar el item existente
+            currentCart.items[existingItemIndex].quantity = newQuantity;
+            currentCart.items[existingItemIndex].totalPrice = newQuantity * unitPrice;
+
+            // Recalcular totales
+            this.recalculateCart(currentCart);
+
+            // Actualizar el estado y guardar en localStorage
+            this.cartSubject.next(currentCart);
+            this.saveCartToStorage();
+
+            return true;
+          })
+        );
       } else {
         // Agregar nuevo item al carrito
         const newItem: CartItem = {
@@ -138,76 +197,78 @@ export class CartService {
         };
 
         currentCart.items.push(newItem);
+
+        // Recalcular totales
+        this.recalculateCart(currentCart);
+
+        // Actualizar el estado y guardar en localStorage
+        this.cartSubject.next(currentCart);
+        this.saveCartToStorage();
+
+        return of(true);
       }
-
-      // Recalcular totales
-      this.recalculateCart(currentCart);
-
-      // Actualizar el estado y guardar en localStorage
-      this.cartSubject.next(currentCart);
-      this.saveCartToStorage();
-
-      return true;
     } catch (error) {
-      console.error('Error al agregar al carrito:', error);
-      return false;
+      console.error('Error al procesar adición al carrito:', error);
+      return of(false);
     }
   }
 
   /**
    * Actualiza la cantidad de un item en el carrito
    */
-  async updateItemQuantity(variantId: string, quantity: number): Promise<boolean> {
+  updateItemQuantity(variantId: string, quantity: number): Observable<boolean> {
     if (quantity <= 0) {
       return this.removeItem(variantId);
     }
 
-    try {
-      const currentCart = this.getCart();
-      const itemIndex = currentCart.items.findIndex(item => item.variantId === variantId);
+    return this.checkStock(variantId, quantity).pipe(
+      map(stockCheck => {
+        if (!stockCheck.available) {
+          console.error('No hay suficiente stock disponible', stockCheck);
+          return false;
+        }
 
-      if (itemIndex === -1) {
-        console.error('Item no encontrado en el carrito');
-        return false;
-      }
+        const currentCart = this.getCart();
+        const itemIndex = currentCart.items.findIndex(item => item.variantId === variantId);
 
-      // Verificar stock para la nueva cantidad
-      const stockCheck = await this.checkStock(variantId, quantity);
-      if (!stockCheck.available) {
-        console.error('No hay suficiente stock disponible', stockCheck);
-        return false;
-      }
+        if (itemIndex === -1) {
+          console.error('Item no encontrado en el carrito');
+          return false;
+        }
 
-      // Actualizar cantidad
-      currentCart.items[itemIndex].quantity = quantity;
-      currentCart.items[itemIndex].totalPrice =
-        quantity * currentCart.items[itemIndex].unitPrice;
+        // Actualizar cantidad
+        currentCart.items[itemIndex].quantity = quantity;
+        currentCart.items[itemIndex].totalPrice =
+          quantity * currentCart.items[itemIndex].unitPrice;
 
-      // Recalcular totales
-      this.recalculateCart(currentCart);
+        // Recalcular totales
+        this.recalculateCart(currentCart);
 
-      // Actualizar el estado y guardar
-      this.cartSubject.next(currentCart);
-      this.saveCartToStorage();
+        // Actualizar el estado y guardar
+        this.cartSubject.next(currentCart);
+        this.saveCartToStorage();
 
-      return true;
-    } catch (error) {
-      console.error('Error al actualizar cantidad:', error);
-      return false;
-    }
+        return true;
+      }),
+      catchError(error => {
+        console.error('Error al actualizar cantidad:', error);
+        return of(false);
+      })
+    );
   }
+
 
   /**
    * Elimina un item del carrito
    */
-  removeItem(variantId: string): boolean {
+  removeItem(variantId: string): Observable<boolean> {
     try {
       const currentCart = this.getCart();
       const updatedItems = currentCart.items.filter(item => item.variantId !== variantId);
 
       if (updatedItems.length === currentCart.items.length) {
         // No se encontró el item
-        return false;
+        return of(false);
       }
 
       currentCart.items = updatedItems;
@@ -219,10 +280,10 @@ export class CartService {
       this.cartSubject.next(currentCart);
       this.saveCartToStorage();
 
-      return true;
+      return of(true);
     } catch (error) {
       console.error('Error al eliminar item:', error);
-      return false;
+      return of(false);
     }
   }
 
@@ -230,7 +291,7 @@ export class CartService {
    * Vacía completamente el carrito
    */
   clearCart(): void {
-    this.cartSubject.next(this.initialCartState);
+    this.cartSubject.next({ ...this.initialCartState });
     localStorage.removeItem('cart');
   }
 
@@ -268,7 +329,7 @@ export class CartService {
     // Calcular subtotal
     cart.subtotal = cart.items.reduce((total, item) => total + item.totalPrice, 0);
 
-    // Calcular impuestos (ejemplo: 16% IVA)
+    // Calcular impuestos (ejemplo: 15% IVA)
     cart.tax = cart.subtotal * 0.15;
 
     // Calcular envío (lógica simplificada)
@@ -281,37 +342,39 @@ export class CartService {
   /**
    * Verifica la disponibilidad de stock para una variante
    */
-  private async checkStock(variantId: string, quantity: number): Promise<{
+  private checkStock(variantId: string, quantity: number): Observable<{
     available: boolean,
     requested: number,
     availableStock: number
   }> {
-    try {
-      console.log('Verificando stock para variant ID:', variantId, 'cantidad:', quantity);
+    console.log('Verificando stock para variant ID:', variantId, 'cantidad:', quantity);
 
-      const variant = await this.productVariantService.getVariantById(variantId);
-      console.log('Variante encontrada:', variant);  // Ver qué datos se están recibiendo
+    return this.productService.getVariantById(variantId).pipe(
+      map(variant => {
+        console.log('Variante encontrada:', variant);
 
-      if (!variant) {
-        console.error('Variante no encontrada con ID:', variantId);
-        return { available: false, requested: quantity, availableStock: 0 };
-      }
+        if (!variant) {
+          console.error('Variante no encontrada con ID:', variantId);
+          return { available: false, requested: quantity, availableStock: 0 };
+        }
 
-      // Verificar explícitamente si el stock es undefined o null
-      const stockAvailable = variant.stock !== undefined && variant.stock !== null ? variant.stock : 0;
-      console.log('Stock disponible:', stockAvailable);
+        // Verificar explícitamente si el stock es undefined o null
+        const stockAvailable = variant.stock !== undefined && variant.stock !== null ? variant.stock : 0;
+        console.log('Stock disponible:', stockAvailable);
 
-      const available = stockAvailable >= quantity;
+        const available = stockAvailable >= quantity;
 
-      return {
-        available,
-        requested: quantity,
-        availableStock: stockAvailable
-      };
-    } catch (error) {
-      console.error('Error al verificar stock:', error);
-      return { available: false, requested: quantity, availableStock: 0 };
-    }
+        return {
+          available,
+          requested: quantity,
+          availableStock: stockAvailable
+        };
+      }),
+      catchError(error => {
+        console.error('Error al verificar stock:', error);
+        return of({ available: false, requested: quantity, availableStock: 0 });
+      })
+    );
   }
 
   /**
@@ -348,7 +411,7 @@ export class CartService {
   /**
    * Recupera el carrito desde localStorage
    */
-  private async loadCartFromStorage(): Promise<void> {
+  private loadCartFromStorage(): void {
     try {
       const storedCart = localStorage.getItem('cart');
 
@@ -363,159 +426,176 @@ export class CartService {
         return;
       }
 
-      // Cargar información completa de productos y variantes
-      const itemsWithDetails = await Promise.all(
-        parsedCart.items.map(async (item) => {
-          try {
-            const product = await this.productService.getProductById(item.productId);
-
-            if (!product) {
-              return null; // Producto no encontrado o eliminado
-            }
-
-            const variant = product.variants.find(v => v.id === item.variantId);
-
-            if (!variant) {
-              return null; // Variante no encontrada o eliminada
-            }
-
-            // Actualizar precio unitario por si cambió
-            const unitPrice = product.currentPrice || product.price;
-
-            return {
-              ...item,
-              product,
-              variant,
-              unitPrice,
-              totalPrice: item.quantity * unitPrice
-            };
-          } catch (error) {
-            console.error('Error al cargar detalles de producto:', error);
-            return null;
-          }
-        })
-      );
-
-      // Filtrar items que no se pudieron cargar
-      const validItems = itemsWithDetails.filter(item => item !== null) as CartItem[];
-
-      // Actualizar el carrito con los items cargados
-      const newCart = {
+      // Inicializar un carrito básico con los items del storage
+      const initialCart: Cart = {
         ...parsedCart,
-        items: validItems
+        items: parsedCart.items.map(item => ({
+          ...item,
+          // No incluimos product ni variant aún, se cargarán asíncronamente
+        }))
       };
 
-      // Recalcular totales (por si cambiaron precios)
-      this.recalculateCart(newCart);
+      // Actualizar el BehaviorSubject con datos iniciales
+      this.cartSubject.next(initialCart);
 
-      // Actualizar el estado
-      this.cartSubject.next(newCart);
+      // Cargar detalles de productos y variantes de forma asíncrona
+      this.loadCartItemDetails(parsedCart.items);
     } catch (error) {
       console.error('Error al cargar carrito desde localStorage:', error);
     }
   }
 
   /**
+   * Carga los detalles de productos y variantes de forma asíncrona
+   */
+  private loadCartItemDetails(items: CartItem[]): void {
+    // Para cada item del carrito, cargar detalles completos
+    items.forEach(item => {
+      this.productService.getProductById(item.productId).pipe(
+        switchMap(product => {
+          if (!product) {
+            // Si el producto no existe, lo eliminamos del carrito
+            this.removeItem(item.variantId);
+            return throwError(() => new Error(`Producto no encontrado: ${item.productId}`));
+          }
+
+          return this.productService.getVariantById(item.variantId).pipe(
+            map(variant => {
+              if (!variant) {
+                // Si la variante no existe, lo eliminamos del carrito
+                this.removeItem(item.variantId);
+                throw new Error(`Variante no encontrada: ${item.variantId}`);
+              }
+
+              // Actualizar el carrito con el item completo
+              return { product, variant };
+            })
+          );
+        })
+      ).subscribe({
+        next: ({ product, variant }) => {
+          const currentCart = this.getCart();
+          const itemIndex = currentCart.items.findIndex(i => i.variantId === item.variantId);
+
+          if (itemIndex !== -1) {
+            // Actualizar precio unitario por si cambió
+            const unitPrice = product.currentPrice || product.price;
+
+            // Actualizar item con datos completos
+            currentCart.items[itemIndex] = {
+              ...currentCart.items[itemIndex],
+              product,
+              variant,
+              unitPrice,
+              totalPrice: currentCart.items[itemIndex].quantity * unitPrice
+            };
+
+            // Recalcular totales
+            this.recalculateCart(currentCart);
+
+            // Actualizar el estado
+            this.cartSubject.next({ ...currentCart });
+          }
+        },
+        error: error => {
+          console.error('Error al cargar detalles de item:', error);
+          // El item problemático ya fue eliminado en los operadores anteriores
+        }
+      });
+    });
+  }
+
+  /**
    * Finaliza la compra con los items del carrito
    */
-  async checkout(): Promise<{
+  checkout(): Observable<{
     success: boolean,
     orderId?: string,
     error?: string
   }> {
-    try {
-      const cart = this.getCart();
+    const cart = this.getCart();
 
-      // Verificar que haya items
-      if (cart.items.length === 0) {
-        return {
-          success: false,
-          error: 'El carrito está vacío'
-        };
-      }
-
-      // En lugar de verificar el stock usando el servicio, verificaremos con los datos que ya tenemos
-      const unavailableItems = [];
-
-      for (const item of cart.items) {
-        // Aquí usamos el stock que ya conocemos de la variante cargada
-        if (!item.variant || (item.variant.stock < item.quantity)) {
-          unavailableItems.push({
-            productName: item.product?.name || 'Producto desconocido',
-            variantId: item.variantId,
-            requested: item.quantity,
-            available: item.variant?.stock || 0
-          });
-        }
-      }
-
-      if (unavailableItems.length > 0) {
-        console.error('Items sin stock suficiente:', unavailableItems);
-        return {
-          success: false,
-          error: 'Algunos productos no tienen suficiente stock disponible'
-        };
-      }
-
-      // Para cada producto, registrar la venta y decrementar el stock
-      // Aquí usamos una versión modificada que evita buscar variantes
-      for (const item of cart.items) {
-        if (!item.product || !item.variant) {
-          console.error('Item sin datos completos:', item);
-          continue;
-        }
-
-        try {
-          // Registrar la venta directamente, sin buscar variantes
-          await this.updateProductInventory(
-            item.productId,
-            item.variantId,
-            item.quantity
-          );
-        } catch (error) {
-          console.error('Error al procesar item:', item, error);
-          // Continuar con los demás items en lugar de fallar todo el checkout
-        }
-      }
-
-      // Aquí se integraría con el servicio de órdenes para crear la orden
-      // const orderId = await orderService.createOrder(cart);
-      const orderId = 'ORD-' + Date.now();
-
-      // Limpiar el carrito después de la compra exitosa
-      this.clearCart();
-
-      return {
-        success: true,
-        orderId
-      };
-    } catch (error) {
-      console.error('Error al procesar el checkout:', error);
-      return {
+    // Verificar que haya items
+    if (cart.items.length === 0) {
+      return of({
         success: false,
-        error: 'Ocurrió un error al procesar la compra'
-      };
+        error: 'El carrito está vacío'
+      });
     }
-  }
 
-  // Nuevo método para actualizar el inventario sin depender del ProductInventoryService
-  private async updateProductInventory(
-    productId: string,
-    variantId: string,
-    quantity: number
-  ): Promise<void> {
-    // Esta implementación depende de cómo está estructurada tu base de datos
-    try {
-      // Aquí se asume que tienes un método para obtener el documento de inventario
-      console.log(`Inventario actualizado: producto ${productId}, variante ${variantId}, cantidad -${quantity}`);
-    } catch (error) {
-      console.error('Error al actualizar inventario:', error);
-      if (error instanceof Error) {
-        throw new Error(`Error al actualizar inventario: ${error.message}`);
-      } else {
-        throw new Error('Error al actualizar inventario: Error desconocido');
+    // Verificar stock de todos los items
+    const unavailableItems: any[] = [];
+
+    for (const item of cart.items) {
+      if (!item.variant || (item.variant.stock < item.quantity)) {
+        unavailableItems.push({
+          productName: item.product?.name || 'Producto desconocido',
+          variantId: item.variantId,
+          requested: item.quantity,
+          available: item.variant?.stock || 0
+        });
       }
     }
+
+    if (unavailableItems.length > 0) {
+      console.error('Items sin stock suficiente:', unavailableItems);
+      return of({
+        success: false,
+        error: 'Algunos productos no tienen suficiente stock disponible'
+      });
+    }
+
+    // Preparar items para la venta
+    const saleItems: SaleItem[] = cart.items.map(item => ({
+      variantId: item.variantId,
+      quantity: item.quantity
+    }));
+
+    // Para cada producto, registrar la venta usando el formato que espera ProductInventoryService
+    const registerSaleOperations: Observable<void>[] = [];
+
+    // Agrupar items por productId
+    const itemsByProduct = new Map<string, SaleItem[]>();
+
+    cart.items.forEach(item => {
+      if (!itemsByProduct.has(item.productId)) {
+        itemsByProduct.set(item.productId, []);
+      }
+      itemsByProduct.get(item.productId)!.push({
+        variantId: item.variantId,
+        quantity: item.quantity
+      });
+    });
+
+    // Crear operaciones de registro de venta
+    itemsByProduct.forEach((items, productId) => {
+      registerSaleOperations.push(
+        this.inventoryService.registerSale(productId, items)
+      );
+    });
+
+    // Ejecutar todas las operaciones de venta
+    return forkJoin(registerSaleOperations).pipe(
+      map(() => {
+        // Aquí se integraría con el servicio de órdenes para crear la orden
+        const orderId = 'ORD-' + Date.now();
+
+        // Limpiar el carrito después de la compra exitosa
+        this.clearCart();
+
+        return {
+          success: true,
+          orderId
+        };
+      }),
+      catchError(error => {
+        console.error('Error al procesar el checkout:', error);
+        return of({
+          success: false,
+          error: 'Ocurrió un error al procesar la compra'
+        });
+      })
+    );
   }
 
   /**

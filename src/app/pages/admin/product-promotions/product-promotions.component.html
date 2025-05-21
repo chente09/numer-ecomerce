@@ -1,0 +1,98 @@
+<div class="promotions-container">
+    <!-- Spinner mientras carga -->
+    <div *ngIf="loading" class="loading-container">
+        <nz-spin nzSize="large"></nz-spin>
+    </div>
+
+    <!-- Contenido principal de promociones -->
+    <div *ngIf="!loading && product">
+        <!-- Resumen del producto -->
+        <nz-card>
+            <div class="product-summary">
+                <h3>{{ product.name }}</h3>
+                <div class="price-section">
+                    <div class="price-display">
+                        <span *ngIf="product.currentPrice && product.currentPrice < product.price"
+                            class="original-price">
+                            ${{ product.price.toFixed(2) }}
+                        </span>
+                        <span class="current-price">${{ (product.currentPrice || product.price).toFixed(2) }}</span>
+                    </div>
+                    <div *ngIf="product.discountPercentage && product.discountPercentage > 0" class="discount-badge">
+                        -{{ product.discountPercentage }}%
+                    </div>
+                </div>
+
+                <div *ngIf="product.activePromotion" class="active-promotion">
+                    <nz-tag nzColor="green">Promoción Activa</nz-tag>
+                </div>
+
+                <div class="action-buttons">
+                    <button nz-button nzType="primary" nzDanger nz-popconfirm
+                        nzPopconfirmTitle="¿Está seguro de eliminar todas las promociones?"
+                        nzPopconfirmPlacement="bottom" (nzOnConfirm)="removeAllPromotions()"
+                        [disabled]="!product.activePromotion && (!product.discountPercentage || product.discountPercentage <= 0)">
+                        <span nz-icon nzType="delete"></span> Eliminar Promociones
+                    </button>
+                </div>
+            </div>
+        </nz-card>
+
+        <!-- Lista de promociones disponibles -->
+        <nz-card nzTitle="Promociones Disponibles">
+            <div *ngIf="promotions.length === 0" class="no-promotions">
+                <nz-empty nzNotFoundContent="No hay promociones disponibles para este producto"></nz-empty>
+            </div>
+
+            <nz-table *ngIf="promotions.length > 0" #promotionsTable [nzData]="promotions" [nzSize]="'small'"
+                [nzShowPagination]="promotions.length > 10" [nzPageSize]="10">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let promo of promotionsTable.data">
+                        <td>{{ promo.name }}</td>
+                        <td>{{ formatDiscountType(promo.discountType) }}</td>
+                        <td>{{ formatDiscountValue(promo) }}</td>
+                        <td>{{ formatDate(promo.startDate) }}</td>
+                        <td>{{ formatDate(promo.endDate) }}</td>
+                        <td>
+                            <nz-tag [nzColor]="promo.isActive ? 'green' : 'default'">
+                                {{ promo.isActive ? 'Activa' : 'Inactiva' }}
+                            </nz-tag>
+                        </td>
+                        <td>
+                            <button nz-button nzType="primary" nzSize="small" (click)="applyPromotion(promo.id)"
+                                [disabled]="isActivePromotion(promo.id)" [nzLoading]="loading">
+                                {{ isActivePromotion(promo.id) ? 'Aplicada' : 'Aplicar' }}
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </nz-table>
+        </nz-card>
+
+        <!-- Sección de ayuda para promociones -->
+        <nz-card class="help-card">
+            <h3>Acerca de las Promociones</h3>
+            <p>Las promociones pueden ser aplicadas a productos individuales o a categorías enteras de productos.</p>
+            <p>Tipos de promociones:</p>
+            <ul>
+                <li><strong>Porcentaje:</strong> Aplica un descuento porcentual al precio del producto</li>
+                <li><strong>Monto fijo:</strong> Reduce el precio del producto en una cantidad específica</li>
+            </ul>
+            <p>Para crear nuevas promociones, utilice el módulo de Promociones en el menú principal.</p>
+        </nz-card>
+    </div>
+
+    <!-- Mensaje si no hay producto seleccionado -->
+    <nz-empty *ngIf="!loading && !product" nzNotFoundContent="No hay datos disponibles"></nz-empty>
+</div>

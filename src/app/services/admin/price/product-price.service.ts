@@ -1,12 +1,19 @@
 import { Injectable } from '@angular/core';
 import {
   Firestore, collection, collectionData,
-  query, where, getDocs, doc, getDoc
+  query, where, getDocs, doc, getDoc,
+  updateDoc,
+  deleteField
 } from '@angular/fire/firestore';
-import { Observable, of, from, forkJoin } from 'rxjs';
+import { Observable, of, from, forkJoin, throwError } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 
-// Importa tus modelos según tu estructura de proyecto
+// Importar utilidades
+import { ErrorUtil } from '../../../utils/error-util';
+import { TimestampUtil } from '../../../utils/timestamp-util';
+import { CacheService } from '../cache/cache.service';
+
+// Importar modelos
 import { Product } from '../../../models/models';
 import { Promotion } from '../../../models/models';
 
@@ -15,8 +22,17 @@ import { Promotion } from '../../../models/models';
 })
 export class ProductPriceService {
   private promotionsCollection = 'promotions';
+  private productsCollection = 'products';
 
-  constructor(private firestore: Firestore) { }
+  // Claves de caché
+  private readonly activePromotionsCacheKey = 'active_promotions';
+  private readonly productPromotionsCacheKey = 'product_promotions';
+  private readonly discountedPricesCacheKey = 'discounted_prices';
+
+  constructor(
+    private firestore: Firestore,
+    private cacheService: CacheService
+  ) { }
 
   /**
    * Calcula precios con descuento para array de productos
@@ -37,10 +53,7 @@ export class ProductPriceService {
           });
         });
       }),
-      catchError(error => {
-        console.error('Error al calcular precios con descuento:', error);
-        return of(products);
-      })
+      catchError(error => ErrorUtil.handleError(error, 'calculateDiscountedPrices'))
     );
   }
 
@@ -52,7 +65,7 @@ export class ProductPriceService {
     return from(this.getProductById(productId)).pipe(
       switchMap(product => {
         if (!product) {
-          return of(null as unknown as Product);
+          return throwError(() => new Error(`No se encontró el producto con ID ${productId}`));
         }
 
         return this.getActivePromotions().pipe(
@@ -65,25 +78,22 @@ export class ProductPriceService {
           })
         );
       }),
-      catchError(error => {
-        console.error(`Error al calcular precio con descuento para producto ${productId}:`, error);
-        throw error;
-      })
+      catchError(error => ErrorUtil.handleError(error, `calculateDiscountedPriceAsync(${productId})`))
     );
   }
 
   /**
    * Obtiene un producto por su ID (método auxiliar)
    */
-  private async getProductById(productId: string): Promise<Product | null> {
+  private getProductById(productId: string): Promise<Product | null> {
     try {
-      const productDoc = doc(this.firestore, 'products', productId);
-      const productSnap = await getDoc(productDoc);
-
-      if (productSnap.exists()) {
-        return { id: productSnap.id, ...productSnap.data() } as Product;
-      }
-      return null;
+      const productDoc = doc(this.firestore, this.productsCollection, productId);
+      return getDoc(productDoc).then(snapshot => {
+        if (snapshot.exists()) {
+          return { id: snapshot.id, ...snapshot.data() } as Product;
+        }
+        return null;
+      });
     } catch (error) {
       console.error(`Error al obtener producto ${productId}:`, error);
       throw error;
@@ -99,35 +109,49 @@ export class ProductPriceService {
       return of([]);
     }
 
-    return this.getActivePromotions().pipe(
-      map(promotions => {
-        // Procesar todos los productos en un solo paso
-        return products.map(product => {
-          const applicablePromotions = this.filterApplicablePromotions(product, promotions);
-          return this.calculateDiscountedPrice({
-            ...product,
-            promotions: applicablePromotions
+    const cacheKey = `${this.discountedPricesCacheKey}_batch_${products.map(p => p.id).join('_')}`;
+
+    return this.cacheService.getCached<Product[]>(cacheKey, () => {
+      return this.getActivePromotions().pipe(
+        map(promotions => {
+          // Procesar todos los productos en un solo paso
+          return products.map(product => {
+            const applicablePromotions = this.filterApplicablePromotions(product, promotions);
+            return this.calculateDiscountedPrice({
+              ...product,
+              promotions: applicablePromotions
+            });
           });
-        });
-      })
-    );
+        }),
+        catchError(error => ErrorUtil.handleError(error, 'applyPromotionsToProducts'))
+      );
+    });
   }
 
   /**
    * Obtiene promociones específicas para un producto por su ID
    */
   getPromotionsForProduct(productId: string): Observable<Promotion[]> {
-    return from(this.getProductById(productId)).pipe(
-      switchMap(product => {
-        if (!product) {
-          return of([]);
-        }
+    if (!productId) {
+      return of([]);
+    }
 
-        return this.getActivePromotions().pipe(
-          map(promotions => this.filterApplicablePromotions(product, promotions))
-        );
-      })
-    );
+    const cacheKey = `${this.productPromotionsCacheKey}_${productId}`;
+
+    return this.cacheService.getCached<Promotion[]>(cacheKey, () => {
+      return from(this.getProductById(productId)).pipe(
+        switchMap(product => {
+          if (!product) {
+            return of([]);
+          }
+
+          return this.getActivePromotions().pipe(
+            map(promotions => this.filterApplicablePromotions(product, promotions))
+          );
+        }),
+        catchError(error => ErrorUtil.handleError(error, `getPromotionsForProduct(${productId})`))
+      );
+    });
   }
 
   /**
@@ -149,10 +173,11 @@ export class ProductPriceService {
       let bestPromotion: Promotion | null = null;
 
       for (const promo of product.promotions) {
-        if (promo.isActive &&
-          promo.startDate <= now &&
-          promo.endDate >= now) {
+        // Convertir fechas si es necesario
+        const startDate = TimestampUtil.toDate(promo.startDate);
+        const endDate = TimestampUtil.toDate(promo.endDate);
 
+        if (promo.isActive && startDate <= now && endDate >= now) {
           let discountAmount = 0;
 
           if (promo.discountType === 'percentage') {
@@ -211,101 +236,80 @@ export class ProductPriceService {
 
   /**
    * Obtener todas las promociones activas
+   * Esta implementación optimizada primero filtra por isActive y luego
+   * procesa las fechas en el cliente para evitar problemas con Firestore
    */
-  // getActivePromotions(): Observable<Promotion[]> {
-  //   const now = new Date();
-  //   const promotionsRef = collection(this.firestore, this.promotionsCollection);
-  //   const q = query(
-  //     promotionsRef,
-  //     where('isActive', '==', true),
-  //     where('endDate', '>', now)
-  //   );
-
-  //   return collectionData(q, { idField: 'id' }).pipe(
-  //     map(promotions => {
-  //       return (promotions as any[]).map(promo => ({
-  //         ...promo,
-  //         // Convertir timestamps a Date si es necesario
-  //         startDate: this.convertTimestampToDate(promo.startDate),
-  //         endDate: this.convertTimestampToDate(promo.endDate)
-  //       })) as Promotion[];
-  //     }),
-  //     catchError(error => {
-  //       console.error('Error al obtener promociones activas:', error);
-  //       return of([]);
-  //     })
-  //   );
-  // }
-
   getActivePromotions(): Observable<Promotion[]> {
-    const now = new Date();
-    const promotionsRef = collection(this.firestore, this.promotionsCollection);
+    const cacheKey = `${this.activePromotionsCacheKey}`;
 
-    // Sólo filtrar por isActive y luego filtrar en memoria
-    const q = query(
-      promotionsRef,
-      where('isActive', '==', true)
-    );
+    return this.cacheService.getCached<Promotion[]>(cacheKey, () => {
+      const now = new Date();
+      const promotionsRef = collection(this.firestore, this.promotionsCollection);
 
-    return collectionData(q, { idField: 'id' }).pipe(
-      map(promotions => {
-        // Filtrar en el cliente por fecha
-        return (promotions as any[])
-          .filter(promo => this.convertTimestampToDate(promo.endDate) > now)
-          .map(promo => ({
-            ...promo,
-            startDate: this.convertTimestampToDate(promo.startDate),
-            endDate: this.convertTimestampToDate(promo.endDate)
-          })) as Promotion[];
-      }),
-      catchError(error => {
-        console.error('Error al obtener promociones activas:', error);
-        return of([]);
-      })
-    );
+      // Solo filtrar por isActive en la consulta - esto es más eficiente en Firestore
+      const q = query(
+        promotionsRef,
+        where('isActive', '==', true)
+      );
+
+      return collectionData(q, { idField: 'id' }).pipe(
+        map(promotions => {
+          // Filtrar por fecha en el cliente (post-procesamiento)
+          return (promotions as any[])
+            .filter(promo => {
+              const endDate = TimestampUtil.toDate(promo.endDate);
+              return endDate > now;
+            })
+            .map(promo => ({
+              ...promo,
+              startDate: TimestampUtil.toDate(promo.startDate),
+              endDate: TimestampUtil.toDate(promo.endDate)
+            })) as Promotion[];
+        }),
+        catchError(error => ErrorUtil.handleError(error, 'getActivePromotions'))
+      );
+    });
   }
 
   /**
    * Añade promociones aplicables a un producto
    */
-  async addPromotionsToProduct(product: Product): Promise<Product> {
-    try {
-      const now = new Date();
-      const promotionsRef = collection(this.firestore, this.promotionsCollection);
-      const q = query(
-        promotionsRef,
-        where('isActive', '==', true),
-        where('endDate', '>', now)
-      );
-
-      const promotionsSnap = await getDocs(q);
-      const allPromotions = promotionsSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        startDate: this.convertTimestampToDate(doc.data()['startDate']),
-        endDate: this.convertTimestampToDate(doc.data()['endDate'])
-      }) as unknown as Promotion);
-
-      // Filtrar promociones aplicables
-      const applicablePromotions = this.filterApplicablePromotions(product, allPromotions);
-
-      return {
-        ...product,
-        promotions: applicablePromotions
-      };
-    } catch (error) {
-      console.error('Error al añadir promociones al producto:', error);
-      return product;
+  addPromotionsToProduct(product: Product): Observable<Product> {
+    if (!product) {
+      // Retornar un producto vacío para mantener la consistencia de tipos
+      // en lugar de retornar null directamente
+      return of({} as Product);
     }
+
+    return this.getActivePromotions().pipe(
+      map(promotions => {
+        const applicablePromotions = this.filterApplicablePromotions(product, promotions);
+        return {
+          ...product,
+          promotions: applicablePromotions
+        };
+      }),
+      catchError(error => {
+        console.error('Error al añadir promociones al producto:', error);
+        return of(product); // Devolver producto sin cambios en caso de error
+      })
+    );
   }
 
   /**
    * Verifica si una promoción es aplicable a un producto
    */
   isPromotionApplicable(product: Product, promotion: Promotion): boolean {
+    if (!product || !promotion) {
+      return false;
+    }
+
     // Verificar si la promoción está activa
     const now = new Date();
-    if (!promotion.isActive || promotion.startDate > now || promotion.endDate < now) {
+    const startDate = TimestampUtil.toDate(promotion.startDate);
+    const endDate = TimestampUtil.toDate(promotion.endDate);
+
+    if (!promotion.isActive || startDate > now || endDate < now) {
       return false;
     }
 
@@ -328,7 +332,11 @@ export class ProductPriceService {
    * Útil para cuando se quiere aplicar manualmente una promoción desde la interfaz
    */
   applyPromotionToProduct(product: Product, promotionId: string): Observable<Product> {
-    return from(this.getPromotionById(promotionId)).pipe(
+    if (!product || !promotionId) {
+      return of(product);
+    }
+
+    return this.getPromotionById(promotionId).pipe(
       map(promotion => {
         if (!promotion || !this.isPromotionApplicable(product, promotion)) {
           return product;
@@ -352,25 +360,36 @@ export class ProductPriceService {
   /**
    * Obtiene una promoción por su ID
    */
-  private async getPromotionById(promotionId: string): Promise<Promotion | null> {
-    try {
-      const promotionDoc = doc(this.firestore, this.promotionsCollection, promotionId);
-      const promotionSnap = await getDoc(promotionDoc);
-
-      if (promotionSnap.exists()) {
-        const data = promotionSnap.data();
-        return {
-          id: promotionSnap.id,
-          ...data,
-          startDate: this.convertTimestampToDate(data['startDate']),
-          endDate: this.convertTimestampToDate(data['endDate'])
-        } as Promotion;
-      }
-      return null;
-    } catch (error) {
-      console.error(`Error al obtener promoción ${promotionId}:`, error);
-      throw error;
+  private getPromotionById(promotionId: string): Observable<Promotion | null> {
+    if (!promotionId) {
+      return of(null);
     }
+
+    const cacheKey = `promotion_${promotionId}`;
+
+    return this.cacheService.getCached<Promotion | null>(cacheKey, () => {
+      return from((async () => {
+        try {
+          const promotionDoc = doc(this.firestore, this.promotionsCollection, promotionId);
+          const promotionSnap = await getDoc(promotionDoc);
+
+          if (promotionSnap.exists()) {
+            const data = promotionSnap.data();
+            return {
+              id: promotionSnap.id,
+              ...data,
+              startDate: TimestampUtil.toDate(data['startDate']),
+              endDate: TimestampUtil.toDate(data['endDate'])
+            } as Promotion;
+          }
+          return null;
+        } catch (error) {
+          throw error;
+        }
+      })()).pipe(
+        catchError(error => ErrorUtil.handleError(error, `getPromotionById(${promotionId})`))
+      );
+    });
   }
 
   /**
@@ -385,16 +404,139 @@ export class ProductPriceService {
    * Filtra las promociones aplicables a un producto
    */
   private filterApplicablePromotions(product: Product, allPromotions: Promotion[]): Promotion[] {
+    if (!product || !allPromotions || allPromotions.length === 0) {
+      return [];
+    }
     return allPromotions.filter(promo => this.isPromotionApplicable(product, promo));
   }
 
   /**
-   * Convierte un timestamp de Firestore a Date
+   * Invalida el caché de promociones
+   * Útil cuando se agregan o modifican promociones
    */
-  private convertTimestampToDate(timestamp: any): Date {
-    if (timestamp && typeof timestamp.toDate === 'function') {
-      return timestamp.toDate();
-    }
-    return timestamp ? new Date(timestamp) : new Date();
+  invalidatePromotionsCache(): void {
+    this.cacheService.invalidate(this.activePromotionsCacheKey);
+    // También podríamos invalidar caches relacionados con productos específicos
+    // pero se necesitaría implementar un sistema más robusto
   }
+
+  applyPromotionToVariant(
+    productId: string,
+    variantId: string,
+    promotion: Promotion
+  ): Observable<void> {
+    return from((async () => {
+      try {
+        // Obtener la variante
+        const variantRef = doc(this.firestore, 'productVariants', variantId);
+        const variantSnap = await getDoc(variantRef);
+
+        if (!variantSnap.exists()) {
+          throw new Error('La variante no existe');
+        }
+
+        const variantData = variantSnap.data();
+        // Usamos notación de corchetes para acceder a price
+        const originalPrice = variantData['price'] || 0;
+
+        // Calcular precio con descuento
+        let discountedPrice = originalPrice;
+        if (promotion.discountType === 'percentage') {
+          discountedPrice = originalPrice * (1 - (promotion.discountValue / 100));
+        } else { // fixed
+          discountedPrice = Math.max(0, originalPrice - promotion.discountValue);
+        }
+
+        // Actualizar la variante
+        await updateDoc(variantRef, {
+          promotionId: promotion.id,
+          discountType: promotion.discountType,
+          discountValue: promotion.discountValue,
+          discountedPrice: discountedPrice,
+          updatedAt: new Date()
+        });
+
+        // Actualizar el producto principal
+        const productRef = doc(this.firestore, 'products', productId);
+        await updateDoc(productRef, {
+          hasPromotions: true,
+          updatedAt: new Date()
+        });
+
+        // Invalidar caché si es necesario
+        if (this.cacheService) {
+          this.cacheService.invalidate(`products_${productId}`);
+          this.cacheService.invalidate('products');
+        }
+
+        return;
+      } catch (error) {
+        console.error('Error al aplicar promoción a variante:', error);
+        throw error;
+      }
+    })());
+  }
+
+  // En ProductPriceService.ts
+
+/**
+ * Elimina una promoción aplicada a una variante
+ */
+removePromotionFromVariant(
+  productId: string,
+  variantId: string
+): Observable<void> {
+  return from((async () => {
+    try {
+      // 1. Obtener la variante
+      const variantRef = doc(this.firestore, 'productVariants', variantId);
+      const variantSnap = await getDoc(variantRef);
+      
+      if (!variantSnap.exists()) {
+        throw new Error('La variante no existe');
+      }
+      
+      // 2. Eliminar campos relacionados con promociones
+      await updateDoc(variantRef, {
+        promotionId: deleteField(), // Firestore deleteField()
+        discountType: deleteField(),
+        discountValue: deleteField(),
+        discountedPrice: deleteField(),
+        updatedAt: new Date()
+      });
+      
+      // 3. Verificar si hay otras variantes con promociones
+      // para el mismo producto
+      const productVariantsRef = collection(this.firestore, 'productVariants');
+      const q = query(
+        productVariantsRef, 
+        where('productId', '==', productId),
+        where('promotionId', '!=', null)
+      );
+      
+      const otherPromotionsSnap = await getDocs(q);
+      const hasOtherPromotions = otherPromotionsSnap.size > 0;
+      
+      // 4. Actualizar el producto principal si no hay más variantes con promociones
+      if (!hasOtherPromotions) {
+        const productRef = doc(this.firestore, 'products', productId);
+        await updateDoc(productRef, {
+          hasPromotions: false,
+          updatedAt: new Date()
+        });
+      }
+      
+      // 5. Invalidar caché
+      if (this.cacheService) {
+        this.cacheService.invalidate(`products_${productId}`);
+        this.cacheService.invalidate('products');
+      }
+      
+      return;
+    } catch (error) {
+      console.error('Error al eliminar promoción de variante:', error);
+      throw error;
+    }
+  })());
+}
 }

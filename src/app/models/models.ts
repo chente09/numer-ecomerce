@@ -2,7 +2,8 @@ export interface Color {
     id: string;
     name: string;
     code: string;
-    imageUrl: string;
+    imageUrl?: string;
+    description?: string;
 }
 
 export interface ColorStock {
@@ -11,9 +12,14 @@ export interface ColorStock {
 }
 
 export interface Size {
+    id: string;
     name: string;        // S, M, L, XL, etc.
-    stock: number;       // Cantidad disponible
+    stock?: number;       // Cantidad disponible
     imageUrl?: string;   // URL de la imagen representativa de la talla
+    description?: string; // Descripción de la talla
+    active: boolean;
+    categories?: string[]; // Categorías a las que pertenece la talla
+    order?: number;       // Orden de visualización
     colorStocks?: {      // Stock específico por color y talla
         colorName: string;
         quantity: number;
@@ -47,16 +53,23 @@ export interface ProductVariant {
     sku: string;
     price?: number;  // Precio específico de la variante (opcional)
     imageUrl?: string;
+    promotionId?: string;  // ID de la promoción aplicada
+    discountType?: 'percentage' | 'fixed';  // Tipo de descuento
+    discountValue?: number;  // Valor del descuento
+    discountedPrice?: number;  // Precio con descuento calculado
+    originalPrice?: number;  // Precio original antes del descuento
 }
 
 export interface Product {
     id: string;
     name: string;
     price: number;
+    gender?: 'man' | 'woman' | 'boy' | 'girl' | 'unisex';
     originalPrice?: number;
     currentPrice?: number;
     discountPercentage?: number;
     imageUrl: string;
+    additionalImages?: string[]; 
     rating: number;
     category: string;
     description?: string;
@@ -81,6 +94,7 @@ export interface Product {
     metaDescription?: string;
     searchKeywords?: string[];
     activePromotion?: string;
+    features?: string[];
 }
 
 export interface ProductCreate {

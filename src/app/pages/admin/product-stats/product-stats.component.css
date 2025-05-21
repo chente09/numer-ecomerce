@@ -1,0 +1,87 @@
+.stats-container {
+    padding: 16px 0;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+}
+
+.chart-card {
+    margin-top: 16px;
+}
+
+.stock-info-card {
+    margin-top: 16px;
+}
+
+.stat-item {
+    margin-bottom: 12px;
+}
+
+.stat-label {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.stock-chart {
+    margin-top: 16px;
+}
+
+.stock-bar-label {
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.stock-bar-container {
+    display: flex;
+    height: 24px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.stock-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    min-width: 24px;
+}
+
+.stock-bar.with-stock {
+    background-color: #52c41a;
+}
+
+.stock-bar.without-stock {
+    background-color: #ff4d4f;
+}
+
+.stock-bar-legend {
+    display: flex;
+    margin-top: 8px;
+    gap: 16px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+}
+
+.legend-color.with-stock {
+    background-color: #52c41a;
+}
+
+.legend-color.without-stock {
+    background-color: #ff4d4f;
+}

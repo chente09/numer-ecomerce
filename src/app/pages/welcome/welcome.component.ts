@@ -94,7 +94,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   instagramFeed: InstagramPost[] = [];
   selectedPost: InstagramPost | null = null;
   newComment: string = '';
-  testimonials: Review[] = []; 
+  testimonials: Review[] = [];
   private subscriptions: Subscription = new Subscription();
   testimonialsLoading = true;
 
@@ -304,21 +304,21 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     this.loadTestimonials();
     this.startPeriodicTestimonialsUpdate();
     this.subscription.add(
-    this.heroService.getActiveHero().subscribe(async hero => {
-      // Precargar imágenes antes de actualizar el componente
-      if (hero) {
-        await this.preloadHeroImages(hero);
-      }
-      
-      this.activeHero = hero;
-      
-      // Actualizar estilos de fondo
-      this.updateHeroStyles(hero);
-      
-      // Forzar la detección de cambios para actualizar la vista
-      this.cdr.detectChanges();
-    })
-  );
+      this.heroService.getActiveHero().subscribe(async hero => {
+        // Precargar imágenes antes de actualizar el componente
+        if (hero) {
+          await this.preloadHeroImages(hero);
+        }
+
+        this.activeHero = hero;
+
+        // Actualizar estilos de fondo
+        this.updateHeroStyles(hero);
+
+        // Forzar la detección de cambios para actualizar la vista
+        this.cdr.detectChanges();
+      })
+    );
   }
 
   ngOnDestroy() {
@@ -356,85 +356,85 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   }
 
   // En WelcomeComponent
-preloadImage(url: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!url) {
-      resolve();
-      return;
+  preloadImage(url: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!url) {
+        resolve();
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = (err) => {
+        console.error('Error precargando imagen:', err);
+        resolve(); // Resolver de todas formas para no bloquear
+      };
+      img.src = url;
+    });
+  }
+
+  async preloadHeroImages(hero: HeroItem): Promise<void> {
+    if (!hero) return;
+
+    // Precargar imagen principal
+    if (hero.imageUrl) {
+      await this.preloadImage(hero.imageUrl);
     }
-    
-    const img = new Image();
-    img.onload = () => resolve();
-    img.onerror = (err) => {
-      console.error('Error precargando imagen:', err);
-      resolve(); // Resolver de todas formas para no bloquear
-    };
-    img.src = url;
-  });
-}
 
-async preloadHeroImages(hero: HeroItem): Promise<void> {
-  if (!hero) return;
-  
-  // Precargar imagen principal
-  if (hero.imageUrl) {
-    await this.preloadImage(hero.imageUrl);
+    // Precargar imagen móvil si existe
+    if (hero.mobileImageUrl) {
+      await this.preloadImage(hero.mobileImageUrl);
+    }
   }
-  
-  // Precargar imagen móvil si existe
-  if (hero.mobileImageUrl) {
-    await this.preloadImage(hero.mobileImageUrl);
-  }
-}
 
-updateHeroStyles(hero: HeroItem | null): void {
-  if (!hero) return;
-  
-  // Actualizar estilos CSS para las imágenes
-  if (hero.imageUrl) {
-    document.documentElement.style.setProperty(
-      '--hero-image',
-      `url('${hero.imageUrl}')`
-    );
-  } else {
-    document.documentElement.style.removeProperty('--hero-image');
+  updateHeroStyles(hero: HeroItem | null): void {
+    if (!hero) return;
+
+    // Actualizar estilos CSS para las imágenes
+    if (hero.imageUrl) {
+      document.documentElement.style.setProperty(
+        '--hero-image',
+        `url('${hero.imageUrl}')`
+      );
+    } else {
+      document.documentElement.style.removeProperty('--hero-image');
+    }
+
+    if (hero.mobileImageUrl) {
+      document.documentElement.style.setProperty(
+        '--mobile-image',
+        `url('${hero.mobileImageUrl}')`
+      );
+    } else {
+      document.documentElement.style.removeProperty('--mobile-image');
+    }
+
+    // Actualizar colores de fondo y texto
+    if (hero.backgroundColor) {
+      document.documentElement.style.setProperty(
+        '--hero-background-color',
+        hero.backgroundColor
+      );
+    } else {
+      document.documentElement.style.removeProperty('--hero-background-color');
+    }
+
+    if (hero.textColor) {
+      document.documentElement.style.setProperty(
+        '--hero-text-color',
+        hero.textColor
+      );
+    } else {
+      document.documentElement.style.removeProperty('--hero-text-color');
+    }
+
+    // Establecer clase para GIF si es necesario
+    this.isGif = hero.isGif || false;
   }
-  
-  if (hero.mobileImageUrl) {
-    document.documentElement.style.setProperty(
-      '--mobile-image',
-      `url('${hero.mobileImageUrl}')`
-    );
-  } else {
-    document.documentElement.style.removeProperty('--mobile-image');
-  }
-  
-  // Actualizar colores de fondo y texto
-  if (hero.backgroundColor) {
-    document.documentElement.style.setProperty(
-      '--hero-background-color',
-      hero.backgroundColor
-    );
-  } else {
-    document.documentElement.style.removeProperty('--hero-background-color');
-  }
-  
-  if (hero.textColor) {
-    document.documentElement.style.setProperty(
-      '--hero-text-color',
-      hero.textColor
-    );
-  } else {
-    document.documentElement.style.removeProperty('--hero-text-color');
-  }
-  
-  // Establecer clase para GIF si es necesario
-  this.isGif = hero.isGif || false;
-}
 
   // Método para seleccionar un color de producto
   selectColor(product: Product, color: Color): void {
-    product.imageUrl = color.imageUrl;
+    product.imageUrl = color.imageUrl ?? product.imageUrl;
   }
 
   // Método para generar array para mostrar las estrellas de rating
@@ -531,35 +531,35 @@ updateHeroStyles(hero: HeroItem | null): void {
   }
 
   loadTestimonials(): void {
-  console.log('Iniciando carga de testimonios en WelcomeComponent');
-  this.testimonialsLoading = true;
-  
-  const testimonialsSub = this.reviewService.getApprovedReviews(4)
-    .subscribe({
-      next: (reviews: Review[]) => {
-        console.log('Testimonios recibidos en WelcomeComponent:', reviews);
-        if (reviews && reviews.length > 0) {
-          this.testimonials = reviews;
-        } else {
-          console.log('No hay testimonios disponibles, usando estáticos');
+    console.log('Iniciando carga de testimonios en WelcomeComponent');
+    this.testimonialsLoading = true;
+
+    const testimonialsSub = this.reviewService.getApprovedReviews(4)
+      .subscribe({
+        next: (reviews: Review[]) => {
+          console.log('Testimonios recibidos en WelcomeComponent:', reviews);
+          if (reviews && reviews.length > 0) {
+            this.testimonials = reviews;
+          } else {
+            console.log('No hay testimonios disponibles, usando estáticos');
+            this.setStaticTestimonials();
+          }
+          this.testimonialsLoading = false;
+        },
+        error: (err: Error) => {
+          console.error('Error al cargar testimonios en WelcomeComponent:', err);
           this.setStaticTestimonials();
+          this.testimonialsLoading = false;
         }
-        this.testimonialsLoading = false;
-      },
-      error: (err: Error) => {
-        console.error('Error al cargar testimonios en WelcomeComponent:', err);
-        this.setStaticTestimonials();
-        this.testimonialsLoading = false;
-      }
-    });
-  
-  this.subscriptions.add(testimonialsSub);
-} 
+      });
+
+    this.subscriptions.add(testimonialsSub);
+  }
 
   startPeriodicTestimonialsUpdate(): void {
     // Actualizar los testimonios cada 5 minutos
     const updateInterval = 5 * 60 * 1000; // 5 minutos en milisegundos
-    
+
     const intervalSub = interval(updateInterval).subscribe(() => {
       // Recargar los testimonios silenciosamente (sin mostrar loading)
       this.reviewService.getApprovedReviews(4).subscribe({
@@ -574,7 +574,7 @@ updateHeroStyles(hero: HeroItem | null): void {
         }
       });
     });
-    
+
     this.subscriptions.add(intervalSub);
   }
 

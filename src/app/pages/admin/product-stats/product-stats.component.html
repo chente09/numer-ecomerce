@@ -1,0 +1,119 @@
+<div class="stats-container">
+    <!-- Spinner mientras carga -->
+    <div *ngIf="loading" class="loading-container">
+        <nz-spin nzSize="large"></nz-spin>
+    </div>
+
+    <!-- Contenido principal de estadísticas -->
+    <div *ngIf="!loading && product">
+        <!-- Cards con stats principales -->
+        <div nz-row [nzGutter]="[16, 16]">
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-card>
+                    <nz-statistic [nzValue]="product.totalStock || 0" [nzTitle]="'Stock Total'"
+                        [nzValueStyle]="{ color: product.totalStock > 5 ? '#3f8600' : (product.totalStock > 0 ? '#faad14' : '#cf1322') }">
+                    </nz-statistic>
+                </nz-card>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-card>
+                    <nz-statistic [nzValue]="product.sales || 0" [nzTitle]="'Ventas Totales'"></nz-statistic>
+                </nz-card>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-card>
+                    <nz-statistic [nzValue]="product.views || 0" [nzTitle]="'Vistas'"></nz-statistic>
+                </nz-card>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-card>
+                    <nz-statistic [nzValue]="product.rating" [nzTitle]="'Calificación'"
+                        [nzSuffix]="ratingSuffix"></nz-statistic>
+                    <ng-template #ratingSuffix>
+                        <nz-rate [ngModel]="product.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
+                    </ng-template>
+                </nz-card>
+            </div>
+        </div>
+
+        <!-- Historial de ventas -->
+        <nz-card nzTitle="Historial de Ventas Recientes" class="chart-card">
+            <nz-table #salesTable [nzData]="salesHistory" [nzShowPagination]="false" [nzSize]="'small'">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Unidades Vendidas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let sale of salesTable.data">
+                        <td>{{ formatDate(sale.date) }}</td>
+                        <td>{{ sale.sales }}</td>
+                    </tr>
+                </tbody>
+            </nz-table>
+        </nz-card>
+
+        <!-- Información de stock -->
+        <nz-card nzTitle="Información de Inventario" *ngIf="stockData" class="stock-info-card">
+            <div nz-row [nzGutter]="[16, 16]">
+                <div nz-col [nzXs]="24" [nzSm]="12">
+                    <div class="stat-item">
+                        <div class="stat-label">Variantes con Stock:</div>
+                        <div class="stat-value">{{ stockData.variantsWithStock }} de {{ stockData.totalVariants }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Variantes sin Stock:</div>
+                        <div class="stat-value">{{ stockData.variantsWithoutStock }}</div>
+                    </div>
+                </div>
+                <div nz-col [nzXs]="24" [nzSm]="12">
+                    <div class="stock-chart">
+                        <div class="stock-bar-label">Stock por variante</div>
+                        <div class="stock-bar-container">
+                            <div class="stock-bar with-stock"
+                                [style.width.%]="(stockData.variantsWithStock / stockData.totalVariants) * 100">
+                                {{ stockData.variantsWithStock }}
+                            </div>
+                            <div class="stock-bar without-stock"
+                                [style.width.%]="(stockData.variantsWithoutStock / stockData.totalVariants) * 100">
+                                {{ stockData.variantsWithoutStock }}
+                            </div>
+                        </div>
+                        <div class="stock-bar-legend">
+                            <div class="legend-item">
+                                <div class="legend-color with-stock"></div>
+                                <div class="legend-text">Con stock</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color without-stock"></div>
+                                <div class="legend-text">Sin stock</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nz-card>
+
+        <!-- Estadística de vistas -->
+        <nz-card nzTitle="Estadísticas de Vistas" class="chart-card">
+            <nz-table #viewsTable [nzData]="viewsData" [nzShowPagination]="false" [nzSize]="'small'">
+                <thead>
+                    <tr>
+                        <th>Período</th>
+                        <th>Vistas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let viewStat of viewsTable.data">
+                        <td>{{ viewStat.period }}</td>
+                        <td>{{ viewStat.count }}</td>
+                    </tr>
+                </tbody>
+            </nz-table>
+        </nz-card>
+    </div>
+
+    <!-- Mensaje si no hay producto seleccionado -->
+    <nz-empty *ngIf="!loading && !product" nzNotFoundContent="No hay datos disponibles"></nz-empty>
+</div>

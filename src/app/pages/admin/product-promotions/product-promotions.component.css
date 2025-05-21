@@ -1,0 +1,70 @@
+.promotions-container {
+    padding: 16px 0;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+}
+
+.product-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.price-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.price-display {
+    display: flex;
+    flex-direction: column;
+}
+
+.original-price {
+    text-decoration: line-through;
+    color: #999;
+    font-size: 14px;
+}
+
+.current-price {
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.discount-badge {
+    background-color: #ff4d4f;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.active-promotion {
+    margin-top: 8px;
+}
+
+.action-buttons {
+    margin-top: 8px;
+}
+
+.no-promotions {
+    margin: 24px 0;
+}
+
+.help-card {
+    margin-top: 16px;
+}
+
+.help-card h3 {
+    margin-bottom: 16px;
+}
+
+.help-card ul {
+    margin-left: 16px;
+}
