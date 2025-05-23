@@ -113,6 +113,7 @@ export class ProductVariantService {
     colorImages?: Map<string, File>,
     sizeImages?: Map<string, File>
   ): Promise<{ colors: Color[], sizes: Size[] }> {
+
     const updatedColors = [...colors];
     const updatedSizes = [...sizes];
     const uploadPromises: Promise<void>[] = [];
@@ -121,7 +122,7 @@ export class ProductVariantService {
     if (colorImages && colorImages.size > 0) {
       for (let i = 0; i < updatedColors.length; i++) {
         const colorFile = colorImages.get(updatedColors[i].name);
-        if (colorFile) {
+        if (colorFile && colorFile.size > 0) {
           const colorIndex = i;
           const colorPromise = this.imageService.uploadCompressedImage(
             `products/${productId}/colors/${updatedColors[i].name.toLowerCase()}.webp`,
@@ -129,10 +130,13 @@ export class ProductVariantService {
           ).then(url => {
             updatedColors[colorIndex].imageUrl = url;
           }).catch(error => {
-            console.error(`Error al subir imagen de color ${updatedColors[colorIndex].name}:`, error);
+            console.error(`❌ Error al subir imagen de color ${updatedColors[colorIndex].name}:`, error);
+            // No lanzar error, solo continuar sin la imagen
           });
 
           uploadPromises.push(colorPromise);
+        } else {
+          console.log(`⚠️ No hay imagen válida para color: ${updatedColors[i].name}`);
         }
       }
     }
@@ -141,7 +145,7 @@ export class ProductVariantService {
     if (sizeImages && sizeImages.size > 0) {
       for (let i = 0; i < updatedSizes.length; i++) {
         const sizeFile = sizeImages.get(updatedSizes[i].name);
-        if (sizeFile) {
+        if (sizeFile && sizeFile.size > 0) {
           const sizeIndex = i;
           const sizePromise = this.imageService.uploadCompressedImage(
             `products/${productId}/sizes/${updatedSizes[i].name.toLowerCase()}.webp`,
@@ -149,16 +153,23 @@ export class ProductVariantService {
           ).then(url => {
             updatedSizes[sizeIndex].imageUrl = url;
           }).catch(error => {
-            console.error(`Error al subir imagen de talla ${updatedSizes[sizeIndex].name}:`, error);
+            console.error(`❌ Error al subir imagen de talla ${updatedSizes[sizeIndex].name}:`, error);
+            // No lanzar error, solo continuar sin la imagen
           });
 
           uploadPromises.push(sizePromise);
+        } else {
+          console.log(`⚠️ No hay imagen válida para talla: ${updatedSizes[i].name}`);
         }
       }
     }
 
-    // Esperar a que todas las imágenes se suban
     await Promise.all(uploadPromises);
+
+    console.log('✅ Procesamiento de imágenes completado:', {
+      colorsWithImages: updatedColors.filter(c => c.imageUrl).length,
+      sizesWithImages: updatedSizes.filter(s => s.imageUrl).length
+    });
 
     return { colors: updatedColors, sizes: updatedSizes };
   }
@@ -166,6 +177,9 @@ export class ProductVariantService {
   /**
    * Crea las variantes de un producto
    */
+  /**
+ * Crea las variantes de un producto
+ */
   async createProductVariants(
     productId: string,
     colors: Color[],
@@ -177,7 +191,6 @@ export class ProductVariantService {
       const batch = writeBatch(this.firestore);
       const variants: ProductVariant[] = [];
       const variantImagePromises: Promise<void>[] = [];
-      let totalProductStock = 0; // Variable para calcular el stock total
 
       // Verificar datos de entrada
       if (!colors || !colors.length || !sizes || !sizes.length) {
@@ -185,16 +198,15 @@ export class ProductVariantService {
         return;
       }
 
+      let totalStock = 0;
+
       for (const color of colors) {
         for (const size of sizes) {
           // Identificar stock específico para esta combinación color-talla
-          let variantStock = 0; // Inicializar en 0 en lugar de usar el stock general
-
-          // Buscar el stock específico de esta combinación
+          let variantStock = 0;
           const colorStock = size.colorStocks?.find(cs => cs.colorName === color.name);
           if (colorStock) {
             variantStock = colorStock.quantity || 0;
-            totalProductStock += variantStock; // Sumar al stock total
           }
 
           // Solo crear variantes con stock > 0
@@ -212,65 +224,75 @@ export class ProductVariantService {
               sizeName: size.name,
               stock: variantStock,
               sku: variantSKU,
-              imageUrl: color.imageUrl || '' // Se actualizará si hay imagen específica
+              imageUrl: '' // Se establecerá después
             };
 
-            // Verificar si hay una imagen específica para esta variante
+            // ========== LÓGICA CRÍTICA PARA IMÁGENES ==========
+
+            // 1. Verificar si hay imagen específica para esta variante
             const variantImageKey = `${color.name}-${size.name}`;
+
             if (variantImages?.has(variantImageKey)) {
               const variantImage = variantImages.get(variantImageKey)!;
               const variantImagePromise = this.imageService.uploadVariantImage(
                 productId,
                 variantId,
                 variantImage
-              )
-                .then(url => {
-                  variant.imageUrl = url;
-                })
-                .catch(error => {
-                  console.error(`Error al subir imagen de variante ${variantId}:`, error);
-                  // Continuar con la URL por defecto
-                });
+              ).then(url => {
+                variant.imageUrl = url;
+              }).catch(error => {
+                // Usar imagen de color como fallback
+                variant.imageUrl = color.imageUrl || '';
+                console.log(`🔄 Usando imagen de color como fallback: ${color.imageUrl}`);
+              });
 
               variantImagePromises.push(variantImagePromise);
+            } else {
+              // 2. Usar imagen del color como fallback
+              console.log(`🎨 Usando imagen de color para ${variantImageKey}: ${color.imageUrl}`);
+              variant.imageUrl = color.imageUrl || '';
             }
 
-            // Agregar la variante a la lista
             variants.push(variant);
-            const variantRef = doc(collection(this.firestore, this.variantsCollection), variantId);
-
-            // Agregar a la operación por lotes
-            batch.set(variantRef, {
-              ...variant,
-              createdAt: new Date()
-            });
+            totalStock += variantStock;
+          } else {
+            console.log(`⚠️ Saltando variante ${color.name}-${size.name} sin stock`);
           }
         }
       }
 
       // Si no se creó ninguna variante, salir
       if (variants.length === 0) {
-        console.warn('No se crearon variantes para el producto', productId);
+        console.warn('❌ No se crearon variantes para el producto', productId);
         return;
       }
 
       // Esperar a que todas las imágenes de variantes estén listas
       await Promise.all(variantImagePromises);
 
+      // Ahora crear todas las variantes en Firestore con las URLs correctas
+      variants.forEach(variant => {
+        const variantRef = doc(collection(this.firestore, this.variantsCollection), variant.id);
+
+        batch.set(variantRef, {
+          ...variant,
+          createdAt: new Date()
+        });
+      });
+
       // Ejecutar la escritura por lotes
       await batch.commit();
 
-      // Actualizar el producto con referencias a las variantes Y el stock total
+      // Actualizar el producto con referencias a las variantes y stock total
       const productRef = doc(this.firestore, this.productsCollection, productId);
       await updateDoc(productRef, {
         variants: variants.map(v => v.id),
-        totalStock: totalProductStock, // Actualizar el stock total
+        totalStock: totalStock,
         updatedAt: new Date()
       });
 
-      console.log(`Creadas ${variants.length} variantes para el producto ${productId}. Stock total: ${totalProductStock}`);
     } catch (error) {
-      console.error('Error al crear variantes de producto:', error);
+      console.error('💥 Error al crear variantes de producto:', error);
       throw new Error(`Error al crear variantes de producto: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
@@ -360,6 +382,42 @@ export class ProductVariantService {
     });
 
     await batch.commit();
+  }
+
+  /**
+   * Elimina una variante específica
+   */
+  async deleteVariant(variantId: string): Promise<void> {
+    try {
+      // Obtener información de la variante antes de eliminarla
+      const variant = await this.getVariantById(variantId);
+      if (!variant) {
+        throw new Error('Variante no encontrada');
+      }
+
+      // Eliminar imagen asociada si existe
+      if (variant.imageUrl) {
+        await this.imageService.deleteImageIfExists(variant.imageUrl);
+      }
+
+      // Eliminar variante de Firestore
+      const variantRef = doc(this.firestore, this.variantsCollection, variantId);
+      await deleteDoc(variantRef);
+
+      // Actualizar stock total del producto
+      if (variant.productId && variant.stock) {
+        const productRef = doc(this.firestore, this.productsCollection, variant.productId);
+        await updateDoc(productRef, {
+          totalStock: increment(-variant.stock),
+          updatedAt: new Date()
+        });
+      }
+
+      console.log(`Variante ${variantId} eliminada correctamente`);
+    } catch (error) {
+      console.error('Error al eliminar variante:', error);
+      throw new Error(`Error al eliminar variante: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
   }
 
   /**

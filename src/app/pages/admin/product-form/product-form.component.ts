@@ -26,6 +26,18 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 
+// 🚀 Interfaces para actualización optimista
+interface ProductBackup {
+  originalProduct: Product;
+  timestamp: number;
+}
+
+interface OptimisticProductUpdate {
+  type: 'create' | 'update';
+  productId: string;
+  backup?: ProductBackup;
+  changes: Partial<Product>;
+}
 
 @Component({
   selector: 'app-product-form',
@@ -61,10 +73,19 @@ export class ProductFormComponent implements OnInit, OnChanges {
   @Input() existingColors: Color[] = [];
   @Input() existingSizes: Size[] = [];
 
-  @Output() formSubmitted = new EventEmitter<{success: boolean, action: string, productId: string}>();
+  @Output() formSubmitted = new EventEmitter<{ 
+    success: boolean, 
+    action: string, 
+    productId: string,
+    requiresReload?: boolean,
+    optimisticUpdate?: Product // 🚀 NUEVO: Enviar producto actualizado optimísticamente
+  }>();
   @Output() formCancelled = new EventEmitter<void>();
 
-  // Opciones predefinidas de tecnologías (puedes cargarlas desde una API si prefieres)
+  // 🚀 Control de operaciones optimistas
+  private pendingOperation: OptimisticProductUpdate | null = null;
+
+  // Opciones predefinidas de tecnologías
   technologiesOptions: { label: string, value: string }[] = [
     { label: 'Secado Rápido', value: 'secado_rapido' },
     { label: 'Protección UV', value: 'proteccion_uv' },
@@ -97,8 +118,8 @@ export class ProductFormComponent implements OnInit, OnChanges {
   autoGenerateSku = true;
   autoGenerateBarcode = true;
   additionalImages: { file: File, url: string, id: string }[] = [];
-  maxAdditionalImages: number = 5; // Límite de imágenes adicionales
-  productFeatures: string[] = []; // Características del producto
+  maxAdditionalImages: number = 5;
+  productFeatures: string[] = [];
   newFeature: string = '';
 
   // Predefinidos
@@ -133,18 +154,13 @@ export class ProductFormComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    console.log('ngOnChanges detectado:', changes);
 
-    // Verificar si hay cambios en el producto
     if (changes['product']?.currentValue) {
-      // Asegurarse de que el formulario está inicializado
       if (!this.productForm) {
         this.initProductForm();
       }
 
-      // Usar setTimeout para permitir que Angular complete su ciclo
       setTimeout(() => {
-        // Solo poblar el formulario si hay un producto válido
         if (this.product) {
           this.populateForm();
         }
@@ -174,7 +190,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
       sizes: this.fb.array([])
     });
 
-    // Asegurarse de que los form arrays están creados
     if (!this.productForm.get('colors')) {
       this.productForm.setControl('colors', this.fb.array([]));
     }
@@ -186,7 +201,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
     this.listenToAutoGenerateSkuChanges();
   }
 
-  // Gestión de colores
+  // ==================== GESTIÓN DE COLORES ====================
   get colorForms(): FormArray {
     if (!this.productForm) {
       this.initProductForm();
@@ -205,24 +220,19 @@ export class ProductFormComponent implements OnInit, OnChanges {
       imageUrl: ['']
     });
     this.colorForms.push(colorForm);
-
-    // Regenerar la matriz de variantes
     this.createVariantsMatrix();
   }
 
   removeColor(index: number): void {
-    // El código existente para eliminar color
     const colorName = this.colorForms.at(index).get('name')?.value;
     if (colorName && this.colorImages.has(colorName)) {
       this.colorImages.delete(colorName);
     }
     this.colorForms.removeAt(index);
-
-    // Regenerar la matriz de variantes
     this.createVariantsMatrix();
   }
 
-  // Gestión de tallas
+  // ==================== GESTIÓN DE TALLAS ====================
   get sizeForms(): FormArray {
     if (!this.productForm) {
       this.initProductForm();
@@ -242,48 +252,38 @@ export class ProductFormComponent implements OnInit, OnChanges {
       colorStocks: this.fb.array([])
     });
     this.sizeForms.push(sizeForm);
-
-    // Regenerar la matriz de variantes
     this.createVariantsMatrix();
   }
 
   removeSize(index: number): void {
-    // El código existente para eliminar talla
     const sizeName = this.sizeForms.at(index).get('name')?.value;
     if (sizeName && this.sizeImages.has(sizeName)) {
       this.sizeImages.delete(sizeName);
     }
     this.sizeForms.removeAt(index);
-
-    // Regenerar la matriz de variantes
     this.createVariantsMatrix();
   }
 
-  // Gestión de stock por color
+  // ==================== GESTIÓN DE STOCK POR COLOR ====================
   getColorStockForms(sizeIndex: number): FormArray {
-    // Verificar si el formulario existe
     if (!this.productForm) {
       this.initProductForm();
     }
 
-    // Verificar si el array de tallas existe
     const sizesFormArray = this.productForm.get('sizes') as FormArray;
     if (!sizesFormArray || sizeIndex < 0 || sizeIndex >= sizesFormArray.length) {
       console.warn(`Índice de talla inválido: ${sizeIndex}`);
       return this.fb.array([]);
     }
 
-    // Verificar si la talla específica existe
     const sizeForm = sizesFormArray.at(sizeIndex);
     if (!sizeForm) {
       console.warn(`No se encontró la talla en el índice: ${sizeIndex}`);
       return this.fb.array([]);
     }
 
-    // Verificar si el array de colorStocks existe
     const colorStocks = sizeForm.get('colorStocks');
     if (!colorStocks) {
-      // Si no existe, crearlo - con casting explícito
       const newColorStocks = this.fb.array([]);
       (sizeForm as FormGroup).setControl('colorStocks', newColorStocks);
       return newColorStocks;
@@ -311,10 +311,8 @@ export class ProductFormComponent implements OnInit, OnChanges {
     );
 
     if (existingIndex >= 0) {
-      // Update existing
       colorStocks.at(existingIndex).patchValue({ quantity });
     } else {
-      // Add new
       this.addColorStock(sizeIndex, colorName);
       colorStocks.at(colorStocks.length - 1).patchValue({ quantity });
     }
@@ -328,13 +326,13 @@ export class ProductFormComponent implements OnInit, OnChanges {
     return colorStock ? colorStock.get('quantity')?.value : 0;
   }
 
+  // ==================== AGREGAR COLORES/TALLAS EXISTENTES ====================
   addExistingColor(color: Color): void {
     if (!color || !color.name) {
       console.warn('Intentando agregar un color inválido');
       return;
     }
 
-    // Verificar si este color ya está agregado
     const exists = this.colorForms.controls.some(
       control => (control as FormGroup).get('name')?.value === color.name
     );
@@ -347,14 +345,11 @@ export class ProductFormComponent implements OnInit, OnChanges {
       });
       this.colorForms.push(colorForm);
 
-      // Si tiene imagen, guardarla en el mapa
       if (color.imageUrl) {
         this.colorImages.set(color.name, { file: new File([], ''), url: color.imageUrl });
       }
 
       this.message.success(`Color ${color.name} agregado`);
-
-      // Actualizar UI
       this.cdr.detectChanges();
     } else {
       this.message.info(`El color ${color.name} ya está agregado`);
@@ -362,7 +357,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
   }
 
   addExistingSize(size: Size): void {
-    // Verificar si esta talla ya está agregada
     const exists = this.sizeForms.controls.some(
       control => (control as FormGroup).get('name')?.value === size.name
     );
@@ -376,7 +370,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
       });
       this.sizeForms.push(sizeForm);
 
-      // Si la talla tiene una imagen, guardarla en el mapa
       if (size.imageUrl) {
         this.sizeImages.set(size.name, { file: new File([], ''), url: size.imageUrl });
       }
@@ -386,25 +379,21 @@ export class ProductFormComponent implements OnInit, OnChanges {
       this.message.info(`La talla ${size.name} ya está agregada`);
     }
 
-    // Regenerar la matriz de variantes
     this.createVariantsMatrix();
   }
 
-  // Método para añadir imágenes adicionales
+  // ==================== GESTIÓN DE IMÁGENES ADICIONALES ====================
   onAdditionalImageChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
       const files = Array.from(input.files);
 
-      // Verificar si no excede el límite de imágenes
       if (this.additionalImages.length + files.length > this.maxAdditionalImages) {
         this.message.warning(`Solo puede subir un máximo de ${this.maxAdditionalImages} imágenes adicionales.`);
         return;
       }
 
-      // Procesar cada archivo
       files.forEach(file => {
-        // Crear vista previa
         const reader = new FileReader();
         reader.onload = () => {
           this.additionalImages.push({
@@ -419,13 +408,12 @@ export class ProductFormComponent implements OnInit, OnChanges {
     }
   }
 
-  // Método para eliminar una imagen de la galería
   removeAdditionalImage(index: number): void {
     this.additionalImages.splice(index, 1);
     this.cdr.detectChanges();
   }
 
-  // Método para añadir una característica
+  // ==================== GESTIÓN DE CARACTERÍSTICAS ====================
   addFeature(): void {
     if (this.newFeature.trim()) {
       this.productFeatures.push(this.newFeature.trim());
@@ -434,34 +422,25 @@ export class ProductFormComponent implements OnInit, OnChanges {
     }
   }
 
-  // Método para eliminar una característica
   removeFeature(index: number): void {
     this.productFeatures.splice(index, 1);
     this.cdr.detectChanges();
   }
 
-
-  // Poblado de formulario
+  // ==================== POBLADO DE FORMULARIO ====================
   populateForm(): void {
     if (!this.product) {
       console.warn('Intentando poblar el formulario sin producto');
       return;
     }
-    console.log('Poblando formulario con producto:', this.product);
 
-    // Asegurarse de que el formulario esté inicializado
     if (!this.productForm) {
       this.initProductForm();
     }
 
-    // Resetear el form
     this.resetForm();
-
-    // Establecer la imagen principal
     this.mainImageUrl = this.product.imageUrl;
-    console.log('Imagen principal establecida:', this.mainImageUrl);
 
-    // Llenar el formulario con los datos del producto
     const patchData = {
       name: this.product.name || '',
       price: this.product.price || 0,
@@ -480,12 +459,10 @@ export class ProductFormComponent implements OnInit, OnChanges {
       tags: this.product.tags?.join(', ') || '',
       technologies: this.product.technologies || []
     };
-    console.log('Datos a aplicar al formulario:', patchData);
     this.productForm.patchValue(patchData);
 
     // Agregar colores
     if (this.product.colors && this.product.colors.length > 0) {
-      console.log('Agregando colores:', this.product.colors);
       this.product.colors.forEach(color => {
         const colorForm = this.fb.group({
           name: [color.name || '', [Validators.required]],
@@ -494,7 +471,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
         });
         this.colorForms.push(colorForm);
 
-        // Si tiene imagen, guardarla en el mapa
         if (color.imageUrl) {
           this.colorImages.set(color.name, { file: new File([], ''), url: color.imageUrl });
         }
@@ -503,7 +479,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
     // Agregar tamaños
     if (this.product.sizes && this.product.sizes.length > 0) {
-      console.log('Agregando tallas:', this.product.sizes);
       this.product.sizes.forEach(size => {
         const sizeForm = this.fb.group({
           name: [size.name || '', [Validators.required]],
@@ -513,12 +488,10 @@ export class ProductFormComponent implements OnInit, OnChanges {
         });
         this.sizeForms.push(sizeForm);
 
-        // Si tiene imagen, guardarla en el mapa
         if (size.imageUrl) {
           this.sizeImages.set(size.name, { file: new File([], ''), url: size.imageUrl });
         }
 
-        // Agregar stock por color
         if (size.colorStocks && size.colorStocks.length > 0) {
           const colorStocksForm = sizeForm.get('colorStocks') as FormArray;
           size.colorStocks.forEach(colorStock => {
@@ -534,7 +507,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
     // Guardar imágenes de variantes
     if (this.product.variants && Array.isArray(this.product.variants) && this.product.variants.length > 0) {
-      console.log('Guardando imágenes de variantes:', this.product.variants.length);
       this.product.variants.forEach(variant => {
         if (variant.imageUrl && variant.imageUrl !== this.product?.imageUrl) {
           const key = `${variant.colorName}-${variant.sizeName}`;
@@ -545,9 +517,8 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
     // Cargar imágenes adicionales
     if (this.product?.additionalImages && this.product.additionalImages.length > 0) {
-      console.log('Cargando imágenes adicionales:', this.product.additionalImages.length);
       this.additionalImages = this.product.additionalImages.map(url => ({
-        file: new File([], ''), // Archivo vacío para imágenes existentes
+        file: new File([], ''),
         url: url,
         id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
       }));
@@ -555,59 +526,58 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
     // Cargar características
     if (this.product?.features && this.product.features.length > 0) {
-      console.log('Cargando características:', this.product.features.length);
       this.productFeatures = [...this.product.features];
     }
 
-    // Regenerar la matriz de variantes
     this.createVariantsMatrix();
-
-    // Detectar cambios para actualizar la UI
     this.cdr.detectChanges();
-    console.log('Formulario poblado correctamente');
   }
 
-  // Método para añadir una tecnología personalizada
+  // ==================== TECNOLOGÍAS ====================
   addCustomTechnology(): void {
     if (!this.newTechnology.trim()) {
       return;
     }
 
-    // Crear un valor único para la tecnología personalizada
     const value = 'custom_' + this.newTechnology.toLowerCase().replace(/\s+/g, '_');
 
-    // Verificar si ya existe una tecnología con este valor
     const exists = this.technologiesOptions.some(tech => tech.value === value);
     if (!exists) {
-      // Añadir a las opciones disponibles
       this.technologiesOptions.push({
         label: this.newTechnology.trim(),
         value: value
       });
 
-      // Ordenar las opciones por etiqueta (opcional)
       this.technologiesOptions.sort((a, b) => a.label.localeCompare(b.label));
     }
 
-    // Seleccionar la nueva tecnología en el formulario
     const currentTechnologies = this.productForm.get('technologies')?.value || [];
     if (!currentTechnologies.includes(value)) {
       this.productForm.get('technologies')?.setValue([...currentTechnologies, value]);
     }
 
-    // Limpiar el campo
     this.newTechnology = '';
   }
 
+  getTechnologyLabel(value: string): string {
+    const tech = this.technologiesOptions.find(t => t.value === value);
+    return tech ? tech.label : value;
+  }
+
+  removeTechnology(techValue: string): void {
+    const currentTechnologies = this.productForm.get('technologies')?.value || [];
+    const updatedTechnologies = currentTechnologies.filter((value: string) => value !== techValue);
+    this.productForm.get('technologies')?.setValue(updatedTechnologies);
+  }
+
+  // ==================== RESET Y MANEJO DE IMÁGENES ====================
   resetForm(): void {
-    // Verificar si el formulario está inicializado
     if (!this.productForm) {
       this.initProductForm();
     }
 
     this.productForm.reset();
 
-    // Verificar si colorForms existe antes de intentar acceder a length
     if (this.productForm.get('colors')) {
       const colorForms = this.productForm.get('colors') as FormArray;
       while (colorForms.length > 0) {
@@ -615,7 +585,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
       }
     }
 
-    // Verificar si sizeForms existe antes de intentar acceder a length
     if (this.productForm.get('sizes')) {
       const sizeForms = this.productForm.get('sizes') as FormArray;
       while (sizeForms.length > 0) {
@@ -623,7 +592,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
       }
     }
 
-    // Valores por defecto
     this.productForm.patchValue({
       price: 0,
       isNew: true,
@@ -633,7 +601,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
       gender: 'unisex'
     });
 
-    // Resetear imágenes
     this.resetImages();
   }
 
@@ -646,14 +613,13 @@ export class ProductFormComponent implements OnInit, OnChanges {
     this.additionalImages = [];
   }
 
-  // Manejo de imágenes
+  // ==================== MANEJO DE IMÁGENES ====================
   onMainImageChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
       const file = input.files[0];
       this.mainImageFile = file;
 
-      // Previsualización
       const reader = new FileReader();
       reader.onload = () => {
         this.mainImageUrl = reader.result as string;
@@ -663,20 +629,45 @@ export class ProductFormComponent implements OnInit, OnChanges {
     }
   }
 
+  openColorImageInput(colorIndex: number): void {
+    const inputElement = document.getElementById(`colorInput_${colorIndex}`) as HTMLInputElement;
+    if (inputElement) {
+      inputElement.click();
+    }
+  }
+
   onColorImageChange(event: Event, colorName: string): void {
+
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
       const file = input.files[0];
 
-      // Previsualización
+
+      if (!file.type.startsWith('image/')) {
+        this.message.error('Por favor seleccione un archivo de imagen válido');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        this.message.error('La imagen no debe superar los 5MB');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = () => {
         this.colorImages.set(colorName, {
           file: file,
           url: reader.result as string
         });
+
         this.cdr.detectChanges();
       };
+
+      reader.onerror = (error) => {
+        console.error('❌ [FORM] Error al leer archivo:', error);
+        this.message.error('Error al procesar la imagen');
+      };
+
       reader.readAsDataURL(file);
     }
   }
@@ -686,7 +677,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
     if (input.files && input.files.length) {
       const file = input.files[0];
 
-      // Previsualización
       const reader = new FileReader();
       reader.onload = () => {
         this.sizeImages.set(sizeName, {
@@ -705,23 +695,27 @@ export class ProductFormComponent implements OnInit, OnChanges {
       const file = input.files[0];
       const key = `${colorName}-${sizeName}`;
 
-      // Previsualización
       const reader = new FileReader();
       reader.onload = () => {
         this.variantImages.set(key, {
           file: file,
           url: reader.result as string
         });
+
         this.cdr.detectChanges();
       };
+
+      reader.onerror = (error) => {
+        console.error(`❌ [FORM] Error al leer archivo:`, error);
+      };
+
       reader.readAsDataURL(file);
     }
   }
 
-  // Enviar formulario
+  // 🚀 ==================== ENVÍO DE FORMULARIO CON ACTUALIZACIÓN OPTIMISTA ====================
   submitForm(): void {
     if (this.productForm.invalid) {
-      // Marcar campos como touched para mostrar errores
       Object.values(this.productForm.controls).forEach(control => {
         if (control.invalid) {
           control.markAsDirty();
@@ -732,22 +726,19 @@ export class ProductFormComponent implements OnInit, OnChanges {
       return;
     }
 
-    // Verificar imagen principal para nuevos productos
     if (!this.isEditMode && !this.mainImageFile) {
       this.message.warning('Debe seleccionar una imagen principal para el producto.');
       return;
     }
 
-    // Preparar datos del producto
     const formData = this.productForm.value;
 
-    // Si está activada la generación automática y no hay SKU, generarlo
+    // Generar SKU y código de barras si es necesario
     if (this.autoGenerateSku && !formData.sku) {
       formData.sku = this.generateSku();
       this.productForm.get('sku')?.setValue(formData.sku);
     }
 
-    // Si está activada la generación automática y no hay código de barras, generarlo
     if (this.autoGenerateBarcode && !formData.barcode) {
       formData.barcode = this.generateEan13();
       this.productForm.get('barcode')?.setValue(formData.barcode);
@@ -756,7 +747,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
     this.submitting = true;
 
     try {
-      // Procesar tags y keywords
       const tags = formData.tags ? formData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : [];
       const searchKeywords = formData.searchKeywords ?
         formData.searchKeywords.split(',').map((kw: string) => kw.trim()).filter(Boolean) : [];
@@ -783,44 +773,48 @@ export class ProductFormComponent implements OnInit, OnChanges {
         searchKeywords,
         technologies: formData.technologies || [],
         rating: this.product?.rating || 5,
-        totalStock: 0, // Se calculará en el servicio
+        totalStock: this.calculateTotalStock(), // 🚀 Calcular stock optimísticamente
         views: this.product?.views || 0,
         sales: this.product?.sales || 0,
-        imageUrl: this.product?.imageUrl || '', // Mantener URL existente si hay
+        imageUrl: this.mainImageUrl || this.product?.imageUrl || '',
         additionalImages: this.product?.additionalImages || [],
-        variants: [], // Se generará por el servicio
+        variants: this.product?.variants || [],
         features: this.productFeatures,
       };
 
-      // Preparar mapas de imágenes
-      const variantImagesMap = new Map<string, File>();
-      this.variantImages.forEach((value, key) => {
-        if (value.file.size > 0) {
-          variantImagesMap.set(key, value.file);
-        }
-      });
+      // 🚀 ACTUALIZACIÓN OPTIMISTA ANTES DE ENVIAR AL SERVIDOR
+      if (this.isEditMode && this.product) {
+        this.applyOptimisticUpdate(productData);
+      }
 
-      // Preparar archivos de imágenes adicionales
-      const additionalImageFiles = this.additionalImages
-        .filter(img => img.file.size > 0) // Solo las nuevas imágenes
-        .map(img => img.file);
 
       const colorImagesMap = new Map<string, File>();
       this.colorImages.forEach((value, key) => {
-        if (value.file.size > 0) {
+        if (value.file && value.file.size > 0) {
           colorImagesMap.set(key, value.file);
         }
       });
 
       const sizeImagesMap = new Map<string, File>();
       this.sizeImages.forEach((value, key) => {
-        if (value.file.size > 0) {
+        if (value.file && value.file.size > 0) {
           sizeImagesMap.set(key, value.file);
         }
       });
 
+      const variantImagesMap = new Map<string, File>();
+      this.variantImages.forEach((value, key) => {
+        if (value.file && value.file.size > 0) {
+          variantImagesMap.set(key, value.file);
+        }
+      });
+
+      const additionalImageFiles = this.additionalImages
+        .filter(img => img.file.size > 0)
+        .map(img => img.file);
+
       if (!this.isEditMode) {
-        // Crear nuevo producto
+        // ==================== CREAR PRODUCTO ====================
         this.productService.createProduct(
           productData,
           formData.colors,
@@ -836,74 +830,161 @@ export class ProductFormComponent implements OnInit, OnChanges {
           next: (id) => {
             this.message.success(`Producto creado correctamente con ID: ${id}`);
             this.resetForm();
-            // Usar el formato de objeto para proporcionar más información
-            this.formSubmitted.emit({ success: true, action: 'create', productId: id });
+            
+            // 🚀 Crear producto optimista para enviar al componente padre
+            const newProduct: Product = {
+              id,
+              ...productData
+            };
+            
+            this.formSubmitted.emit({ 
+              success: true, 
+              action: 'create', 
+              productId: id,
+              requiresReload: true,
+              optimisticUpdate: newProduct // 🚀 Enviar producto creado
+            });
           },
           error: (error) => {
+            console.error('❌ [FORM] Error al crear producto:', error);
             this.message.error('Error al crear producto: ' + (error.message || 'Error desconocido'));
-            console.error('Error en submitForm:', error);
           }
         });
       } else {
-        // Actualizar producto existente
+        // ==================== ACTUALIZAR PRODUCTO ====================
         this.productService.updateProduct(
           this.product!.id,
           productData,
           this.mainImageFile || undefined,
-          additionalImageFiles
+          additionalImageFiles,
+          colorImagesMap,
+          sizeImagesMap,
+          variantImagesMap
         ).pipe(
           finalize(() => this.submitting = false)
         ).subscribe({
           next: () => {
             this.message.success('Producto actualizado correctamente');
-            // NO resetear el formulario aquí
-            // Usar el formato de objeto para proporcionar más información
-            this.formSubmitted.emit({ success: true, action: 'update', productId: this.product!.id });
+            
+            // ✅ La actualización optimista ya se aplicó antes del envío
+            this.confirmOptimisticUpdate();
+            
+            this.formSubmitted.emit({ 
+              success: true, 
+              action: 'update', 
+              productId: this.product!.id,
+              requiresReload: false, // 🚀 No necesita reload, ya está actualizado optimísticamente
+              optimisticUpdate: this.pendingOperation?.changes as Product // 🚀 Enviar cambios aplicados
+            });
           },
           error: (error) => {
+            console.error('❌ [FORM] Error al actualizar producto:', error);
+            
+            // 🔄 ROLLBACK: Revertir cambios optimistas
+            this.rollbackOptimisticUpdate();
+            
             this.message.error('Error al actualizar producto: ' + (error.message || 'Error desconocido'));
-            console.error('Error en submitForm:', error);
+            
+            this.formSubmitted.emit({ 
+              success: false, 
+              action: 'update', 
+              productId: this.product!.id 
+            });
           }
         });
       }
     } catch (error: any) {
       this.submitting = false;
+      console.error('💥 [FORM] Error en submitForm:', error);
       this.message.error('Error al ' + (this.isEditMode ? 'actualizar' : 'crear') + ' producto: ' +
         (error.message || 'Error desconocido'));
-      console.error('Error en submitForm:', error);
     }
   }
 
-  // Método para obtener etiqueta (label) a partir del valor de una tecnología
-  getTechnologyLabel(value: string): string {
-    const tech = this.technologiesOptions.find(t => t.value === value);
-    return tech ? tech.label : value;
+  // 🚀 ==================== MÉTODOS DE ACTUALIZACIÓN OPTIMISTA ====================
+  
+  /**
+   * Aplica cambios optimísticamente antes de enviar al servidor
+   */
+  private applyOptimisticUpdate(newProductData: Omit<Product, 'id'>): void {
+    if (!this.product) return;
+
+    // Crear backup del producto original
+    const backup: ProductBackup = {
+      originalProduct: { ...this.product },
+      timestamp: Date.now()
+    };
+
+    // Crear producto actualizado
+    const updatedProduct: Product = {
+      ...this.product,
+      ...newProductData,
+      id: this.product.id // Mantener el ID original
+    };
+
+    // Registrar operación pendiente
+    this.pendingOperation = {
+      type: 'update',
+      productId: this.product.id,
+      backup,
+      changes: updatedProduct
+    };
+
+    console.log('✅ [FORM] Actualización optimista aplicada:', {
+      productId: this.product.id,
+      oldStock: this.product.totalStock,
+      newStock: updatedProduct.totalStock,
+      oldName: this.product.name,
+      newName: updatedProduct.name
+    });
   }
 
   /**
- * Elimina una tecnología de la lista de seleccionadas
- */
-  removeTechnology(techValue: string): void {
-    const currentTechnologies = this.productForm.get('technologies')?.value || [];
-    const updatedTechnologies = currentTechnologies.filter((value: string) => value !== techValue);
-    this.productForm.get('technologies')?.setValue(updatedTechnologies);
+   * Confirma la actualización optimista (el servidor confirmó los cambios)
+   */
+  private confirmOptimisticUpdate(): void {
+    if (this.pendingOperation) {
+      this.pendingOperation = null;
+    }
+  }
+
+  /**
+   * Revierte la actualización optimista (el servidor rechazó los cambios)
+   */
+  private rollbackOptimisticUpdate(): void {
+    if (this.pendingOperation && this.pendingOperation.backup) {
+      
+      // Restaurar producto original
+      this.product = { ...this.pendingOperation.backup.originalProduct };
+      
+      // Repoblar formulario con datos originales
+      this.populateForm();
+      
+      this.pendingOperation = null;
+    }
   }
 
   cancelForm(): void {
+    // Si hay una operación pendiente, hacer rollback
+    if (this.pendingOperation) {
+      this.rollbackOptimisticUpdate();
+    }
+    
     this.formCancelled.emit();
   }
 
-  // Método para calcular el stock total
+  // ==================== CÁLCULO DE STOCK ====================
   calculateTotalStock(): number {
     let total = 0;
-
-    // Iterar por todas las tallas y sus stocks de colores
+    
     for (let i = 0; i < this.sizeForms.length; i++) {
+      const sizeForm = this.sizeForms.at(i);
+      const sizeName = sizeForm.get('name')?.value;
       const colorStocks = this.getColorStockForms(i);
 
-      // Sumar todos los stocks por color
       for (let j = 0; j < colorStocks.length; j++) {
         const quantity = colorStocks.at(j).get('quantity')?.value || 0;
+        const colorName = colorStocks.at(j).get('colorName')?.value;
         total += quantity;
       }
     }
@@ -911,7 +992,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
     return total;
   }
 
-  // Escuchar cambios en el stock para actualizar el total
   listenToStockChanges(): void {
     this.productForm.valueChanges.subscribe(() => {
       this.updateTotalStock();
@@ -927,20 +1007,15 @@ export class ProductFormComponent implements OnInit, OnChanges {
     return !!sizeForm && !!colorName;
   }
 
-  /**
- * Genera la matriz de variantes basada en los colores y tallas actuales
- */
+  // ==================== MATRIZ DE VARIANTES ====================
   createVariantsMatrix(): void {
-    // Limpiar matriz anterior
     this.variantsMatrix = [];
 
-    // Solo generar si hay al menos un color y una talla
     if (this.colorForms.length === 0 || this.sizeForms.length === 0) {
       this.showVariantsMatrix = false;
       return;
     }
 
-    // Obtener los valores de los formularios
     const colors = this.colorForms.controls.map(control =>
       (control as FormGroup).get('name')?.value
     ).filter(Boolean);
@@ -949,7 +1024,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
       (control as FormGroup).get('name')?.value
     ).filter(Boolean);
 
-    // Para cada talla, crear una fila con todos los colores
     sizes.forEach(sizeName => {
       const sizeIndex = this.getSizeIndexByName(sizeName);
       if (sizeIndex === -1) return;
@@ -970,20 +1044,14 @@ export class ProductFormComponent implements OnInit, OnChanges {
     this.updateTotalStock();
   }
 
-  /**
-   * Obtiene el índice de una talla por su nombre
-   */
   getSizeIndexByName(sizeName: string): number {
     return this.sizeForms.controls.findIndex(control =>
       (control as FormGroup).get('name')?.value === sizeName
     );
   }
 
-  /**
- * Actualiza el stock de una variante específica
- */
   updateVariantStock(colorName: string, sizeName: string, stock: number): void {
-    // Actualizar en la matriz visual
+    
     this.variantsMatrix.forEach(row => {
       if (row.size === sizeName) {
         row.colorVariants.forEach(variant => {
@@ -994,84 +1062,101 @@ export class ProductFormComponent implements OnInit, OnChanges {
       }
     });
 
-    // Actualizar en el formulario para envío posterior
     const sizeIndex = this.getSizeIndexByName(sizeName);
     if (sizeIndex !== -1) {
       this.updateColorStock(sizeIndex, colorName, stock);
     }
 
-    // Recalcular stock total
-    this.updateTotalStock();
+    this.updateTotalStock
+    
   }
 
-  // Añadir este método para generar un SKU
+  getColorCode(colorName: string): string {
+    const colorForm = this.colorForms.controls.find(
+      control => (control as FormGroup).get('name')?.value === colorName
+    );
+    return colorForm ? (colorForm as FormGroup).get('code')?.value || '#000000' : '#000000';
+  }
+
+  removeVariantImage(variantKey: string): void {
+    if (this.variantImages.has(variantKey)) {
+      this.variantImages.delete(variantKey);
+      this.cdr.detectChanges();
+    }
+  }
+
+  validateVariantImages(): boolean {
+    let hasErrors = false;
+    const errors: string[] = [];
+
+    this.variantImages.forEach((value, key) => {
+      if (!value.file || value.file.size === 0) {
+        errors.push(`Imagen de variante ${key} no es válida`);
+        hasErrors = true;
+      }
+    });
+
+    if (hasErrors) {
+      console.warn('Errores en imágenes de variantes:', errors);
+    }
+
+    return !hasErrors;
+  }
+
+
+
+  // ==================== GENERADORES ====================
   generateSku(): string {
     const form = this.productForm.value;
 
-    // Obtener iniciales de la categoría
     const categoryId = form.categories && form.categories.length > 0 ? form.categories[0] : '';
     const category = this.categories.find(c => c.id === categoryId);
     const categoryCode = category ?
       category.name.substring(0, 3).toUpperCase() : 'CAT';
 
-    // Obtener iniciales del nombre del producto (primeras 3 letras)
     const productCode = form.name ?
       form.name.substring(0, 3).toUpperCase() : 'PRD';
 
-    // Crear un número aleatorio/secuencial (puedes implementar una secuencia más sofisticada)
     const serialNumber = Math.floor(1000 + Math.random() * 9000);
 
-    // Formar el SKU
     return `${categoryCode}-${productCode}-${serialNumber}`;
   }
 
   generateVariantSku(baseSku: string, colorName: string, sizeName: string): string {
-    // Obtener iniciales del color
     const colorCode = colorName.substring(0, 2).toUpperCase();
-
-    // Formar el SKU de variante
     return `${baseSku}-${colorCode}${sizeName}`;
   }
 
   listenToAutoGenerateSkuChanges(): void {
-    // Escuchar cambios en la propiedad autoGenerateSku
     this.productForm.get('sku')?.setValidators(
       this.autoGenerateSku ? [] : [Validators.required]
     );
     this.productForm.get('sku')?.updateValueAndValidity();
   }
 
-  // Llamar a este método cuando cambie el valor del checkbox
   onAutoGenerateSkuChange(value: boolean): void {
     this.autoGenerateSku = value;
-    // Actualizar el validador
     this.productForm.get('sku')?.setValidators(
       this.autoGenerateSku ? [] : [Validators.required]
     );
     this.productForm.get('sku')?.updateValueAndValidity();
   }
 
-  // Añadir este método para generar un código EAN-13
   generateEan13(): string {
-    // EAN-13 comienza con un prefijo de país (asumamos 560 para Ecuador)
     let ean = '560';
 
-    // Agregar 9 dígitos aleatorios
     for (let i = 0; i < 9; i++) {
       ean += Math.floor(Math.random() * 10).toString();
     }
 
-    // Calcular dígito de verificación
     let sum = 0;
     for (let i = 0; i < 12; i++) {
       sum += parseInt(ean[i]) * (i % 2 === 0 ? 1 : 3);
     }
     const checkDigit = (10 - (sum % 10)) % 10;
 
-    // Añadir dígito de verificación
     ean += checkDigit;
 
     return ean;
   }
-  
 }

@@ -20,6 +20,7 @@ export class ProductImageService {
     return this.uploadCompressedImage(path, file);
   }
 
+
   /**
    * Procesa todas las imágenes de colores y tallas
    */
@@ -81,14 +82,27 @@ export class ProductImageService {
     const path = `products/${productId}/variants/${variantId}.webp`;
     return this.uploadCompressedImage(path, file);
   }
-
+  /**
+   * Sube múltiples imágenes adicionales para un producto
+   */
   async uploadAdditionalImages(productId: string, files: File[]): Promise<string[]> {
+    if (!files || files.length === 0) {
+      return [];
+    }
+
     const uploadPromises = files.map((file, index) => {
-      const path = `products/${productId}/gallery/image_${index + 1}.webp`;
+      const path = `products/${productId}/additional/img_${index + 1}.webp`;
       return this.uploadCompressedImage(path, file);
     });
 
-    return Promise.all(uploadPromises);
+    try {
+      const urls = await Promise.all(uploadPromises);
+      console.log(`✅ Subidas ${urls.length} imágenes adicionales para producto ${productId}`);
+      return urls;
+    } catch (error) {
+      console.error('Error al subir imágenes adicionales:', error);
+      throw new Error(`Error al subir imágenes adicionales: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
   }
 
   /**

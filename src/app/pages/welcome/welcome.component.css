@@ -107,6 +107,16 @@
     }
 }
 
+.section-title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 700;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+
 /* Sección de Ofertas Limitadas con Countdown */
 .limited-offers-section {
     padding: 2px 0;
@@ -235,475 +245,10 @@
     border-color: #ff7875;
 }
 
-/* Categorías */
 
-.categories-section {
-    padding: 1px;
-    background-color: black;
-}
-
-.section-title {
-    text-align: center;
-    font-size: 32px;
-    font-weight: 700;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-}
-
-.loading-container {
-    display: flex;
-    justify-content: center;
-    padding: 40px;
-}
-
-.category-card {
-    height: 100%;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    position: relative;
-    overflow: visible;
-    z-index: 1;
-}
-
-.category-card:hover {
-    transform: scale(1.05);
-    background-color: #000;
-    cursor: pointer;
-    z-index: 10;
-}
-
-.blur {
-    filter: blur(3px) brightness(0.7);
-    transition: filter 0.3s ease;
-    pointer-events: none;
-    /* para evitar interacción con tarjetas desenfocadas */
-}
-
-.card-cover {
-    height: 290px;
-    background-size: cover;
-    background-position: center;
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.3s ease;
-}
-
-.category-card:hover .card-cover {
-    transform: scale(1.08);
-    /* efecto leve solo a la imagen */
-    z-index: 1;
-    /* aseguramos que la imagen esté por encima */
-    overflow: hidden;
-    /* ocultamos el desbordamiento */
-    background-color: #000;
-}
-
-
-.card-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 10px;
-    color: white;
-    text-align: center;
-}
-
-.category-name {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    color: aliceblue;
-}
-
-.category-description {
-    font-size: 14px;
-    margin-bottom: 0;
-}
-
-@media (max-width: 768px) {
-    .card-cover {
-        height: 190px;
-    }
-
-    .category-name {
-        font-size: 12px;
-    }
-}
-
-/* ESTILOS DE IMG DIVIDIDAS*/
-.limited-genero-section {
-    padding: 8px;
-}
-
-/* Vistas responsive */
-.desktop-view {
-    display: none;
-}
-
-.mobile-view {
-    display: block;
-}
-
-/* Contenedor para vista lado a lado con división diagonal */
-.side-by-side-container {
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-}
-
-/* Productos en la vista de escritorio */
-.product-left,
-.product-right {
-    position: absolute;
-    height: 100%;
-    width: 50%;
-    background-size: cover;
-    background-position: center;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-.product-left {
-    left: 0;
-    clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
-    width: 53.5%;
-    /* Ligeramente más ancho para el efecto diagonal */
-    z-index: 1;
-}
-
-.product-right {
-    right: 0;
-    clip-path: polygon(15% 0, 100% 0, 100% 100%, 0 100%);
-    width: 53.5%;
-    /* Ligeramente más ancho para el efecto diagonal */
-}
-
-/* Tarjeta de producto - Versión móvil */
-.product-card-container {
-    overflow: hidden;
-    height: 600px;
-    position: relative;
-    border-radius: 0;
-    box-shadow: none;
-}
-
-
-/* Secciones de producto */
-.product-section {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    background-size: contain;
-    background-position: center;
-    display: flex;
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-/* Para versión móvil, posicionamos absolutamente */
-.mobile-view .product-section {
-    position: absolute;
-    height: 53.5%;
-}
-
-/* Overlay para mejorar contraste del texto */
-.overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.311);
-    z-index: 1;
-}
-
-/* Producto superior */
-.top-product {
-    top: 0;
-    clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
-    height: 52%;
-}
-
-/* Producto inferior */
-.bottom-product {
-    bottom: 0;
-    clip-path: polygon(0 15%, 100% 0, 100% 100%, 0 100%);
-    height: 52%;
-}
-
-/* Título del producto */
-.product-title {
-    font-size: 3.5rem;
-    font-weight: 800;
-    color: white;
-    align-self: flex-end;
-    z-index: 2;
-    position: relative;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-right: 40%;
-    margin-left: 1%;
-}
-
-/* Estilos para la versión de ng-zorro */
-:host ::ng-deep .ant-card-body {
-    padding: 0;
-    height: 100%;
-    position: relative;
-}
-
-/* Hover effects */
-.product-section:hover,
-.product-left:hover,
-.product-right:hover {
-    transform: scale(1.03);
-    cursor: pointer;
-}
-
-/* Estilos responsivos */
-@media (min-width: 601px) {
-    .desktop-view {
-        display: block;
-    }
-
-    .mobile-view {
-        display: none;
-    }
-
-    .side-by-side-container {
-        height: 550px;
-    }
-}
-
-@media (max-width: 600px) {
-    .product-card-container {
-        height: 500px;
-    }
-
-    .product-title {
-        font-size: 3rem;
-    }
-
-}
-
-@media (max-width: 767px) {
-    .product-card-container {
-        height: 450px;
-    }
-
-    .product-title {
-        font-size: 2.5rem;
-    }
-}
-
-@media (max-width: 575px) {
-    .product-card-container {
-        height: 400px;
-    }
-
-    .product-title {
-        font-size: 2rem;
-    }
-
-    .diagonal-divider {
-        height: 30px;
-    }
-}
 
 /* *************** */
-.featured-products-section {
-    padding: 20px 0;
-    background-color: white;
-}
 
-.featured-products-container {
-    overflow-x: auto;
-    padding-bottom: 20px;
-    -webkit-overflow-scrolling: touch;
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 24px;
-    padding: 0 16px;
-}
-
-/* Ocultar scrollbar en algunos navegadores */
-.featured-products-section::-webkit-scrollbar {
-    display: none;
-}
-
-.featured-products-section {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
-.view-all-container {
-    text-align: center;
-    margin-top: 40px;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-    .featured-products-section {
-        padding: 40px 0;
-    }
-}
-
-/* **************** */
-/* Featured Products Section */
-
-.product-grid {
-    display: flex;
-    overflow-x: auto;
-    gap: 10px;
-    padding: 10px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-
-    &::-webkit-scrollbar {
-        height: 6px;
-    }
-
-    &::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 3px;
-    }
-}
-
-.product-card-section {
-    position: relative;
-    background-color: #fff;
-    border-radius: 0;
-    overflow: hidden;
-    min-width: 290px;
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    border: 1px solid #f0f0f0;
-
-    &:hover {
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    }
-}
-
-.product-image-container {
-    position: relative;
-    height: 290px;
-    background-color: #f3f3f3;
-    overflow: hidden;
-}
-
-.product-image-section {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    transition: transform 0.3s ease;
-    padding: 10px;
-
-    &:hover {
-        transform: scale(1.05);
-    }
-}
-
-.new-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: #000;
-    color: #fff;
-    font-size: 12px;
-    font-weight: bold;
-    padding: 4px 8px;
-    transform: skewX(-10deg);
-}
-
-.color-options {
-    display: flex;
-    gap: 10px;
-    margin: 15px 0;
-    padding: 0 15px;
-}
-
-.color-option {
-    width: 56px;
-    /* Ajusta el tamaño según tus necesidades */
-    height: 56px;
-    border-radius: 0;
-    cursor: pointer;
-    border: 1px solid #e0e0e0;
-    background-color: #a9a6a6;
-    padding: 2px;
-
-    &.active {
-        background-color: #fff;
-        border: 1px solid #fff;
-    }
-
-    img {
-        height: 100%;
-        object-fit: cover;
-    }
-}
-
-.product-name {
-    margin: 6px 12px 6px;
-    font-size: 22px;
-    font-weight: 900;
-    text-transform: uppercase;
-    font-family: 'Helvetica Neue', Arial, sans-serif;
-    line-height: 1.2;
-    letter-spacing: -0.5px;
-}
-
-.product-price {
-    margin: 5px 15px;
-    font-size: 15px;
-    letter-spacing: 2px;
-    font-weight: lighter;
-    color: #000;
-}
-
-.product-rating {
-    margin: 5px 15px;
-    color: black;
-    font-size: 14px;
-
-    .star-icon-section {
-        color: #000;
-    }
-
-    .star-icon-section-o {
-        color: #ddd;
-    }
-}
-
-.large ::ng-deep .ant-rate-star {
-    color: #000;
-}
-
-@media (max-width: 768px) {
-    .product-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    }
-}
-
-@media (max-width: 480px) {
-    .product-grid {
-        grid-template-columns: 1fr;
-    }
-}
 
 /* Sección de Testimonios */
 
@@ -848,6 +393,51 @@
     padding: 12px;
     background-color: white;
 }
+
+.featured-products-container {
+    overflow-x: auto;
+    padding-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 24px;
+    padding: 0 16px;
+}
+
+.product-image-container {
+    position: relative;
+    height: 290px;
+    background-color: #f3f3f3;
+    overflow: hidden;
+}
+
+.product-image-section {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+    padding: 10px;
+
+    &:hover {
+        transform: scale(1.05);
+    }
+}
+
+.new-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #000;
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    transform: skewX(-10deg);
+}
+
 
 /* Solución para cambiar el color del tab activo a negro */
 ::ng-deep .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {

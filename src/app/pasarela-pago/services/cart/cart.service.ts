@@ -347,11 +347,9 @@ export class CartService {
     requested: number,
     availableStock: number
   }> {
-    console.log('Verificando stock para variant ID:', variantId, 'cantidad:', quantity);
 
     return this.productService.getVariantById(variantId).pipe(
       map(variant => {
-        console.log('Variante encontrada:', variant);
 
         if (!variant) {
           console.error('Variante no encontrada con ID:', variantId);
@@ -360,7 +358,6 @@ export class CartService {
 
         // Verificar explícitamente si el stock es undefined o null
         const stockAvailable = variant.stock !== undefined && variant.stock !== null ? variant.stock : 0;
-        console.log('Stock disponible:', stockAvailable);
 
         const available = stockAvailable >= quantity;
 

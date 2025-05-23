@@ -1,0 +1,97 @@
+/* Categorías */
+
+.categories-section {
+    padding: 1px;
+    background-color: black;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 700;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+
+.category-card {
+    height: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: visible;
+    z-index: 1;
+}
+
+.category-card:hover {
+    transform: scale(1.05);
+    background-color: #000;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.blur {
+    filter: blur(3px) brightness(0.7);
+    transition: filter 0.3s ease;
+    pointer-events: none;
+    /* para evitar interacción con tarjetas desenfocadas */
+}
+
+.card-cover {
+    height: 290px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.category-card:hover .card-cover {
+    transform: scale(1.08);
+    /* efecto leve solo a la imagen */
+    z-index: 1;
+    /* aseguramos que la imagen esté por encima */
+    overflow: hidden;
+    /* ocultamos el desbordamiento */
+    background-color: #000;
+}
+
+
+.card-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px;
+    color: white;
+    text-align: center;
+}
+
+.category-name {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    color: aliceblue;
+}
+
+.category-description {
+    font-size: 14px;
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .card-cover {
+        height: 190px;
+    }
+
+    .category-name {
+        font-size: 12px;
+    }
+}

@@ -68,13 +68,20 @@
                                     <span nz-icon nzType="edit"></span>
                                 </button>
 
+                                <button nz-button nzSize="small" nz-popconfirm
+                                    nzPopconfirmTitle="¿Eliminar esta variante?" nzPopconfirmPlacement="top"
+                                    (nzOnConfirm)="deleteVariant(variant)" nz-tooltip
+                                    nzTooltipTitle="Eliminar variante">
+                                    <span nz-icon nzType="delete" style="color: #ff4d4f;"></span>
+                                </button>
+
                                 <!-- Botón de transferir stock -->
-                                <!-- <button nz-button nzType="default" nzSize="small"
+                                <button nz-button nzType="default" nzSize="small"
                                     (click)="confirmTransferStock(variant)"
                                     [disabled]="(variant.stock || 0) <= 0 || editingVariantId !== null" nz-tooltip
                                     nzTooltipTitle="Transferir Stock">
                                     <span nz-icon nzType="swap"></span>
-                                </button> -->
+                                </button>
 
                                 <!-- Botón Aplicar Promoción -->
                                 <button nz-button nzType="default" nzSize="small" (click)="applyPromotion(variant)"
@@ -82,7 +89,7 @@
                                     nzTooltipTitle="Aplicar Promoción">
                                     <span nz-icon nzType="tag"></span>
                                 </button>
-                                <button *ngIf="variant.promotionId" nz-button  nzSize="small"
+                                <button *ngIf="variant.promotionId" nz-button nzSize="small"
                                     (click)="removePromotion(variant)" nz-tooltip nzTooltipTitle="Quitar Promoción">
                                     <span nz-icon nzType="close-circle"></span>
                                 </button>

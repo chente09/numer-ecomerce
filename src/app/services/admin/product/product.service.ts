@@ -5,7 +5,7 @@ import {
   writeBatch
 } from '@angular/fire/firestore';
 import { Observable, from, of, forkJoin, throwError, firstValueFrom } from 'rxjs';
-import { map, catchError, switchMap, tap, take } from 'rxjs/operators';
+import { map, catchError, switchMap, tap, take, shareReplay } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
 
 // Servicios de productos
@@ -21,6 +21,14 @@ import { CacheService } from '../cache/cache.service';
 // Modelos
 import { Product, ProductVariant, Color, Size, Review, Promotion } from '../../../models/models';
 
+// Interfaces para estrategias de invalidación
+interface CacheInvalidationStrategy {
+  productId?: string;
+  categoryId?: string;
+  affectsAll?: boolean;
+  patterns?: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -35,25 +43,194 @@ export class ProductService {
     private variantService: ProductVariantService,
     private imageService: ProductImageService,
     private cacheService: CacheService
-    // Servicios no utilizados eliminados:
-    // private categoryService: CategoryService,
-    // private colorService: ColorService,
-    // private sizeService: SizeService,
   ) { }
 
   // -------------------- MÉTODOS DE CONSULTA --------------------
 
   /**
-   * Obtiene todos los productos con caché
+   * Obtiene todos los productos con caché optimizado
    */
   getProducts(): Observable<Product[]> {
     return this.cacheService.getCached<Product[]>(this.productsCacheKey, () => {
       const productsRef = collection(this.firestore, this.productsCollection);
       return collectionData(productsRef, { idField: 'id' }).pipe(
         map(data => data as Product[]),
+        switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+        shareReplay(1), // Evitar múltiples ejecuciones
         catchError(error => ErrorUtil.handleError(error, 'getProducts'))
       );
     });
+  }
+
+  /**
+ * Obtiene todos los productos SIN caché cuando se force
+ */
+  getProductsNoCache(): Observable<Product[]> {
+    console.log('🔄 [PRODUCT SERVICE] Obteniendo productos SIN caché...');
+
+    const productsRef = collection(this.firestore, this.productsCollection);
+    return collectionData(productsRef, { idField: 'id' }).pipe(
+      map(data => data as Product[]),
+      switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+      tap(products => {
+        console.log('✅ [PRODUCT SERVICE] Productos obtenidos sin caché:', products.length);
+      }),
+      catchError(error => ErrorUtil.handleError(error, 'getProductsNoCache'))
+    );
+  }
+
+  /**
+ * Obtiene un producto por ID SIN caché
+ */
+  getProductByIdNoCache(productId: string): Observable<Product | null> {
+    if (!productId) {
+      return of(null);
+    }
+
+    console.log(`🔄 [PRODUCT SERVICE] Obteniendo producto SIN caché: ${productId}`);
+
+    return from((async () => {
+      try {
+        const productDoc = doc(this.firestore, this.productsCollection, productId);
+        const productSnap = await getDoc(productDoc);
+
+        if (!productSnap.exists()) {
+          return null;
+        }
+
+        const product = {
+          id: productSnap.id,
+          ...productSnap.data()
+        } as Product;
+
+        // Enriquecer con stock en tiempo real
+        const enrichedProduct = await firstValueFrom(
+          this.enrichSingleProductWithRealTimeStock(product)
+        );
+
+        console.log(`✅ [PRODUCT SERVICE] Producto obtenido sin caché:`, {
+          id: enrichedProduct.id,
+          name: enrichedProduct.name,
+          totalStock: enrichedProduct.totalStock
+        });
+
+        return enrichedProduct;
+      } catch (error) {
+        console.error(`❌ [PRODUCT SERVICE] Error al obtener producto ${productId}:`, error);
+        throw error;
+      }
+    })()).pipe(
+      catchError(error => ErrorUtil.handleError(error, `getProductByIdNoCache(${productId})`))
+    );
+  }
+
+  /**
+   * Fuerza la actualización de un producto específico
+   */
+  forceRefreshProduct(productId: string): Observable<Product | null> {
+    console.log(`🔄 [PRODUCT SERVICE] Forzando actualización del producto: ${productId}`);
+
+    // Invalidar TODOS los cachés relacionados con este producto
+    this.cacheService.invalidateProductCache(productId);
+
+    // Obtener producto fresco del servidor
+    return this.getProductByIdNoCache(productId);
+  }
+
+  /**
+   * Invalidación de caché mejorada con estrategias específicas
+   */
+  private invalidateProductCacheWithStrategy(strategy: CacheInvalidationStrategy): void {
+    const { productId, categoryId, affectsAll, patterns } = strategy;
+
+    console.log('🔄 [PRODUCT SERVICE] Invalidando caché con estrategia:', strategy);
+
+    // 🧹 LIMPIEZA AGRESIVA
+    if (affectsAll) {
+      console.log('🧼 [PRODUCT SERVICE] Limpieza completa de caché...');
+      this.cacheService.clearCache();
+      return;
+    }
+
+    // Invalidar caché específico del producto
+    if (productId) {
+      this.cacheService.invalidateProductCache(productId);
+    }
+
+    // Invalidar cachés de categoría específica
+    if (categoryId) {
+      this.cacheService.invalidate(`${this.productsCacheKey}_category_${categoryId}`);
+    }
+
+    // Invalidar patrones específicos
+    if (patterns) {
+      patterns.forEach(pattern => {
+        this.cacheService.invalidatePattern(`${this.productsCacheKey}_${pattern}`);
+      });
+    }
+
+    // Siempre invalidar caché principal
+    this.cacheService.invalidate(this.productsCacheKey);
+
+    console.log('✅ [PRODUCT SERVICE] Caché invalidado correctamente');
+  }
+
+  /**
+   * Método público para forzar recarga completa
+   */
+  forceReloadAllProducts(): Observable<Product[]> {
+    console.log('🔄 [PRODUCT SERVICE] Forzando recarga completa de productos...');
+
+    // Limpiar completamente el caché
+    this.cacheService.clearCache();
+
+    // Obtener productos frescos
+    return this.getProductsNoCache();
+  }
+
+  /**
+   * Verifica si un producto ha sido actualizado recientemente
+   */
+  verifyProductUpdated(productId: string, expectedChanges: Partial<Product>): Observable<boolean> {
+    console.log(`🔍 [PRODUCT SERVICE] Verificando actualización del producto: ${productId}`);
+
+    return this.forceRefreshProduct(productId).pipe(
+      map(product => {
+        if (!product) {
+          console.warn(`⚠️ [PRODUCT SERVICE] Producto no encontrado: ${productId}`);
+          return false;
+        }
+
+        // Verificar cambios esperados
+        const hasExpectedChanges = Object.keys(expectedChanges).every(key => {
+          const expectedValue = expectedChanges[key as keyof Product];
+          const actualValue = product[key as keyof Product];
+
+          const matches = expectedValue === actualValue;
+
+          if (!matches) {
+            console.log(`🔍 [PRODUCT SERVICE] Diferencia en ${key}:`, {
+              expected: expectedValue,
+              actual: actualValue
+            });
+          }
+
+          return matches;
+        });
+
+        console.log(`${hasExpectedChanges ? '✅' : '❌'} [PRODUCT SERVICE] Verificación completada:`, {
+          productId,
+          hasExpectedChanges,
+          productName: product.name
+        });
+
+        return hasExpectedChanges;
+      }),
+      catchError(error => {
+        console.error(`❌ [PRODUCT SERVICE] Error en verificación:`, error);
+        return of(false);
+      })
+    );
   }
 
   /**
@@ -68,25 +245,177 @@ export class ProductService {
 
     return this.cacheService.getCached<Product | null>(cacheKey, () => {
       return from((async () => {
-        const productDoc = doc(this.firestore, this.productsCollection, productId);
-        const productSnap = await getDoc(productDoc);
+        try {
+          const productDoc = doc(this.firestore, this.productsCollection, productId);
+          const productSnap = await getDoc(productDoc);
 
-        if (productSnap.exists()) {
+          if (!productSnap.exists()) {
+            return null;
+          }
+
           const product = {
             id: productSnap.id,
             ...productSnap.data()
           } as Product;
 
-          // Registrar vista en segundo plano (no bloqueante)
+          // Enriquecer con stock en tiempo real
+          const enrichedProduct = await firstValueFrom(
+            this.enrichSingleProductWithRealTimeStock(product)
+          );
+
+          // Registrar vista en segundo plano (sin esperar)
           this.incrementProductView(productId);
 
-          return product;
+          return enrichedProduct;
+        } catch (error) {
+          console.error(`Error al obtener producto ${productId}:`, error);
+          throw error;
         }
-
-        return null;
       })()).pipe(
         catchError(error => ErrorUtil.handleError(error, `getProductById(${productId})`))
       );
+    });
+  }
+
+  // ==================== MÉTODOS PARA CALCULAR STOCK EN TIEMPO REAL ====================
+
+  /**
+   * Enriquece múltiples productos con stock calculado en tiempo real (OPTIMIZADO)
+   */
+  private enrichProductsWithRealTimeStock(products: Product[]): Observable<Product[]> {
+    if (!products || products.length === 0) {
+      return of([]);
+    }
+
+    // OPTIMIZACIÓN: Obtener todas las variantes en una sola operación
+    const productIds = products.map(p => p.id);
+
+    return this.getVariantsByProductIds(productIds).pipe(
+      map(allVariants => {
+        // Agrupar variantes por producto
+        const variantsByProduct = new Map<string, ProductVariant[]>();
+        allVariants.forEach(variant => {
+          if (!variantsByProduct.has(variant.productId)) {
+            variantsByProduct.set(variant.productId, []);
+          }
+          variantsByProduct.get(variant.productId)!.push(variant);
+        });
+
+        // Enriquecer cada producto
+        const enrichedProducts = products.map(product => {
+          const variants = variantsByProduct.get(product.id) || [];
+          return this.enrichProductWithVariants(product, variants);
+        });
+
+        return enrichedProducts;
+      }),
+      catchError(error => {
+        console.error('❌ [PRODUCT SERVICE] Error al enriquecer productos:', error);
+        return of(products); // Retornar productos originales en caso de error
+      })
+    );
+  }
+
+  /**
+   * Enriquece un solo producto con stock en tiempo real (UNIFICADO)
+   */
+  private enrichSingleProductWithRealTimeStock(product: Product): Observable<Product> {
+    return this.inventoryService.getVariantsByProductId(product.id).pipe(
+      map(variants => this.enrichProductWithVariants(product, variants)),
+      catchError(error => {
+        console.error(`❌ [PRODUCT SERVICE] Error al calcular stock para ${product.id}:`, error);
+        return of(product);
+      })
+    );
+  }
+
+  /**
+   * Método auxiliar para enriquecer un producto con sus variantes (CENTRALIZADO)
+   */
+  private enrichProductWithVariants(product: Product, variants: ProductVariant[]): Product {
+    // Calcular stock total
+    const totalStock = variants.reduce((total, variant) => total + (variant.stock || 0), 0);
+
+    // Actualizar colores y tallas con stock de variantes
+    const updatedColors = this.updateColorsWithVariantStock(product.colors, variants);
+    const updatedSizes = this.updateSizesWithVariantStock(product.sizes, variants);
+
+    return {
+      ...product,
+      totalStock,
+      colors: updatedColors,
+      sizes: updatedSizes,
+      variants: variants
+    };
+  }
+
+  /**
+   * Obtiene variantes para múltiples productos (NUEVO - OPTIMIZACIÓN)
+   */
+  private getVariantsByProductIds(productIds: string[]): Observable<ProductVariant[]> {
+    if (!productIds || productIds.length === 0) {
+      return of([]);
+    }
+
+    // Usar el inventoryService para obtener todas las variantes
+    // Si no existe este método, usar forkJoin como fallback
+    const variantObservables = productIds.map(id =>
+      this.inventoryService.getVariantsByProductId(id)
+    );
+
+    return forkJoin(variantObservables).pipe(
+      map(variantArrays => variantArrays.flat()),
+      catchError(error => {
+        console.error('Error al obtener variantes múltiples:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Actualiza colores con stock de variantes (MEJORADO)
+   */
+  private updateColorsWithVariantStock(colors: Color[], variants: ProductVariant[]): Color[] {
+    if (!colors || !variants) return colors || [];
+
+    return colors.map(color => {
+      // Calcular stock total para este color
+      const colorStock = variants
+        .filter(variant => variant.colorName === color.name)
+        .reduce((total, variant) => total + (variant.stock || 0), 0);
+
+      return {
+        ...color,
+        stock: colorStock
+      } as Color; // Asumir que Color tiene propiedad stock o extenderla
+    });
+  }
+
+  /**
+   * Actualiza tallas con stock de variantes (MEJORADO)
+   */
+  private updateSizesWithVariantStock(sizes: Size[], variants: ProductVariant[]): Size[] {
+    if (!sizes || !variants) return sizes || [];
+
+    return sizes.map(size => {
+      // Calcular stock total para esta talla
+      const sizeStock = variants
+        .filter(variant => variant.sizeName === size.name)
+        .reduce((total, variant) => total + (variant.stock || 0), 0);
+
+      // Actualizar colorStocks con datos reales de variantes
+      const colorStocks = variants
+        .filter(variant => variant.sizeName === size.name && variant.stock > 0)
+        .map(variant => ({
+          colorName: variant.colorName,
+          quantity: variant.stock || 0
+        }));
+
+      return {
+        ...size,
+        stock: sizeStock,
+        colorStocks: colorStocks
+      };
     });
   }
 
@@ -111,7 +440,7 @@ export class ProductService {
           return this.getProductVariants(productId).pipe(
             switchMap(variants => {
               // Aplicar promociones y cálculo de precios
-              return this.priceService.addPromotionsToProduct(product).pipe(
+              return from(this.priceService.addPromotionsToProduct(product)).pipe(
                 map(productWithPromotions => {
                   // Calcular precio con descuento
                   const productWithPricing = this.priceService.calculateDiscountedPrice(productWithPromotions);
@@ -147,7 +476,7 @@ export class ProductService {
 
       return collectionData(q, { idField: 'id' }).pipe(
         map(products => products as Product[]),
-        // Aplicar precios con descuento y promociones a todos los productos
+        switchMap(products => this.enrichProductsWithRealTimeStock(products)),
         switchMap(products => this.priceService.calculateDiscountedPrices(products)),
         catchError(error => ErrorUtil.handleError(error, `getProductsByCategory(${categoryId})`))
       );
@@ -166,6 +495,7 @@ export class ProductService {
 
       return collectionData(q, { idField: 'id' }).pipe(
         map(products => (products as Product[]).slice(0, limit)),
+        switchMap(products => this.enrichProductsWithRealTimeStock(products)),
         switchMap(products => this.priceService.calculateDiscountedPrices(products)),
         catchError(error => ErrorUtil.handleError(error, 'getFeaturedProducts'))
       );
@@ -184,6 +514,7 @@ export class ProductService {
 
       return collectionData(q, { idField: 'id' }).pipe(
         map(products => (products as Product[]).slice(0, limit)),
+        switchMap(products => this.enrichProductsWithRealTimeStock(products)),
         switchMap(products => this.priceService.calculateDiscountedPrices(products)),
         catchError(error => ErrorUtil.handleError(error, 'getBestSellingProducts'))
       );
@@ -202,6 +533,7 @@ export class ProductService {
 
       return collectionData(q, { idField: 'id' }).pipe(
         map(products => (products as Product[]).slice(0, limit)),
+        switchMap(products => this.enrichProductsWithRealTimeStock(products)),
         switchMap(products => this.priceService.calculateDiscountedPrices(products)),
         catchError(error => ErrorUtil.handleError(error, 'getNewProducts'))
       );
@@ -215,16 +547,12 @@ export class ProductService {
     const cacheKey = `${this.productsCacheKey}_discounted_${limit}`;
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
-      // Primero obtener todos los productos
       return this.getProducts().pipe(
-        // Aplicar precios y promociones
         switchMap(products => this.priceService.calculateDiscountedPrices(products)),
-        // Filtrar solo los que tienen descuento
         map(products => products.filter(product =>
           (product.discountPercentage && product.discountPercentage > 0) ||
           product.activePromotion
         )),
-        // Aplicar límite
         map(discountedProducts => discountedProducts.slice(0, limit)),
         catchError(error => ErrorUtil.handleError(error, 'getDiscountedProducts'))
       );
@@ -239,14 +567,11 @@ export class ProductService {
       return of([]);
     }
 
-    // Normalizar término de búsqueda
     const term = searchTerm.toLowerCase().trim();
 
-    // Buscamos en caché primero para evitar consultas innecesarias
     return this.getProducts().pipe(
       map(products => {
         return products.filter(product => {
-          // Verificar coincidencias en nombre, descripción, SKU y otras propiedades relevantes
           return (
             (product.name && product.name.toLowerCase().includes(term)) ||
             (product.description && product.description.toLowerCase().includes(term)) ||
@@ -255,7 +580,6 @@ export class ProductService {
           );
         });
       }),
-      // Aplicar precios con descuento a los resultados
       switchMap(filteredProducts => this.priceService.calculateDiscountedPrices(filteredProducts)),
       catchError(error => ErrorUtil.handleError(error, `searchProducts(${searchTerm})`))
     );
@@ -288,9 +612,7 @@ export class ProductService {
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
       return this.getProductsByCategory(product.category).pipe(
         map(products => {
-          // Excluir el producto actual
           const filtered = products.filter(p => p.id !== product.id);
-          // Aplicar límite
           return filtered.slice(0, limit);
         }),
         catchError(error => ErrorUtil.handleError(error, `getRelatedProducts(${product.id})`))
@@ -301,216 +623,393 @@ export class ProductService {
   // -------------------- MÉTODOS DE ACTUALIZACIÓN --------------------
 
   /**
-   * Crea un nuevo producto completo con variantes
+   * Crea un nuevo producto completo con variantes (CORREGIDO)
    */
   createProduct(
-    productData: Omit<Product, 'id'>, colors: Color[], sizes: Size[], mainImage: File, colorImages?: Map<string, File>, sizeImages?: Map<string, File>, variantImages?: Map<string, File>, additionalImages?: File[]): Observable<string> {
-    // Generar ID único para el producto
+    productData: Omit<Product, 'id'>,
+    colors: Color[],
+    sizes: Size[],
+    mainImage: File,
+    colorImages?: Map<string, File>,
+    sizeImages?: Map<string, File>,
+    variantImages?: Map<string, File>,
+    additionalImages?: File[]
+  ): Observable<string> {
     const productId = uuidv4();
 
-    return from((async () => {
-      try {
-        // 1. Subir imagen principal
-        const imageUrl = await this.imageService.uploadProductImage(productId, mainImage);
+    // 🧹 INVALIDAR CACHÉ ANTES DE CREAR
+    console.log(`🧹 [PRODUCT SERVICE] Invalidando caché antes de crear producto`);
+    this.cacheService.clearCache();
 
-        // 1.1 Subir imágenes adicionales si existen
-        let additionalImageUrls: string[] = [];
-        if (additionalImages && additionalImages.length > 0) {
-          additionalImageUrls = await this.imageService.uploadAdditionalImages(productId, additionalImages);
-        }
-
-        // 2. Crear datos base del producto
-        const productBaseData = {
-          ...productData,
-          imageUrl,
-          additionalImages: additionalImageUrls,
-          totalStock: 0, // Inicializar en 0, se actualizará después por createProductVariants
-          popularityScore: 0,
-          views: 0,
-          sales: 0,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-
-        // 3. Crear el producto base sin variantes
-        await this.variantService.createProductBase(productId, productBaseData);
-
-        // 4. Procesar imágenes de colores y tallas
-        const { colors: updatedColors, sizes: updatedSizes } =
-          await this.variantService.processProductImages(
-            productId,
-            colors,
-            sizes,
-            colorImages,
-            sizeImages
-          );
-
-        // 5. Crear variantes del producto
-        await this.variantService.createProductVariants(
-          productId,
-          updatedColors,
-          updatedSizes,
-          variantImages,
-          productData.sku
+    return from(this.createProductInternal(
+      productId, productData, colors, sizes, mainImage,
+      colorImages, sizeImages, variantImages, additionalImages
+    )).pipe(
+      tap(() => {
+        // 🧹 INVALIDAR CACHÉ DESPUÉS DE CREAR
+        console.log(`🧹 [PRODUCT SERVICE] Invalidando caché después de crear: ${productId}`);
+        this.cacheService.clearCache(); // Limpieza completa para nuevos productos
+      }),
+      catchError(error => {
+        console.error('💥 Error al crear producto:', error);
+        // Cleanup asíncrono para no bloquear la respuesta
+        this.cleanupFailedProduct(productId).catch(cleanupError =>
+          console.error('Error en limpieza:', cleanupError)
         );
-        // El totalStock se actualiza en createProductVariants
-
-        // 6. Invalidar cachés
-        this.invalidateProductCache();
-
-        return productId;
-      } catch (error) {
-        // Si hay error, intentar limpiar recursos creados parcialmente
-        await this.cleanupFailedProduct(productId);
-        throw error;
-      }
-    })()).pipe(
-      catchError(error => ErrorUtil.handleError(error, 'createProduct'))
+        return throwError(() => new Error(`Error al crear producto: ${error.message}`));
+      })
     );
   }
 
+
   /**
-   * Actualiza un producto existente
+   * Lógica interna de creación de producto (SEPARADA para mejor manejo de errores)
+   */
+  private async createProductInternal(
+    productId: string,
+    productData: Omit<Product, 'id'>,
+    colors: Color[],
+    sizes: Size[],
+    mainImage: File,
+    colorImages?: Map<string, File>,
+    sizeImages?: Map<string, File>,
+    variantImages?: Map<string, File>,
+    additionalImages?: File[]
+  ): Promise<string> {
+    try {
+      console.log('🚀 [PRODUCT SERVICE] Iniciando creación de producto:', productId);
+
+      // Validar datos antes de proceder
+      this.validateProductData({ ...productData, colors, sizes });
+
+      // 1. Subir imagen principal
+      console.log('📤 Subiendo imagen principal...');
+      const imageUrl = await this.imageService.uploadProductImage(productId, mainImage);
+      console.log('✅ Imagen principal subida:', imageUrl);
+
+      // 2. Subir imágenes adicionales si existen
+      let additionalImageUrls: string[] = [];
+      if (additionalImages && additionalImages.length > 0) {
+        console.log('📤 Subiendo imágenes adicionales...');
+        additionalImageUrls = await this.imageService.uploadAdditionalImages(productId, additionalImages);
+        console.log('✅ Imágenes adicionales subidas:', additionalImageUrls.length);
+      }
+
+      // 3. Procesar imágenes de colores y tallas
+      console.log('🎨 Procesando imágenes de colores y tallas...');
+      const { colors: updatedColors, sizes: updatedSizes } =
+        await this.variantService.processProductImages(
+          productId,
+          colors,
+          sizes,
+          colorImages,
+          sizeImages
+        );
+
+      console.log('✅ Colores actualizados:', updatedColors.map(c => ({
+        name: c.name,
+        imageUrl: c.imageUrl
+      })));
+
+      // 4. Crear datos base del producto
+      const productBaseData = {
+        ...productData,
+        imageUrl,
+        additionalImages: additionalImageUrls,
+        colors: updatedColors,
+        sizes: updatedSizes,
+        totalStock: 0, // Se actualizará en createProductVariants
+        popularityScore: 0,
+        views: 0,
+        sales: 0,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // 5. Crear el producto base
+      console.log('💾 Creando producto base...');
+      await this.variantService.createProductBase(productId, productBaseData);
+
+      // 6. Crear variantes del producto
+      console.log('🔧 Creando variantes...');
+      await this.variantService.createProductVariants(
+        productId,
+        updatedColors,
+        updatedSizes,
+        variantImages,
+        productData.sku
+      );
+
+      console.log('🎉 Producto creado exitosamente:', productId);
+      return productId;
+    } catch (error) {
+      console.error('💥 Error en createProductInternal:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza un producto existente (CORREGIDO)
    */
   updateProduct(
     productId: string,
     productData: Partial<Product>,
     mainImage?: File,
-    additionalImages?: File[]
+    additionalImages?: File[],
+    colorImages?: Map<string, File>,
+    sizeImages?: Map<string, File>,
+    variantImages?: Map<string, File>
   ): Observable<void> {
     if (!productId) {
       return throwError(() => new Error('ID de producto no proporcionado'));
     }
 
-    return from((async () => {
+    // 🧹 INVALIDAR CACHÉ INMEDIATAMENTE ANTES DE LA OPERACIÓN
+    console.log(`🧹 [PRODUCT SERVICE] Invalidando caché antes de actualizar: ${productId}`);
+    this.invalidateProductCacheWithStrategy({
+      productId,
+      categoryId: productData.category,
+      patterns: ['featured', 'new', 'bestselling', 'discounted']
+    });
 
-      const updateData: any = {
-        ...productData,
-        updatedAt: new Date()
-      };
-
-      // Si hay una nueva imagen principal, subirla
-      if (mainImage) {
-        // Obtener el producto actual para ver si hay que eliminar una imagen anterior
-        // Usando firstValueFrom en lugar de toPromise (obsoleto)
-        const currentProduct = await firstValueFrom(this.getProductById(productId).pipe(take(1)));
-
-        if (currentProduct?.imageUrl) {
-          await this.imageService.deleteImageIfExists(currentProduct.imageUrl);
-        }
-
-        // Subir nueva imagen
-        const imageUrl = await this.imageService.uploadProductImage(productId, mainImage);
-        updateData.imageUrl = imageUrl;
-      }
-
-      // Si hay nuevas imágenes adicionales, subirlas
-      if (additionalImages && additionalImages.length > 0) {
-        // Obtener las imágenes adicionales actuales
-        const currentProduct = await firstValueFrom(this.getProductById(productId).pipe(take(1)));
-        const additionalImageUrls = await this.imageService.uploadAdditionalImages(productId, additionalImages);
-
-        // Combinar imágenes existentes y nuevas
-        updateData.additionalImages = [
-          ...(currentProduct?.additionalImages || []),
-          ...additionalImageUrls
-        ];
-      }
-
-      // Actualizar datos del producto
-      await this.variantService.updateProductBase(productId, updateData);
-
-      // 1. Actualizar datos básicos del producto
-      await this.variantService.updateProductBase(productId, updateData);
-
-      // 2. IMPORTANTE: Si se enviaron colores y tallas, actualizar las variantes también
-      if (productData.colors && productData.sizes) {
-        console.log('Actualizando variantes con stock:', productData.sizes);
-
-        // Implementar un método para actualizar las variantes
-        await this.updateProductVariants(productId, productData.colors, productData.sizes);
-      }
-
-      // Invalidar caché
-      this.invalidateProductCache(productId);
-    })()).pipe(
+    return from(this.updateProductInternal(
+      productId, productData, mainImage, additionalImages,
+      colorImages, sizeImages, variantImages
+    )).pipe(
+      tap(() => {
+        // 🧹 INVALIDAR CACHÉ NUEVAMENTE DESPUÉS DE LA OPERACIÓN
+        console.log(`🧹 [PRODUCT SERVICE] Invalidando caché después de actualizar: ${productId}`);
+        this.invalidateProductCacheWithStrategy({
+          productId,
+          categoryId: productData.category,
+          patterns: ['featured', 'new', 'bestselling', 'discounted']
+        });
+      }),
       catchError(error => ErrorUtil.handleError(error, `updateProduct(${productId})`))
     );
   }
 
-  // Método nuevo para actualizar variantes
-  private async updateProductVariants(
+  /**
+   * Lógica interna de actualización de producto (CORREGIDA)
+   */
+  private async updateProductInternal(
+    productId: string,
+    productData: Partial<Product>,
+    mainImage?: File,
+    additionalImages?: File[],
+    colorImages?: Map<string, File>,
+    sizeImages?: Map<string, File>,
+    variantImages?: Map<string, File>
+  ): Promise<void> {
+    console.log('🔄 [PRODUCT SERVICE] Iniciando actualización de producto:', productId);
+
+    const updateData: any = {
+      ...productData,
+      updatedAt: new Date()
+    };
+
+    // Validar datos antes de proceder
+    this.validateProductData(updateData);
+
+    // Procesar imagen principal
+    if (mainImage) {
+      console.log('📤 Subiendo nueva imagen principal...');
+      const currentProduct = await firstValueFrom(this.getProductById(productId).pipe(take(1)));
+
+      if (currentProduct?.imageUrl) {
+        await this.imageService.deleteImageIfExists(currentProduct.imageUrl);
+      }
+
+      const imageUrl = await this.imageService.uploadProductImage(productId, mainImage);
+      updateData.imageUrl = imageUrl;
+      console.log('✅ Nueva imagen principal subida:', imageUrl);
+    }
+
+    // Procesar imágenes adicionales
+    if (additionalImages && additionalImages.length > 0) {
+      console.log('📤 Subiendo imágenes adicionales...');
+      const additionalImageUrls = await this.imageService.uploadAdditionalImages(productId, additionalImages);
+
+      const existingAdditionalImages = productData.additionalImages || [];
+      updateData.additionalImages = [...existingAdditionalImages, ...additionalImageUrls];
+      console.log('✅ Imágenes adicionales procesadas:', additionalImageUrls.length);
+    }
+
+    // Procesar imágenes de colores y tallas
+    if ((colorImages && colorImages.size > 0) || (sizeImages && sizeImages.size > 0)) {
+      console.log('🎨 Procesando imágenes de colores y tallas en actualización...');
+
+      const colorsToProcess = updateData.colors || productData.colors || [];
+      const sizesToProcess = updateData.sizes || productData.sizes || [];
+
+      const { colors: updatedColors, sizes: updatedSizes } =
+        await this.variantService.processProductImages(
+          productId,
+          colorsToProcess,
+          sizesToProcess,
+          colorImages,
+          sizeImages
+        );
+
+      updateData.colors = updatedColors;
+      updateData.sizes = updatedSizes;
+
+      console.log('✅ Colores actualizados en updateProduct:', updatedColors.map(c => ({
+        name: c.name,
+        imageUrl: c.imageUrl
+      })));
+    }
+
+    // Procesar imágenes de variantes
+    if (variantImages && variantImages.size > 0) {
+      await this.updateVariantImages(productId, variantImages);
+    }
+
+    // Actualizar variantes y recalcular stock si hay cambios en colores/tallas
+    if (updateData.colors && updateData.sizes) {
+      console.log('🔄 Actualizando variantes y recalculando stock...');
+      const calculatedTotalStock = await this.updateProductVariantsWithStockCalculation(
+        productId,
+        updateData.colors,
+        updateData.sizes
+      );
+
+      updateData.totalStock = calculatedTotalStock;
+      console.log('✅ Stock total recalculado:', calculatedTotalStock);
+    }
+
+    // Actualizar datos del producto
+    console.log('💾 Actualizando datos del producto...');
+    await this.variantService.updateProductBase(productId, updateData);
+
+    console.log('🎉 Producto actualizado exitosamente:', productId);
+  }
+
+  /**
+   * Actualiza imágenes de variantes (NUEVO MÉTODO)
+   */
+  private async updateVariantImages(
+    productId: string,
+    variantImages: Map<string, File>
+  ): Promise<void> {
+    console.log('🎯 Procesando imágenes de variantes en actualización...');
+
+    const existingVariants = await firstValueFrom(this.getProductVariants(productId).pipe(take(1)));
+
+    if (existingVariants) {
+      for (const [variantKey, imageFile] of variantImages.entries()) {
+        const [colorName, sizeName] = variantKey.split('-');
+        const variant = existingVariants.find(v =>
+          v.colorName === colorName && v.sizeName === sizeName
+        );
+
+        if (variant) {
+          try {
+            const variantImageUrl = await this.imageService.uploadVariantImage(
+              productId,
+              variant.id,
+              imageFile
+            );
+
+            await this.variantService.updateVariantImage(variant.id, variantImageUrl);
+            console.log(`✅ Imagen de variante actualizada: ${variantKey} -> ${variantImageUrl}`);
+          } catch (error) {
+            console.error(`❌ Error al actualizar imagen de variante ${variantKey}:`, error);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Actualiza variantes y calcula el stock total (CORREGIDO)
+   */
+  private async updateProductVariantsWithStockCalculation(
     productId: string,
     colors: Color[],
     sizes: Size[]
-  ): Promise<void> {
+  ): Promise<number> {
     try {
-      // Obtener variantes existentes
+      console.log('🔄 Actualizando variantes para producto:', productId);
+
       const existingVariants = await firstValueFrom(this.getProductVariants(productId));
       const batch = writeBatch(this.firestore);
 
-      // Mapa para buscar variantes existentes
       const variantMap = new Map<string, ProductVariant>();
       existingVariants.forEach(v => {
         const key = `${v.colorName}-${v.sizeName}`;
         variantMap.set(key, v);
       });
 
-      // Calcular stock total
       let totalStock = 0;
 
       // Recorrer combinaciones de colores y tallas
       for (const color of colors) {
         for (const size of sizes) {
-          // Obtener stock de esta combinación
           const stockEntry = size.colorStocks?.find(cs => cs.colorName === color.name);
           const stock = stockEntry?.quantity || 0;
           totalStock += stock;
 
-          // Clave para esta combinación
           const key = `${color.name}-${size.name}`;
 
           if (variantMap.has(key)) {
             // Actualizar variante existente
             const variant = variantMap.get(key)!;
             const variantRef = doc(this.firestore, 'productVariants', variant.id);
-            batch.update(variantRef, { stock, updatedAt: new Date() });
 
-            // Eliminar del mapa para saber cuáles borrar después
+            batch.update(variantRef, {
+              stock,
+              colorCode: color.code,
+              updatedAt: new Date()
+            });
+
+            console.log(`🔄 Actualizando variante existente: ${key}, stock: ${stock}`);
             variantMap.delete(key);
           } else if (stock > 0) {
             // Crear nueva variante si tiene stock
             const variantId = uuidv4();
             const variantRef = doc(this.firestore, 'productVariants', variantId);
-            batch.set(variantRef, {
+
+            const newVariant = {
               id: variantId,
               productId,
               colorName: color.name,
               colorCode: color.code,
               sizeName: size.name,
               stock,
+              sku: `${productId}-${color.name}-${size.name}`.toUpperCase(),
+              imageUrl: color.imageUrl || '',
               createdAt: new Date(),
               updatedAt: new Date()
-            });
+            };
+
+            batch.set(variantRef, newVariant);
+            console.log(`➕ Creando nueva variante: ${key}, stock: ${stock}`);
           }
         }
       }
 
-      // Eliminar variantes que ya no existen
+      // Eliminar variantes obsoletas
       variantMap.forEach(variant => {
         const variantRef = doc(this.firestore, 'productVariants', variant.id);
         batch.delete(variantRef);
+        console.log(`🗑️ Eliminando variante obsoleta: ${variant.colorName}-${variant.sizeName}`);
       });
 
-      // Actualizar stock total en el producto
+      // CORRECCIÓN CRÍTICA: Actualizar el stock total en el producto
       const productRef = doc(this.firestore, this.productsCollection, productId);
-      batch.update(productRef, { totalStock, updatedAt: new Date() });
+      batch.update(productRef, {
+        totalStock,
+        updatedAt: new Date()
+      });
 
-      // Ejecutar todas las operaciones
+      // Ejecutar todas las operaciones en una sola transacción
       await batch.commit();
-      console.log(`Variantes actualizadas para el producto ${productId}. Stock total: ${totalStock}`);
+
+      console.log(`✅ Variantes y producto actualizados. Stock total: ${totalStock}`);
+      return totalStock;
     } catch (error) {
-      console.error(`Error al actualizar variantes del producto ${productId}:`, error);
+      console.error(`💥 Error al actualizar variantes del producto ${productId}:`, error);
       throw error;
     }
   }
@@ -525,7 +1024,6 @@ export class ProductService {
 
     return from((async () => {
       // 1. Obtener datos del producto para eliminar imágenes
-      // Usando firstValueFrom en lugar de toPromise (obsoleto)
       const product = await firstValueFrom(this.getProductById(productId).pipe(take(1)));
 
       if (!product) {
@@ -540,6 +1038,10 @@ export class ProductService {
 
       if (product.imageUrl) {
         imageUrls.push(product.imageUrl);
+      }
+
+      if (product.additionalImages) {
+        imageUrls.push(...product.additionalImages);
       }
 
       variants.forEach(variant => {
@@ -558,7 +1060,11 @@ export class ProductService {
       await this.imageService.deleteProductImages(productId, imageUrls);
 
       // 7. Invalidar caché
-      this.invalidateProductCache(productId);
+      this.invalidateProductCacheWithStrategy({
+        productId,
+        categoryId: product.category,
+        affectsAll: true
+      });
     })()).pipe(
       catchError(error => ErrorUtil.handleError(error, `deleteProduct(${productId})`))
     );
@@ -569,7 +1075,7 @@ export class ProductService {
    */
   registerSale(productId: string, items: SaleItem[]): Observable<void> {
     return this.inventoryService.registerSale(productId, items).pipe(
-      tap(() => this.invalidateProductCache(productId))
+      tap(() => this.invalidateProductCacheWithStrategy({ productId }))
     );
   }
 
@@ -578,7 +1084,7 @@ export class ProductService {
    */
   updateStock(update: StockUpdate): Observable<void> {
     return this.inventoryService.updateStock(update).pipe(
-      tap(() => this.invalidateProductCache(update.productId))
+      tap(() => this.invalidateProductCacheWithStrategy({ productId: update.productId }))
     );
   }
 
@@ -596,9 +1102,15 @@ export class ProductService {
           }
         });
 
-        // Invalidar caché general y específicos
-        this.invalidateProductCache();
-        productIds.forEach(id => this.invalidateProductCache(id));
+        // Invalidación optimizada
+        this.invalidateProductCacheWithStrategy({
+          affectsAll: true,
+          patterns: ['featured', 'new', 'bestselling', 'discounted']
+        });
+
+        productIds.forEach(id => {
+          this.invalidateProductCacheWithStrategy({ productId: id });
+        });
       })
     );
   }
@@ -608,14 +1120,16 @@ export class ProductService {
    */
   transferStock(transfer: StockTransfer): Observable<void> {
     return this.inventoryService.transferStock(transfer).pipe(
-      // No podemos invalidar caché aquí fácilmente porque no conocemos productId
-      // pero inventoryService ya invalida su propio caché
+      tap(() => {
+        // Invalidar caché general ya que no conocemos los productIds específicos
+        this.invalidateProductCacheWithStrategy({ affectsAll: true });
+      }),
       catchError(error => ErrorUtil.handleError(error, 'transferStock'))
     );
   }
 
   /**
-   * Incrementa contador de vistas (no público, uso interno)
+   * Incrementa contador de vistas (privado, uso interno)
    */
   private incrementProductView(productId: string): void {
     this.inventoryService.incrementProductViews(productId).subscribe({
@@ -663,47 +1177,105 @@ export class ProductService {
   // -------------------- MÉTODOS DE UTILIDAD --------------------
 
   /**
+   * Valida datos del producto antes de crear/actualizar (NUEVO)
+   */
+  private validateProductData(productData: Partial<Product>): void {
+    const errors: string[] = [];
+
+    // Validar estructura básica
+    if (productData.name && productData.name.trim().length === 0) {
+      errors.push('El nombre del producto no puede estar vacío');
+    }
+
+    if (productData.price && productData.price <= 0) {
+      errors.push('El precio debe ser mayor a 0');
+    }
+
+    if (productData.colors && productData.sizes) {
+      // Validar que todas las combinaciones de colorStocks existan
+      productData.sizes.forEach(size => {
+        if (size.colorStocks) {
+          size.colorStocks.forEach(colorStock => {
+            const colorExists = productData.colors!.some(c => c.name === colorStock.colorName);
+            if (!colorExists) {
+              errors.push(`Color '${colorStock.colorName}' en colorStocks no existe en la lista de colores`);
+            }
+
+            if (colorStock.quantity < 0) {
+              errors.push(`La cantidad para color '${colorStock.colorName}' no puede ser negativa`);
+            }
+          });
+        }
+      });
+
+      // Validar códigos de color únicos
+      const colorCodes = productData.colors.map(c => c.code).filter(Boolean);
+      const uniqueColorCodes = new Set(colorCodes);
+      if (colorCodes.length !== uniqueColorCodes.size) {
+        errors.push('Los códigos de color deben ser únicos');
+      }
+
+      // Validar nombres de color únicos
+      const colorNames = productData.colors.map(c => c.name);
+      const uniqueColorNames = new Set(colorNames);
+      if (colorNames.length !== uniqueColorNames.size) {
+        errors.push('Los nombres de color deben ser únicos');
+      }
+
+      // Validar nombres de talla únicos
+      const sizeNames = productData.sizes.map(s => s.name);
+      const uniqueSizeNames = new Set(sizeNames);
+      if (sizeNames.length !== uniqueSizeNames.size) {
+        errors.push('Los nombres de talla deben ser únicos');
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Errores de validación: ${errors.join(', ')}`);
+    }
+  }
+
+  /**
    * Limpia recursos parciales si la creación de un producto falla
    */
   private async cleanupFailedProduct(productId: string): Promise<void> {
     try {
+      console.log(`🧹 Iniciando limpieza para producto fallido ${productId}`);
+
       // Intentar eliminar documento del producto si existe
       const productDoc = doc(this.firestore, this.productsCollection, productId);
       const productSnap = await getDoc(productDoc);
 
       if (productSnap.exists()) {
         await deleteDoc(productDoc);
+        console.log(`✅ Documento de producto eliminado: ${productId}`);
       }
 
       // Eliminar variantes si existen
       await this.variantService.deleteProductVariants(productId);
+      console.log(`✅ Variantes eliminadas para producto: ${productId}`);
 
       // Eliminar imágenes (esto elimina todo el directorio del producto)
       await this.imageService.deleteProductImages(productId, []);
+      console.log(`✅ Imágenes eliminadas para producto: ${productId}`);
 
-      console.log(`Limpieza exitosa para producto fallido ${productId}`);
+      console.log(`🎉 Limpieza exitosa para producto fallido ${productId}`);
     } catch (error) {
-      console.error(`Error durante limpieza de producto fallido ${productId}:`, error);
+      console.error(`❌ Error durante limpieza de producto fallido ${productId}:`, error);
     }
   }
 
   /**
-   * Invalida caché relacionado con productos
+   * Método de compatibilidad con la implementación anterior (DEPRECATED)
+   * @deprecated Usar invalidateProductCacheWithStrategy en su lugar
    */
   private invalidateProductCache(productId?: string): void {
-    // Siempre invalidar caché general de productos
-    this.cacheService.invalidate(this.productsCacheKey);
+    console.warn('⚠️ Método invalidateProductCache está deprecado, usar invalidateProductCacheWithStrategy');
 
-    // Si hay un ID específico, invalidar cachés relacionados
-    if (productId) {
-      this.cacheService.invalidate(`${this.productsCacheKey}_${productId}`);
-      this.cacheService.invalidate(`${this.productsCacheKey}_complete_${productId}`);
-    }
-
-    // También invalidar cachés de productos destacados
-    this.cacheService.invalidate(`${this.productsCacheKey}_featured`);
-    this.cacheService.invalidate(`${this.productsCacheKey}_bestselling`);
-    this.cacheService.invalidate(`${this.productsCacheKey}_new`);
-    this.cacheService.invalidate(`${this.productsCacheKey}_discounted`);
+    this.invalidateProductCacheWithStrategy({
+      productId,
+      affectsAll: !productId,
+      patterns: ['featured', 'bestselling', 'new', 'discounted']
+    });
   }
 }

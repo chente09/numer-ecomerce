@@ -1,0 +1,121 @@
+<!-- Featured Products Section - Versión final con colores -->
+<section class="featured-products-section">
+    <div class="section-container">
+        <!-- Título -->
+        <h2 class="section-title">Productos Destacados</h2>
+
+        <!-- Loading State - Siempre visible cuando está cargando -->
+        <div *ngIf="productsLoading" class="loading-container">
+            <nz-spin nzSize="large" nzTip="Cargando productos destacados..."></nz-spin>
+        </div>
+
+        <!-- Error State -->
+        <div *ngIf="hasError && !productsLoading" class="error-container">
+            <nz-empty 
+                nzNotFoundContent="Error al cargar productos" 
+                [nzNotFoundFooter]="retryTemplate">
+            </nz-empty>
+            <ng-template #retryTemplate>
+                <button nz-button nzType="primary" (click)="reloadProducts()">
+                    Reintentar
+                </button>
+            </ng-template>
+        </div>
+
+        <!-- Empty State - Cuando no hay productos -->
+        <div *ngIf="shouldShowEmpty()" class="empty-state">
+            <nz-empty 
+                nzNotFoundContent="No hay productos destacados disponibles"
+                [nzNotFoundFooter]="browseAllTemplate">
+            </nz-empty>
+            <ng-template #browseAllTemplate>
+                <a routerLink="/products" class="browse-all-link">
+                    Ver todos los productos
+                </a>
+            </ng-template>
+        </div>
+
+        <!-- Products Grid - Solo cuando hay productos -->
+        <div *ngIf="shouldShowProducts()" class="product-grid">
+            <div 
+                *ngFor="let product of featuredProducts; trackBy: trackByProductId" 
+                class="product-card-section">
+                
+                <!-- Imagen del producto -->
+                <div 
+                    class="product-image-container" 
+                    [routerLink]="['/products', product.id]" 
+                    style="cursor: pointer;"
+                    [attr.aria-label]="'Ver detalles de ' + product.name">
+                    <img 
+                        [src]="product.imageUrl" 
+                        [alt]="product.name" 
+                        class="product-image-section"
+                        (error)="handleImageError($event)"
+                        loading="lazy">
+                    <span *ngIf="product.isNew" class="new-badge">NEW</span>
+                    <span *ngIf="hasDiscount(product)" class="discount-badge">
+                        -{{ getDiscountPercentage(product) }}%
+                    </span>
+                </div>
+
+                <!-- Color options con scroll horizontal -->
+                <div class="color-options" 
+                     *ngIf="hasColors(product)"
+                     [ngClass]="{'scrollable': hasManyColors(product)}">
+                    <div *ngFor="let color of product.colors; let i = index" 
+                         class="color-option"
+                         [ngClass]="{'active': i === 0 || isColorActive(product, color)}"
+                         [ngStyle]="getColorStyle(color)"
+                         (click)="selectColor(product, color)"
+                         [attr.title]="'Color: ' + color.name"
+                         [attr.aria-label]="'Seleccionar color ' + color.name">
+                        <!-- No necesitamos img separada ya que usamos background-image -->
+                        <div class="color-overlay"></div>
+                    </div>
+                </div>
+
+                <!-- Nombre del producto -->
+                <h3 
+                    class="product-name" 
+                    [routerLink]="['/products', product.id]" 
+                    style="cursor: pointer;"
+                    [title]="product.name">
+                    {{ product.name }}
+                </h3>
+
+                <!-- Precio -->
+                <div class="product-price">
+                    <span *ngIf="hasDiscount(product)" class="original-price">
+                        ${{ formatPrice(product.originalPrice!) }}
+                    </span>
+                    <span class="current-price">
+                        ${{ formatPrice(product.price) }}
+                    </span>
+                </div>
+
+                <!-- Rating con estrellas negras -->
+                <div class="product-rating">
+                    <nz-rate 
+                        [ngModel]="product.rating || 5" 
+                        nzDisabled 
+                        [nzAllowHalf]="true" 
+                        class="black-stars"
+                        [attr.aria-label]="getRatingAriaLabel(product.rating || 5)">
+                    </nz-rate>
+                    <span class="rating-text">({{ product.rating || 5 }})</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ver todos los productos - Solo mostrar si hay productos -->
+        <div *ngIf="shouldShowProducts()" class="section-footer">
+            <a routerLink="/products" class="view-all-btn">
+                <span>Ver Todos los Productos</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l9 7-9 7V2z"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</section>

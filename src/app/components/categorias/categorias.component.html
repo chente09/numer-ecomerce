@@ -1,0 +1,32 @@
+<section class="categories-section">
+    <h2 class="section-title" style="color: aliceblue;">Categorías</h2>
+
+    <div *ngIf="loading" class="loading-container">
+        <nz-spin nzSize="large"></nz-spin>
+    </div>
+
+    <!-- Usa [nzGutter]="[0, 0]" para eliminar espacios entre columnas -->
+    <div *ngIf="!loading" nz-row [nzGutter]="[0, 0]">
+        <div *ngFor="let category of categories" nz-col [nzXs]="12" [nzSm]="12" [nzMd]="6"
+            [class.blur]="hoveredCategorySlug && hoveredCategorySlug !== category.slug"
+            style="padding: 0; margin: 0; overflow: hidden;">
+
+            <!-- Asegúrate de que la tarjeta no tenga bordes -->
+            <nz-card class="category-card" (mouseenter)="hoveredCategorySlug = category.slug"
+                (mouseleave)="hoveredCategorySlug = null" [nzBodyStyle]="{ padding: '0', margin: '0' }"
+                style="border: none; border-radius: 0; margin: 0; padding: 0; overflow: hidden;">
+
+                <a [routerLink]="['/shop', category.slug]" style="display: block; margin: 0; padding: 0;">
+                    <div class="card-cover" [style.background-image]="'url(' + category.imageUrl + ')'"
+                        style="margin: 0; padding: 0; border: none;">
+                        <div class="card-overlay">
+                            <h3 class="category-name" nz-typography nzEllipsis>
+                                {{category.name}}
+                            </h3>
+                        </div>
+                    </div>
+                </a>
+            </nz-card>
+        </div>
+    </div>
+</section>

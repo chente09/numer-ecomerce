@@ -280,10 +280,15 @@
                                                         alt="Color preview">
                                                 </div>
                                                 <button type="button" nz-button nzSize="small"
-                                                    (click)="colorImageInput.click()">
+                                                    (click)="openColorImageInput(i)">
                                                     <span nz-icon nzType="upload"></span>
+                                                    {{colorImages.get(colorForm.get('name')?.value)?.url ? 'Cambiar' :
+                                                    'Subir'}}
                                                 </button>
-                                                <input type="file" #colorImageInput style="display: none"
+
+                                                <!-- Usar un ID único para cada input -->
+                                                <input type="file" #colorImageInput [id]="'colorInput_' + i"
+                                                    style="display: none"
                                                     (change)="onColorImageChange($event, colorForm.get('name')?.value)"
                                                     accept="image/*">
                                             </div>
@@ -477,6 +482,55 @@
                             nzShowIcon></nz-alert>
                     </div>
                 </div>
+
+                <div *ngIf="showVariantsMatrix" class="variant-images-section">
+                    <nz-divider nzText="Imágenes de Variantes (Opcional)"></nz-divider>
+                    <p>Puede subir imágenes específicas para cada combinación color-talla:</p>
+
+                    <div class="variant-images-grid">
+                        <div *ngFor="let row of variantsMatrix" class="variant-row">
+                            <h5>Talla: {{row.size}}</h5>
+                            <div class="variant-colors">
+                                <div *ngFor="let variant of row.colorVariants" class="variant-image-item">
+                                    <div class="variant-info">
+                                        <span class="color-indicator"
+                                            [style.background-color]="getColorCode(variant.colorName)"></span>
+                                        <span class="variant-label">{{variant.colorName}} - {{variant.sizeName}}</span>
+                                    </div>
+
+                                    <div class="variant-image-upload">
+                                        <div class="variant-image-preview" *ngIf="variantImages.get(variant.key)?.url">
+                                            <img [src]="variantImages.get(variant.key)?.url"
+                                                [alt]="variant.colorName + ' ' + variant.sizeName">
+                                        </div>
+
+                                        <button type="button" nz-button nzSize="small"
+                                            (click)="variantImageInput.click()" nz-tooltip
+                                            nzTooltipTitle="Subir imagen específica para esta variante">
+                                            <span nz-icon nzType="upload"></span>
+                                            {{variantImages.get(variant.key)?.url ? 'Cambiar' : 'Subir'}}
+                                        </button>
+
+                                        <input type="file" #variantImageInput style="display: none"
+                                            (change)="onVariantImageChange($event, variant.colorName, variant.sizeName)"
+                                            accept="image/*">
+
+                                        <button type="button" *ngIf="variantImages.get(variant.key)?.url" nz-button
+                                            nzSize="small" nzDanger (click)="removeVariantImage(variant.key)" nz-tooltip
+                                            nzTooltipTitle="Eliminar imagen">
+                                            <span nz-icon nzType="delete"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <nz-alert nzType="info"
+                        nzMessage="Tip: Si no sube una imagen específica para una variante, se usará la imagen del color correspondiente."
+                        nzShowIcon>
+                    </nz-alert>
+                </div>
             </nz-tab>
 
             <!-- Pestaña SEO y Metadatos -->
@@ -538,8 +592,11 @@
             <button type="button" nz-button nzType="default" (click)="cancelForm()" [disabled]="submitting">
                 Cancelar
             </button>
-            <button type="submit" nz-button nzType="primary" [nzLoading]="submitting" >
+            <button type="submit" nz-button nzType="primary" [nzLoading]="submitting">
                 {{ isEditMode ? 'Actualizar' : 'Crear' }} Producto
+                <span *ngIf="submitting && isEditMode">
+                    (Actualizando...)
+                </span>
             </button>
         </div>
     </form>

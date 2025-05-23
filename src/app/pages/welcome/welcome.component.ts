@@ -1,9 +1,7 @@
 import { Component, ElementRef, Input, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { CategoryService, Category } from '../../services/admin/category/category.service';
-import { ProductService } from '../../services/admin/product/product.service';
 import { HeroService, HeroItem } from '../../services/admin/hero/hero.service';
 import { Product, Color, Review } from '../../models/models';
 import { ScrollService } from '../../services/scroll/scroll.service';
@@ -27,6 +25,9 @@ import { SafeStyle } from '@angular/platform-browser';
 import { ChangeDetectorRef } from '@angular/core';
 import { ReviewService } from '../../services/review/review.service';
 import { animate, style, transition, trigger } from '@angular/animations';
+import { CategoriasComponent } from '../../components/categorias/categorias.component';
+import { GeneroSectionComponent } from "../../components/genero-section/genero-section.component";
+import { ProductosSectionComponent } from "../../components/productos-section/productos-section.component";
 
 interface InstagramComment {
   username: string;
@@ -43,11 +44,6 @@ interface InstagramPost {
   username?: string;
   userAvatar?: string;
   comments: InstagramComment[];
-}
-
-interface ProductPair {
-  image: string;
-  title: string;
 }
 
 
@@ -70,8 +66,11 @@ interface ProductPair {
     FormsModule,
     NzTypographyModule,
     NzModalModule,
-    NzRateModule
-  ],
+    NzRateModule,
+    CategoriasComponent,
+    GeneroSectionComponent,
+    ProductosSectionComponent
+],
   standalone: true,
   templateUrl: './welcome.component.html',
   styleUrl: './welcome.component.css',
@@ -85,11 +84,7 @@ interface ProductPair {
   ]
 })
 export class WelcomeComponent implements OnInit, OnDestroy {
-  categories: Category[] = [];
-  featuredProducts: Product[] = [];
   categoriesLoading = true;
-  productsLoading = true;
-  allProducts: Product[] = [];
   loading: any;
   instagramFeed: InstagramPost[] = [];
   selectedPost: InstagramPost | null = null;
@@ -97,8 +92,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   testimonials: Review[] = [];
   private subscriptions: Subscription = new Subscription();
   testimonialsLoading = true;
-
-  hoveredCategorySlug: string | null = null;
 
   activeHero: HeroItem | null = null;
   private subscription: Subscription = new Subscription();
@@ -148,18 +141,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       title: 'OBJETIVO',
       description: 'La búsqueda de la perfección',
       link: '/objetivo'
-    }
-  ];
-
-  // Dentro de la clase WelcomeComponent, agrega esta propiedad:
-  productPairs: ProductPair[] = [
-    {
-      title: 'Hombre',
-      image: 'https://i.postimg.cc/3wM0s6fq/VERDE-PINO.png'
-    },
-    {
-      title: 'Mujer',
-      image: 'https://i.postimg.cc/L578zYrW/MENTA-GRIS.png'
     }
   ];
 
@@ -283,22 +264,19 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     ]
   };
 
+  
+
   constructor(
-    private categoryService: CategoryService,
-    private productService: ProductService,
     private heroService: HeroService,
     private reviewService: ReviewService,
     private modalService: NzModalService,
     private scrollService: ScrollService,
     private route: ActivatedRoute,
-    private message: NzMessageService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) { }
 
 
   ngOnInit(): void {
-    this.loadCategories();
-    this.loadFeaturedProducts();
     this.startCountdown();
     this.loadInstagramFeed();
     this.loadTestimonials();
@@ -320,6 +298,10 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       })
     );
   }
+
+  /**
+   * Método para precargar las imágenes de productPairs
+   */
 
   ngOnDestroy() {
     if (this.countdownSubscription) {
@@ -443,55 +425,17 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   }
 
 
-  loadCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (data) => {
-        this.categories = this.shuffleArray(data); // Mezclar el arreglo
-        this.categoriesLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading categories:', error);
-        this.categoriesLoading = false;
-      }
-    });
-  }
 
+  /**
+   * Método para precargar imágenes con mejor manejo de errores
+   */
+  
 
-
-  // Método privado para mezclar un arreglo
-  private shuffleArray<T>(array: T[]): T[] {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
-
-
-  loadFeaturedProducts(): void {
-    this.productsLoading = true;
-
-    this.productService.getProducts().subscribe({
-      next: (products) => {
-        this.allProducts = products;
-
-        // Filtrar productos destacados (ejemplo: isBestSeller o isNew)
-        this.featuredProducts = this.allProducts.filter(product =>
-          product.isBestSeller || product.isNew
-        );
-
-        // Si quieres limitar a un número específico (ej. 6 productos)
-        this.featuredProducts = this.featuredProducts.slice(0, 6);
-
-        this.productsLoading = false;
-      },
-      error: (error) => {
-        this.message.error('Error al cargar los productos destacados');
-        console.error('Error:', error);
-        this.productsLoading = false;
-      }
-    });
+  /**
+ * Método para obtener la URL de imagen con fallback
+ */
+  getImageUrl(product: any): string {
+    return product.image || 'assets/images/product-placeholder.png';
   }
 
   startCountdown() {

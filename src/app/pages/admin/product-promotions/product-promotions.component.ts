@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { ProductPriceService } from '../../../services/admin/price/product-price.service';
@@ -42,6 +42,10 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 })
 export class ProductPromotionsComponent implements OnInit, OnChanges {
   @Input() product: Product | null = null;
+  @Output() promotionChanged = new EventEmitter<{
+    productId: string;
+    updatedProduct?: Product;
+  }>();
 
   promotions: Promotion[] = [];
   loading = false;
@@ -68,63 +72,63 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
 
   loadPromotions(): void {
     if (!this.product) return;
-
+    
     this.loading = true;
-    this.cdr.detectChanges(); // Añadido para actualizar la UI inmediatamente
-
+    
     this.productPriceService.getPromotionsForProduct(this.product.id)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
       .subscribe({
         next: (promotions) => {
           this.promotions = promotions;
-          this.loading = false; // Cambiamos el estado aquí directamente
-          console.log('Promociones cargadas:', promotions.length);
-          this.cdr.detectChanges(); // Forzamos la detección de cambios
+          this.cdr.markForCheck();
         },
         error: (error) => {
           console.error('Error al cargar promociones:', error);
           this.message.error('Error al cargar promociones: ' + (error.message || 'Error desconocido'));
-          this.loading = false; // También lo cambiamos en caso de error
-          this.cdr.detectChanges();
-        },
-        complete: () => {
-          // Este callback asegura que loading sea false incluso si el observable completa sin emitir valores
-          this.loading = false;
-          console.log('Observable de promociones completado');
-          this.cdr.detectChanges();
         }
       });
   }
 
   applyPromotion(promotionId: string): void {
     if (!this.product) return;
-
+    
     this.loading = true;
-    this.cdr.detectChanges();
-
+    
     this.productPriceService.applyPromotionToProduct(this.product, promotionId)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        })
+      )
       .subscribe({
         next: (updatedProduct) => {
-          // Actualizar producto en el componente padre
+          // 🚀 ACTUALIZACIÓN OPTIMISTA LOCAL
           this.product = updatedProduct;
-          this.loading = false;
+          
+          // 🚀 EMITIR CAMBIO AL PADRE
+          this.promotionChanged.emit({
+            productId: updatedProduct.id,
+            updatedProduct: updatedProduct
+          });
+          
           this.message.success('Promoción aplicada correctamente');
-          this.cdr.detectChanges();
+          this.cdr.markForCheck();
         },
         error: (error) => {
-          this.loading = false;
           this.message.error('Error al aplicar promoción: ' + (error.message || 'Error desconocido'));
-          this.cdr.detectChanges();
-        },
-        complete: () => {
-          this.loading = false;
-          this.cdr.detectChanges();
         }
       });
   }
 
-  removeAllPromotions(): void {
+   removeAllPromotions(): void {
     if (!this.product) return;
-
+    
     this.modal.confirm({
       nzTitle: '¿Está seguro de eliminar todas las promociones?',
       nzContent: 'Esta acción eliminará todas las promociones asociadas a este producto.',
@@ -133,43 +137,53 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
       nzOkDanger: true,
       nzOnOk: () => {
         this.loading = true;
-        this.cdr.detectChanges();
-
-        // Extraer solo las propiedades que queremos actualizar
-        const { activePromotion, promotions, currentPrice, discountPercentage, ...productWithoutPromotions } = this.product!;
-
-        // Crear un objeto con solo las propiedades que queremos cambiar
-        const updatedFields = {
-          promotions: [] as any[] // Array vacío para limpiar promociones
+        
+        // 🚀 ACTUALIZACIÓN OPTIMISTA LOCAL
+        const optimisticProduct = {
+          ...this.product!,
+          promotions: [],
+          activePromotion: undefined,
+          currentPrice: this.product!.price, // Restaurar precio original
+          discountPercentage: 0
         };
-
-        // Actualizar solo los campos específicos
-        this.productService.updateProduct(this.product!.id, updatedFields)
-          .subscribe({
-            next: () => {
-              // Crear una copia local actualizada del producto
-              const updatedLocalProduct = {
-                ...this.product!,
-                promotions: [],
-                activePromotion: undefined,
-                currentPrice: undefined,
-                discountPercentage: undefined
-              };
-
-              // Recalcular precio
-              const updatedWithPrice = this.productPriceService.calculateDiscountedPrice(updatedLocalProduct);
-
-              this.product = updatedWithPrice;
-              this.loading = false;
-              this.message.success('Promociones eliminadas correctamente');
-              this.cdr.detectChanges();
-            },
-            error: (error) => {
-              this.loading = false;
-              this.message.error('Error al eliminar promociones: ' + (error.message || 'Error desconocido'));
-              this.cdr.detectChanges();
-            }
-          });
+        
+        this.product = optimisticProduct;
+        
+        // 🚀 EMITIR CAMBIO AL PADRE INMEDIATAMENTE
+        this.promotionChanged.emit({
+          productId: optimisticProduct.id,
+          updatedProduct: optimisticProduct
+        });
+        
+        this.message.success('Promociones eliminadas correctamente');
+        this.cdr.markForCheck();
+        
+        // Procesar en servidor en segundo plano
+        this.productService.updateProduct(this.product!.id, {
+          promotions: [],
+          activePromotion: undefined,
+          currentPrice: undefined,
+          discountPercentage: undefined
+        })
+        .pipe(
+          finalize(() => {
+            this.loading = false;
+            this.cdr.markForCheck();
+          })
+        )
+        .subscribe({
+          next: () => {
+            console.log('✅ Promociones eliminadas en servidor');
+            // La UI ya está actualizada optimísticamente
+          },
+          error: (error) => {
+            console.error('❌ Error al eliminar promociones en servidor:', error);
+            
+            // 🔄 ROLLBACK: Restaurar promociones si falla
+            this.loadPromotions(); // Recargar estado desde servidor
+            this.message.error('Error al eliminar promociones: ' + (error.message || 'Error desconocido'));
+          }
+        });
       }
     });
   }

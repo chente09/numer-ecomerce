@@ -101,137 +101,11 @@
     </div>
 </section> -->
 
-<section class="categories-section">
-    <h2 class="section-title" style="color: aliceblue;">Categorías</h2>
+<app-categorias></app-categorias>
 
-    <div *ngIf="loading" class="loading-container">
-        <nz-spin nzSize="large"></nz-spin>
-    </div>
+<app-genero-section></app-genero-section>
 
-    <!-- Usa [nzGutter]="[0, 0]" para eliminar espacios entre columnas -->
-    <div *ngIf="!loading" nz-row [nzGutter]="[0, 0]">
-        <div *ngFor="let category of categories" nz-col [nzXs]="12" [nzSm]="12" [nzMd]="6"
-            [class.blur]="hoveredCategorySlug && hoveredCategorySlug !== category.slug"
-            style="padding: 0; margin: 0; overflow: hidden;">
-
-            <!-- Asegúrate de que la tarjeta no tenga bordes -->
-            <nz-card class="category-card" (mouseenter)="hoveredCategorySlug = category.slug"
-                (mouseleave)="hoveredCategorySlug = null" [nzBodyStyle]="{ padding: '0', margin: '0' }"
-                style="border: none; border-radius: 0; margin: 0; padding: 0; overflow: hidden;">
-
-                <a [routerLink]="['/shop', category.slug]" style="display: block; margin: 0; padding: 0;">
-                    <div class="card-cover" [style.background-image]="'url(' + category.imageUrl + ')'"
-                        style="margin: 0; padding: 0; border: none;">
-                        <div class="card-overlay">
-                            <h3 class="category-name" nz-typography nzEllipsis>
-                                {{category.name}}
-                            </h3>
-                        </div>
-                    </div>
-                </a>
-            </nz-card>
-        </div>
-    </div>
-</section>
-
-<section class="limited-genero-section">
-    <div>
-        <!-- <h2 class="section-title" >Comprar por Género</h2> -->
-        <!-- Vista para pantallas grandes (lado a lado) -->
-        <div class="desktop-view">
-            <div class="side-by-side-container">
-                <div class="product-left" [ngStyle]="{
-                        'background-image': 'url(' + productPairs[0].image + ')',
-                        'background-size': '300px  auto',
-                        'background-position': 'center',
-                        'background-repeat': 'no-repeat'
-                        }">
-                    <div class="overlay"></div>
-                    <h2 class="product-title">{{ productPairs[0].title }}</h2>
-                </div>
-                <div class="product-right" [ngStyle]="{
-                        'background-image': 'url(' + productPairs[1].image + ')',
-                        'background-size': '350px auto',
-                        'background-position': 'center',
-                        'background-repeat': 'no-repeat'
-                        }">
-                    <div class="overlay"></div>
-                    <h2 class="product-title">{{ productPairs[1].title }}</h2>
-                </div>
-                <div class="diagonal-divider-desktop"></div>
-            </div>
-        </div>
-
-        <!-- Vista para pantallas pequeñas (uno encima del otro) -->
-        <div class="mobile-view">
-            <div nz-row [nzGutter]="[16, 16]">
-                <div nz-col [nzSpan]="24">
-                    <nz-card class="product-card-container" nzBorderless="true">
-                        <div class="product-section top-product" [ngStyle]="{
-                                'background-image': 'url(' + productPairs[0].image + ')',
-                                'background-size': '130px auto',
-                                'background-position': 'center',
-                                'background-repeat': 'no-repeat'
-                                }">
-                            <div class="overlay"></div>
-                            <h2 class="product-title">{{ productPairs[0].title }}</h2>
-                        </div>
-                        <div class="diagonal-divider"></div>
-                        <div class="product-section bottom-product" [ngStyle]="{
-                                'background-image': 'url(' + productPairs[1].image + ')',
-                                'background-size': '130px auto',
-                                'background-position': 'center',
-                                'background-repeat': 'no-repeat'
-                                }">
-                            <div class="overlay"></div>
-                            <h2 class="product-title">{{ productPairs[1].title }}</h2>
-                        </div>
-                    </nz-card>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Featured Products Section (nueva) -->
-<section class="featured-products-section">
-    <div>
-        <h2 class="section-title">Productos Destacados</h2>
-        <div *ngIf="productsLoading" class="loading-container">
-            <nz-spin nzSize="large"></nz-spin>
-        </div>
-        <div *ngIf="!productsLoading" class="product-grid">
-            <div *ngFor="let product of featuredProducts" class="product-card-section">
-                <!-- Agregar el enlace al área de la imagen para navegar al detalle -->
-                <div class="product-image-container" [routerLink]="['/products', product.id]" style="cursor: pointer;">
-                    <img [src]="product.imageUrl" alt="{{ product.name }}" class="product-image-section">
-                    <span *ngIf="product.isNew" class="new-badge">NEW</span>
-                </div>
-                <div class="color-options">
-                    <div *ngFor="let color of product.colors" class="color-option"
-                        [ngClass]="{'active': product.imageUrl === color.imageUrl}"
-                        (click)="selectColor(product, color)">
-                        <img [src]="color.imageUrl" [alt]="color.name">
-                    </div>
-                </div>
-                <!-- También puedes hacer clic en el nombre del producto -->
-                <h3 class="product-name" [routerLink]="['/products', product.id]" style="cursor: pointer;">
-                    {{ product.name }}
-                </h3>
-                <div class="product-price">${{ product.price.toFixed(2) }}</div>
-                <div class="product-rating">
-                    <nz-rate [ngModel]="product.rating" nzDisabled [nzAllowHalf]="true" class="large"></nz-rate>
-                </div>
-            </div>
-        </div>
-
-        <div class="view-all-container">
-            <a routerLink="/products" nz-button nzType="default" nzSize="large">
-                Ver Todos los Productos
-            </a>
-        </div>
-    </div>
-</section>
+<app-productos-section></app-productos-section>
 
 
 <!-- Sección de Testimonios y Reseñas (Modificada) -->
@@ -264,9 +138,8 @@
             <div *ngIf="!testimonialsLoading && (!testimonials || testimonials.length === 0)" class="testimonial-empty">
                 <p>No hay reseñas disponibles en este momento.</p>
             </div>
-
         </div>
-
+        
         <!-- Botón unificado para ir a reseñas -->
         <div class="testimonials-action">
             <button routerLink="/review-form">

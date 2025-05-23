@@ -43,6 +43,20 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { PromotionManagementComponent } from "../promotion-management/promotion-management.component";
 
+// 🚀 Interfaces para actualización optimista
+interface ProductBackup {
+  originalProduct: Product;
+  index: number;
+  timestamp: number;
+}
+
+interface OptimisticProductOperation {
+  type: 'create' | 'update' | 'delete';
+  productId: string;
+  backup?: ProductBackup;
+  newProduct?: Product;
+}
+
 @Component({
   selector: 'app-product-management',
   standalone: true,
@@ -107,6 +121,10 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
   // Control de acciones
   isEditMode = false;
+
+  // 🚀 Control de operaciones optimistas
+  private pendingOperations = new Map<string, OptimisticProductOperation>();
+  private originalProductsBackup: Product[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -200,10 +218,15 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   loadProducts(): void {
-    this.loading = true;
-    console.log('Loading iniciado:', this.loading);
 
-    // Crear objeto de filtro desde el formulario
+    // 🧹 LIMPIEZA PREVENTIVA DE CACHÉ
+    this.cacheService.clearCache();
+
+    this.loading = true;
+
+    // Mantener backup antes de cargar nuevos datos
+    this.originalProductsBackup = [...this.products];
+
     const filterValues = this.filterForm.value;
     const filter = {
       searchQuery: filterValues.searchQuery,
@@ -215,7 +238,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       limit: this.pageSize
     };
 
-    // Usar búsqueda si hay query, sino obtener todos
     if (filter.searchQuery) {
       this.productService.searchProducts(filter.searchQuery)
         .pipe(takeUntil(this.destroy$))
@@ -224,25 +246,19 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
             this.products = this.applyClientSideFilters(products, filter);
             this.total = this.products.length;
             this.loading = false;
-            console.log('Loading finalizado en next:', this.loading);
             this.cdr.detectChanges();
           },
           error: (error) => {
-            console.error('Error al buscar productos:', error);
+            console.error('❌ [MANAGEMENT] Error al buscar productos:', error);
             this.message.error('Error al buscar productos: ' + (error.message || 'Error desconocido'));
+
+            // ROLLBACK: Restaurar productos anteriores en caso de error
+            this.products = this.originalProductsBackup;
             this.loading = false;
-            console.log('Loading finalizado en error:', this.loading);
-            this.cdr.detectChanges();
-          },
-          complete: () => {
-            // Este también debería ejecutarse
-            this.loading = false;
-            console.log('Loading finalizado en complete:', this.loading);
             this.cdr.detectChanges();
           }
         });
     } else {
-      // Obtener todos y aplicar filtros
       this.productService.getProducts()
         .pipe(takeUntil(this.destroy$))
         .subscribe({
@@ -251,19 +267,16 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
             this.products = filteredProducts;
             this.total = this.products.length;
             this.loading = false;
-            console.log('Loading finalizado en next:', this.loading);
+
             this.cdr.detectChanges();
           },
           error: (error) => {
-            console.error('Error al cargar productos:', error);
+            console.error('❌ [MANAGEMENT] Error al cargar productos:', error);
             this.message.error('Error al cargar productos: ' + (error.message || 'Error desconocido'));
+
+            // ROLLBACK: Restaurar productos anteriores en caso de error
+            this.products = this.originalProductsBackup;
             this.loading = false;
-            console.log('Loading finalizado en error:', this.loading);
-            this.cdr.detectChanges();
-          },
-          complete: () => {
-            this.loading = false;
-            console.log('Loading finalizado en complete:', this.loading);
             this.cdr.detectChanges();
           }
         });
@@ -289,16 +302,14 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     return category?.name || 'Sin categoría';
   }
 
-  // Filtrado en cliente (igual a tu implementación original)
+  // Filtrado en cliente
   applyClientSideFilters(products: Product[], filter: any): Product[] {
     let result = [...products];
 
-    // Filtrar por categorías
     if (filter.categories && filter.categories.length > 0) {
       result = result.filter(p => filter.categories.includes(p.category));
     }
 
-    // Filtrar por precio
     if (filter.minPrice !== null) {
       result = result.filter(p => (p.currentPrice || p.price) >= filter.minPrice);
     }
@@ -307,7 +318,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       result = result.filter(p => (p.currentPrice || p.price) <= filter.maxPrice);
     }
 
-    // Ordenar
     if (filter.sortBy) {
       switch (filter.sortBy) {
         case 'newest':
@@ -334,37 +344,346 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Aplicar paginación
     const startIndex = (filter.page - 1) * filter.limit;
     const endIndex = startIndex + filter.limit;
 
     return result.slice(startIndex, endIndex);
   }
 
-  // Añade este método a ProductManagementComponent o actualiza el existente
-  onFormSubmitted(event: { success: boolean, action: string, productId: string }): void {
-    if (event.success) {
-      // Siempre recargar la lista completa
-      this.loadProducts();
+  // 🚀 ==================== MANEJO OPTIMISTA DE EVENTOS DE FORMULARIO ====================
 
-      if (event.action === 'update') {
-        // Para actualizaciones, volver a cargar el producto específico con toda su información
-        this.productService.getCompleteProduct(event.productId)
-          .subscribe(product => {
-            if (product) {
-              console.log('Producto actualizado:', product);
-              this.selectedProduct = product;
-              this.cdr.detectChanges();
-            }
-          });
-      } else if (event.action === 'create') {
-        this.closeModals();
-        this.resetSelection();
+  onFormSubmitted(event: {
+    success: boolean,
+    action: string,
+    productId: string,
+    requiresReload?: boolean,
+    optimisticUpdate?: Product
+  }): void {
+
+    if (event.success) {
+      this.closeModals();
+
+      // Invalidar caché principal de productos
+      this.cacheService.invalidate('products');
+      this.cacheService.invalidate(`products_${event.productId}`);
+      this.cacheService.invalidate(`products_complete_${event.productId}`);
+      this.cacheService.invalidate(`product_variants_product_${event.productId}`);
+
+      // Invalidar cachés de variantes e inventario
+      this.cacheService.invalidate('inventory_summary');
+      this.cacheService.invalidate('low_stock_products');
+
+      // Forzar limpieza completa si es necesario
+      if (event.action === 'create' || event.requiresReload) {
+        this.cacheService.invalidateAll();
       }
+
+      if (event.optimisticUpdate) {
+        // 🚀 ACTUALIZACIÓN OPTIMISTA INMEDIATA
+        this.applyOptimisticProductUpdate({
+          action: event.action,
+          productId: event.productId,
+          optimisticUpdate: event.optimisticUpdate
+        });
+
+        // 📡 FORZAR RECARGA DESPUÉS DE OPTIMISTA (DOBLE VERIFICACIÓN)
+        setTimeout(() => {
+          this.verifyProductUpdate(event.productId);
+        }, 1000);
+
+      } else {
+        setTimeout(() => {
+          this.forceProductsReload();
+        }, 300);
+      }
+
+    } else {
+      console.error('❌ [MANAGEMENT] Error en operación de producto:', event);
+      this.closeModals();
     }
   }
 
-  // Acciones de productos
+  private forceProductsReload(): void {
+
+    // Limpiar completamente el caché
+    this.cacheService.clearCache();
+
+    // Marcar como cargando
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    // Recargar desde servidor
+    this.loadProducts();
+  }
+
+  // 3️⃣ Método para verificar actualización de producto específico
+  private verifyProductUpdate(productId: string): void {
+
+    // Forzar invalidación del producto específico
+    this.cacheService.invalidate(`products_${productId}`);
+    this.cacheService.invalidate(`products_complete_${productId}`);
+
+    // Obtener producto actualizado directamente del servidor
+    this.productService.getProductById(productId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (updatedProduct) => {
+          if (updatedProduct) {
+            const index = this.products.findIndex(p => p.id === productId);
+            if (index !== -1) {
+              // Comparar si hay diferencias significativas
+              const hasSignificantChanges = this.hasSignificantProductChanges(
+                this.products[index],
+                updatedProduct
+              );
+
+              if (hasSignificantChanges) {
+                this.products[index] = updatedProduct;
+
+                if (this.selectedProduct && this.selectedProduct.id === productId) {
+                  this.selectedProduct = updatedProduct;
+                }
+
+                this.cdr.detectChanges();
+              } else {
+                console.log('✅ [MANAGEMENT] Producto ya está actualizado correctamente');
+              }
+            }
+          }
+        },
+        error: (error) => {
+          console.error('❌ [MANAGEMENT] Error al verificar producto:', error);
+          // En caso de error, hacer recarga completa
+          this.forceProductsReload();
+        }
+      });
+  }
+
+  // 4️⃣ Método para detectar cambios significativos
+  private hasSignificantProductChanges(oldProduct: Product, newProduct: Product): boolean {
+    return (
+      oldProduct.name !== newProduct.name ||
+      oldProduct.price !== newProduct.price ||
+      oldProduct.currentPrice !== newProduct.currentPrice ||
+      oldProduct.totalStock !== newProduct.totalStock ||
+      oldProduct.discountPercentage !== newProduct.discountPercentage ||
+      oldProduct.imageUrl !== newProduct.imageUrl ||
+      (oldProduct.variants?.length || 0) !== (newProduct.variants?.length || 0)
+    );
+  }
+
+  /**
+   * 🚀 Aplica actualización optimista basada en el evento del formulario
+   */
+  private applyOptimisticProductUpdate(params: {
+    action: string,
+    productId: string,
+    optimisticUpdate: Product
+  }): void {
+    const { action, productId, optimisticUpdate } = params;
+
+    if (action === 'create') {
+      // ➕ CREAR PRODUCTO OPTIMÍSTICAMENTE
+      this.createProductOptimistically(optimisticUpdate);
+    } else if (action === 'update') {
+      // 🔄 ACTUALIZAR PRODUCTO OPTIMÍSTICAMENTE
+      this.updateProductOptimistically(productId, optimisticUpdate);
+    }
+  }
+
+  /**
+   * ➕ Crea un producto optimísticamente en la lista
+   */
+  private createProductOptimistically(newProduct: Product): void {
+    // Registrar operación pendiente
+    this.pendingOperations.set(newProduct.id, {
+      type: 'create',
+      productId: newProduct.id,
+      newProduct
+    });
+
+    // Agregar al inicio de la lista (productos más recientes primero)
+    this.products = [newProduct, ...this.products];
+    this.total = this.products.length;
+
+
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * 🔄 Actualiza un producto optimísticamente en la lista
+   */
+  private updateProductOptimistically(productId: string, updatedProduct: Product): void {
+    const productIndex = this.products.findIndex(p => p.id === productId);
+
+    if (productIndex === -1) {
+      console.warn(`⚠️ [MANAGEMENT] Producto no encontrado para actualización optimista: ${productId}`);
+      return;
+    }
+
+    // Crear backup del producto original
+    const backup: ProductBackup = {
+      originalProduct: { ...this.products[productIndex] },
+      index: productIndex,
+      timestamp: Date.now()
+    };
+
+    // Registrar operación pendiente
+    this.pendingOperations.set(productId, {
+      type: 'update',
+      productId,
+      backup,
+      newProduct: updatedProduct
+    });
+
+    // Aplicar actualización inmediatamente
+    this.products[productIndex] = { ...updatedProduct };
+
+
+    // Actualizar producto seleccionado si es el mismo que se editó
+    if (this.selectedProduct && this.selectedProduct.id === productId) {
+      this.selectedProduct = { ...updatedProduct };
+    }
+
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * 🗑️ Elimina un producto optimísticamente
+   */
+  private deleteProductOptimistically(productId: string): void {
+    const productIndex = this.products.findIndex(p => p.id === productId);
+
+    if (productIndex === -1) {
+      console.warn(`⚠️ [MANAGEMENT] Producto no encontrado para eliminación optimista: ${productId}`);
+      return;
+    }
+
+    // Crear backup del producto original
+    const backup: ProductBackup = {
+      originalProduct: { ...this.products[productIndex] },
+      index: productIndex,
+      timestamp: Date.now()
+    };
+
+    // Registrar operación pendiente
+    this.pendingOperations.set(productId, {
+      type: 'delete',
+      productId,
+      backup
+    });
+
+    // Eliminar de la lista inmediatamente
+    this.products.splice(productIndex, 1);
+    this.total = this.products.length;
+
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * ✅ Confirma una operación optimista (el servidor confirmó los cambios)
+   */
+  private confirmOptimisticOperation(productId: string): void {
+    const operation = this.pendingOperations.get(productId);
+
+    if (operation) {
+
+      this.pendingOperations.delete(productId);
+    }
+  }
+
+  /**
+   * 🔄 Revierte una operación optimista (el servidor rechazó los cambios)
+   */
+  private rollbackOptimisticOperation(productId: string): void {
+    const operation = this.pendingOperations.get(productId);
+
+    if (!operation) {
+      console.warn(`⚠️ [MANAGEMENT] No se encontró operación para rollback: ${productId}`);
+      return;
+    }
+
+    switch (operation.type) {
+      case 'create':
+        // Remover producto que se agregó optimísticamente
+        this.products = this.products.filter(p => p.id !== productId);
+        this.total = this.products.length;
+        break;
+
+      case 'update':
+        if (operation.backup) {
+          // Restaurar producto original
+          this.products[operation.backup.index] = { ...operation.backup.originalProduct };
+
+          // Actualizar producto seleccionado si es necesario
+          if (this.selectedProduct && this.selectedProduct.id === productId) {
+            this.selectedProduct = { ...operation.backup.originalProduct };
+          }
+        }
+        break;
+
+      case 'delete':
+        if (operation.backup) {
+          // Restaurar producto en su posición original
+          this.products.splice(operation.backup.index, 0, { ...operation.backup.originalProduct });
+          this.total = this.products.length;
+        }
+        break;
+    }
+
+    this.pendingOperations.delete(productId);
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * 🔄 Método mejorado para refrescar un producto específico
+   */
+  refreshProduct(productId: string): void {
+  
+  // 🧹 INVALIDACIÓN AGRESIVA INMEDIATA
+  this.cacheService.invalidateProductCache(productId);
+  
+  // Si hay una operación pendiente, confirmarla primero
+  if (this.pendingOperations.has(productId)) {
+    this.confirmOptimisticOperation(productId);
+  }
+  
+  // 🔄 USAR MÉTODO SIN CACHÉ DEL SERVICIO
+  this.productService.forceRefreshProduct(productId)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (updatedProduct) => {
+        if (updatedProduct) {
+          const index = this.products.findIndex(p => p.id === productId);
+          if (index !== -1) {
+            
+            this.products[index] = updatedProduct;
+            
+            if (this.selectedProduct && this.selectedProduct.id === productId) {
+              this.selectedProduct = updatedProduct;
+            }
+            
+            this.cdr.detectChanges();
+          } else {
+            this.forceProductsReload();
+          }
+        } else {
+          console.warn('⚠️ [MANAGEMENT] Producto no encontrado en servidor');
+        }
+      },
+      error: (error) => {
+        console.error('❌ [MANAGEMENT] Error al refrescar producto:', error);
+        // En caso de error, hacer rollback si hay operación pendiente
+        this.rollbackOptimisticOperation(productId);
+        
+        // Como último recurso, recargar todos los productos
+        this.forceProductsReload();
+      }
+    });
+}
+
+  // ==================== ACCIONES DE PRODUCTOS ====================
+
   openCreateModal(): void {
     this.isEditMode = false;
     this.selectedProduct = null;
@@ -385,6 +704,9 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   closeModals(): void {
     this.formModalVisible = false;
     this.detailsModalVisible = false;
+    this.selectedProduct = null;
+    this.isEditMode = false;
+    this.cdr.detectChanges();
   }
 
   resetSelection(): void {
@@ -406,7 +728,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.loadProducts();
   }
 
-  // Abrir diferentes drawers/paneles
+  // ==================== DRAWERS/PANELES ====================
+
   openStatsDrawer(product: Product): void {
     this.selectedProduct = product;
     this.showStatsDrawer = true;
@@ -428,7 +751,131 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.showPromotionsDrawer = false;
   }
 
-  // Eliminar producto
+  // 🚀 ==================== MANEJO DE CAMBIOS DESDE DRAWERS ====================
+
+  /**
+   * 🔄 Maneja cambios de inventario desde el drawer
+   */
+  onInventoryChange(event: { productId: string, updatedProduct?: Product, stockChange?: number }): void {
+
+    // 🧹 INVALIDAR CACHÉ INMEDIATAMENTE
+    this.cacheService.invalidate(`products_${event.productId}`);
+    this.cacheService.invalidate(`products_complete_${event.productId}`);
+    this.cacheService.invalidate(`product_variants_product_${event.productId}`);
+
+    const productIndex = this.products.findIndex(p => p.id === event.productId);
+
+    if (productIndex === -1) {
+      console.warn(`⚠️ [MANAGEMENT] Producto no encontrado para actualización de inventario: ${event.productId}`);
+      // Si no se encuentra, forzar recarga completa
+      this.forceProductsReload();
+      return;
+    }
+
+    if (event.updatedProduct) {
+
+      this.products[productIndex] = { ...event.updatedProduct };
+
+      // Actualizar producto seleccionado si es el mismo
+      if (this.selectedProduct && this.selectedProduct.id === event.productId) {
+        this.selectedProduct = { ...event.updatedProduct };
+      }
+    } else if (event.stockChange !== undefined) {
+      // 📊 ACTUALIZACIÓN SOLO DE STOCK
+      const oldStock = this.products[productIndex].totalStock || 0;
+      const newStock = Math.max(0, oldStock + event.stockChange);
+
+      this.products[productIndex] = {
+        ...this.products[productIndex],
+        totalStock: newStock
+      };
+
+      // Actualizar producto seleccionado si es el mismo
+      if (this.selectedProduct && this.selectedProduct.id === event.productId) {
+        this.selectedProduct = {
+          ...this.selectedProduct,
+          totalStock: newStock
+        };
+      }
+    }
+    // 🔄 VERIFICACIÓN ADICIONAL DESPUÉS DE UN TIEMPO
+    setTimeout(() => {
+      this.verifyProductUpdate(event.productId);
+    }, 2000);
+
+    // Forzar detección de cambios
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * 🏷️ Maneja cambios de promociones desde el drawer
+   */
+  // 6️⃣ Mejorar manejo de eventos de promociones
+  onPromotionChange(event: { productId: string, updatedProduct?: Product }): void {
+
+    // 🧹 INVALIDAR CACHÉ INMEDIATAMENTE
+    this.cacheService.invalidate(`products_${event.productId}`);
+    this.cacheService.invalidate(`products_complete_${event.productId}`);
+    this.cacheService.invalidate('products_discounted');
+
+    if (!event.updatedProduct) {
+      // Si no hay producto actualizado, verificar desde servidor
+      this.verifyProductUpdate(event.productId);
+      return;
+    }
+
+    const productIndex = this.products.findIndex(p => p.id === event.productId);
+
+    if (productIndex === -1) {
+      console.warn(`⚠️ [MANAGEMENT] Producto no encontrado para actualización de promoción: ${event.productId}`);
+      this.forceProductsReload();
+      return;
+    }
+
+    // Actualizar producto en la lista
+    this.products[productIndex] = { ...event.updatedProduct };
+
+    // Actualizar producto seleccionado si es el mismo
+    if (this.selectedProduct && this.selectedProduct.id === event.productId) {
+      this.selectedProduct = { ...event.updatedProduct };
+    }
+
+    // 🔄 VERIFICACIÓN ADICIONAL
+    setTimeout(() => {
+      this.verifyProductUpdate(event.productId);
+    }, 2000);
+
+    this.cdr.detectChanges();
+  }
+
+
+  /**
+   * 📊 Maneja cambios de estadísticas desde el drawer
+   */
+  onStatsChange(event: { productId: string, updatedProduct?: Product }): void {
+
+    if (!event.updatedProduct) return;
+
+    const productIndex = this.products.findIndex(p => p.id === event.productId);
+
+    if (productIndex === -1) {
+      console.warn(`⚠️ [MANAGEMENT] Producto no encontrado para actualización de estadísticas: ${event.productId}`);
+      return;
+    }
+
+    // Actualizar producto en la lista
+    this.products[productIndex] = { ...event.updatedProduct };
+
+    // Actualizar producto seleccionado si es el mismo
+    if (this.selectedProduct && this.selectedProduct.id === event.productId) {
+      this.selectedProduct = { ...event.updatedProduct };
+    }
+
+    this.cdr.detectChanges();
+  }
+
+  // 🚀 ==================== ELIMINACIÓN OPTIMISTA ====================
+
   deleteProduct(id: string): void {
     this.modal.confirm({
       nzTitle: '¿Está seguro de eliminar este producto?',
@@ -437,6 +884,9 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       nzOkType: 'primary',
       nzOkDanger: true,
       nzOnOk: () => {
+        // 🚀 ELIMINACIÓN OPTIMISTA INMEDIATA
+        this.deleteProductOptimistically(id);
+
         this.loading = true;
         this.productService.deleteProduct(id)
           .pipe(
@@ -446,27 +896,44 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
           .subscribe({
             next: () => {
               this.message.success('Producto eliminado correctamente');
-              // No es necesario recargar, gracias a la invalidación de caché
+              // ✅ Confirmar eliminación optimista
+              this.confirmOptimisticOperation(id);
             },
             error: (error) => {
               this.message.error('Error al eliminar producto: ' + (error.message || 'Error desconocido'));
+              // 🔄 ROLLBACK: Restaurar producto eliminado
+              this.rollbackOptimisticOperation(id);
             }
           });
       }
     });
   }
 
-  // Verificar si un producto tiene descuento
+  // ==================== UTILIDADES ====================
+
   hasDiscount(product: Product): boolean {
     return !!product.discountPercentage && product.discountPercentage > 0;
   }
 
-  // Manejar errores de imágenes
   handleImageError(event: Event): void {
     const imgElement = event.target as HTMLImageElement;
     if (imgElement) {
       imgElement.src = 'assets/images/product-placeholder.png';
       imgElement.classList.add('error-image');
     }
+  }
+
+  /**
+   * 🧹 Limpia operaciones pendientes antiguas (opcional)
+   */
+  private cleanupOldPendingOperations(): void {
+    const now = Date.now();
+    const maxAge = 5 * 60 * 1000; // 5 minutos
+
+    this.pendingOperations.forEach((operation, productId) => {
+      if (operation.backup && (now - operation.backup.timestamp) > maxAge) {
+        this.pendingOperations.delete(productId);
+      }
+    });
   }
 }

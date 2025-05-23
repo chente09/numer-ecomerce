@@ -20,9 +20,7 @@ export class PromotionService {
     const promotionsRef = collection(this.firestore, this.collectionName);
     return collectionData(promotionsRef, { idField: 'id' }).pipe(
       map(data => {
-        console.log('Datos crudos de Firestore:', data);
         return (data as any[]).map(promo => {
-          console.log('Procesando promoción:', promo.id, 'startDate:', promo.startDate);
 
           // Convertir fechas desde Firestore
           let startDate: Date;

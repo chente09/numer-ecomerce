@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { ProductInventoryService, InventorySummary } from '../../../services/admin/inventario/product-inventory.service';
@@ -42,36 +42,40 @@ import { FormsModule } from '@angular/forms';
 })
 export class ProductStatsComponent implements OnInit, OnChanges {
   @Input() product: Product | null = null;
-  
+  @Output() statsChanged = new EventEmitter<{
+    productId: string;
+    updatedProduct?: Product;
+  }>();
+
   loading = false;
   salesHistory: { date: Date, sales: number }[] = [];
   stockData: any = null;
   viewsData: { period: string, count: number }[] = [];
-  
+
   constructor(
     private productService: ProductService,
     private inventoryService: ProductInventoryService,
     private cdr: ChangeDetectorRef
   ) { }
-  
+
   ngOnInit(): void {
     if (this.product) {
       this.loadProductStats();
     }
   }
-  
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['product'] && this.product) {
       this.loadProductStats();
     }
   }
-  
+
   loadProductStats(): void {
     if (!this.product) return;
-    
+
     this.loading = true;
-    
-    // Simulación de datos de ventas históricas (en un entorno real, usarías un servicio)
+
+    // Simulación de datos de ventas históricas
     this.salesHistory = [
       { date: new Date(2025, 4, 10), sales: 5 },
       { date: new Date(2025, 4, 11), sales: 3 },
@@ -79,16 +83,16 @@ export class ProductStatsComponent implements OnInit, OnChanges {
       { date: new Date(2025, 4, 13), sales: 2 },
       { date: new Date(2025, 4, 14), sales: 6 }
     ];
-    
-    // Simulación de datos de vistas (en un entorno real, usarías un servicio)
+
+    // Simulación de datos de vistas
     this.viewsData = [
       { period: 'Hoy', count: 12 },
       { period: 'Ayer', count: 8 },
       { period: 'Última semana', count: 45 },
       { period: 'Último mes', count: 180 }
     ];
-    
-    // Obtener datos de stock del producto
+
+    // Obtener datos reales del producto
     this.productService.getCompleteProduct(this.product.id)
       .pipe(
         finalize(() => {
@@ -105,6 +109,14 @@ export class ProductStatsComponent implements OnInit, OnChanges {
               variantsWithoutStock: product.variants?.filter(v => (v.stock || 0) === 0).length || 0,
               totalVariants: product.variants?.length || 0
             };
+
+            // 🚀 EMITIR CAMBIO AL PADRE SI HAY DIFERENCIAS
+            if (this.hasStatsChanged(product)) {
+              this.statsChanged.emit({
+                productId: product.id,
+                updatedProduct: product
+              });
+            }
           }
           this.cdr.markForCheck();
         },
@@ -113,7 +125,19 @@ export class ProductStatsComponent implements OnInit, OnChanges {
         }
       });
   }
-  
+
+  // 🔍 Verificar si las estadísticas han cambiado
+  private hasStatsChanged(updatedProduct: Product): boolean {
+    if (!this.product) return false;
+
+    return (
+      this.product.views !== updatedProduct.views ||
+      this.product.sales !== updatedProduct.sales ||
+      this.product.totalStock !== updatedProduct.totalStock ||
+      this.product.popularityScore !== updatedProduct.popularityScore
+    );
+  }
+
   // Formateo de datos para visualización
   formatDate(date: Date): string {
     return new Intl.DateTimeFormat('es-ES', {
@@ -121,5 +145,14 @@ export class ProductStatsComponent implements OnInit, OnChanges {
       month: '2-digit',
       year: 'numeric'
     }).format(date);
+  }
+
+  private emitStatsChange(): void {
+    if (this.product) {
+      this.statsChanged.emit({
+        productId: this.product.id,
+        updatedProduct: this.product
+      });
+    }
   }
 }

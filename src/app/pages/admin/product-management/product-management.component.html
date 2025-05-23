@@ -209,7 +209,9 @@
     <nz-drawer [nzVisible]="showStatsDrawer" [nzTitle]="'Estadísticas: ' + (selectedProduct?.name || '')"
         nzPlacement="right" [nzWidth]="720" (nzOnClose)="closeDrawers()">
         <ng-container *nzDrawerContent>
-            <app-product-stats [product]="selectedProduct"></app-product-stats>
+            <!-- 🚀 NUEVO: Escuchar eventos de cambios de estadísticas -->
+            <app-product-stats [product]="selectedProduct" (statsChanged)="onStatsChange($event)">
+            </app-product-stats>
         </ng-container>
     </nz-drawer>
 
@@ -217,7 +219,10 @@
     <nz-drawer [nzVisible]="showInventoryDrawer" [nzTitle]="'Inventario: ' + (selectedProduct?.name || '')"
         nzPlacement="right" [nzWidth]="720" (nzOnClose)="closeDrawers()">
         <ng-container *nzDrawerContent>
-            <app-product-inventory [product]="selectedProduct"></app-product-inventory>
+            <!-- 🚀 NUEVO: Escuchar eventos de cambios de inventario -->
+            <app-product-inventory [product]="selectedProduct" (inventoryChanged)="onInventoryChange($event)"
+                (productUpdated)="onInventoryChange($event)">
+            </app-product-inventory>
         </ng-container>
     </nz-drawer>
 
@@ -225,7 +230,9 @@
     <nz-drawer [nzVisible]="showPromotionsDrawer" [nzTitle]="'Promociones: ' + (selectedProduct?.name || '')"
         nzPlacement="right" [nzWidth]="720" (nzOnClose)="closeDrawers()">
         <ng-container *nzDrawerContent>
-            <app-product-promotions [product]="selectedProduct"></app-product-promotions>
+            <!-- 🚀 NUEVO: Escuchar eventos de cambios de promociones -->
+            <app-product-promotions [product]="selectedProduct" (promotionChanged)="onPromotionChange($event)">
+            </app-product-promotions>
         </ng-container>
     </nz-drawer>
 </div>

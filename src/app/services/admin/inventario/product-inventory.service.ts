@@ -372,6 +372,42 @@ export class ProductInventoryService {
   }
 
   /**
+   * Elimina una variante específica
+   */
+  deleteVariant(variantId: string): Observable<void> {
+    return this.getVariantById(variantId).pipe(
+      switchMap(variant => {
+        if (!variant) {
+          return throwError(() => new Error('Variante no encontrada'));
+        }
+
+        return from((async () => {
+          const batch = writeBatch(this.firestore);
+
+          // Eliminar variante
+          const variantRef = doc(this.firestore, this.variantsCollection, variantId);
+          batch.delete(variantRef);
+
+          // Actualizar stock del producto si es necesario
+          if (variant.productId && (variant.stock || 0) > 0) {
+            const productRef = doc(this.firestore, this.productsCollection, variant.productId);
+            batch.update(productRef, {
+              totalStock: increment(-(variant.stock || 0)),
+              updatedAt: new Date()
+            });
+          }
+
+          await batch.commit();
+
+          // Invalidar caché
+          this.invalidateInventoryCache(variantId, variant.productId);
+        })());
+      }),
+      catchError(error => ErrorUtil.handleError(error, 'deleteVariant'))
+    );
+  }
+
+  /**
    * Obtiene productos con bajo stock
    */
   getLowStockProducts(threshold: number = this.lowStockThreshold): Observable<LowStockProduct[]> {

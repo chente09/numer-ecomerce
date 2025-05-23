@@ -1,0 +1,389 @@
+/* =================================================================
+   SECCIÓN DE GÉNERO - ESTILOS OPTIMIZADOS Y RESPONSIVE
+   ================================================================= */
+.gender-section,
+.gender-section * {
+    border-radius: 0 !important;
+}
+
+.gender-section {
+    position: relative;
+    overflow: hidden;
+    background-color: #000000;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 700;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+/* =================================================================
+   ESTILOS COMPARTIDOS
+   ================================================================= */
+
+.product-picture {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+}
+
+.product-image.loaded {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: clamp(16px, 4vw, 32px);
+    z-index: 3;
+    color: white;
+    text-align: left;
+}
+
+.left-panel .panel-content {
+    padding-right: clamp(40px, 8vw, 80px);
+    max-width: 70%;
+}
+
+.right-panel .panel-content {
+    padding-left: clamp(40px, 8vw, 80px);
+    max-width: 70%;
+    margin-left: 10%;
+}
+
+.product-title {
+    font-size: clamp(1.8rem, 5vw, 4rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: clamp(1px, 0.2vw, 3px);
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: white;
+}
+
+.product-subtitle {
+    font-size: clamp(0.875rem, 2vw, 1.125rem);
+    font-weight: 500;
+    margin: 0;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =================================================================
+   VISTA DESKTOP - SIN CONDICIONES *ngIf
+   ================================================================= */
+
+.desktop-view {
+    display: block;
+}
+
+.split-container {
+    position: relative;
+    width: 100%;
+    height: clamp(500px, 60vh, 600px);
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.product-panel {
+    position: absolute;
+    height: 100%;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.left-panel {
+    left: 0;
+    width: 62%;
+    clip-path: polygon(0 0, 85% 0, 75% 100%, 0 100%);
+    z-index: 2;
+}
+
+.right-panel {
+    right: 0;
+    width: 62%;
+    clip-path: polygon(25% 0, 100% 0, 100% 100%, 15% 100%);
+    z-index: 1;
+}
+
+.cta-arrow {
+    position: absolute;
+    top: 50%;
+    right: 32px;
+    transform: translateY(-50%);
+    font-size: 24px;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover Effects Desktop */
+.product-panel:hover {
+    transform: scale(1.02);
+}
+
+.product-panel:hover .product-image {
+    transform: scale(1.08);
+    filter: brightness(1.1);
+}
+
+.product-panel:hover .product-title {
+    transform: scale(1.05);
+    text-shadow: 3px 3px 12px rgba(0, 0, 0, 0.9);
+}
+
+.product-panel:hover .cta-arrow {
+    opacity: 1;
+    transform: translateY(-50%) translateX(8px);
+}
+
+.product-panel:hover .image-overlay {
+    opacity: 0.8;
+}
+
+/* Focus States */
+.product-panel:focus {
+    outline: 3px solid #000000;
+    outline-offset: 2px;
+}
+
+/* =================================================================
+   VISTA MOBILE - SIN CONDICIONES *ngIf
+   ================================================================= */
+
+.mobile-view {
+    display: none;
+}
+
+.mobile-container-wrapper {
+    position: relative;
+    width: 100%;
+    height: clamp(350px, 50vh, 500px);
+    background: transparent;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-panel {
+    position: absolute;
+    width: 100%;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.top-panel {
+    top: 0;
+    height: 53%;
+    clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+    z-index: 2;
+}
+
+.bottom-panel {
+    bottom: 0;
+    height: 53%;
+    clip-path: polygon(0 15%, 100% 0, 100% 100%, 0 100%);
+    z-index: 1;
+}
+
+/* Hover Effects Mobile */
+.mobile-panel:hover .product-image {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+.mobile-panel:hover .product-title {
+    transform: scale(1.03);
+}
+
+.mobile-panel:focus {
+    outline: 3px solid #000000;
+    outline-offset: 2px;
+}
+
+/* =================================================================
+   ESTADOS DE ERROR Y FALLBACK
+   ================================================================= */
+
+.image-error {
+    filter: grayscale(20%) brightness(0.9);
+    opacity: 0.8;
+}
+
+.fallback-applied {
+    background-color: #f5f5f5;
+}
+
+/* =================================================================
+   ANIMACIONES
+   ================================================================= */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(1.02);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Animación de entrada para la sección */
+.gender-section {
+    animation: slideInUp 0.6s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =================================================================
+   RESPONSIVE DESIGN - MEDIA QUERIES CORREGIDAS
+   ================================================================= */
+
+/* Tablet Landscape */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .split-container {
+        height: clamp(350px, 50vh, 450px);
+    }
+
+    .product-title {
+        font-size: clamp(1.5rem, 4vw, 3rem);
+    }
+}
+
+/* PUNTO CRÍTICO: 768px y hacia abajo = MOBILE */
+@media (max-width: 768px) {
+    .desktop-view {
+        display: none !important;
+    }
+
+    .mobile-view {
+        display: block !important;
+    }
+    
+    /* Asegurar que el contenedor móvil ocupe todo el espacio */
+    .mobile-container-wrapper {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+}
+
+/* Mobile Medium */
+@media (max-width: 480px) {
+    .mobile-container-wrapper {
+        height: clamp(300px, 45vh, 400px);
+    }
+
+    .product-title {
+        font-size: clamp(1.3rem, 4vw, 2rem);
+        letter-spacing: 1px;
+    }
+
+    .panel-content {
+        padding: clamp(12px, 3vw, 20px);
+    }
+}
+
+/* Mobile Small */
+@media (max-width: 360px) {
+    .mobile-container-wrapper {
+        height: clamp(250px, 40vh, 350px);
+    }
+
+    .product-title {
+        font-size: clamp(1.1rem, 3.5vw, 1.8rem);
+    }
+
+    .product-subtitle {
+        font-size: clamp(0.75rem, 2vw, 0.875rem);
+    }
+}
+
+/* FORZAR que desktop se vea SOLO en pantallas grandes */
+@media (min-width: 769px) {
+    .desktop-view {
+        display: block !important;
+    }
+
+    .mobile-view {
+        display: none !important;
+    }
+}
+
+/* =================================================================
+   MEJORAS DE RENDIMIENTO
+   ================================================================= */
+
+/* Optimización para GPU */
+.product-panel,
+.mobile-panel,
+.product-image {
+    will-change: transform;
+    backface-visibility: hidden;
+}
+
+/* Reducir motion para usuarios que lo prefieren */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* =================================================================
+   MODO ALTO CONTRASTE
+   ================================================================= */
+
+@media (prefers-contrast: high) {
+
+    .product-title {
+        text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);
+    }
+}

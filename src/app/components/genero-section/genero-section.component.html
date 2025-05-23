@@ -1,0 +1,62 @@
+<section class="gender-section">
+    <!-- titulo -->
+    <h2 class="section-title" style="color: aliceblue;">Para Cada Aventurero</h2>
+    <!-- Vista Desktop - Mostrar cuando pantalla > 600px -->
+    <div class="desktop-view">
+        <div class="split-container">
+            <article *ngFor="let product of productPairs; let i = index; trackBy: trackByProductId"
+                class="product-panel" [class.left-panel]="i === 0" [class.right-panel]="i === 1"
+                [attr.aria-label]="'Explorar colección ' + product.title" (click)="navigateToCategory(product.category)"
+                (keydown.enter)="navigateToCategory(product.category)"
+                (keydown.space)="navigateToCategory(product.category)" tabindex="0" role="button">
+
+                <!-- Imagen optimizada -->
+                <picture class="product-picture">
+                    <img [src]="product.image" [alt]="product.alt" class="product-image"
+                        [class.loaded]="isImageLoaded(product.id)" loading="eager" decoding="async"
+                        (load)="imagesLoaded.add(product.id)" (error)="handleImageError($event, product)">
+                </picture>
+
+                <!-- Overlay gradiente -->
+                <div class="image-overlay"></div>
+
+                <!-- Contenido del panel -->
+                <div class="panel-content">
+                    <h2 class="product-title">{{ product.title }}</h2>
+                    <p class="product-subtitle">Explorar colección</p>
+                    <span class="cta-arrow" aria-hidden="true">
+                        <span nz-icon nzType="arrow-right" nzTheme="outline"></span>
+                    </span>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- Vista Mobile - Mostrar cuando pantalla <= 600px -->
+    <div class="mobile-view">
+        <div class="mobile-container-wrapper">
+            <article *ngFor="let product of productPairs; let i = index; trackBy: trackByProductId" class="mobile-panel"
+                [class.top-panel]="i === 0" [class.bottom-panel]="i === 1"
+                [attr.aria-label]="'Explorar colección ' + product.title" (click)="navigateToCategory(product.category)"
+                (keydown.enter)="navigateToCategory(product.category)"
+                (keydown.space)="navigateToCategory(product.category)" tabindex="0" role="button">
+
+                <!-- Imagen optimizada -->
+                <picture class="product-picture">
+                    <img [src]="product.image" [alt]="product.alt" class="product-image"
+                        [class.loaded]="isImageLoaded(product.id)" loading="eager" decoding="async"
+                        (load)="imagesLoaded.add(product.id)" (error)="handleImageError($event, product)">
+                </picture>
+
+                <!-- Overlay gradiente -->
+                <div class="image-overlay"></div>
+
+                <!-- Contenido del panel -->
+                <div class="panel-content">
+                    <h2 class="product-title">{{ product.title }}</h2>
+                    <p class="product-subtitle">Explorar colección</p>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
