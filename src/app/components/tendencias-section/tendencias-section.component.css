@@ -1,0 +1,365 @@
+/* =================================================================
+   SECCIÓN DE TENDENCIAS Y NOVEDADES
+   ================================================================= */
+
+.trends-section {
+    padding: 12px;
+    background-color: white;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 10px 0;
+    text-transform: uppercase;
+}
+
+/* =================================================================
+   CONTENEDOR DE PRODUCTOS
+   ================================================================= */
+
+.featured-products-container {
+    overflow-x: auto;
+    padding-bottom: 30px; /* Aumenté de 20px a 30px */
+    margin-bottom: 10px; /* Agregué margen inferior */
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 24px;
+    padding: 0 16px;
+    
+    /* Estilos personalizados para la barra de scroll */
+    scrollbar-width: thin; /* Para Firefox */
+    scrollbar-color: #e0e0e0 transparent; /* Para Firefox */
+}
+
+/* Estilos para la barra de scroll en Chrome/Safari/Edge */
+.featured-products-container::-webkit-scrollbar {
+    height: 8px; /* Hacer la barra un poco más gruesa */
+}
+
+.featured-products-container::-webkit-scrollbar-track {
+    background: transparent; /* Fondo transparente */
+    margin: 0 16px; /* Margen a los lados */
+}
+
+.featured-products-container::-webkit-scrollbar-thumb {
+    background-color: #e0e0e0; /* Color del thumb */
+    border-radius: 4px; /* Bordes redondeados */
+}
+
+.featured-products-container::-webkit-scrollbar-thumb:hover {
+    background-color: #c0c0c0; /* Color al hover */
+}
+
+
+.trend-product-card {
+    overflow: hidden;
+    background-color: white;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+    min-width: 280px;
+}
+
+.trend-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* =================================================================
+   IMAGEN DE PRODUCTO
+   ================================================================= */
+
+.product-image-container {
+    position: relative;
+    height: 290px;
+    background-color: #f3f3f3;
+    overflow: hidden;
+}
+
+.product-image-section {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+    padding: 10px;
+}
+
+.product-image-section:hover {
+    transform: scale(1.05);
+}
+
+.new-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #000;
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    transform: skewX(-10deg);
+    z-index: 2;
+}
+
+/* =================================================================
+   INFORMACIÓN DE PRODUCTO
+   ================================================================= */
+
+.product-name {
+    margin: 6px 12px;
+    font-size: 22px;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.product-name:hover {
+    color: #666;
+}
+
+.product-price {
+    margin: 5px 15px;
+    font-size: 15px;
+    letter-spacing: 2px;
+    font-weight: lighter;
+    color: #000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.original-price {
+    text-decoration: line-through;
+    color: #999;
+    font-size: 14px;
+}
+
+.current-price {
+    color: #000;
+    font-weight: 600;
+}
+
+/* =================================================================
+   RATING CON ESTRELLAS NEGRAS
+   ================================================================= */
+
+.product-rating {
+    margin: 5px 15px;
+    color: black;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rating-text {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Estrellas negras - Múltiples selectores para máxima compatibilidad */
+.black-stars,
+.black-stars :deep(.ant-rate-star),
+.black-stars :deep(.ant-rate-star-full),
+.black-stars :deep(.ant-rate-star-half),
+.product-rating :deep(.ant-rate-star),
+.product-rating :deep(.ant-rate-star-full),
+.product-rating :deep(.ant-rate-star-half) {
+    color: #000 !important;
+    font-size: 16px;
+}
+
+.black-stars :deep(.ant-rate-star-zero),
+.product-rating :deep(.ant-rate-star-zero) {
+    color: #ddd !important;
+}
+
+/* Fallback para navegadores que no soporten :deep */
+::ng-deep .black-stars .ant-rate-star,
+::ng-deep .black-stars .ant-rate-star-full,
+::ng-deep .black-stars .ant-rate-star-half,
+::ng-deep .product-rating .ant-rate-star,
+::ng-deep .product-rating .ant-rate-star-full,
+::ng-deep .product-rating .ant-rate-star-half {
+    color: #000 !important;
+}
+
+::ng-deep .black-stars .ant-rate-star-zero,
+::ng-deep .product-rating .ant-rate-star-zero {
+    color: #ddd !important;
+}
+
+/* Asegurar que el ícono dentro de la estrella también sea negro */
+::ng-deep .black-stars .ant-rate-star .anticon,
+::ng-deep .product-rating .ant-rate-star .anticon {
+    color: inherit !important;
+}
+
+/* =================================================================
+   PERSONALIZACIÓN DE TABS
+   ================================================================= */
+
+::ng-deep .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: black !important;
+}
+
+::ng-deep .ant-tabs-ink-bar {
+    background-color: black !important;
+}
+
+::ng-deep .ant-tabs-tab:hover {
+    color: #333 !important;
+}
+
+/* =================================================================
+   RESPONSIVE DESIGN
+   ================================================================= */
+
+/* Tablets y móviles grandes */
+@media (max-width: 768px) {
+    .trends-section {
+        padding: 8px;
+    }
+
+    .featured-products-container {
+        gap: 16px;
+        padding: 0 12px;
+    }
+
+    .trend-product-card {
+        min-width: 240px;
+    }
+
+    .product-image-container {
+        height: 250px;
+    }
+
+    .product-name {
+        font-size: 18px;
+        margin: 4px 8px;
+    }
+
+    .product-price,
+    .product-rating {
+        margin: 4px 8px;
+    }
+
+    .section-title {
+        font-size: 28px;
+        margin: 8px 0;
+    }
+}
+
+/* Móviles grandes (376px - 480px) */
+@media (max-width: 480px) {
+    .section-title {
+        font-size: 22px;
+        margin: 6px 0;
+    }
+
+    .featured-products-container {
+        gap: 12px;
+        padding: 0 8px;
+    }
+
+    .trend-product-card {
+        min-width: 200px;
+    }
+
+    .product-image-container {
+        height: 220px;
+    }
+
+    .product-name {
+        font-size: 16px;
+        margin: 3px 6px;
+    }
+
+    .product-price,
+    .product-rating {
+        margin: 3px 6px;
+        font-size: 13px;
+    }
+}
+
+/* Móviles pequeños (320px - 375px) */
+@media (max-width: 375px) {
+    .section-title {
+        font-size: 20px;
+        margin: 4px 0;
+    }
+
+    .trend-product-card {
+        min-width: 180px;
+    }
+
+    .product-image-container {
+        height: 200px;
+    }
+}
+
+/* Ultra móviles (menos de 320px) */
+@media (max-width: 320px) {
+    .section-title {
+        font-size: 18px;
+        line-height: 1.3;
+        margin: 2px 0;
+    }
+
+    .trend-product-card {
+        min-width: 160px;
+    }
+
+    .product-image-container {
+        height: 180px;
+    }
+
+    .product-name {
+        font-size: 14px;
+    }
+}
+
+/* =================================================================
+   ESTILOS LEGACY (MANTENER COMPATIBILIDAD)
+   ================================================================= */
+
+/* Estos estilos están definidos pero no se usan en el HTML actual */
+/* Se mantienen por compatibilidad si decides usarlos más adelante */
+
+.trend-product-name {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.trend-product-price {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.trend-product-actions {
+    display: flex;
+    justify-content: space-between;
+}

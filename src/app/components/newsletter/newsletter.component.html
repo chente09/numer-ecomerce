@@ -1,0 +1,27 @@
+<!-- Sección de Newsletter -->
+<section class="newsletter-section">
+    <div class="container">
+        <div class="newsletter-container">
+            <div nz-row [nzGutter]="[24, 24]" nzAlign="middle">
+                <div nz-col [nzXs]="24" [nzMd]="12">
+                    <div class="newsletter-content">
+                        <h2 class="newsletter-title">Suscríbete para recibir ofertas exclusivas</h2>
+                        <p class="newsletter-description">Sé el primero en conocer nuestras novedades, promociones y
+                            descuentos especiales.</p>
+                    </div>
+                </div>
+                <div nz-col [nzXs]="24" [nzMd]="12">
+                    <div class="newsletter-form">
+                        <nz-input-group [nzSuffix]="suffixButton">
+                            <input type="email" nz-input placeholder="Tu correo electrónico"
+                                [(ngModel)]="emailSubscription" />
+                        </nz-input-group>
+                        <ng-template #suffixButton>
+                            <button nz-button (click)="subscribeToNewsletter()">Suscribirse</button>
+                        </ng-template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

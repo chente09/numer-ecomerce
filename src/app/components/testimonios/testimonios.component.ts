@@ -1,4 +1,3 @@
-// src/app/components/testimonios/testimonios.component.ts
 import {
   Component,
   OnInit,

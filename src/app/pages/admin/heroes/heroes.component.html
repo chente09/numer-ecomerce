@@ -8,7 +8,7 @@
 </nz-card>
 
 <!-- Vista de tabla para pantallas medianas y grandes -->
-<div class="table-responsive table-view-desktop">
+<div class="table-responsive table-view-desktop" [hidden]="isMobileView">
     <nz-table #tabla [nzData]="heroes" [nzBordered]="true" [nzLoading]="loading" [nzShowPagination]="true"
         [nzPageSize]="5">
         <thead>
@@ -22,11 +22,12 @@
             </tr>
         </thead>
         <tbody>
-            @for (hero of tabla.data; track hero.id) {
-            <tr [class.active-row]="hero.isActive">
+            <!-- ✅ TRACKING SIMPLIFICADO SIN _instanceId -->
+            @for (hero of tabla.data; track trackById($index, hero)) {
+            <tr [class.active-row]="hero.isActive" [attr.data-hero-id]="hero.id">
                 <td>
                     <div class="image-preview-cell">
-                        <img [src]="hero.imageUrl" class="banner-image" alt="Banner"
+                        <img [src]="hero.imageUrl" class="banner-image" [alt]="'Banner ' + hero.title"
                             (error)="handleImageError($event)" />
                         @if (hero.isGif) {
                         <nz-badge nzStatus="processing" nzText="GIF" class="gif-badge"></nz-badge>
@@ -66,21 +67,20 @@
                     </div>
                 </td>
                 <td class="text-center">
-                    <i [nz-tooltip] [nzTooltipTitle]="hero.isActive ? 'Activo' : 'Inactivo'" nz-icon
-                        [nzType]="hero.isActive ? 'check-circle' : 'close-circle'" [nzTheme]="'fill'"
-                        [style.color]="hero.isActive ? '#52c41a' : '#f5222d'">
-                    </i>
+                    <nz-tag [nzColor]="getHeroStatusTag(hero).color">
+                        {{ getHeroStatusTag(hero).text }}
+                    </nz-tag>
                 </td>
                 <td class="text-center order-cell">
                     <div class="order-controls">
                         <span class="order-number">{{ hero.order }}</span>
                         <div class="order-buttons">
                             <button nz-button nzType="text" nzSize="small" (click)="moveUp(hero)"
-                                [disabled]="heroes.indexOf(hero) === 0">
+                                [disabled]="$index === 0">
                                 <i nz-icon nzType="up" nzTheme="outline"></i>
                             </button>
                             <button nz-button nzType="text" nzSize="small" (click)="moveDown(hero)"
-                                [disabled]="heroes.indexOf(hero) === heroes.length - 1">
+                                [disabled]="$index === heroes.length - 1">
                                 <i nz-icon nzType="down" nzTheme="outline"></i>
                             </button>
                         </div>
@@ -90,12 +90,14 @@
                     <div class="action-buttons">
                         @if (!hero.isActive) {
                         <nz-tooltip nzTitle="Establecer como activo">
-                            <button nz-button nzType="default" nzSize="small" nz-tooltip (click)="setActive(hero.id!)">
+                            <button nz-button nzType="default" nzSize="small" nz-tooltip (click)="setActive(hero.id)">
                                 <i nz-icon nzType="thunderbolt" nzTheme="outline"></i>
                             </button>
                         </nz-tooltip>
                         }
-                        <button nz-button nzType="default" nzSize="small" (click)="editHero(hero)">Editar</button>
+                        <button nz-button nzType="default" nzSize="small" (click)="editHero(hero)">
+                            Editar
+                        </button>
                         <button nz-button nzType="default" nzDanger nzSize="small" nz-popconfirm
                             nzPopconfirmTitle="¿Seguro que quieres eliminar este banner?"
                             (nzOnConfirm)="deleteHero(hero.id)" nzPopconfirmOkText="Sí" nzPopconfirmCancelText="No">
@@ -109,14 +111,17 @@
     </nz-table>
 </div>
 
-<!-- Vista de tarjetas para móviles muy pequeños (opcional) -->
-<div class="card-view-mobile">
+<!-- Vista de tarjetas para móviles -->
+<div class="card-view-mobile" [hidden]="!isMobileView">
     <div *ngIf="loading" class="loading-container">
         <nz-spin nzSize="large"></nz-spin>
     </div>
 
     <div *ngIf="!loading">
-        <div *ngFor="let hero of heroes" class="hero-card-mobile" [class.active-row]="hero.isActive">
+        <!-- ✅ TRACKING SIMPLIFICADO TAMBIÉN EN MÓVIL -->
+        <div *ngFor="let hero of heroes; trackBy: trackById; let i = index" class="hero-card-mobile"
+            [class.active-row]="hero.isActive" [attr.data-hero-id]="hero.id">
+
             <div class="hero-card-header">
                 <div class="hero-card-title">{{ hero.title }}</div>
                 <i [nz-tooltip] [nzTooltipTitle]="hero.isActive ? 'Activo' : 'Inactivo'" nz-icon
@@ -127,7 +132,7 @@
 
             <div class="hero-card-body">
                 <div class="image-preview-cell" style="width: 100%; margin-bottom: 12px;">
-                    <img [src]="hero.imageUrl" alt="Banner" (error)="handleImageError($event)"
+                    <img [src]="hero.imageUrl" [alt]="'Banner ' + hero.title" (error)="handleImageError($event)"
                         style="width: 100%; height: auto; max-height: 80px; object-fit: contain;" />
                     @if (hero.isGif) {
                     <nz-badge nzStatus="processing" nzText="GIF" class="gif-badge"></nz-badge>
@@ -167,12 +172,11 @@
                         <span>Orden: </span>
                         <span class="order-number">{{ hero.order }}</span>
                         <div class="order-buttons" style="margin-left: 8px;">
-                            <button nz-button nzType="text" nzSize="small" (click)="moveUp(hero)"
-                                [disabled]="heroes.indexOf(hero) === 0">
+                            <button nz-button nzType="text" nzSize="small" (click)="moveUp(hero)" [disabled]="i === 0">
                                 <i nz-icon nzType="up" nzTheme="outline"></i>
                             </button>
                             <button nz-button nzType="text" nzSize="small" (click)="moveDown(hero)"
-                                [disabled]="heroes.indexOf(hero) === heroes.length - 1">
+                                [disabled]="i === heroes.length - 1">
                                 <i nz-icon nzType="down" nzTheme="outline"></i>
                             </button>
                         </div>
@@ -182,7 +186,7 @@
 
             <div class="hero-card-footer">
                 @if (!hero.isActive) {
-                <button nz-button nzType="default" nzSize="small" (click)="setActive(hero.id!)">
+                <button nz-button nzType="default" nzSize="small" (click)="setActive(hero.id)">
                     <i nz-icon nzType="thunderbolt" nzTheme="outline"></i> Activar
                 </button>
                 }
@@ -321,32 +325,58 @@
                     <nz-form-item>
                         <nz-form-label>Imagen principal</nz-form-label>
                         <nz-form-control>
+                            <div class="upload-quality-info mb-2">
+                                <nz-tag nzColor="green">
+                                    <i nz-icon nzType="thunderbolt"></i>
+                                    Calidad Premium (95%)
+                                </nz-tag>
+                                <small class="text-muted">
+                                    Mínimo: 1200x600px • Máximo: 25MB • Formato: JPG, PNG, WebP, GIF
+                                </small>
+                            </div>
+
                             <nz-upload [nzFileList]="mainFileList" [nzBeforeUpload]="beforeUploadMain"
                                 [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
                                 [nzPreview]="handlePreview" [nzRemove]="handleRemoveMain" nzListType="picture-card">
                                 <div *ngIf="mainFileList.length < 1">
                                     <span nz-icon nzType="plus"></span>
-                                    <div class="ant-upload-text">Subir</div>
+                                    <div class="ant-upload-text">Subir Hero</div>
+                                    <div class="ant-upload-hint">Calidad Premium</div>
                                 </div>
                             </nz-upload>
+
                             <div *ngIf="mainImageError" class="error-message">
+                                <i nz-icon nzType="exclamation-circle" nzTheme="fill"></i>
                                 {{ mainImageError }}
                             </div>
                         </nz-form-control>
                     </nz-form-item>
 
                     <nz-form-item>
-                        <nz-form-label>Imagen para móviles (opcional)</nz-form-label>
+                        <nz-form-label>Imagen para móviles</nz-form-label>
                         <nz-form-control>
+                            <div class="upload-quality-info mb-2">
+                                <nz-tag nzColor="blue">
+                                    <i nz-icon nzType="mobile"></i>
+                                    Optimizada Móvil (92%)
+                                </nz-tag>
+                                <small class="text-muted">
+                                    Mínimo: 400x600px • Máximo: 15MB • Ideal: Vertical 9:16
+                                </small>
+                            </div>
+
                             <nz-upload [nzFileList]="mobileFileList" [nzBeforeUpload]="beforeUploadMobile"
                                 [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
                                 [nzPreview]="handlePreview" [nzRemove]="handleRemoveMobile" nzListType="picture-card">
                                 <div *ngIf="mobileFileList.length < 1">
                                     <span nz-icon nzType="plus"></span>
-                                    <div class="ant-upload-text">Subir</div>
+                                    <div class="ant-upload-text">Subir Móvil</div>
+                                    <div class="ant-upload-hint">Opcional</div>
                                 </div>
                             </nz-upload>
+
                             <div *ngIf="mobileImageError" class="error-message">
+                                <i nz-icon nzType="exclamation-circle" nzTheme="fill"></i>
                                 {{ mobileImageError }}
                             </div>
                         </nz-form-control>

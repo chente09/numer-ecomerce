@@ -49,7 +49,7 @@ import { UsersService } from '../../../services/users/users.service';
     NzIconModule,
     NzTableModule,
     NzCheckboxModule
-  ],
+],
   templateUrl: './perfil.component.html',
   styleUrl: './perfil.component.css'
 })

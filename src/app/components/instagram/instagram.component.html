@@ -1,0 +1,81 @@
+<!-- Sección de Instagram / Social Media Feed -->
+<section class="instagram-section">
+    <div>
+        <h2 class="section-title">Síguenos en Instagram</h2>
+        <p class="instagram-subtitle">Comparte tus compras con nosotros &#64;numer.ec y recibe descuentos exclusivos</p>
+
+        <div class="instagram-feed">
+            <div nz-row [nzGutter]="[16, 16]">
+                <div *ngFor="let post of instagramFeed" nz-col [nzXs]="12" [nzSm]="8" [nzMd]="4">
+                    <div class="instagram-post" (click)="openPostModal(post)">
+                        <div class="instagram-image">
+                            <img [src]="post.imageUrl" [alt]="post.caption">
+                            <div class="instagram-overlay">
+                                <div class="instagram-stats">
+                                    <span class="likes">
+                                        <i nz-icon nzType="heart" nzTheme="fill"></i> {{ post.likes }}
+                                    </span>
+                                    <span class="comments">
+                                        <i nz-icon nzType="message" nzTheme="fill"></i> {{ post.comments.length }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instagram-cta">
+            <a href="https://www.instagram.com/numer.ec/?hl=es" target="_blank" rel="noopener noreferrer" nz-button
+                nzType="default" nzSize="large">
+                <i nz-icon nzType="instagram" nzTheme="outline"></i> Seguir en Instagram
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Modal para ver el post en detalle -->
+<ng-template #postDetailModal>
+    <div class="instagram-modal-content" *ngIf="selectedPost">
+        <div class="modal-image-container">
+            <img [src]="selectedPost.imageUrl" [alt]="selectedPost.caption">
+        </div>
+        <div class="modal-interaction">
+            <div class="post-header">
+                <div class="post-user">
+                    <img [src]="selectedPost.userAvatar || 'assets/images/avatar-placeholder.png'" alt="User Avatar"
+                        class="user-avatar">
+                    <span class="username">{{ selectedPost.username || 'numer.ec' }}</span>
+                </div>
+            </div>
+            <div class="post-caption">
+                <span class="username">{{ selectedPost.username || 'numer.ec' }}</span> {{ selectedPost.caption }}
+            </div>
+            <div class="post-comments">
+                <div *ngFor="let comment of selectedPost.comments" class="comment">
+                    <span class="username">{{ comment.username }}</span> {{ comment.text }}
+                </div>
+            </div>
+            <div class="post-actions">
+                <div class="action-buttons">
+                    <button nz-button nzType="text" (click)="toggleLike(selectedPost)">
+                        <i nz-icon [nzType]="selectedPost.liked ? 'heart' : 'heart-o'"
+                            [nzTheme]="selectedPost.liked ? 'fill' : 'outline'"
+                            [ngClass]="{'liked': selectedPost.liked}"></i>
+                    </button>
+                    <button nz-button nzType="text" (click)="focusCommentInput()">
+                        <i nz-icon nzType="message" nzTheme="outline"></i>
+                    </button>
+                </div>
+                <div class="likes-count">
+                    {{ selectedPost.likes }} Me gusta
+                </div>
+            </div>
+            <div class="comment-input">
+                <input #commentInput nz-input placeholder="Añade un comentario..." [(ngModel)]="newComment">
+                <button nz-button nzType="text" [disabled]="!newComment.trim()" (click)="addComment()">Publicar</button>
+            </div>
+        </div>
+    </div>
+</ng-template>

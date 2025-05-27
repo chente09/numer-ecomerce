@@ -1,0 +1,100 @@
+<section #heroSection [class]="heroClasses()" [attr.data-hero-id]="activeHero()?.id" [attr.data-is-gif]="isHeroGif()"
+    [attr.data-loading]="isLoading()" [attr.aria-label]="getHeroTitle()">
+
+    <!-- 🔄 Skeleton Loader -->
+    <div class="hero-skeleton" *ngIf="shouldShowSkeleton()">
+        <div class="skeleton-content">
+            <div class="skeleton-title"></div>
+            <div class="skeleton-subtitle"></div>
+            <div class="skeleton-button"></div>
+        </div>
+    </div>
+
+    <!-- ⚠️ Error State -->
+    <div class="hero-error" *ngIf="hasError() && !activeHero()">
+        <div class="error-content">
+            <div class="error-icon">⚠️</div>
+            <h2 class="error-title">Error al cargar el banner</h2>
+            <p class="error-message">No se pudo cargar el contenido del banner.</p>
+            <button class="retry-button" (click)="refreshHero()" type="button">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path
+                        d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z" />
+                    <path fill-rule="evenodd"
+                        d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z" />
+                </svg>
+                Reintentar
+            </button>
+        </div>
+    </div>
+
+    <!-- ✅ Hero Content -->
+    <div class="hero-content" *ngIf="shouldShowHero()" [class.visible]="contentVisible()"
+        [style.color]="getTextColor()">
+
+        <!-- Main Title -->
+        <h1 class="hero-title">
+            {{ getHeroTitle() }}
+        </h1>
+
+        <!-- Subtitle -->
+        <p class="hero-subtitle" *ngIf="getHeroSubtitle()">
+            {{ getHeroSubtitle() }}
+        </p>
+
+        <!-- Call to Action Section -->
+        <div class="section-footer" *ngIf="getHeroCtaText() && getHeroCtaLink()">
+            <a [routerLink]="getHeroCtaLink().startsWith('/') ? getHeroCtaLink() : null"
+                [href]="!getHeroCtaLink().startsWith('/') ? getHeroCtaLink() : null"
+                [target]="!getHeroCtaLink().startsWith('/') ? '_blank' : undefined"
+                [rel]="!getHeroCtaLink().startsWith('/') ? 'noopener noreferrer' : null" class="view-all-btn"
+                [attr.aria-label]="getHeroCtaText() + ' - ' + getHeroTitle()">
+
+                <span>{{ getHeroCtaText() }}</span>
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                    <path fill-rule="evenodd"
+                        d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8z" />
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- 🎯 Hero Indicators (activar para debugging) -->
+    <div class="hero-indicators" *ngIf="activeHero() && false">
+        <div class="indicator-item gif-indicator" *ngIf="isHeroGif()" title="Banner animado">
+            <span class="indicator-icon">🎬</span>
+            <span class="indicator-label">GIF</span>
+        </div>
+
+        <div class="indicator-item active-indicator" *ngIf="activeHero()?.isActive" title="Banner activo">
+            <span class="indicator-icon">✅</span>
+            <span class="indicator-label">Activo</span>
+        </div>
+
+        <div class="indicator-item device-indicator" title="Tipo de imagen mostrada">
+            <span class="indicator-icon">📱</span>
+            <span class="indicator-label">{{ isMobileDevice() ? 'Móvil' : 'Desktop' }}</span>
+        </div>
+    </div>
+
+    <!-- 🔧 Development Debug Info (activar cambiando false por true) -->
+    <div class="hero-debug" *ngIf="false"
+        style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.9); color: white; padding: 15px; font-size: 11px; z-index: 9999; max-width: 300px; border-radius: 8px; font-family: 'Courier New', monospace;">
+        <h4 style="margin: 0 0 10px 0; color: #00ff00;">🔍 Hero Debug Info</h4>
+        <div style="white-space: pre-wrap; font-size: 10px; line-height: 1.4;">
+            <strong>ID:</strong> {{ activeHero()?.id || 'N/A' }}<br>
+            <strong>Título:</strong> {{ getHeroTitle() }}<br>
+            <strong>Es GIF:</strong> {{ isHeroGif() }}<br>
+            <strong>Activo:</strong> {{ activeHero()?.isActive }}<br>
+            <strong>Imagen Desktop:</strong> {{ activeHero()?.imageUrl ? '✅' : '❌' }}<br>
+            <strong>Imagen Móvil:</strong> {{ activeHero()?.mobileImageUrl ? '✅' : '❌' }}<br>
+            <strong>Imagen Actual:</strong> {{ getCurrentImageUrl() ? 'Cargada' : 'No disponible' }}<br>
+            <strong>Loading:</strong> {{ isLoading() }}<br>
+            <strong>Content Visible:</strong> {{ contentVisible() }}<br>
+            <strong>Error:</strong> {{ hasError() }}<br>
+            <strong>Dispositivo:</strong> {{ isMobileDevice() ? 'Móvil' : 'Desktop' }}<br>
+            <strong>Clase CSS:</strong> {{ heroClasses() }}
+        </div>
+    </div>
+
+</section>

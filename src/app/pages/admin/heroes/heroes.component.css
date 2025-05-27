@@ -219,6 +219,52 @@
   min-width: 800px;
 }
 
+/* Estilos para info de calidad de upload */
+.upload-quality-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.upload-quality-info small {
+    color: #666;
+    font-size: 12px;
+}
+
+.error-message {
+    color: #ff4d4f;
+    font-size: 14px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mb-2 {
+    margin-bottom: 8px;
+}
+
+.text-muted {
+    color: #666;
+}
+
+/* Mejoras para el upload hint */
+.ant-upload-hint {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* Destacar filas activas */
+.active-row {
+    background-color: #f6ffed !important;
+}
+
+.active-row:hover {
+    background-color: #d9f7be !important;
+}
+
 /* ===== RESPONSIVE BREAKPOINTS ===== */
 
 /* Tablets grandes (992px y menos) */

@@ -1,0 +1,37 @@
+
+/* Sección de Newsletter */
+.newsletter-section {
+    padding: 60px 0;
+    background-color: black;
+    color: white;
+}
+
+.newsletter-container {
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.newsletter-title {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: white;
+}
+
+.newsletter-description {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 0;
+}
+
+.newsletter-form {
+    display: flex;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .newsletter-content {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+}
