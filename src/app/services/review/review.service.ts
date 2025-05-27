@@ -127,7 +127,8 @@ export class ReviewService {
         ...review,
         approved: true, // Por defecto las reseñas requieren aprobación
         createdAt: new Date(),
-        avatarUrl: avatarUrl || 'https://i.postimg.cc/FsXftCsb/ic.png', // Avatar por defecto
+        // ✅ Usar avatar base64 como fallback
+        avatarUrl: avatarUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiNmMGYwZjAiLz4KPGNpcmNsZSBjeD0iMzIiIGN5PSIyNCIgcj0iMTAiIGZpbGw9IiM5OTk5OTkiLz4KPHBhdGggZD0iTTE2IDUyYzAtOC44IDcuMi0xNiAxNi0xNnMxNiA3LjIgMTYgMTYiIGZpbGw9IiM5OTk5OTkiLz4KPC9zdmc+',
         userId: currentUser.uid,
         userEmail: currentUser.email,
         // Usar el displayName de Google como nombre si no se proporciona uno
@@ -353,7 +354,8 @@ export class ReviewService {
       location: data.location || '',
       rating: data.rating || 0,
       text: data.text || '',
-      avatarUrl: data.avatarUrl || 'https://i.postimg.cc/L8k4S0RQ/unknown-user.png',
+      // ✅ Usar avatar base64 confiable
+      avatarUrl: data.avatarUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiNmMGYwZjAiLz4KPGNpcmNsZSBjeD0iMzIiIGN5PSIyNCIgcj0iMTAiIGZpbGw9IiM5OTk5OTkiLz4KPHBhdGggZD0iTTE2IDUyYzAtOC44IDcuMi0xNiAxNi0xNnMxNiA3LjIgMTYgMTYiIGZpbGw9IiM5OTk5OTkiLz4KPC9zdmc+',
       approved: data.approved === true,
       createdAt,
       productId: data.productId

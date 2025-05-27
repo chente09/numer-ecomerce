@@ -11,9 +11,7 @@
 
         <!-- Error State -->
         <div *ngIf="hasError && !productsLoading" class="error-container">
-            <nz-empty 
-                nzNotFoundContent="Error al cargar productos" 
-                [nzNotFoundFooter]="retryTemplate">
+            <nz-empty nzNotFoundContent="Error al cargar productos" [nzNotFoundFooter]="retryTemplate">
             </nz-empty>
             <ng-template #retryTemplate>
                 <button nz-button nzType="primary" (click)="reloadProducts()">
@@ -24,8 +22,7 @@
 
         <!-- Empty State - Cuando no hay productos -->
         <div *ngIf="shouldShowEmpty()" class="empty-state">
-            <nz-empty 
-                nzNotFoundContent="No hay productos destacados disponibles"
+            <nz-empty nzNotFoundContent="No hay productos destacados disponibles"
                 [nzNotFoundFooter]="browseAllTemplate">
             </nz-empty>
             <ng-template #browseAllTemplate>
@@ -37,22 +34,13 @@
 
         <!-- Products Grid - Solo cuando hay productos -->
         <div *ngIf="shouldShowProducts()" class="product-grid">
-            <div 
-                *ngFor="let product of featuredProducts; trackBy: trackByProductId" 
-                class="product-card-section">
-                
+            <div *ngFor="let product of featuredProducts; trackBy: trackByProductId" class="product-card-section">
+
                 <!-- Imagen del producto -->
-                <div 
-                    class="product-image-container" 
-                    [routerLink]="['/products', product.id]" 
-                    style="cursor: pointer;"
+                <div class="product-image-container" [routerLink]="['/products', product.id]" style="cursor: pointer;"
                     [attr.aria-label]="'Ver detalles de ' + product.name">
-                    <img 
-                        [src]="product.imageUrl" 
-                        [alt]="product.name" 
-                        class="product-image-section"
-                        (error)="handleImageError($event)"
-                        loading="lazy">
+                    <img [src]="product.imageUrl" [alt]="product.name" class="product-image-section"
+                        (error)="handleImageError($event)" loading="lazy">
                     <span *ngIf="product.isNew" class="new-badge">NEW</span>
                     <span *ngIf="hasDiscount(product)" class="discount-badge">
                         -{{ getDiscountPercentage(product) }}%
@@ -60,26 +48,17 @@
                 </div>
 
                 <!-- Color options con scroll horizontal -->
-                <div class="color-options" 
-                     *ngIf="hasColors(product)"
-                     [ngClass]="{'scrollable': hasManyColors(product)}">
-                    <div *ngFor="let color of product.colors; let i = index" 
-                         class="color-option"
-                         [ngClass]="{'active': i === 0 || isColorActive(product, color)}"
-                         [ngStyle]="getColorStyle(color)"
-                         (click)="selectColor(product, color)"
-                         [attr.title]="'Color: ' + color.name"
-                         [attr.aria-label]="'Seleccionar color ' + color.name">
-                        <!-- No necesitamos img separada ya que usamos background-image -->
-                        <div class="color-overlay"></div>
+                <div class="color-options" *ngIf="hasColors(product)"
+                    [ngClass]="{'scrollable': hasManyColors(product)}">
+                    <div *ngFor="let color of product.colors; let i = index" class="color-option"
+                        [ngClass]="{'active': i === 0 || isColorActive(product, color)}"
+                        [ngStyle]="getColorStyle(color)" (click)="selectColor(product, color)"
+                        [attr.title]="'Color: ' + color.name" [attr.aria-label]="'Seleccionar color ' + color.name">
                     </div>
                 </div>
 
                 <!-- Nombre del producto -->
-                <h3 
-                    class="product-name" 
-                    [routerLink]="['/products', product.id]" 
-                    style="cursor: pointer;"
+                <h3 class="product-name" [routerLink]="['/products', product.id]" style="cursor: pointer;"
                     [title]="product.name">
                     {{ product.name }}
                 </h3>
@@ -96,14 +75,9 @@
 
                 <!-- Rating con estrellas negras -->
                 <div class="product-rating">
-                    <nz-rate 
-                        [ngModel]="product.rating || 5" 
-                        nzDisabled 
-                        [nzAllowHalf]="true" 
-                        class="black-stars"
+                    <nz-rate [ngModel]="product.rating || 5" nzDisabled [nzAllowHalf]="true" class="black-stars"
                         [attr.aria-label]="getRatingAriaLabel(product.rating || 5)">
                     </nz-rate>
-                    <span class="rating-text">({{ product.rating || 5 }})</span>
                 </div>
             </div>
         </div>
@@ -113,7 +87,7 @@
             <a routerLink="/products" class="view-all-btn">
                 <span>Ver Todos los Productos</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2l9 7-9 7V2z"/>
+                    <path d="M12 2l9 7-9 7V2z" />
                 </svg>
             </a>
         </div>

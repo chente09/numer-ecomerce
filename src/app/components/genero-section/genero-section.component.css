@@ -21,6 +21,40 @@
     text-transform: uppercase;
 }
 
+@media (max-width: 768px) {
+    .section-title {
+        margin-bottom: 12px;
+    }   
+}
+
+/* Móviles grandes (376px - 480px) */
+@media (max-width: 480px) {
+
+    .section-title {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+}
+
+/* Móviles pequeños (320px - 375px) */
+@media (max-width: 375px) {
+
+    .section-title {
+        font-size: 20px;
+        margin-bottom: 6px;
+    }
+}
+
+/* Ultra móviles (menos de 320px) */
+@media (max-width: 320px) {
+
+    .section-title {
+        font-size: 18px;
+        line-height: 1.3;
+        margin-bottom: 4px;
+    }
+}
+
 /* =================================================================
    ESTILOS COMPARTIDOS
    ================================================================= */

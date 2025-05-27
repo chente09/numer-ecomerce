@@ -23,11 +23,11 @@ import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { SafeStyle } from '@angular/platform-browser';
 import { ChangeDetectorRef } from '@angular/core';
-import { ReviewService } from '../../services/review/review.service';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { CategoriasComponent } from '../../components/categorias/categorias.component';
 import { GeneroSectionComponent } from "../../components/genero-section/genero-section.component";
 import { ProductosSectionComponent } from "../../components/productos-section/productos-section.component";
+import { TestimoniosComponent } from "../../components/testimonios/testimonios.component";
 
 interface InstagramComment {
   username: string;
@@ -69,7 +69,8 @@ interface InstagramPost {
     NzRateModule,
     CategoriasComponent,
     GeneroSectionComponent,
-    ProductosSectionComponent
+    ProductosSectionComponent,
+    TestimoniosComponent
 ],
   standalone: true,
   templateUrl: './welcome.component.html',
@@ -89,9 +90,8 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   instagramFeed: InstagramPost[] = [];
   selectedPost: InstagramPost | null = null;
   newComment: string = '';
-  testimonials: Review[] = [];
   private subscriptions: Subscription = new Subscription();
-  testimonialsLoading = true;
+  
 
   activeHero: HeroItem | null = null;
   private subscription: Subscription = new Subscription();
@@ -268,7 +268,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
 
   constructor(
     private heroService: HeroService,
-    private reviewService: ReviewService,
     private modalService: NzModalService,
     private scrollService: ScrollService,
     private route: ActivatedRoute,
@@ -279,8 +278,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.startCountdown();
     this.loadInstagramFeed();
-    this.loadTestimonials();
-    this.startPeriodicTestimonialsUpdate();
     this.subscription.add(
       this.heroService.getActiveHero().subscribe(async hero => {
         // Precargar imágenes antes de actualizar el componente
@@ -424,13 +421,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     return Array(5).fill(0).map((_, i) => i < Math.floor(rating) ? 1 : 0);
   }
 
-
-
-  /**
-   * Método para precargar imágenes con mejor manejo de errores
-   */
-  
-
   /**
  * Método para obtener la URL de imagen con fallback
  */
@@ -473,88 +463,6 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       });
     });
   }
-
-  loadTestimonials(): void {
-    console.log('Iniciando carga de testimonios en WelcomeComponent');
-    this.testimonialsLoading = true;
-
-    const testimonialsSub = this.reviewService.getApprovedReviews(4)
-      .subscribe({
-        next: (reviews: Review[]) => {
-          console.log('Testimonios recibidos en WelcomeComponent:', reviews);
-          if (reviews && reviews.length > 0) {
-            this.testimonials = reviews;
-          } else {
-            console.log('No hay testimonios disponibles, usando estáticos');
-            this.setStaticTestimonials();
-          }
-          this.testimonialsLoading = false;
-        },
-        error: (err: Error) => {
-          console.error('Error al cargar testimonios en WelcomeComponent:', err);
-          this.setStaticTestimonials();
-          this.testimonialsLoading = false;
-        }
-      });
-
-    this.subscriptions.add(testimonialsSub);
-  }
-
-  startPeriodicTestimonialsUpdate(): void {
-    // Actualizar los testimonios cada 5 minutos
-    const updateInterval = 5 * 60 * 1000; // 5 minutos en milisegundos
-
-    const intervalSub = interval(updateInterval).subscribe(() => {
-      // Recargar los testimonios silenciosamente (sin mostrar loading)
-      this.reviewService.getApprovedReviews(4).subscribe({
-        next: (reviews: Review[]) => { // Tipo explícito para 'reviews'
-          if (reviews && reviews.length > 0) {
-            this.testimonials = reviews;
-          }
-        },
-        error: (err: Error) => { // Tipo explícito para 'error'
-          console.error('Error al actualizar testimonios:', err);
-          // No hacer nada en caso de error, mantener los testimonios actuales
-        }
-      });
-    });
-
-    this.subscriptions.add(intervalSub);
-  }
-
-  // Método de respaldo con testimonios estáticos
-  setStaticTestimonials(): void {
-    this.testimonials = [
-      {
-        name: 'María González',
-        location: 'Quito',
-        rating: 5,
-        text: 'Increíble experiencia de compra. Productos de alta calidad y un servicio al cliente excepcional. Definitivamente volveré a comprar aquí.',
-        avatarUrl: 'https://i.postimg.cc/ncHk5s9m/Dise-o-sin-t-tulo-1.png',
-        approved: true,
-        createdAt: new Date('2023-09-01')
-      },
-      {
-        name: 'Carlos Rodríguez',
-        location: 'Loja',
-        rating: 5,
-        text: 'He realizado varias compras y siempre he quedado muy satisfecho. Envío rápido y productos exactamente como se describen.',
-        avatarUrl: 'https://i.postimg.cc/qM5m65P4/image.png',
-        approved: true,
-        createdAt: new Date('2023-09-01')
-      },
-      {
-        name: 'Laura Martínez',
-        location: 'Cuenca',
-        rating: 4,
-        text: 'Gran selección de productos y precios muy competitivos. El proceso de compra es sencillo y la entrega fue rápida.',
-        avatarUrl: 'https://i.postimg.cc/ncHk5s9m/Dise-o-sin-t-tulo-1.png',
-        approved: true,
-        createdAt: new Date('2023-09-01')
-      }
-    ];
-  }
-
 
   subscribeToNewsletter() {
     if (this.emailSubscription && this.validateEmail(this.emailSubscription)) {

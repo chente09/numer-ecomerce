@@ -1,0 +1,832 @@
+/* ===== SECCIÓN PRINCIPAL ===== */
+.testimonials-section {
+    padding: 48px 24px;
+    background-color: black;
+    min-height: 500px;
+    position: relative;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* ===== TÍTULO ===== */
+.section-title {
+    text-align: center;
+    font-size: clamp(24px, 4vw, 32px);
+    font-weight: 700;
+    margin: 0 0 24px 0;
+    text-transform: uppercase;
+    color: aliceblue;
+    letter-spacing: 1px;
+}
+
+/* ===== LOADING STATE ===== */
+.testimonial-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    color: aliceblue;
+}
+
+/* ===== ESTADO VACÍO ===== */
+.testimonial-empty {
+    text-align: center;
+    color: #999;
+    padding: 48px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+/* ===== CAROUSEL CONTAINER ===== */
+.testimonials-carousel {
+    margin-bottom: 24px;
+    position: relative;
+}
+
+/* ===== CAROUSEL CONTENT HEIGHT ===== */
+:host ::ng-deep [nz-carousel-content] {
+    height: auto;
+    min-height: 280px;
+    overflow: visible;
+    display: flex !important;
+    align-items: center;
+}
+
+/* ===== SLIDES ===== */
+.testimonial-slide {
+    padding: 16px;
+    height: 100%;
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ===== CARDS DE TESTIMONIOS ===== */
+.testimonial-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+    transition: all 0.3s ease;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.testimonial-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== RATING STARS ===== */
+.product-rating {
+    margin-bottom: 24px;
+}
+
+:host ::ng-deep .product-rating .ant-rate {
+    font-size: 20px;
+}
+
+/* ===== TEXTO DEL TESTIMONIO ===== */
+.testimonial-text {
+    font-size: clamp(14px, 2.5vw, 16px);
+    line-height: 1.6;
+    margin-bottom: 32px;
+    font-style: italic;
+    color: #555;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    padding: 0 16px;
+}
+
+/* ===== AUTOR DEL TESTIMONIO ===== */
+.testimonial-author {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.avatar-container {
+    flex-shrink: 0;
+}
+
+.author-info {
+    text-align: left;
+    min-width: 120px;
+}
+
+.author-info h4 {
+    margin: 0 0 4px 0;
+    font-size: clamp(14px, 2vw, 16px);
+    font-weight: 600;
+    color: #333;
+}
+
+.author-info span {
+    font-size: clamp(12px, 1.8vw, 14px);
+    color: #888;
+}
+
+
+
+/* ===== BOTÓN DE ACCIÓN ===== */
+.section-footer {
+  text-align: center;
+  margin-top: clamp(16px, 5vw, 24px);
+}
+
+.view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px);
+  border: 0.5px solid white;
+  background-color: transparent;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: clamp(14px, 2vw, 16px);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.view-all-btn:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.view-all-btn:hover:before,
+.view-all-btn:focus:before {
+  left: 0;
+}
+
+.view-all-btn:hover,
+.view-all-btn:focus {
+  color: black;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.view-all-btn:focus {
+  outline: 2px solid white;
+  outline-offset: 4px;
+}
+
+.view-all-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.view-all-btn:hover svg {
+  transform: translateX(4px);
+}
+
+/* ===== PERSONALIZACIÓN NG-ZORRO CAROUSEL ===== */
+:host ::ng-deep .ant-carousel {
+    position: relative;
+}
+
+:host ::ng-deep .ant-carousel .slick-slide {
+    text-align: center;
+    height: auto;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+:host ::ng-deep .ant-carousel .slick-track {
+    display: flex;
+    align-items: stretch;
+}
+
+:host ::ng-deep .ant-carousel .slick-slide>div {
+    height: 100%;
+}
+
+/* Personalización de los dots */
+:host ::ng-deep .ant-carousel .slick-dots {
+    bottom: -40px;
+}
+
+:host ::ng-deep .ant-carousel .slick-dots li {
+    margin: 0 4px;
+}
+
+:host ::ng-deep .ant-carousel .slick-dots li button {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(240, 248, 255, 0.3);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+:host ::ng-deep .ant-carousel .slick-dots li.slick-active button {
+    background: aliceblue;
+    transform: scale(1.2);
+}
+
+:host ::ng-deep .ant-carousel .slick-dots li button:hover {
+    background: rgba(240, 248, 255, 0.6);
+}
+
+/* ===== PERSONALIZACIÓN NG-ZORRO AVATAR ===== */
+:host ::ng-deep nz-avatar {
+    transition: all 0.3s ease;
+    border: 2px solid #e8e8e8;
+}
+
+:host ::ng-deep nz-avatar:hover {
+    border-color: #333;
+    transform: scale(1.05);
+}
+
+:host ::ng-deep nz-avatar .ant-avatar-image {
+    object-fit: cover;
+}
+
+/* ===== BREAKPOINTS RESPONSIVOS ===== */
+
+/* Tablets grandes (768px - 1024px) */
+@media (max-width: 1024px) {
+    .testimonials-section {
+        padding: 32px 24px;
+    }
+
+    .testimonial-card {
+        padding: 24px;
+        min-height: 260px;
+    }
+
+    .testimonials-action button {
+        min-width: 180px;
+        height: 44px;
+        font-size: 15px;
+    }
+
+    .carousel-navigation {
+        display: none;
+    }
+}
+
+/* Tablets (481px - 768px) */
+@media (max-width: 768px) {
+    .testimonials-section {
+        padding: 20px 16px;
+    }
+
+    .section-title {
+        margin-bottom: 12px;
+    }
+
+    :host ::ng-deep [nz-carousel-content] {
+        min-height: 260px;
+    }
+
+    .testimonial-card {
+        padding: 24px;
+        min-height: 240px;
+        margin: 0 8px;
+    }
+
+    .testimonial-author {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+
+    .author-info {
+        text-align: center;
+        min-width: auto;
+    }
+
+    .testimonials-action button {
+        min-width: 160px;
+        height: 42px;
+        font-size: 14px;
+    }
+
+    .carousel-navigation {
+        display: none;
+    }
+
+    /* Ocultar dots en móvil */
+    :host ::ng-deep .ant-carousel .slick-dots {
+        display: none !important;
+    }
+}
+
+/* Móviles grandes (376px - 480px) */
+@media (max-width: 480px) {
+    .testimonials-section {
+        padding: 16px 8px;
+    }
+
+    .section-title {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+
+    .testimonial-slide {
+        padding: 8px;
+    }
+
+    .testimonial-card {
+        padding: 16px;
+        min-height: 220px;
+        margin: 0;
+    }
+
+    .testimonial-text {
+        font-size: 14px;
+        padding: 0;
+    }
+
+    :host ::ng-deep .product-rating .ant-rate {
+        font-size: 16px;
+    }
+
+    .testimonials-action {
+        margin-top: 16px;
+    }
+
+    .testimonials-action button {
+        min-width: 140px;
+        height: 40px;
+        font-size: 13px;
+        padding: 0 16px;
+    }
+}
+
+/* Móviles pequeños (320px - 375px) */
+@media (max-width: 375px) {
+    .testimonials-section {
+        padding: 12px 8px;
+    }
+
+    .section-title {
+        font-size: 20px;
+        margin-bottom: 6px;
+    }
+
+    :host ::ng-deep [nz-carousel-content] {
+        min-height: 240px;
+    }
+
+    .testimonial-card {
+        padding: 16px;
+        min-height: 200px;
+    }
+
+    .testimonial-text {
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .author-info h4 {
+        font-size: 14px;
+    }
+
+    .author-info span {
+        font-size: 12px;
+    }
+
+    .testimonials-action button {
+        min-width: 120px;
+        height: 38px;
+        font-size: 12px;
+    }
+}
+
+/* Ultra móviles (menos de 320px) */
+@media (max-width: 320px) {
+    .testimonials-section {
+        padding: 8px;
+    }
+
+    .section-title {
+        font-size: 18px;
+        line-height: 1.3;
+        margin-bottom: 4px;
+    }
+
+    .testimonial-card {
+        padding: 8px;
+        min-height: 180px;
+    }
+
+    .testimonial-text {
+        font-size: 12px;
+        margin-bottom: 16px;
+    }
+
+    :host ::ng-deep .product-rating .ant-rate {
+        font-size: 14px;
+    }
+
+    .testimonials-action button {
+        width: 100%;
+        max-width: 200px;
+        height: 36px;
+        font-size: 11px;
+    }
+}
+
+/* ===== ACCESIBILIDAD ===== */
+@media (prefers-reduced-motion: reduce) {
+
+    .testimonial-card,
+    .nav-button,
+    .testimonials-action button,
+    :host ::ng-deep nz-avatar,
+    :host ::ng-deep .ant-carousel .slick-dots li button {
+        transition: none;
+    }
+
+    .testimonial-card:hover,
+    .nav-button:hover,
+    .testimonials-action button:hover,
+    :host ::ng-deep nz-avatar:hover {
+        transform: none;
+    }
+
+    .nav-button:hover {
+        transform: translateY(-50%);
+    }
+}
+
+
+/* ===== FOCUS STATES ===== */
+:host ::ng-deep .ant-carousel .slick-dots li button:focus {
+    outline: 2px solid aliceblue;
+    outline-offset: 2px;
+}
+
+.nav-button:focus,
+.testimonials-action button:focus {
+    outline: 2px solid aliceblue;
+    outline-offset: 2px;
+}
+
+/* ===== TEXTO DEL TESTIMONIO ===== */
+.testimonial-text {
+    font-size: clamp(16px, 2.5vw, 18px);
+    line-height: 1.6;
+    color: #666;
+    margin-bottom: 15px;
+    font-style: italic;
+    position: relative;
+    padding: 0 clamp(16px, 4vw, 32px);
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    text-align: center;
+}
+
+.quote-mark {
+    font-size: 1.4em;
+    color: #ccc;
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* ===== AUTOR DEL TESTIMONIO ===== */
+.testimonial-author {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.avatar-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.author-info {
+    text-align: left;
+    min-width: 120px;
+}
+
+.author-name {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: black;
+    line-height: 1.3;
+}
+
+.author-location {
+    font-size: clamp(12px, 1.8vw, 14px);
+    color: #666;
+    line-height: 1.2;
+}
+
+/* ===== CONTROLES DE NAVEGACIÓN ===== */
+.carousel-navigation {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background: white;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    pointer-events: auto;
+    z-index: 11;
+}
+
+.nav-button:hover {
+    transform: translateY(-50%) translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.prev-button {
+    left: -25px;
+}
+
+.next-button {
+    right: -25px;
+}
+
+.nav-icon {
+    font-size: 24px;
+    color: black;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* ===== ESTADO VACÍO ===== */
+.testimonial-empty {
+    text-align: center;
+    padding: 30px 20px;
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    max-width: 500px;
+    margin: 0 auto;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.empty-title {
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: white;
+    font-weight: 600;
+}
+
+.empty-subtitle {
+    font-size: clamp(14px, 2vw, 16px);
+    color: #ccc;
+}
+
+/* ===== PERSONALIZACIÓN NG-ZORRO CAROUSEL ===== */
+:host ::ng-deep .ant-carousel {
+    position: relative;
+}
+
+:host ::ng-deep .ant-carousel .slick-slide {
+    text-align: center;
+    height: auto;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:host ::ng-deep .ant-carousel .slick-track {
+    display: flex;
+    align-items: stretch;
+}
+
+:host ::ng-deep .ant-carousel .slick-slide>div {
+    height: 100%;
+}
+
+/* Personalización de los dots */
+:host ::ng-deep .ant-carousel .slick-dots {
+    bottom: -40px;
+}
+
+:host ::ng-deep .ant-carousel .slick-dots li {
+    margin: 0 4px;
+}
+
+:host ::ng-deep .ant-carousel .slick-dots li button {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:host ::ng-deep .ant-carousel .slick-dots li.slick-active button {
+    background: white;
+    transform: scale(1.2);
+}
+
+:host ::ng-deep .ant-carousel .slick-dots li button:hover {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+/* ===== PERSONALIZACIÓN NG-ZORRO AVATAR ===== */
+:host ::ng-deep nz-avatar {
+    transition: all 0.3s ease;
+    border: 2px solid #e8e8e8;
+}
+
+:host ::ng-deep nz-avatar:hover {
+    border-color: black;
+    transform: scale(1.05);
+}
+
+:host ::ng-deep nz-avatar .ant-avatar-image {
+    object-fit: cover;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .testimonials-section {
+        padding: 20px 16px;
+    }
+
+    .carousel-container {
+        padding: 20px 10px;
+    }
+
+    .testimonial-card {
+        padding: 20px 15px;
+        min-height: 240px;
+    }
+
+    .testimonial-author {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .author-info {
+        text-align: center;
+        min-width: auto;
+    }
+
+    .author-name {
+        font-size: 18px;
+    }
+
+    .testimonial-text {
+        padding: 0;
+    }
+
+    /* Ocultar controles de navegación en móvil */
+    .carousel-navigation {
+        display: none;
+    }
+
+    /* Ocultar dots en móvil */
+    :host ::ng-deep .ant-carousel .slick-dots {
+        display: none !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .testimonials-section {
+        padding: 20px 12px;
+    }
+
+    .carousel-container {
+        padding: 15px 5px;
+    }
+
+    .testimonial-slide {
+        padding: 4px;
+    }
+
+    .testimonial-card {
+        padding: 20px 12px;
+        min-height: 200px;
+    }
+
+    .section-title {
+        margin-bottom: 30px;
+    }
+
+    .author-name {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 375px) {
+    .testimonials-section {
+        padding: 20px 8px;
+    }
+
+    .testimonial-card {
+        padding: 15px 8px;
+    }
+
+    .testimonial-text {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .author-name {
+        font-size: 16px;
+    }
+
+    .author-location {
+        font-size: 12px;
+    }
+}
+
+/* ===== ACCESIBILIDAD ===== */
+@media (prefers-reduced-motion: reduce) {
+
+    .testimonial-card,
+    .star,
+    .nav-button,
+    :host ::ng-deep nz-avatar,
+    :host ::ng-deep .ant-carousel .slick-dots li button {
+        transition: none;
+    }
+
+    .testimonial-card:hover,
+    .star:hover,
+    .nav-button:hover,
+    :host ::ng-deep nz-avatar:hover {
+        transform: none;
+    }
+
+    .nav-button:hover {
+        transform: translateY(-50%);
+    }
+}
+
+
+/* ===== FOCUS STATES ===== */
+:host ::ng-deep .ant-carousel .slick-dots li button:focus {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+.nav-button:focus {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+/* ===== ANIMACIONES PERSONALIZADAS ===== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.testimonial-card {
+    animation: fadeInUp 0.6s ease-out;
+}

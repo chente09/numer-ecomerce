@@ -47,13 +47,11 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    console.log('🚀 Componente inicializado');
     this.loadFeaturedProducts();
     
     // Timer de seguridad para forzar actualización después de 3 segundos
     setTimeout(() => {
       if (this.productsLoading) {
-        console.log('⚠️ Timer de seguridad: Forzando fin de loading');
         this.productsLoading = false;
         this.cdr.detectChanges();
       }
@@ -69,7 +67,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
    * Carga los productos destacados con manejo de errores mejorado
    */
   loadFeaturedProducts(): void {
-    console.log('🔄 Iniciando carga de productos destacados...');
     
     // Resetear estados
     this.productsLoading = true;
@@ -78,7 +75,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
     
     // Forzar detección de cambios para mostrar el loading
     this.cdr.detectChanges();
-    console.log('✅ Loading state activado:', this.productsLoading);
 
     this.productService.getProducts()
       .pipe(
@@ -92,29 +88,18 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
           return of([]); // Retorna array vacío en caso de error
         }),
         finalize(() => {
-          console.log('🏁 Finalizando carga, cambiando loading a false');
           this.productsLoading = false;
           this.cdr.detectChanges(); // Forzar detección de cambios
-          console.log('✅ Loading state final:', this.productsLoading);
-          console.log('✅ Featured products final:', this.featuredProducts.length);
         })
       )
       .subscribe({
         next: (products) => {
-          console.log('📦 Productos recibidos del servicio:', products?.length || 0);
           this.allProducts = products || [];
           this.processFeaturedProducts();
           
           // Asegurar que el loading se desactive aquí también
           this.productsLoading = false;
           this.cdr.detectChanges(); // Forzar detección después de procesar
-          
-          console.log('📊 Estado después del procesamiento:');
-          console.log('- Loading:', this.productsLoading);
-          console.log('- HasError:', this.hasError);
-          console.log('- Featured products:', this.featuredProducts.length);
-          console.log('- Should show products:', this.shouldShowProducts());
-          console.log('- Should show empty:', this.shouldShowEmpty());
         },
         error: (error) => {
           console.error('❌ Error en subscribe:', error);
@@ -129,11 +114,8 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
    * Procesa y filtra los productos destacados
    */
   private processFeaturedProducts(): void {
-    console.log('🔧 Procesando productos destacados...');
-    console.log('- All products length:', this.allProducts?.length || 0);
     
     if (!this.allProducts?.length) {
-      console.log('⚠️ No hay productos para procesar');
       this.featuredProducts = [];
       return;
     }
@@ -144,16 +126,12 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
         .filter(product => {
           const isValid = this.isValidProduct(product);
           const isFeatured = this.isFeaturedProduct(product);
-          console.log(`- Producto ${product?.name}: valid=${isValid}, featured=${isFeatured}`);
           return isValid && isFeatured;
         })
         .slice(0, this.MAX_FEATURED_PRODUCTS);
 
-      console.log(`✅ Productos destacados filtrados: ${this.featuredProducts.length}`);
-
       // Si no hay suficientes productos destacados, completar con productos válidos
       if (this.featuredProducts.length < this.MAX_FEATURED_PRODUCTS) {
-        console.log('🔄 Completando con productos adicionales...');
         const additionalProducts = this.allProducts
           .filter(product => 
             this.isValidProduct(product) && 
@@ -161,11 +139,9 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
           )
           .slice(0, this.MAX_FEATURED_PRODUCTS - this.featuredProducts.length);
         
-        console.log(`✅ Productos adicionales encontrados: ${additionalProducts.length}`);
         this.featuredProducts = [...this.featuredProducts, ...additionalProducts];
       }
 
-      console.log(`🎯 Productos destacados cargados: ${this.featuredProducts.length}`);
     } catch (error) {
       console.error('❌ Error al procesar productos destacados:', error);
       this.featuredProducts = [];
@@ -277,12 +253,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
    */
   shouldShowEmpty(): boolean {
     const result = !this.productsLoading && !this.hasError && this.featuredProducts.length === 0;
-    console.log('🔍 shouldShowEmpty():', {
-      productsLoading: this.productsLoading,
-      hasError: this.hasError,
-      featuredProductsLength: this.featuredProducts.length,
-      result
-    });
     return result;
   }
 
@@ -291,12 +261,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
    */
   shouldShowProducts(): boolean {
     const result = !this.productsLoading && !this.hasError && this.featuredProducts.length > 0;
-    console.log('🔍 shouldShowProducts():', {
-      productsLoading: this.productsLoading,
-      hasError: this.hasError,
-      featuredProductsLength: this.featuredProducts.length,
-      result
-    });
     return result;
   }
 
@@ -310,8 +274,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
       
       // Forzar detección de cambios para actualizar la vista
       this.cdr.detectChanges();
-      
-      console.log(`🎨 Color seleccionado para ${product.name}:`, color.name);
     }
   }
 

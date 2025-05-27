@@ -117,7 +117,6 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
 
     try {
       await Promise.allSettled(preloadPromises);
-      console.log('✅ Precarga de imágenes completada');
     } catch (error) {
       console.warn('⚠️ Error en precarga de imágenes:', error);
     }

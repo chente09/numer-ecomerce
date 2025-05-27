@@ -45,7 +45,7 @@ import { CacheService } from '../../../services/admin/cache/cache.service';
     NzSkeletonModule,
     ColoresComponent,
     TallasComponent
-],
+  ],
   templateUrl: './categorias.component.html',
   styleUrls: ['./categorias.component.css']
 })
@@ -67,7 +67,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
   modalWidth = 520;
   detailsModalVisible = false;
   selectedCategory: Category | null = null;
-  
+
   // Para control de suscripciones
   private destroy$ = new Subject<void>();
 
@@ -80,11 +80,11 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private cacheService: CacheService,
     private zone: NgZone // Añadido NgZone para forzar la ejecución fuera de zonas
-  ) { 
+  ) {
     // Crear imagen de fallback
     const fallbackImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmaWxsPSIjOTk5OTk5Ij5TaW4gaW1hZ2VuPC90ZXh0Pjwvc3ZnPg==';
     this.fallbackImageUrl = this.sanitizer.bypassSecurityTrustUrl(fallbackImage);
-    
+
     // Inicializar formulario
     this.createForm();
   }
@@ -98,14 +98,14 @@ export class CategoriasComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    
+
     // Suscribirse a las notificaciones de invalidación de caché
     this.cacheService.getInvalidationNotifier(this.categoryService['cacheKey'])
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.fetchCategories();
       });
-    
+
     this.fetchCategories();
     this.setModalWidth();
   }
@@ -117,7 +117,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
 
   fetchCategories(): void {
     this.loading = true;
-    
+
     // Ejecutar fuera de zona de Angular para evitar ciclos de detección de cambios innecesarios
     this.zone.runOutsideAngular(() => {
       this.categoryService.getCategories()
@@ -125,7 +125,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
           takeUntil(this.destroy$),
           finalize(() => {
             console.log('Finalizando carga de categorías');
-            
+
             // Volver a la zona de Angular para actualizar la UI
             this.zone.run(() => {
               this.loading = false;
@@ -135,7 +135,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
           })
         )
         .subscribe({
-          next: (data) => {            
+          next: (data) => {
             // Volver a la zona de Angular para actualizar los datos
             this.zone.run(() => {
               this.categories = data || [];
@@ -144,7 +144,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
           },
           error: (error) => {
             console.error('Error al cargar categorías:', error);
-            
+
             // Volver a la zona de Angular para mostrar el mensaje de error
             this.zone.run(() => {
               this.message.error('Error al cargar categorías. Intente nuevamente.');
@@ -159,12 +159,12 @@ export class CategoriasComponent implements OnInit, OnDestroy {
   // Método mejorado para el manejo de errores de imágenes
   handleImageError(event: Event): void {
     const imgElement = event.target as HTMLImageElement;
-    if (imgElement && !imgElement.src.includes('data:image')) { 
+    if (imgElement && !imgElement.src.includes('data:image')) {
       imgElement.src = this.fallbackImageUrl as string;
       imgElement.classList.add('error-image');
     }
   }
-  
+
   openModal(): void {
     this.modalVisible = true;
     this.categoryForm.reset();
@@ -182,6 +182,8 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     this.categoryForm.reset();
     this.cdr.detectChanges();
   }
+
+  // Versión limpia SIN constantes innecesarias
 
   beforeUpload = (file: NzUploadFile): boolean => {
     this.imageErrorMessage = null;
@@ -202,31 +204,86 @@ export class CategoriasComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    // Verificar tamaño (2MB máximo)
-    const isLt2M = actualFile.size / 1024 / 1024 < 2;
-    if (!isLt2M) {
-      this.imageErrorMessage = 'La imagen debe pesar menos de 2MB.';
+    // Verificar tamaño mínimo (20KB para mejor calidad)
+    const minSizeKB = 20;
+    if (actualFile.size / 1024 <= minSizeKB) {
+      this.imageErrorMessage = `La imagen debe pesar al menos ${minSizeKB}KB para garantizar buena calidad.`;
       return false;
     }
 
-    // Crear vista previa
+    // Verificar tamaño máximo (6MB para alta calidad en welcome)
+    const maxSizeMB = 6;
+    if (actualFile.size / 1024 / 1024 >= maxSizeMB) {
+      this.imageErrorMessage = `La imagen debe pesar menos de ${maxSizeMB}MB.`;
+      return false;
+    }
+
+    // Validación asíncrona de dimensiones
+    this.validateImageDimensionsAsync(actualFile);
+
+    return false; // Evitar upload automático
+  };
+
+  private async validateImageDimensionsAsync(file: File): Promise<void> {
     try {
-      const objectUrl = URL.createObjectURL(actualFile);
+      const isValid = await this.checkImageDimensions(file);
+
+      if (isValid) {
+        this.createImagePreview(file);
+      }
+
+      this.cdr.detectChanges();
+    } catch (error) {
+      this.imageErrorMessage = 'Error al validar la imagen.';
+      this.cdr.detectChanges();
+    }
+  }
+
+  private checkImageDimensions(file: File): Promise<boolean> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+
+        // Dimensiones mínimas para categorías
+        const minWidth = 200;
+        const minHeight = 200;
+
+        if (img.width < minWidth || img.height < minHeight) {
+          this.imageErrorMessage = `La imagen debe tener al menos ${minWidth}x${minHeight} píxeles para buena calidad en el sitio.`;
+          resolve(false);
+          return;
+        }
+
+        resolve(true);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        this.imageErrorMessage = 'No se pudo cargar la imagen. Archivo corrupto.';
+        resolve(false);
+      };
+
+      img.src = objectUrl;
+    });
+  }
+
+  private createImagePreview(file: File): void {
+    try {
+      const objectUrl = URL.createObjectURL(file);
       this.fileList = [{
         uid: `${Date.now()}-${file.name}`,
         name: file.name || 'imagen.jpg',
         status: 'done',
         url: objectUrl
       }];
-      this.imageFile = actualFile;
-      this.cdr.detectChanges();
+      this.imageFile = file;
     } catch (e) {
       this.imageErrorMessage = 'No se pudo cargar la vista previa.';
-      return false;
     }
-
-    return false; // Evita el upload automático
-  };
+  }
 
   handlePreview = (file: NzUploadFile): void => {
     const imgUrl = file.url || file.thumbUrl;
@@ -270,7 +327,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     // Iniciar proceso de guardado
     this.saving = true;
     this.cdr.detectChanges();
-    
+
     const formData = this.categoryForm.value;
 
     if (this.isEditMode && this.editingId) {
@@ -333,7 +390,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
       description: category.description || '',
       slug: category.slug || ''
     });
-    
+
     this.editingId = category.id;
     this.isEditMode = true;
 
@@ -384,19 +441,19 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     this.detailsModalVisible = true;
     this.cdr.detectChanges();
   }
-  
+
   // Generar slug automáticamente a partir del nombre
   generateSlug(): void {
     const nameControl = this.categoryForm.get('name');
     const slugControl = this.categoryForm.get('slug');
-    
+
     if (nameControl && slugControl && nameControl.value && !slugControl.value) {
       const slug = nameControl.value
         .toLowerCase()
         .replace(/[^\w\s-]/g, '') // Eliminar caracteres especiales
         .replace(/\s+/g, '-')     // Reemplazar espacios con guiones
         .replace(/-+/g, '-');     // Eliminar guiones duplicados
-      
+
       slugControl.setValue(slug);
     }
   }

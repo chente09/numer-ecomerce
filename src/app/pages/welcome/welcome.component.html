@@ -107,47 +107,7 @@
 
 <app-productos-section></app-productos-section>
 
-
-<!-- Sección de Testimonios y Reseñas (Modificada) -->
-<section #resenas id="resenas" class="testimonials-section">
-    <div class="container">
-        <h2 class="section-title" style="color: aliceblue;">Lo que dicen nuestros clientes</h2>
-        <div class="testimonials-carousel" @fadeIn>
-            <div *ngIf="testimonialsLoading" class="testimonial-loading">
-                <nz-spin nzSize="large"></nz-spin>
-            </div>
-            <nz-carousel nzAutoPlay *ngIf="!testimonialsLoading && testimonials && testimonials.length > 0">
-                <div nz-carousel-content *ngFor="let testimonial of testimonials" class="testimonial-slide">
-                    <div class="testimonial-card">
-                        <div class="product-rating">
-                            <nz-rate [ngModel]="testimonial.rating" nzDisabled [nzAllowHalf]="true"
-                                class="large"></nz-rate>
-                        </div>
-                        <p class="testimonial-text">"{{ testimonial.text }}"</p>
-                        <div class="testimonial-author">
-                            <nz-avatar [nzSrc]="testimonial.avatarUrl" [nzSize]="'large'"></nz-avatar>
-                            <div class="author-info">
-                                <h4>{{ testimonial.name }}</h4>
-                                <span>{{ testimonial.location }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </nz-carousel>
-            <!-- Mostrar mensaje cuando no hay testimonios y no está cargando -->
-            <div *ngIf="!testimonialsLoading && (!testimonials || testimonials.length === 0)" class="testimonial-empty">
-                <p>No hay reseñas disponibles en este momento.</p>
-            </div>
-        </div>
-        
-        <!-- Botón unificado para ir a reseñas -->
-        <div class="testimonials-action">
-            <button routerLink="/review-form">
-                Ver y compartir reseñas
-            </button>
-        </div>
-    </div>
-</section>
+<app-testimonios></app-testimonios>
 
 <!-- Sección de Beneficios -->
 <section class="benefits-section">

@@ -1,0 +1,85 @@
+<!-- src/app/components/testimonios/testimonios.component.html -->
+<section class="testimonials-section" role="region" aria-label="Testimonios de clientes" [@fadeIn]>
+
+    <div class="container">
+        <!-- ===== TÍTULO ===== -->
+        <h2 class="section-title">
+            Lo que dicen nuestros clientes
+        </h2>
+
+        <div class="testimonials-carousel">
+            <!-- ===== ESTADO DE CARGA ===== -->
+            <div *ngIf="isLoading" class="testimonial-loading">
+                <nz-spin nzSize="large"></nz-spin>
+            </div>
+
+            <!-- ===== CAROUSEL PRINCIPAL ===== -->
+            <nz-carousel #carousel nzAutoPlay *ngIf="!isLoading && hasTestimonials()" [nzAutoPlaySpeed]="autoplaySpeed"
+                [nzDots]="!isMobile" nzDotPosition="bottom" nzEffect="fade" [nzEnableSwipe]="true" [nzLoop]="true"
+                role="region" aria-label="Carousel de testimonios" aria-live="polite"
+                (nzAfterChange)="onSlideChange($event)">
+
+                <div nz-carousel-content
+                    *ngFor="let testimonial of testimonials; trackBy: trackByTestimonialId; let i = index"
+                    class="testimonial-slide"
+                    [attr.aria-label]="'Testimonio ' + (i + 1) + ' de ' + testimonials.length">
+
+                    <div class="testimonial-card">
+
+                        <!-- ===== RATING ===== -->
+                        <div class="product-rating" role="img"
+                            [attr.aria-label]="'Calificación: ' + testimonial.rating + ' de 5 estrellas'">
+                            <nz-rate [ngModel]="testimonial.rating" nzDisabled [nzAllowHalf]="true" class="large">
+                            </nz-rate>
+                        </div>
+
+                        <!-- ===== TEXTO DEL TESTIMONIO ===== -->
+                        <p class="testimonial-text" [attr.aria-label]="'Comentario: ' + testimonial.text">
+                            "{{ testimonial.text }}"
+                        </p>
+
+                        <!-- ===== INFORMACIÓN DEL AUTOR ===== -->
+                        <div class="testimonial-author">
+                            <div class="avatar-container">
+                                <!-- Avatar normal -->
+                                <nz-avatar *ngIf="!testimonial.avatarError" [nzSrc]="testimonial.avatarUrl"
+                                    [nzSize]="'large'" [nzAlt]="'Avatar de ' + testimonial.name"
+                                    (nzError)="handleAvatarError(testimonial)">
+                                </nz-avatar>
+
+                                <!-- Avatar fallback -->
+                                <nz-avatar *ngIf="testimonial.avatarError" [nzSize]="'large'" [nzIcon]="'user'"
+                                    [style.background-color]="'#f0f0f0'" [style.color]="'#999'">
+                                </nz-avatar>
+                            </div>
+
+                            <!-- Información del autor -->
+                            <div class="author-info">
+                                <h4>{{ testimonial.name }}</h4>
+                                <span>{{ testimonial.location }}</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </nz-carousel>
+
+            <!-- ===== ESTADO VACÍO ===== -->
+            <div *ngIf="!isLoading && !hasTestimonials()" class="testimonial-empty">
+                <p>No hay reseñas disponibles en este momento.</p>
+            </div>
+        </div>
+
+        <!-- ===== BOTÓN DE ACCIÓN ===== -->
+        <div class="section-footer">
+            <button class="view-all-btn" routerLink="/review-form">
+                Ver y compartir reseñas
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l9 7-9 7V2z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+</section>
