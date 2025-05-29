@@ -1,6 +1,6 @@
-import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
@@ -42,7 +42,8 @@ import { takeUntil, finalize } from 'rxjs/operators';
     NzToolTipModule,
     NzEmptyModule,
     NzSkeletonModule,
-    NzColorPickerModule
+    NzColorPickerModule,
+    FormsModule
   ],
   templateUrl: './colores.component.html',
   styleUrls: ['./colores.component.css']
@@ -65,9 +66,11 @@ export class ColoresComponent implements OnInit, OnDestroy {
   modalWidth = 520;
   detailsModalVisible = false;
   selectedColor: Color | null = null;
-  
+
   // Para control de suscripciones
   private destroy$ = new Subject<void>();
+
+  @ViewChild('colorPicker') colorPickerRef!: ElementRef;
 
   constructor(
     private colorService: ColorService,
@@ -77,11 +80,11 @@ export class ColoresComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef,
     private zone: NgZone
-  ) { 
+  ) {
     // Crear imagen de fallback
     const fallbackImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmaWxsPSIjOTk5OTk5Ij5TaW4gaW1hZ2VuPC90ZXh0Pjwvc3ZnPg==';
     this.fallbackImageUrl = this.sanitizer.bypassSecurityTrustUrl(fallbackImage);
-    
+
     // Inicializar formulario
     this.createForm();
   }
@@ -98,14 +101,15 @@ export class ColoresComponent implements OnInit, OnDestroy {
     this.fetchColors();
     this.setModalWidth();
 
-    // Escuchar cambios en el selector de color
-    this.colorForm.get('code')?.valueChanges.subscribe(value => {
-      // Si el valor es un color válido, actualizar el color de la muestra
-      if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
-        const colorPreviewElement = document.getElementById('colorPreview');
-        if (colorPreviewElement) {
-          colorPreviewElement.style.backgroundColor = value;
-        }
+    // Escuchar cambios SOLO del input de texto
+    this.colorForm.get('code')?.valueChanges.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(value => {
+      if (value && /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
+        // Actualizar vista previa
+        setTimeout(() => {
+          this.updateColorPreview(value);
+        }, 0);
       }
     });
   }
@@ -117,18 +121,18 @@ export class ColoresComponent implements OnInit, OnDestroy {
 
   fetchColors(): void {
     this.loading = true;
-    
+
     this.zone.runOutsideAngular(() => {
       this.colorService.getColors()
         .pipe(
           takeUntil(this.destroy$),
           catchError(error => {
             console.error('Error al cargar colores:', error);
-            
+
             this.zone.run(() => {
               this.message.error('Error al cargar colores. Intente nuevamente.');
             });
-            
+
             return of([]);
           }),
           finalize(() => {
@@ -139,7 +143,7 @@ export class ColoresComponent implements OnInit, OnDestroy {
           })
         )
         .subscribe({
-          next: (data) => {            
+          next: (data) => {
             this.zone.run(() => {
               this.colors = data || [];
               this.cdr.detectChanges();
@@ -152,12 +156,12 @@ export class ColoresComponent implements OnInit, OnDestroy {
   // Método para manejar errores de imágenes
   handleImageError(event: Event): void {
     const imgElement = event.target as HTMLImageElement;
-    if (imgElement && !imgElement.src.includes('data:image')) { 
+    if (imgElement && !imgElement.src.includes('data:image')) {
       imgElement.src = this.fallbackImageUrl as string;
       imgElement.classList.add('error-image');
     }
   }
-  
+
   openModal(): void {
     this.modalVisible = true;
     this.colorForm.reset();
@@ -167,11 +171,24 @@ export class ColoresComponent implements OnInit, OnDestroy {
     this.imageFile = null;
     this.imageErrorMessage = '';
     this.setModalWidth();
-    
-    // Establecer un color por defecto
-    this.colorForm.get('code')?.setValue('#000000');
-    
+
+    // Establecer un color por defecto y actualizar la vista previa
+    const defaultColor = '#000000';
+    this.colorForm.get('code')?.setValue(defaultColor);
+
+    // Asegurar que la vista previa se actualice después de que el DOM esté listo
+    setTimeout(() => {
+      this.updateColorPreview(defaultColor);
+    }, 100);
+
     this.cdr.detectChanges();
+  }
+
+  private updateColorPreview(color: string): void {
+    const colorPreviewElement = document.getElementById('colorPreview');
+    if (colorPreviewElement) {
+      colorPreviewElement.style.backgroundColor = color;
+    }
   }
 
   closeModal(): void {
@@ -259,11 +276,11 @@ export class ColoresComponent implements OnInit, OnDestroy {
     }
 
     // No es necesario una imagen para un color, pero si proporcionan una, mejor
-    
+
     // Iniciar proceso de guardado
     this.saving = true;
     this.cdr.detectChanges();
-    
+
     const formData = this.colorForm.value;
 
     try {
@@ -305,7 +322,7 @@ export class ColoresComponent implements OnInit, OnDestroy {
       code: color.code || '#000000',
       description: color.description || ''
     });
-    
+
     this.editingId = color.id;
     this.isEditMode = true;
 
@@ -351,11 +368,11 @@ export class ColoresComponent implements OnInit, OnDestroy {
     this.detailsModalVisible = true;
     this.cdr.detectChanges();
   }
-  
+
   // Sugiere un nombre para un color basado en su código hexadecimal
   suggestColorName(hexCode: string): void {
     // Lista de colores comunes y sus códigos aproximados
-    const commonColors: {[key: string]: string[]} = {
+    const commonColors: { [key: string]: string[] } = {
       'Rojo': ['#FF0000', '#FF0033', '#CC0000', '#E60000'],
       'Azul': ['#0000FF', '#0033FF', '#0066FF', '#3366FF'],
       'Verde': ['#00FF00', '#00CC00', '#33CC33', '#009900'],
@@ -371,10 +388,10 @@ export class ColoresComponent implements OnInit, OnDestroy {
       'Lima': ['#00FF00', '#99FF00', '#CCFF00', '#66FF00'],
       'Beige': ['#F5F5DC', '#FFFFCC', '#FFFF99', '#FFFFDD']
     };
-    
+
     // Normalizar el código hexadecimal
     const hex = hexCode.toUpperCase();
-    
+
     // Buscar coincidencias exactas
     for (const [name, codes] of Object.entries(commonColors)) {
       if (codes.includes(hex)) {
@@ -382,10 +399,46 @@ export class ColoresComponent implements OnInit, OnDestroy {
         return;
       }
     }
-    
+
     // Si no hay un nombre exacto, dejar el campo como está
     // Aquí podrías implementar un algoritmo más sofisticado para sugerir 
     // nombres basados en la proximidad del color, pero eso requeriría 
     // conversiones de color y cálculos de distancia
   }
+
+
+  // Método para manejar cambios del color picker
+  onColorPickerChange(color: string): void {
+    // Asegurar que el color tenga formato hexadecimal correcto
+    const hexColor = color.startsWith('#') ? color : `#${color}`;
+
+    // Actualizar el formulario
+    this.colorForm.get('code')?.setValue(hexColor, { emitEvent: false });
+
+    // Sugerir nombre basado en el color
+    this.suggestColorName(hexColor);
+
+    // Forzar detección de cambios
+    this.cdr.detectChanges();
+  }
+
+  onColorInputChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const value = target.value;
+
+    // Validar formato hexadecimal básico antes de actualizar vista previa
+    if (/^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/.test(value)) {
+      this.updateColorPreview(value);
+    }
+  }
+
+  openColorPicker(): void {
+    // Esto requiere acceso al ViewChild del color picker
+    // Implementación alternativa usando click programático
+    const colorPickerElement = document.querySelector('nz-color-picker .ant-color-picker-trigger');
+    if (colorPickerElement) {
+      (colorPickerElement as HTMLElement).click();
+    }
+  }
+
 }

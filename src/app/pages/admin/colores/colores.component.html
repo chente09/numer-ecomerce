@@ -57,8 +57,7 @@
                                 nzTooltipTitle="Editar">
                                 <span nz-icon nzType="edit"></span>
                             </button>
-                            <button nz-button nz-popconfirm
-                                nzPopconfirmTitle="¿Seguro que quieres eliminar este color?"
+                            <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar este color?"
                                 nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteColor(color.id)" nzSize="small"
                                 nz-tooltip nzTooltipTitle="Eliminar">
                                 <i nz-icon nzType="delete" nzTheme="outline"></i>
@@ -88,12 +87,23 @@
                     </nz-form-control>
                 </nz-form-item>
 
+                <!-- Código hexadecimal en tu modal -->
                 <nz-form-item>
                     <nz-form-label nzRequired>Código Hexadecimal</nz-form-label>
                     <nz-form-control nzErrorTip="Por favor ingrese un código hexadecimal válido (ej. #FF0000)">
                         <div class="color-picker-container">
-                            <input nz-input formControlName="code" placeholder="#FF0000" (blur)="suggestColorName(colorForm.get('code')?.value)" />
-                            <div class="color-preview" id="colorPreview" [style.background-color]="colorForm.get('code')?.value"></div>
+                            <div class="color-input-group">
+                                <!-- Input de texto para el código -->
+                                <input nz-input formControlName="code" placeholder="#FF0000"
+                                    (blur)="suggestColorName(colorForm.get('code')?.value)" class="color-input" />
+
+                                <!-- Color picker VISIBLE de ng-zorro -->
+                                <nz-color-picker [ngModel]="colorForm.get('code')?.value || '#000000'"
+                                    (ngModelChange)="onColorPickerChange($event)" [ngModelOptions]="{standalone: true}"
+                                    nzSize="default" [nzShowText]="false" nzFormat="hex" class="color-picker-visible">
+                                </nz-color-picker>
+
+                            </div>
                         </div>
                     </nz-form-control>
                 </nz-form-item>
@@ -141,12 +151,12 @@
                     <div class="color-code">{{ selectedColor.code }}</div>
                 </div>
                 <div *ngIf="selectedColor.imageUrl" class="detail-image">
-                    <img [src]="selectedColor.imageUrl" [alt]="selectedColor.name"
-                        (error)="handleImageError($event)">
+                    <img [src]="selectedColor.imageUrl" [alt]="selectedColor.name" (error)="handleImageError($event)">
                 </div>
                 <div class="detail-content">
                     <h3>{{ selectedColor.name }}</h3>
-                    <p *ngIf="selectedColor.description"><strong>Descripción:</strong> {{ selectedColor.description }}</p>
+                    <p *ngIf="selectedColor.description"><strong>Descripción:</strong> {{ selectedColor.description }}
+                    </p>
                 </div>
                 <div class="detail-actions">
                     <button nz-button (click)="editColor(selectedColor); detailsModalVisible = false">

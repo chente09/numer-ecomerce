@@ -219,8 +219,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
   loadProducts(): void {
 
-    // 🧹 LIMPIEZA PREVENTIVA DE CACHÉ
-    this.cacheService.clearCache();
 
     this.loading = true;
 
@@ -363,39 +361,35 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     if (event.success) {
       this.closeModals();
 
-      // Invalidar caché principal de productos
-      this.cacheService.invalidate('products');
-      this.cacheService.invalidate(`products_${event.productId}`);
-      this.cacheService.invalidate(`products_complete_${event.productId}`);
-      this.cacheService.invalidate(`product_variants_product_${event.productId}`);
+      // 🎯 INVALIDACIÓN SELECTIVA (en lugar de agresiva)
+      if (event.action === 'create') {
+        // Para creación, solo invalidar caché general
+        this.cacheService.invalidate('products');
 
-      // Invalidar cachés de variantes e inventario
-      this.cacheService.invalidate('inventory_summary');
-      this.cacheService.invalidate('low_stock_products');
+        if (event.optimisticUpdate) {
+          this.createProductOptimistically(event.optimisticUpdate);
+        } else {
+          // Recargar solo si no hay actualización optimista
+          setTimeout(() => this.loadProducts(), 500);
+        }
 
-      // Forzar limpieza completa si es necesario
-      if (event.action === 'create' || event.requiresReload) {
-        this.cacheService.invalidateAll();
+      } else if (event.action === 'update') {
+        // Para actualización, invalidar caché específico
+        this.cacheService.invalidate('products');
+        this.cacheService.invalidate(`products_${event.productId}`);
+
+        if (event.optimisticUpdate) {
+          this.updateProductOptimistically(event.productId, event.optimisticUpdate);
+        } else {
+          // Actualizar producto específico
+          this.refreshSingleProduct(event.productId);
+        }
       }
 
-      if (event.optimisticUpdate) {
-        // 🚀 ACTUALIZACIÓN OPTIMISTA INMEDIATA
-        this.applyOptimisticProductUpdate({
-          action: event.action,
-          productId: event.productId,
-          optimisticUpdate: event.optimisticUpdate
-        });
-
-        // 📡 FORZAR RECARGA DESPUÉS DE OPTIMISTA (DOBLE VERIFICACIÓN)
-        setTimeout(() => {
-          this.verifyProductUpdate(event.productId);
-        }, 1000);
-
-      } else {
-        setTimeout(() => {
-          this.forceProductsReload();
-        }, 300);
-      }
+      // Verificación en segundo plano
+      setTimeout(() => {
+        this.verifyProductUpdate(event.productId);
+      }, 2000);
 
     } else {
       console.error('❌ [MANAGEMENT] Error en operación de producto:', event);
@@ -403,27 +397,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  private forceProductsReload(): void {
+  private refreshSingleProduct(productId: string): void {
 
-    // Limpiar completamente el caché
-    this.cacheService.clearCache();
-
-    // Marcar como cargando
-    this.loading = true;
-    this.cdr.detectChanges();
-
-    // Recargar desde servidor
-    this.loadProducts();
-  }
-
-  // 3️⃣ Método para verificar actualización de producto específico
-  private verifyProductUpdate(productId: string): void {
-
-    // Forzar invalidación del producto específico
-    this.cacheService.invalidate(`products_${productId}`);
-    this.cacheService.invalidate(`products_complete_${productId}`);
-
-    // Obtener producto actualizado directamente del servidor
     this.productService.getProductById(productId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -431,13 +406,52 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
           if (updatedProduct) {
             const index = this.products.findIndex(p => p.id === productId);
             if (index !== -1) {
-              // Comparar si hay diferencias significativas
-              const hasSignificantChanges = this.hasSignificantProductChanges(
+              this.products[index] = updatedProduct;
+
+              if (this.selectedProduct && this.selectedProduct.id === productId) {
+                this.selectedProduct = updatedProduct;
+              }
+
+              this.cdr.detectChanges();
+            }
+          }
+        },
+        error: (error) => {
+          console.error('❌ [MANAGEMENT] Error al refrescar producto individual:', error);
+        }
+      });
+  }
+
+  private forceProductsReload(): void {
+
+    // Limpiar solo caché de productos (no todo)
+    this.cacheService.invalidate('products');
+
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    this.loadProducts();
+  }
+  // 3️⃣ Método para verificar actualización de producto específico
+  private verifyProductUpdate(productId: string): void {
+
+    // Solo invalidar caché específico del producto
+    this.cacheService.invalidate(`products_${productId}`);
+
+    this.productService.getProductById(productId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (updatedProduct) => {
+          if (updatedProduct) {
+            const index = this.products.findIndex(p => p.id === productId);
+            if (index !== -1) {
+              const hasChanges = this.hasSignificantProductChanges(
                 this.products[index],
                 updatedProduct
               );
 
-              if (hasSignificantChanges) {
+              if (hasChanges) {
+                console.log('🔄 [MANAGEMENT] Aplicando cambios verificados para:', productId);
                 this.products[index] = updatedProduct;
 
                 if (this.selectedProduct && this.selectedProduct.id === productId) {
@@ -446,15 +460,13 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
                 this.cdr.detectChanges();
               } else {
-                console.log('✅ [MANAGEMENT] Producto ya está actualizado correctamente');
+                console.log('✅ [MANAGEMENT] Producto ya está actualizado:', productId);
               }
             }
           }
         },
         error: (error) => {
           console.error('❌ [MANAGEMENT] Error al verificar producto:', error);
-          // En caso de error, hacer recarga completa
-          this.forceProductsReload();
         }
       });
   }
@@ -495,6 +507,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
    * ➕ Crea un producto optimísticamente en la lista
    */
   private createProductOptimistically(newProduct: Product): void {
+
     // Registrar operación pendiente
     this.pendingOperations.set(newProduct.id, {
       type: 'create',
@@ -502,33 +515,34 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       newProduct
     });
 
-    // Agregar al inicio de la lista (productos más recientes primero)
+    // Agregar al inicio (productos más recientes primero)
     this.products = [newProduct, ...this.products];
     this.total = this.products.length;
 
-
     this.cdr.detectChanges();
+    console.log('✅ [MANAGEMENT] Producto creado optimísticamente');
   }
 
   /**
    * 🔄 Actualiza un producto optimísticamente en la lista
    */
   private updateProductOptimistically(productId: string, updatedProduct: Product): void {
+
     const productIndex = this.products.findIndex(p => p.id === productId);
 
     if (productIndex === -1) {
-      console.warn(`⚠️ [MANAGEMENT] Producto no encontrado para actualización optimista: ${productId}`);
+      console.warn('⚠️ [MANAGEMENT] Producto no encontrado para actualización optimista');
       return;
     }
 
-    // Crear backup del producto original
+    // Crear backup
     const backup: ProductBackup = {
       originalProduct: { ...this.products[productIndex] },
       index: productIndex,
       timestamp: Date.now()
     };
 
-    // Registrar operación pendiente
+    // Registrar operación
     this.pendingOperations.set(productId, {
       type: 'update',
       productId,
@@ -536,17 +550,16 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       newProduct: updatedProduct
     });
 
-    // Aplicar actualización inmediatamente
+    // Aplicar cambios
     this.products[productIndex] = { ...updatedProduct };
 
-
-    // Actualizar producto seleccionado si es el mismo que se editó
     if (this.selectedProduct && this.selectedProduct.id === productId) {
       this.selectedProduct = { ...updatedProduct };
     }
 
     this.cdr.detectChanges();
   }
+
 
   /**
    * 🗑️ Elimina un producto optimísticamente
@@ -635,52 +648,65 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  // Método para verificar si existe el método invalidateProductCache en el servicio
+  private invalidateProductCache(productId: string): void {
+    // Si el método existe en tu CacheService, úsalo
+    if (typeof this.cacheService.invalidateProductCache === 'function') {
+      this.cacheService.invalidateProductCache(productId);
+    } else {
+      // Si no existe, usar invalidación manual
+      this.cacheService.invalidate(`products_${productId}`);
+      this.cacheService.invalidate(`products_complete_${productId}`);
+    }
+  }
+
   /**
    * 🔄 Método mejorado para refrescar un producto específico
    */
   refreshProduct(productId: string): void {
-  
-  // 🧹 INVALIDACIÓN AGRESIVA INMEDIATA
-  this.cacheService.invalidateProductCache(productId);
-  
-  // Si hay una operación pendiente, confirmarla primero
-  if (this.pendingOperations.has(productId)) {
-    this.confirmOptimisticOperation(productId);
-  }
-  
-  // 🔄 USAR MÉTODO SIN CACHÉ DEL SERVICIO
-  this.productService.forceRefreshProduct(productId)
-    .pipe(takeUntil(this.destroy$))
-    .subscribe({
-      next: (updatedProduct) => {
-        if (updatedProduct) {
-          const index = this.products.findIndex(p => p.id === productId);
-          if (index !== -1) {
-            
-            this.products[index] = updatedProduct;
-            
-            if (this.selectedProduct && this.selectedProduct.id === productId) {
-              this.selectedProduct = updatedProduct;
+    console.log('🔄 [MANAGEMENT] Refrescando producto:', productId);
+
+    this.invalidateProductCache(productId);
+
+    // Confirmar operación pendiente si existe
+    if (this.pendingOperations.has(productId)) {
+      this.confirmOptimisticOperation(productId);
+    }
+
+    // Si existe forceRefreshProduct, úsalo; si no, usar getProductById
+    const refreshObservable = typeof this.productService.forceRefreshProduct === 'function'
+      ? this.productService.forceRefreshProduct(productId)
+      : this.productService.getProductById(productId);
+
+    refreshObservable
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (updatedProduct) => {
+          if (updatedProduct) {
+            const index = this.products.findIndex(p => p.id === productId);
+            if (index !== -1) {
+              this.products[index] = updatedProduct;
+
+              if (this.selectedProduct && this.selectedProduct.id === productId) {
+                this.selectedProduct = updatedProduct;
+              }
+
+              this.cdr.detectChanges();
+              console.log('✅ [MANAGEMENT] Producto refrescado exitosamente');
+            } else {
+              this.loadProducts();
             }
-            
-            this.cdr.detectChanges();
           } else {
-            this.forceProductsReload();
+            console.warn('⚠️ [MANAGEMENT] Producto no encontrado en servidor');
           }
-        } else {
-          console.warn('⚠️ [MANAGEMENT] Producto no encontrado en servidor');
+        },
+        error: (error) => {
+          console.error('❌ [MANAGEMENT] Error al refrescar producto:', error);
+          this.rollbackOptimisticOperation(productId);
+          this.loadProducts();
         }
-      },
-      error: (error) => {
-        console.error('❌ [MANAGEMENT] Error al refrescar producto:', error);
-        // En caso de error, hacer rollback si hay operación pendiente
-        this.rollbackOptimisticOperation(productId);
-        
-        // Como último recurso, recargar todos los productos
-        this.forceProductsReload();
-      }
-    });
-}
+      });
+  }
 
   // ==================== ACCIONES DE PRODUCTOS ====================
 
@@ -691,10 +717,17 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   openEditModal(product: Product): void {
+
+    // Abrir modal inmediatamente (UX mejorado)
     this.isEditMode = true;
-    this.selectedProduct = product;
+    this.selectedProduct = { ...product }; // Clonar para evitar referencias
     this.formModalVisible = true;
+
+    // Forzar detección de cambios inmediata
+    this.cdr.detectChanges();
+
   }
+
 
   openDetailsModal(product: Product): void {
     this.selectedProduct = product;
@@ -758,39 +791,34 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
    */
   onInventoryChange(event: { productId: string, updatedProduct?: Product, stockChange?: number }): void {
 
-    // 🧹 INVALIDAR CACHÉ INMEDIATAMENTE
+    // Invalidar solo caché específico
     this.cacheService.invalidate(`products_${event.productId}`);
-    this.cacheService.invalidate(`products_complete_${event.productId}`);
-    this.cacheService.invalidate(`product_variants_product_${event.productId}`);
 
     const productIndex = this.products.findIndex(p => p.id === event.productId);
 
     if (productIndex === -1) {
-      console.warn(`⚠️ [MANAGEMENT] Producto no encontrado para actualización de inventario: ${event.productId}`);
-      // Si no se encuentra, forzar recarga completa
-      this.forceProductsReload();
+      console.warn('⚠️ [MANAGEMENT] Producto no encontrado para actualización de inventario');
+      this.refreshSingleProduct(event.productId);
       return;
     }
 
     if (event.updatedProduct) {
-
+      // Actualización completa del producto
       this.products[productIndex] = { ...event.updatedProduct };
 
-      // Actualizar producto seleccionado si es el mismo
       if (this.selectedProduct && this.selectedProduct.id === event.productId) {
         this.selectedProduct = { ...event.updatedProduct };
       }
-    } else if (event.stockChange !== undefined) {
-      // 📊 ACTUALIZACIÓN SOLO DE STOCK
-      const oldStock = this.products[productIndex].totalStock || 0;
-      const newStock = Math.max(0, oldStock + event.stockChange);
+    } else if (typeof event.stockChange === 'number') {
+      // Solo actualización de stock
+      const currentStock = this.products[productIndex].totalStock || 0;
+      const newStock = Math.max(0, currentStock + event.stockChange);
 
       this.products[productIndex] = {
         ...this.products[productIndex],
         totalStock: newStock
       };
 
-      // Actualizar producto seleccionado si es el mismo
       if (this.selectedProduct && this.selectedProduct.id === event.productId) {
         this.selectedProduct = {
           ...this.selectedProduct,
@@ -798,13 +826,13 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
         };
       }
     }
-    // 🔄 VERIFICACIÓN ADICIONAL DESPUÉS DE UN TIEMPO
+
+    this.cdr.detectChanges();
+
+    // Verificación en segundo plano
     setTimeout(() => {
       this.verifyProductUpdate(event.productId);
-    }, 2000);
-
-    // Forzar detección de cambios
-    this.cdr.detectChanges();
+    }, 3000);
   }
 
   /**
@@ -813,40 +841,38 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   // 6️⃣ Mejorar manejo de eventos de promociones
   onPromotionChange(event: { productId: string, updatedProduct?: Product }): void {
 
-    // 🧹 INVALIDAR CACHÉ INMEDIATAMENTE
+    // Invalidar cachés relevantes
     this.cacheService.invalidate(`products_${event.productId}`);
-    this.cacheService.invalidate(`products_complete_${event.productId}`);
     this.cacheService.invalidate('products_discounted');
 
     if (!event.updatedProduct) {
-      // Si no hay producto actualizado, verificar desde servidor
-      this.verifyProductUpdate(event.productId);
+      this.refreshSingleProduct(event.productId);
       return;
     }
 
     const productIndex = this.products.findIndex(p => p.id === event.productId);
 
     if (productIndex === -1) {
-      console.warn(`⚠️ [MANAGEMENT] Producto no encontrado para actualización de promoción: ${event.productId}`);
-      this.forceProductsReload();
+      console.warn('⚠️ [MANAGEMENT] Producto no encontrado para actualización de promoción');
+      this.refreshSingleProduct(event.productId);
       return;
     }
 
-    // Actualizar producto en la lista
+    // Actualizar producto
     this.products[productIndex] = { ...event.updatedProduct };
 
-    // Actualizar producto seleccionado si es el mismo
     if (this.selectedProduct && this.selectedProduct.id === event.productId) {
       this.selectedProduct = { ...event.updatedProduct };
     }
 
-    // 🔄 VERIFICACIÓN ADICIONAL
+    this.cdr.detectChanges();
+
+    // Verificación en segundo plano
     setTimeout(() => {
       this.verifyProductUpdate(event.productId);
-    }, 2000);
-
-    this.cdr.detectChanges();
+    }, 3000);
   }
+
 
 
   /**
@@ -884,24 +910,23 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       nzOkType: 'primary',
       nzOkDanger: true,
       nzOnOk: () => {
-        // 🚀 ELIMINACIÓN OPTIMISTA INMEDIATA
+        console.log('🗑️ [MANAGEMENT] Eliminando producto:', id);
+
+        // Eliminación optimista
         this.deleteProductOptimistically(id);
 
-        this.loading = true;
+        // Operación en servidor
         this.productService.deleteProduct(id)
-          .pipe(
-            takeUntil(this.destroy$),
-            finalize(() => this.loading = false)
-          )
+          .pipe(takeUntil(this.destroy$))
           .subscribe({
             next: () => {
               this.message.success('Producto eliminado correctamente');
-              // ✅ Confirmar eliminación optimista
               this.confirmOptimisticOperation(id);
+              console.log('✅ [MANAGEMENT] Producto eliminado exitosamente');
             },
             error: (error) => {
-              this.message.error('Error al eliminar producto: ' + (error.message || 'Error desconocido'));
-              // 🔄 ROLLBACK: Restaurar producto eliminado
+              console.error('❌ [MANAGEMENT] Error al eliminar producto:', error);
+              this.message.error('Error al eliminar producto');
               this.rollbackOptimisticOperation(id);
             }
           });

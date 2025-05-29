@@ -1,10 +1,30 @@
-import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  OnInit,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  FormArray,
+  Validators,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { Category } from '../../../services/admin/category/category.service';
-import { Product, Color, Size } from '../../../models/models';
+import {
+  Product,
+  Color,
+  Size,
+  AdditionalImageItem,
+} from '../../../models/models';
 import { finalize } from 'rxjs';
 
 // Importar módulos de ng-zorro necesarios
@@ -61,10 +81,10 @@ interface OptimisticProductUpdate {
     NzColorPickerModule,
     NzEmptyModule,
     NzAlertModule,
-    NzRadioModule
+    NzRadioModule,
   ],
   templateUrl: './product-form.component.html',
-  styleUrls: ['./product-form.component.css']
+  styleUrls: ['./product-form.component.css'],
 })
 export class ProductFormComponent implements OnInit, OnChanges {
   @Input() product: Product | null = null;
@@ -73,12 +93,12 @@ export class ProductFormComponent implements OnInit, OnChanges {
   @Input() existingColors: Color[] = [];
   @Input() existingSizes: Size[] = [];
 
-  @Output() formSubmitted = new EventEmitter<{ 
-    success: boolean, 
-    action: string, 
-    productId: string,
-    requiresReload?: boolean,
-    optimisticUpdate?: Product // 🚀 NUEVO: Enviar producto actualizado optimísticamente
+  @Output() formSubmitted = new EventEmitter<{
+    success: boolean;
+    action: string;
+    productId: string;
+    requiresReload?: boolean;
+    optimisticUpdate?: Product; // 🚀 NUEVO: Enviar producto actualizado optimísticamente
   }>();
   @Output() formCancelled = new EventEmitter<void>();
 
@@ -86,7 +106,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
   private pendingOperation: OptimisticProductUpdate | null = null;
 
   // Opciones predefinidas de tecnologías
-  technologiesOptions: { label: string, value: string }[] = [
+  technologiesOptions: { label: string; value: string }[] = [
     { label: 'Secado Rápido', value: 'secado_rapido' },
     { label: 'Protección UV', value: 'proteccion_uv' },
     { label: 'Anti-transpirante', value: 'anti_transpirante' },
@@ -96,10 +116,40 @@ export class ProductFormComponent implements OnInit, OnChanges {
     { label: 'Térmico', value: 'termico' },
     { label: 'Elástico', value: 'elastico' },
     { label: 'Resistente al viento', value: 'resistente_viento' },
-    { label: 'Sin costuras', value: 'sin_costuras' }
+    { label: 'Sin costuras', value: 'sin_costuras' },
   ];
 
   newTechnology: string = '';
+
+  private getSizeOrder(): { [key: string]: number } {
+    return {
+      XXS: 1,
+      XS: 2,
+      S: 3,
+      M: 4,
+      L: 5,
+      XL: 6,
+      XXL: 7,
+      XXXL: 8,
+      // Variaciones comunes
+      '2XS': 1,
+      '2XL': 7,
+      '3XL': 8,
+      // Tallas numéricas (para ropa infantil o zapatos)
+      '28': 10,
+      '30': 11,
+      '32': 12,
+      '34': 13,
+      '36': 14,
+      '38': 15,
+      '40': 16,
+      '42': 17,
+      '44': 18,
+      '46': 19,
+      '48': 20,
+      '50': 21,
+    };
+  }
 
   variantsMatrix: {
     size: string;
@@ -117,35 +167,41 @@ export class ProductFormComponent implements OnInit, OnChanges {
   showVariantsMatrix = false;
   autoGenerateSku = true;
   autoGenerateBarcode = true;
-  additionalImages: { file: File, url: string, id: string }[] = [];
+  additionalImages: AdditionalImageItem[] = [];
+  imagesToDelete: string[] = [];
   maxAdditionalImages: number = 5;
   productFeatures: string[] = [];
   newFeature: string = '';
 
   // Predefinidos
-  seasons: string[] = ['Spring 2025', 'Summer 2025', 'Fall 2025', 'Winter 2025'];
+  seasons: string[] = [
+    'Spring 2025',
+    'Summer 2025',
+    'Fall 2025',
+    'Winter 2025',
+  ];
   collections: string[] = ['Casual', 'Formal', 'Sport', 'Limited Edition'];
   genderOptions = [
     { label: 'Hombre', value: 'man' },
     { label: 'Mujer', value: 'woman' },
     { label: 'Niño', value: 'boy' },
     { label: 'Niña', value: 'girl' },
-    { label: 'Unisex', value: 'unisex' }
+    { label: 'Unisex', value: 'unisex' },
   ];
 
   // Imágenes
   mainImageUrl?: string;
   mainImageFile?: File;
-  colorImages: Map<string, { file: File, url: string }> = new Map();
-  sizeImages: Map<string, { file: File, url: string }> = new Map();
-  variantImages: Map<string, { file: File, url: string }> = new Map();
+  colorImages: Map<string, { file: File; url: string }> = new Map();
+  sizeImages: Map<string, { file: File; url: string }> = new Map();
+  variantImages: Map<string, { file: File; url: string }> = new Map();
 
   constructor(
     private fb: FormBuilder,
     private productService: ProductService,
     private message: NzMessageService,
     private cdr: ChangeDetectorRef
-  ) { }
+  ) {}
 
   ngOnInit(): void {
     this.initProductForm();
@@ -154,7 +210,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-
     if (changes['product']?.currentValue) {
       if (!this.productForm) {
         this.initProductForm();
@@ -187,7 +242,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
       tags: [''],
       technologies: [[], []],
       colors: this.fb.array([]),
-      sizes: this.fb.array([])
+      sizes: this.fb.array([]),
     });
 
     if (!this.productForm.get('colors')) {
@@ -206,7 +261,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
     if (!this.productForm) {
       this.initProductForm();
     }
-    return this.productForm.get('colors') as FormArray || this.fb.array([]);
+    return (this.productForm.get('colors') as FormArray) || this.fb.array([]);
   }
 
   get colorFormsControls(): FormGroup[] {
@@ -217,10 +272,56 @@ export class ProductFormComponent implements OnInit, OnChanges {
     const colorForm = this.fb.group({
       name: ['', [Validators.required]],
       code: ['#000000', [Validators.required]],
-      imageUrl: ['']
+      imageUrl: [''],
     });
-    this.colorForms.push(colorForm);
+
+    // Para FormArray, usar insert() en la posición 0 (inicio)
+    this.colorForms.insert(0, colorForm);
+
+    // Recrear la matriz de variantes
     this.createVariantsMatrix();
+
+    // Scroll suave hacia el nuevo color agregado
+    setTimeout(() => {
+      this.scrollToNewColor();
+    }, 100);
+  }
+
+  // AGREGA este método auxiliar para el scroll automático:
+
+  private scrollToNewColor(): void {
+    // Primero, forzar detección de cambios para asegurar que el DOM se actualice
+    this.cdr.detectChanges();
+
+    // Usar un timeout más largo para garantizar que el DOM esté listo
+    setTimeout(() => {
+      // Buscar el contenedor de scroll
+      const colorContainer = document.querySelector('.color-container');
+      if (colorContainer) {
+        // Hacer scroll al top del contenedor
+        colorContainer.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        });
+      }
+
+      // Buscar el primer elemento de color
+      const colorElements = document.querySelectorAll('.color-item');
+      if (colorElements.length > 0) {
+        const firstColorElement = colorElements[0] as HTMLElement;
+
+        // Agregar resaltado temporal
+        firstColorElement.classList.add('new-color-highlight');
+
+        // Remover el resaltado después de 2 segundos
+        setTimeout(() => {
+          firstColorElement.classList.remove('new-color-highlight');
+        }, 2000);
+
+        // Log para debugging
+        console.log('✅ Nuevo color agregado y resaltado aplicado');
+      }
+    }, 150); // Aumentar el timeout a 150ms
   }
 
   removeColor(index: number): void {
@@ -237,7 +338,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
     if (!this.productForm) {
       this.initProductForm();
     }
-    return this.productForm.get('sizes') as FormArray || this.fb.array([]);
+    return (this.productForm.get('sizes') as FormArray) || this.fb.array([]);
   }
 
   get sizeFormsControls(): FormGroup[] {
@@ -249,7 +350,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
       name: ['', [Validators.required]],
       stock: [0, [Validators.required, Validators.min(0)]],
       imageUrl: [''],
-      colorStocks: this.fb.array([])
+      colorStocks: this.fb.array([]),
     });
     this.sizeForms.push(sizeForm);
     this.createVariantsMatrix();
@@ -271,7 +372,11 @@ export class ProductFormComponent implements OnInit, OnChanges {
     }
 
     const sizesFormArray = this.productForm.get('sizes') as FormArray;
-    if (!sizesFormArray || sizeIndex < 0 || sizeIndex >= sizesFormArray.length) {
+    if (
+      !sizesFormArray ||
+      sizeIndex < 0 ||
+      sizeIndex >= sizesFormArray.length
+    ) {
       console.warn(`Índice de talla inválido: ${sizeIndex}`);
       return this.fb.array([]);
     }
@@ -295,7 +400,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
   addColorStock(sizeIndex: number, colorName: string): void {
     const colorStockForm = this.fb.group({
       colorName: [colorName, [Validators.required]],
-      quantity: [0, [Validators.required, Validators.min(0)]]
+      quantity: [0, [Validators.required, Validators.min(0)]],
     });
     this.getColorStockForms(sizeIndex).push(colorStockForm);
   }
@@ -304,10 +409,14 @@ export class ProductFormComponent implements OnInit, OnChanges {
     this.getColorStockForms(sizeIndex).removeAt(colorStockIndex);
   }
 
-  updateColorStock(sizeIndex: number, colorName: string, quantity: number): void {
+  updateColorStock(
+    sizeIndex: number,
+    colorName: string,
+    quantity: number
+  ): void {
     const colorStocks = this.getColorStockForms(sizeIndex);
     const existingIndex = colorStocks.controls.findIndex(
-      control => control.get('colorName')?.value === colorName
+      (control) => control.get('colorName')?.value === colorName
     );
 
     if (existingIndex >= 0) {
@@ -321,7 +430,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
   getColorStockValue(sizeIndex: number, colorName: string): number {
     const colorStocks = this.getColorStockForms(sizeIndex);
     const colorStock = colorStocks.controls.find(
-      control => control.get('colorName')?.value === colorName
+      (control) => control.get('colorName')?.value === colorName
     );
     return colorStock ? colorStock.get('quantity')?.value : 0;
   }
@@ -333,24 +442,49 @@ export class ProductFormComponent implements OnInit, OnChanges {
       return;
     }
 
+    // Verificar si el color ya existe
     const exists = this.colorForms.controls.some(
-      control => (control as FormGroup).get('name')?.value === color.name
+      (control) => (control as FormGroup).get('name')?.value === color.name
     );
 
     if (!exists) {
+      console.log('🎨 Agregando color existente:', color.name);
+      console.log('📊 Colores antes:', this.colorForms.length);
+
       const colorForm = this.fb.group({
         name: [color.name, [Validators.required]],
         code: [color.code || '#000000', [Validators.required]],
-        imageUrl: [color.imageUrl || '']
+        imageUrl: [color.imageUrl || ''],
       });
-      this.colorForms.push(colorForm);
 
+      // 🚀 CAMBIO PRINCIPAL: Usar insert(0) en lugar de push()
+      this.colorForms.insert(0, colorForm);
+      console.log('📊 Colores después:', this.colorForms.length);
+
+      // Agregar imagen si existe
       if (color.imageUrl) {
-        this.colorImages.set(color.name, { file: new File([], ''), url: color.imageUrl });
+        this.colorImages.set(color.name, {
+          file: new File([], ''),
+          url: color.imageUrl,
+        });
       }
 
+      // Recrear matriz de variantes
+      this.createVariantsMatrix();
+
+      // 🚀 SCROLL AUTOMÁTICO hacia el nuevo color
+      setTimeout(() => {
+        console.log('🎯 Ejecutando scroll para color existente...');
+        this.scrollToNewColor();
+      }, 100);
+
+      // Mensaje de éxito
       this.message.success(`Color ${color.name} agregado`);
+
+      // Forzar detección de cambios
       this.cdr.detectChanges();
+
+      console.log('✅ Color existente agregado correctamente');
     } else {
       this.message.info(`El color ${color.name} ya está agregado`);
     }
@@ -358,28 +492,43 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
   addExistingSize(size: Size): void {
     const exists = this.sizeForms.controls.some(
-      control => (control as FormGroup).get('name')?.value === size.name
+      (control) => (control as FormGroup).get('name')?.value === size.name
     );
 
     if (!exists) {
+      console.log('📏 Agregando talla existente:', size.name);
+
       const sizeForm = this.fb.group({
         name: [size.name, [Validators.required]],
         stock: [size.stock || 0, [Validators.required, Validators.min(0)]],
         imageUrl: [size.imageUrl || ''],
-        colorStocks: this.fb.array([])
+        colorStocks: this.fb.array([]),
       });
-      this.sizeForms.push(sizeForm);
+
+      // 🚀 También usar insert(0) para tallas si quieres consistencia
+      this.sizeForms.insert(0, sizeForm);
 
       if (size.imageUrl) {
-        this.sizeImages.set(size.name, { file: new File([], ''), url: size.imageUrl });
+        this.sizeImages.set(size.name, {
+          file: new File([], ''),
+          url: size.imageUrl,
+        });
       }
+
+      this.createVariantsMatrix();
+
+      // Scroll automático para tallas también
+      setTimeout(() => {
+        const sizeContainer = document.querySelector('.size-container'); // Si tienes un contenedor similar para tallas
+        if (sizeContainer) {
+          sizeContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
 
       this.message.success(`Talla ${size.name} agregada`);
     } else {
       this.message.info(`La talla ${size.name} ya está agregada`);
     }
-
-    this.createVariantsMatrix();
   }
 
   // ==================== GESTIÓN DE IMÁGENES ADICIONALES ====================
@@ -388,29 +537,107 @@ export class ProductFormComponent implements OnInit, OnChanges {
     if (input.files && input.files.length) {
       const files = Array.from(input.files);
 
-      if (this.additionalImages.length + files.length > this.maxAdditionalImages) {
-        this.message.warning(`Solo puede subir un máximo de ${this.maxAdditionalImages} imágenes adicionales.`);
+      // Verificar límite total
+      const currentCount = this.additionalImages.filter(
+        (img) => !img.toDelete
+      ).length;
+      if (currentCount + files.length > this.maxAdditionalImages) {
+        this.message.warning(
+          `Solo puede subir un máximo de ${this.maxAdditionalImages} imágenes adicionales.`
+        );
         return;
       }
 
-      files.forEach(file => {
+      // Procesar cada archivo
+      files.forEach((file) => {
+        if (!file.type.startsWith('image/')) {
+          this.message.error(`${file.name} no es una imagen válida`);
+          return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          // 5MB límite
+          this.message.error(`${file.name} supera el límite de 5MB`);
+          return;
+        }
+
         const reader = new FileReader();
         reader.onload = () => {
-          this.additionalImages.push({
+          const newImage: AdditionalImageItem = {
             file: file,
             url: reader.result as string,
-            id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-          });
+            id: `new_${Date.now()}_${Math.random()
+              .toString(36)
+              .substring(2, 9)}`,
+            isExisting: false,
+            toDelete: false,
+          };
+
+          this.additionalImages.push(newImage);
           this.cdr.detectChanges();
+
+          console.log('✅ Nueva imagen agregada:', newImage.id);
         };
+
+        reader.onerror = (error) => {
+          console.error('❌ Error al leer archivo:', error);
+          this.message.error(`Error al procesar ${file.name}`);
+        };
+
         reader.readAsDataURL(file);
       });
+
+      // Limpiar el input
+      input.value = '';
     }
   }
 
   removeAdditionalImage(index: number): void {
-    this.additionalImages.splice(index, 1);
+    const image = this.additionalImages[index];
+
+    if (!image) {
+      console.warn('⚠️ Imagen no encontrada en índice:', index);
+      return;
+    }
+
+    if (image.isExisting) {
+      // 🔥 Imagen existente: marcar para eliminar de Firebase
+      image.toDelete = true;
+      this.imagesToDelete.push(image.url);
+
+      console.log('🗑️ Imagen marcada para eliminar de Firebase:', {
+        url: image.url,
+        id: image.id,
+      });
+
+      this.message.info(
+        'Imagen marcada para eliminar (se eliminará al guardar)'
+      );
+    } else {
+      // 🆕 Imagen nueva: eliminar inmediatamente del array
+      this.additionalImages.splice(index, 1);
+
+      console.log('✅ Nueva imagen eliminada inmediatamente:', image.id);
+    }
+
     this.cdr.detectChanges();
+  }
+
+  restoreAdditionalImage(index: number): void {
+    const image = this.additionalImages[index];
+
+    if (image && image.isExisting && image.toDelete) {
+      image.toDelete = false;
+
+      // Remover de la lista de eliminación
+      const urlIndex = this.imagesToDelete.indexOf(image.url);
+      if (urlIndex > -1) {
+        this.imagesToDelete.splice(urlIndex, 1);
+      }
+
+      this.message.success('Imagen restaurada');
+      this.cdr.detectChanges();
+    }
   }
 
   // ==================== GESTIÓN DE CARACTERÍSTICAS ====================
@@ -444,7 +671,9 @@ export class ProductFormComponent implements OnInit, OnChanges {
     const patchData = {
       name: this.product.name || '',
       price: this.product.price || 0,
-      categories: this.product.categories || (this.product.category ? [this.product.category] : []),
+      categories:
+        this.product.categories ||
+        (this.product.category ? [this.product.category] : []),
       description: this.product.description || '',
       sku: this.product.sku || '',
       barcode: this.product.barcode || '',
@@ -452,52 +681,64 @@ export class ProductFormComponent implements OnInit, OnChanges {
       collection: this.product.collection || '',
       gender: this.product.gender || 'unisex',
       isNew: this.product.isNew === undefined ? true : this.product.isNew,
-      isBestSeller: this.product.isBestSeller === undefined ? false : this.product.isBestSeller,
+      isBestSeller:
+        this.product.isBestSeller === undefined
+          ? false
+          : this.product.isBestSeller,
       metaTitle: this.product.metaTitle || '',
       metaDescription: this.product.metaDescription || '',
       searchKeywords: this.product.searchKeywords?.join(', ') || '',
       tags: this.product.tags?.join(', ') || '',
-      technologies: this.product.technologies || []
+      technologies: this.product.technologies || [],
     };
     this.productForm.patchValue(patchData);
 
     // Agregar colores
     if (this.product.colors && this.product.colors.length > 0) {
-      this.product.colors.forEach(color => {
+      this.product.colors.forEach((color) => {
         const colorForm = this.fb.group({
           name: [color.name || '', [Validators.required]],
           code: [color.code || '#000000', [Validators.required]],
-          imageUrl: [color.imageUrl || '']
+          imageUrl: [color.imageUrl || ''],
         });
         this.colorForms.push(colorForm);
 
         if (color.imageUrl) {
-          this.colorImages.set(color.name, { file: new File([], ''), url: color.imageUrl });
+          this.colorImages.set(color.name, {
+            file: new File([], ''),
+            url: color.imageUrl,
+          });
         }
       });
     }
 
     // Agregar tamaños
     if (this.product.sizes && this.product.sizes.length > 0) {
-      this.product.sizes.forEach(size => {
+      this.product.sizes.forEach((size) => {
         const sizeForm = this.fb.group({
           name: [size.name || '', [Validators.required]],
           stock: [size.stock || 0, [Validators.required, Validators.min(0)]],
           imageUrl: [size.imageUrl || ''],
-          colorStocks: this.fb.array([])
+          colorStocks: this.fb.array([]),
         });
         this.sizeForms.push(sizeForm);
 
         if (size.imageUrl) {
-          this.sizeImages.set(size.name, { file: new File([], ''), url: size.imageUrl });
+          this.sizeImages.set(size.name, {
+            file: new File([], ''),
+            url: size.imageUrl,
+          });
         }
 
         if (size.colorStocks && size.colorStocks.length > 0) {
           const colorStocksForm = sizeForm.get('colorStocks') as FormArray;
-          size.colorStocks.forEach(colorStock => {
+          size.colorStocks.forEach((colorStock) => {
             const colorStockForm = this.fb.group({
               colorName: [colorStock.colorName || '', [Validators.required]],
-              quantity: [colorStock.quantity || 0, [Validators.required, Validators.min(0)]]
+              quantity: [
+                colorStock.quantity || 0,
+                [Validators.required, Validators.min(0)],
+              ],
             });
             colorStocksForm.push(colorStockForm);
           });
@@ -506,22 +747,46 @@ export class ProductFormComponent implements OnInit, OnChanges {
     }
 
     // Guardar imágenes de variantes
-    if (this.product.variants && Array.isArray(this.product.variants) && this.product.variants.length > 0) {
-      this.product.variants.forEach(variant => {
+    if (
+      this.product.variants &&
+      Array.isArray(this.product.variants) &&
+      this.product.variants.length > 0
+    ) {
+      this.product.variants.forEach((variant) => {
         if (variant.imageUrl && variant.imageUrl !== this.product?.imageUrl) {
           const key = `${variant.colorName}-${variant.sizeName}`;
-          this.variantImages.set(key, { file: new File([], ''), url: variant.imageUrl });
+          this.variantImages.set(key, {
+            file: new File([], ''),
+            url: variant.imageUrl,
+          });
         }
       });
     }
 
-    // Cargar imágenes adicionales
-    if (this.product?.additionalImages && this.product.additionalImages.length > 0) {
-      this.additionalImages = this.product.additionalImages.map(url => ({
-        file: new File([], ''),
-        url: url,
-        id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-      }));
+    // 🔄 CARGAR IMÁGENES ADICIONALES EXISTENTES - CORREGIDO
+    this.additionalImages = [];
+    this.imagesToDelete = [];
+
+    if (
+      this.product.additionalImages &&
+      this.product.additionalImages.length > 0
+    ) {
+      this.additionalImages = this.product.additionalImages.map(
+        (url: string): AdditionalImageItem => ({
+          url: url,
+          id: `existing_${Date.now()}_${Math.random()
+            .toString(36)
+            .substring(2, 9)}`,
+          isExisting: true,
+          toDelete: false,
+          file: undefined,
+        })
+      );
+
+      console.log(
+        '📷 Imágenes adicionales cargadas:',
+        this.additionalImages.length
+      );
     }
 
     // Cargar características
@@ -533,40 +798,65 @@ export class ProductFormComponent implements OnInit, OnChanges {
     this.cdr.detectChanges();
   }
 
+  /**
+   * 🆕 NUEVO: Obtener imágenes que se mantendrán
+   */
+  getValidAdditionalImages(): AdditionalImageItem[] {
+    return this.additionalImages.filter((img) => !img.toDelete);
+  }
+
+  /**
+   * 🆕 NUEVO: Obtener solo archivos nuevos para subir
+   */
+  getNewImageFiles(): File[] {
+    return this.additionalImages
+      .filter((img) => !img.isExisting && !img.toDelete && img.file)
+      .map((img) => img.file!);
+  }
+
   // ==================== TECNOLOGÍAS ====================
   addCustomTechnology(): void {
     if (!this.newTechnology.trim()) {
       return;
     }
 
-    const value = 'custom_' + this.newTechnology.toLowerCase().replace(/\s+/g, '_');
+    const value =
+      'custom_' + this.newTechnology.toLowerCase().replace(/\s+/g, '_');
 
-    const exists = this.technologiesOptions.some(tech => tech.value === value);
+    const exists = this.technologiesOptions.some(
+      (tech) => tech.value === value
+    );
     if (!exists) {
       this.technologiesOptions.push({
         label: this.newTechnology.trim(),
-        value: value
+        value: value,
       });
 
       this.technologiesOptions.sort((a, b) => a.label.localeCompare(b.label));
     }
 
-    const currentTechnologies = this.productForm.get('technologies')?.value || [];
+    const currentTechnologies =
+      this.productForm.get('technologies')?.value || [];
     if (!currentTechnologies.includes(value)) {
-      this.productForm.get('technologies')?.setValue([...currentTechnologies, value]);
+      this.productForm
+        .get('technologies')
+        ?.setValue([...currentTechnologies, value]);
     }
 
     this.newTechnology = '';
   }
 
   getTechnologyLabel(value: string): string {
-    const tech = this.technologiesOptions.find(t => t.value === value);
+    const tech = this.technologiesOptions.find((t) => t.value === value);
     return tech ? tech.label : value;
   }
 
   removeTechnology(techValue: string): void {
-    const currentTechnologies = this.productForm.get('technologies')?.value || [];
-    const updatedTechnologies = currentTechnologies.filter((value: string) => value !== techValue);
+    const currentTechnologies =
+      this.productForm.get('technologies')?.value || [];
+    const updatedTechnologies = currentTechnologies.filter(
+      (value: string) => value !== techValue
+    );
     this.productForm.get('technologies')?.setValue(updatedTechnologies);
   }
 
@@ -598,7 +888,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
       isBestSeller: false,
       technologies: [],
       categories: [],
-      gender: 'unisex'
+      gender: 'unisex',
     });
 
     this.resetImages();
@@ -611,6 +901,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
     this.sizeImages.clear();
     this.variantImages.clear();
     this.additionalImages = [];
+    this.imagesToDelete = [];
   }
 
   // ==================== MANEJO DE IMÁGENES ====================
@@ -630,18 +921,18 @@ export class ProductFormComponent implements OnInit, OnChanges {
   }
 
   openColorImageInput(colorIndex: number): void {
-    const inputElement = document.getElementById(`colorInput_${colorIndex}`) as HTMLInputElement;
+    const inputElement = document.getElementById(
+      `colorInput_${colorIndex}`
+    ) as HTMLInputElement;
     if (inputElement) {
       inputElement.click();
     }
   }
 
   onColorImageChange(event: Event, colorName: string): void {
-
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
       const file = input.files[0];
-
 
       if (!file.type.startsWith('image/')) {
         this.message.error('Por favor seleccione un archivo de imagen válido');
@@ -657,7 +948,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
       reader.onload = () => {
         this.colorImages.set(colorName, {
           file: file,
-          url: reader.result as string
+          url: reader.result as string,
         });
 
         this.cdr.detectChanges();
@@ -681,7 +972,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
       reader.onload = () => {
         this.sizeImages.set(sizeName, {
           file: file,
-          url: reader.result as string
+          url: reader.result as string,
         });
         this.cdr.detectChanges();
       };
@@ -689,7 +980,11 @@ export class ProductFormComponent implements OnInit, OnChanges {
     }
   }
 
-  onVariantImageChange(event: Event, colorName: string, sizeName: string): void {
+  onVariantImageChange(
+    event: Event,
+    colorName: string,
+    sizeName: string
+  ): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length) {
       const file = input.files[0];
@@ -699,7 +994,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
       reader.onload = () => {
         this.variantImages.set(key, {
           file: file,
-          url: reader.result as string
+          url: reader.result as string,
         });
 
         this.cdr.detectChanges();
@@ -716,7 +1011,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
   // 🚀 ==================== ENVÍO DE FORMULARIO CON ACTUALIZACIÓN OPTIMISTA ====================
   submitForm(): void {
     if (this.productForm.invalid) {
-      Object.values(this.productForm.controls).forEach(control => {
+      Object.values(this.productForm.controls).forEach((control) => {
         if (control.invalid) {
           control.markAsDirty();
           control.updateValueAndValidity();
@@ -727,7 +1022,9 @@ export class ProductFormComponent implements OnInit, OnChanges {
     }
 
     if (!this.isEditMode && !this.mainImageFile) {
-      this.message.warning('Debe seleccionar una imagen principal para el producto.');
+      this.message.warning(
+        'Debe seleccionar una imagen principal para el producto.'
+      );
       return;
     }
 
@@ -747,16 +1044,28 @@ export class ProductFormComponent implements OnInit, OnChanges {
     this.submitting = true;
 
     try {
-      const tags = formData.tags ? formData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : [];
-      const searchKeywords = formData.searchKeywords ?
-        formData.searchKeywords.split(',').map((kw: string) => kw.trim()).filter(Boolean) : [];
+      const tags = formData.tags
+        ? formData.tags
+            .split(',')
+            .map((tag: string) => tag.trim())
+            .filter(Boolean)
+        : [];
+      const searchKeywords = formData.searchKeywords
+        ? formData.searchKeywords
+            .split(',')
+            .map((kw: string) => kw.trim())
+            .filter(Boolean)
+        : [];
 
       // Crear objeto de producto
       const productData: Omit<Product, 'id'> = {
         name: formData.name,
         price: formData.price,
         categories: formData.categories || [],
-        category: formData.categories && formData.categories.length > 0 ? formData.categories[0] : '',
+        category:
+          formData.categories && formData.categories.length > 0
+            ? formData.categories[0]
+            : '',
         description: formData.description,
         sku: formData.sku,
         barcode: formData.barcode,
@@ -787,7 +1096,6 @@ export class ProductFormComponent implements OnInit, OnChanges {
         this.applyOptimisticUpdate(productData);
       }
 
-
       const colorImagesMap = new Map<string, File>();
       this.colorImages.forEach((value, key) => {
         if (value.file && value.file.size > 0) {
@@ -809,100 +1117,149 @@ export class ProductFormComponent implements OnInit, OnChanges {
         }
       });
 
-      const additionalImageFiles = this.additionalImages
-        .filter(img => img.file.size > 0)
-        .map(img => img.file);
+      const newImageFiles = this.getNewImageFiles();
+      const validImages = this.getValidAdditionalImages();
 
       if (!this.isEditMode) {
         // ==================== CREAR PRODUCTO ====================
-        this.productService.createProduct(
-          productData,
-          formData.colors,
-          formData.sizes,
-          this.mainImageFile!,
-          colorImagesMap,
-          sizeImagesMap,
-          variantImagesMap,
-          additionalImageFiles
-        ).pipe(
-          finalize(() => this.submitting = false)
-        ).subscribe({
-          next: (id) => {
-            this.message.success(`Producto creado correctamente con ID: ${id}`);
-            this.resetForm();
-            
-            // 🚀 Crear producto optimista para enviar al componente padre
-            const newProduct: Product = {
-              id,
-              ...productData
-            };
-            
-            this.formSubmitted.emit({ 
-              success: true, 
-              action: 'create', 
-              productId: id,
-              requiresReload: true,
-              optimisticUpdate: newProduct // 🚀 Enviar producto creado
-            });
-          },
-          error: (error) => {
-            console.error('❌ [FORM] Error al crear producto:', error);
-            this.message.error('Error al crear producto: ' + (error.message || 'Error desconocido'));
-          }
-        });
+        this.productService
+          .createProduct(
+            productData,
+            formData.colors,
+            formData.sizes,
+            this.mainImageFile!,
+            colorImagesMap,
+            sizeImagesMap,
+            variantImagesMap,
+            newImageFiles
+          )
+          .pipe(finalize(() => (this.submitting = false)))
+          .subscribe({
+            next: (id) => {
+              this.message.success(
+                `Producto creado correctamente con ID: ${id}`
+              );
+              this.resetForm();
+
+              // 🚀 Crear producto optimista para enviar al componente padre
+              const newProduct: Product = {
+                id,
+                ...productData,
+              };
+
+              this.formSubmitted.emit({
+                success: true,
+                action: 'create',
+                productId: id,
+                requiresReload: true,
+                optimisticUpdate: newProduct, // 🚀 Enviar producto creado
+              });
+            },
+            error: (error) => {
+              console.error('❌ [FORM] Error al crear producto:', error);
+              this.message.error(
+                'Error al crear producto: ' +
+                  (error.message || 'Error desconocido')
+              );
+            },
+          });
       } else {
         // ==================== ACTUALIZAR PRODUCTO ====================
-        this.productService.updateProduct(
-          this.product!.id,
-          productData,
-          this.mainImageFile || undefined,
-          additionalImageFiles,
-          colorImagesMap,
-          sizeImagesMap,
-          variantImagesMap
-        ).pipe(
-          finalize(() => this.submitting = false)
-        ).subscribe({
-          next: () => {
-            this.message.success('Producto actualizado correctamente');
-            
-            // ✅ La actualización optimista ya se aplicó antes del envío
-            this.confirmOptimisticUpdate();
-            
-            this.formSubmitted.emit({ 
-              success: true, 
-              action: 'update', 
-              productId: this.product!.id,
-              requiresReload: false, // 🚀 No necesita reload, ya está actualizado optimísticamente
-              optimisticUpdate: this.pendingOperation?.changes as Product // 🚀 Enviar cambios aplicados
-            });
-          },
-          error: (error) => {
-            console.error('❌ [FORM] Error al actualizar producto:', error);
-            
-            // 🔄 ROLLBACK: Revertir cambios optimistas
-            this.rollbackOptimisticUpdate();
-            
-            this.message.error('Error al actualizar producto: ' + (error.message || 'Error desconocido'));
-            
-            this.formSubmitted.emit({ 
-              success: false, 
-              action: 'update', 
-              productId: this.product!.id 
-            });
-          }
-        });
+
+        // 🔄 PREPARAR DATOS PARA ACTUALIZACIÓN
+        const existingImageUrls = validImages
+          .filter((img) => img.isExisting)
+          .map((img) => img.url);
+
+        const updatedProductData = {
+          ...productData,
+          additionalImages: existingImageUrls, // URLs que se mantienen
+        };
+
+        this.productService
+          .updateProduct(
+            this.product!.id,
+            updatedProductData,
+            this.mainImageFile || undefined,
+            newImageFiles,
+            colorImagesMap,
+            sizeImagesMap,
+            variantImagesMap
+          )
+          .pipe(finalize(() => (this.submitting = false)))
+          .subscribe({
+            next: () => {
+              this.deleteRemovedImages();
+              this.message.success('Producto actualizado correctamente');
+
+              // ✅ La actualización optimista ya se aplicó antes del envío
+              this.confirmOptimisticUpdate();
+
+              this.formSubmitted.emit({
+                success: true,
+                action: 'update',
+                productId: this.product!.id,
+                requiresReload: false, // 🚀 No necesita reload, ya está actualizado optimísticamente
+                optimisticUpdate: this.pendingOperation?.changes as Product, // 🚀 Enviar cambios aplicados
+              });
+            },
+            error: (error) => {
+              console.error('❌ [FORM] Error al actualizar producto:', error);
+
+              // 🔄 ROLLBACK: Revertir cambios optimistas
+              this.rollbackOptimisticUpdate();
+
+              this.message.error(
+                'Error al actualizar producto: ' +
+                  (error.message || 'Error desconocido')
+              );
+
+              this.formSubmitted.emit({
+                success: false,
+                action: 'update',
+                productId: this.product!.id,
+              });
+            },
+          });
       }
     } catch (error: any) {
       this.submitting = false;
       console.error('💥 [FORM] Error en submitForm:', error);
-      this.message.error('Error al ' + (this.isEditMode ? 'actualizar' : 'crear') + ' producto: ' +
-        (error.message || 'Error desconocido'));
+      this.message.error(
+        'Error al ' +
+          (this.isEditMode ? 'actualizar' : 'crear') +
+          ' producto: ' +
+          (error.message || 'Error desconocido')
+      );
     }
   }
 
+  private deleteRemovedImages(): void {
+    if (this.imagesToDelete.length === 0) {
+      console.log('🔍 No hay imágenes para eliminar');
+      return;
+    }
+
+    console.log('🔥 Eliminando imágenes de Firebase:', this.imagesToDelete);
+
+    // Usar el servicio de imágenes para eliminar
+    this.imagesToDelete.forEach(async (imageUrl) => {
+      try {
+        // Aquí necesitas llamar al método de eliminación de imágenes
+        // Esto depende de tu ProductImageService
+        await this.productService.deleteImage(imageUrl);
+        console.log('✅ Imagen eliminada de Firebase:', imageUrl);
+      } catch (error) {
+        console.error('❌ Error al eliminar imagen:', imageUrl, error);
+      }
+    });
+
+    // Limpiar la lista
+    this.imagesToDelete = [];
+  }
+
   // 🚀 ==================== MÉTODOS DE ACTUALIZACIÓN OPTIMISTA ====================
-  
+
   /**
    * Aplica cambios optimísticamente antes de enviar al servidor
    */
@@ -912,14 +1269,14 @@ export class ProductFormComponent implements OnInit, OnChanges {
     // Crear backup del producto original
     const backup: ProductBackup = {
       originalProduct: { ...this.product },
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     // Crear producto actualizado
     const updatedProduct: Product = {
       ...this.product,
       ...newProductData,
-      id: this.product.id // Mantener el ID original
+      id: this.product.id, // Mantener el ID original
     };
 
     // Registrar operación pendiente
@@ -927,7 +1284,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
       type: 'update',
       productId: this.product.id,
       backup,
-      changes: updatedProduct
+      changes: updatedProduct,
     };
 
     console.log('✅ [FORM] Actualización optimista aplicada:', {
@@ -935,7 +1292,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
       oldStock: this.product.totalStock,
       newStock: updatedProduct.totalStock,
       oldName: this.product.name,
-      newName: updatedProduct.name
+      newName: updatedProduct.name,
     });
   }
 
@@ -953,13 +1310,12 @@ export class ProductFormComponent implements OnInit, OnChanges {
    */
   private rollbackOptimisticUpdate(): void {
     if (this.pendingOperation && this.pendingOperation.backup) {
-      
       // Restaurar producto original
       this.product = { ...this.pendingOperation.backup.originalProduct };
-      
+
       // Repoblar formulario con datos originales
       this.populateForm();
-      
+
       this.pendingOperation = null;
     }
   }
@@ -969,14 +1325,14 @@ export class ProductFormComponent implements OnInit, OnChanges {
     if (this.pendingOperation) {
       this.rollbackOptimisticUpdate();
     }
-    
+
     this.formCancelled.emit();
   }
 
   // ==================== CÁLCULO DE STOCK ====================
   calculateTotalStock(): number {
     let total = 0;
-    
+
     for (let i = 0; i < this.sizeForms.length; i++) {
       const sizeForm = this.sizeForms.at(i);
       const sizeName = sizeForm.get('name')?.value;
@@ -1008,6 +1364,26 @@ export class ProductFormComponent implements OnInit, OnChanges {
   }
 
   // ==================== MATRIZ DE VARIANTES ====================
+
+  private sortSizesByStandardOrder(sizes: string[]): string[] {
+    const sizeOrder = this.getSizeOrder();
+
+    return sizes.sort((a, b) => {
+      const aUpper = a.toUpperCase();
+      const bUpper = b.toUpperCase();
+
+      const orderA = sizeOrder[aUpper] || 999; // Si no existe, va al final
+      const orderB = sizeOrder[bUpper] || 999;
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      // Si tienen el mismo orden, ordenar alfabéticamente
+      return a.localeCompare(b);
+    });
+  }
+
   createVariantsMatrix(): void {
     this.variantsMatrix = [];
 
@@ -1016,26 +1392,29 @@ export class ProductFormComponent implements OnInit, OnChanges {
       return;
     }
 
-    const colors = this.colorForms.controls.map(control =>
-      (control as FormGroup).get('name')?.value
-    ).filter(Boolean);
+    const colors = this.colorForms.controls
+      .map((control) => (control as FormGroup).get('name')?.value)
+      .filter(Boolean);
 
-    const sizes = this.sizeForms.controls.map(control =>
-      (control as FormGroup).get('name')?.value
-    ).filter(Boolean);
+    const sizes = this.sizeForms.controls
+      .map((control) => (control as FormGroup).get('name')?.value)
+      .filter(Boolean);
 
-    sizes.forEach(sizeName => {
+    // 🚀 ORDENAR TALLAS según el estándar
+    const sortedSizes = this.sortSizesByStandardOrder(sizes);
+
+    sortedSizes.forEach((sizeName) => {
       const sizeIndex = this.getSizeIndexByName(sizeName);
       if (sizeIndex === -1) return;
 
       const row = {
         size: sizeName,
-        colorVariants: colors.map(colorName => ({
+        colorVariants: colors.map((colorName) => ({
           colorName: colorName,
           sizeName: sizeName,
           stock: this.getColorStockValue(sizeIndex, colorName) || 0,
-          key: `${colorName}-${sizeName}`
-        }))
+          key: `${colorName}-${sizeName}`,
+        })),
       };
       this.variantsMatrix.push(row);
     });
@@ -1045,16 +1424,15 @@ export class ProductFormComponent implements OnInit, OnChanges {
   }
 
   getSizeIndexByName(sizeName: string): number {
-    return this.sizeForms.controls.findIndex(control =>
-      (control as FormGroup).get('name')?.value === sizeName
+    return this.sizeForms.controls.findIndex(
+      (control) => (control as FormGroup).get('name')?.value === sizeName
     );
   }
 
   updateVariantStock(colorName: string, sizeName: string, stock: number): void {
-    
-    this.variantsMatrix.forEach(row => {
+    this.variantsMatrix.forEach((row) => {
       if (row.size === sizeName) {
-        row.colorVariants.forEach(variant => {
+        row.colorVariants.forEach((variant) => {
           if (variant.colorName === colorName) {
             variant.stock = stock;
           }
@@ -1067,15 +1445,16 @@ export class ProductFormComponent implements OnInit, OnChanges {
       this.updateColorStock(sizeIndex, colorName, stock);
     }
 
-    this.updateTotalStock
-    
+    this.updateTotalStock;
   }
 
   getColorCode(colorName: string): string {
     const colorForm = this.colorForms.controls.find(
-      control => (control as FormGroup).get('name')?.value === colorName
+      (control) => (control as FormGroup).get('name')?.value === colorName
     );
-    return colorForm ? (colorForm as FormGroup).get('code')?.value || '#000000' : '#000000';
+    return colorForm
+      ? (colorForm as FormGroup).get('code')?.value || '#000000'
+      : '#000000';
   }
 
   removeVariantImage(variantKey: string): void {
@@ -1103,42 +1482,47 @@ export class ProductFormComponent implements OnInit, OnChanges {
     return !hasErrors;
   }
 
-
-
   // ==================== GENERADORES ====================
   generateSku(): string {
     const form = this.productForm.value;
 
-    const categoryId = form.categories && form.categories.length > 0 ? form.categories[0] : '';
-    const category = this.categories.find(c => c.id === categoryId);
-    const categoryCode = category ?
-      category.name.substring(0, 3).toUpperCase() : 'CAT';
+    const categoryId =
+      form.categories && form.categories.length > 0 ? form.categories[0] : '';
+    const category = this.categories.find((c) => c.id === categoryId);
+    const categoryCode = category
+      ? category.name.substring(0, 3).toUpperCase()
+      : 'CAT';
 
-    const productCode = form.name ?
-      form.name.substring(0, 3).toUpperCase() : 'PRD';
+    const productCode = form.name
+      ? form.name.substring(0, 3).toUpperCase()
+      : 'PRD';
 
     const serialNumber = Math.floor(1000 + Math.random() * 9000);
 
     return `${categoryCode}-${productCode}-${serialNumber}`;
   }
 
-  generateVariantSku(baseSku: string, colorName: string, sizeName: string): string {
+  generateVariantSku(
+    baseSku: string,
+    colorName: string,
+    sizeName: string
+  ): string {
     const colorCode = colorName.substring(0, 2).toUpperCase();
     return `${baseSku}-${colorCode}${sizeName}`;
   }
 
   listenToAutoGenerateSkuChanges(): void {
-    this.productForm.get('sku')?.setValidators(
-      this.autoGenerateSku ? [] : [Validators.required]
-    );
+    this.productForm
+      .get('sku')
+      ?.setValidators(this.autoGenerateSku ? [] : [Validators.required]);
     this.productForm.get('sku')?.updateValueAndValidity();
   }
 
   onAutoGenerateSkuChange(value: boolean): void {
     this.autoGenerateSku = value;
-    this.productForm.get('sku')?.setValidators(
-      this.autoGenerateSku ? [] : [Validators.required]
-    );
+    this.productForm
+      .get('sku')
+      ?.setValidators(this.autoGenerateSku ? [] : [Validators.required]);
     this.productForm.get('sku')?.updateValueAndValidity();
   }
 

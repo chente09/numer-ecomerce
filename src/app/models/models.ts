@@ -59,6 +59,13 @@ export interface ProductVariant {
     discountedPrice?: number;  // Precio con descuento calculado
     originalPrice?: number;  // Precio original antes del descuento
 }
+export interface AdditionalImageItem {
+  file?: File;           // Solo para nuevas imágenes
+  url: string;          // URL para mostrar (blob local o Firebase URL)
+  id: string;           // ID único
+  isExisting: boolean;  // true = existe en Firebase, false = nueva
+  toDelete?: boolean;   // true = marcar para eliminar
+}
 
 export interface Product {
     id: string;

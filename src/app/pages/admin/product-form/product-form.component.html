@@ -111,11 +111,10 @@
                                     <!-- Input para añadir nuevas características -->
                                     <div class="feature-input">
                                         <input nz-input [(ngModel)]="newFeature" [ngModelOptions]="{standalone: true}"
-                                            placeholder="Ej. Con capucha, Impermeable, Manga larga"
-                                            (keyup.enter)="addFeature()">
-                                        <button nz-button nzType="primary" (click)="addFeature()">
+                                            placeholder="Ej. Con capucha, Impermeable, Manga larga">
+                                        <div class="add-feature-button"  (click)="addFeature()">
                                             <span nz-icon nzType="plus"></span>
-                                        </button>
+                                        </div>
                                     </div>
 
                                     <div class="form-help-text">
@@ -156,20 +155,23 @@
                             <nz-form-control>
                                 <div class="additional-images-container">
                                     <div class="additional-images-grid">
-                                        <!-- Mostrar imágenes actuales -->
+                                        <!-- Mostrar imágenes actuales - ESTRUCTURA CORREGIDA -->
                                         <div *ngFor="let img of additionalImages; let i = index"
                                             class="additional-image-item">
+                                            <!-- Imagen -->
                                             <div class="image-preview">
                                                 <img [src]="img.url" alt="Imagen adicional">
-                                                <button type="button" class="remove-image-btn"
-                                                    (click)="removeAdditionalImage(i)" nz-tooltip
-                                                    nzTooltipTitle="Eliminar">
-                                                    <span nz-icon nzType="delete"></span>
-                                                </button>
                                             </div>
+
+                                            <!-- Botón de eliminar FUERA del image-preview -->
+                                            <button type="button" class="remove-image-btn"
+                                                (click)="removeAdditionalImage(i)" nz-tooltip
+                                                nzTooltipTitle="Eliminar imagen">
+                                                <span nz-icon nzType="delete"></span>
+                                            </button>
                                         </div>
 
-                                        <!-- Botón para añadir más imágenes (si hay menos del máximo) -->
+                                        <!-- Botón para añadir más imágenes -->
                                         <div *ngIf="additionalImages.length < maxAdditionalImages"
                                             class="add-image-btn">
                                             <button type="button" nz-button (click)="additionalImagesInput.click()">
@@ -230,11 +232,17 @@
 
             <!-- Pestaña de Colores -->
             <nz-tab nzTitle="Colores">
+                <!-- Header sticky con botón y contador -->
                 <div class="tab-header">
-                    <button type="button" nz-button nzType="default" (click)="addColor()">
+                    <button type="button" nz-button nzType="primary" (click)="addColor()">
                         <span nz-icon nzType="plus"></span> Agregar Color
                     </button>
+                    <span class="color-count" *ngIf="colorForms.length > 0">
+                        {{ colorForms.length }} color(es) agregado(s)
+                    </span>
                 </div>
+
+                <!-- Colores existentes (si los hay) -->
                 <div class="existing-colors" *ngIf="existingColors && existingColors.length > 0">
                     <h4>Colores Disponibles</h4>
                     <div class="color-chips">
@@ -245,13 +253,23 @@
                         </div>
                     </div>
                 </div>
-                <div *ngIf="colorForms.length === 0" class="empty-message">
-                    <nz-empty nzNotFoundContent="No hay colores agregados"></nz-empty>
-                </div>
 
-                <div *ngFor="let colorForm of colorFormsControls; let i = index" class="color-item">
-                    <ng-container *ngIf="colorForm.get('name')">
-                        <div nz-row [nzGutter]="16" [formGroup]="colorForm">
+                <!-- CONTENEDOR CON SCROLL - ESTO ERA LO QUE FALTABA -->
+                <div class="color-container">
+                    <!-- Mensaje cuando no hay colores -->
+                    <div *ngIf="colorForms.length === 0" class="empty-message">
+                        <nz-empty nzNotFoundContent="No hay colores agregados">
+                            <ng-template #footer>
+                                <button nz-button nzType="primary" (click)="addColor()">
+                                    <span nz-icon nzType="plus"></span> Agregar Primer Color
+                                </button>
+                            </ng-template>
+                        </nz-empty>
+                    </div>
+
+                    <!-- Lista de colores formularios -->
+                    <div *ngFor="let colorForm of colorFormsControls; let i = index" class="color-item">
+                        <ng-container *ngIf="colorForm.get('name')">
                             <div nz-row [nzGutter]="16" [formGroup]="colorForm">
                                 <div nz-col [nzXs]="24" [nzSm]="8">
                                     <nz-form-item>
@@ -286,7 +304,7 @@
                                                     'Subir'}}
                                                 </button>
 
-                                                <!-- Usar un ID único para cada input -->
+                                                <!-- Input de archivo con ID único -->
                                                 <input type="file" #colorImageInput [id]="'colorInput_' + i"
                                                     style="display: none"
                                                     (change)="onColorImageChange($event, colorForm.get('name')?.value)"
@@ -296,86 +314,143 @@
                                     </nz-form-item>
                                 </div>
                             </div>
-                        </div>
-                    </ng-container>
-                    <button type="button" nz-button nzType="default" nzDanger (click)="removeColor(i)" nz-tooltip
-                        nzTooltipTitle="Eliminar color">
-                        <span nz-icon nzType="delete"></span>
-                    </button>
-                    <nz-divider></nz-divider>
+
+                            <!-- Botón eliminar -->
+                            <button type="button" nz-button nzType="default" nzDanger (click)="removeColor(i)"
+                                nz-tooltip nzTooltipTitle="Eliminar color">
+                                <span nz-icon nzType="delete"></span>
+                            </button>
+                        </ng-container>
+
+                        <!-- Divider solo si no es el último elemento -->
+                        <nz-divider *ngIf="i < colorForms.length - 1"></nz-divider>
+                    </div>
                 </div>
             </nz-tab>
 
             <!-- Pestaña de Tallas -->
             <nz-tab nzTitle="Tallas">
-                <!-- Contenido actual de la pestaña de tallas, sin la matriz de variantes -->
+                <!-- Header sticky con botón y contador -->
                 <div class="tab-header">
-                    <button type="button" nz-button nzType="default" (click)="addSize()">
+                    <button type="button" nz-button nzType="primary" (click)="addSize()">
                         <span nz-icon nzType="plus"></span> Agregar Talla
                     </button>
+                    <span class="color-count" *ngIf="sizeForms.length > 0">
+                        {{ sizeForms.length }} talla(s) agregada(s)
+                    </span>
                 </div>
 
+                <!-- Tallas existentes (si las hay) -->
                 <div class="existing-sizes" *ngIf="existingSizes && existingSizes.length > 0">
                     <h4>Tallas Disponibles</h4>
                     <div class="size-chips">
-                        <nz-tag *ngFor="let size of existingSizes" (click)="addExistingSize(size)" [nzColor]="'blue'"
-                            style="cursor: pointer; margin: 4px;">
-                            {{ size.name }}
-                        </nz-tag>
+                        <div *ngFor="let size of existingSizes" class="existing-color-item" nz-tooltip
+                            [nzTooltipTitle]="'Stock: ' + (size.stock || 0)" (click)="addExistingSize(size)">
+                            <span class="color-name">{{ size.name }}</span>
+                            <small style="color: #666;">({{ size.stock || 0 }})</small>
+                        </div>
                     </div>
                 </div>
 
-                <div *ngIf="sizeForms.length === 0" class="empty-message">
-                    <nz-empty nzNotFoundContent="No hay tallas agregadas"></nz-empty>
-                </div>
+                <!-- CONTENEDOR OPTIMIZADO para tallas -->
+                <div class="size-container">
+                    <!-- Mensaje cuando no hay tallas -->
+                    <div *ngIf="sizeForms.length === 0" class="empty-message">
+                        <nz-empty nzNotFoundContent="No hay tallas agregadas">
+                            <ng-template #footer>
+                                <button nz-button nzType="primary" (click)="addSize()">
+                                    <span nz-icon nzType="plus"></span> Agregar Primera Talla
+                                </button>
+                            </ng-template>
+                        </nz-empty>
+                    </div>
 
-                <div *ngFor="let sizeForm of sizeFormsControls; let i = index" class="size-item">
-                    <div nz-row [nzGutter]="16" [formGroup]="sizeForm">
-                        <div nz-col [nzXs]="24" [nzSm]="8">
-                            <nz-form-item>
-                                <nz-form-label nzRequired>Nombre</nz-form-label>
-                                <nz-form-control nzErrorTip="Por favor ingrese un nombre">
-                                    <input nz-input formControlName="name" placeholder="Ej. S, M, L, XL">
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                        <!-- Oculto o deshabilitado cuando se usa la matriz -->
-                        <div nz-col [nzXs]="24" [nzSm]="8" *ngIf="!showVariantsMatrix">
-                            <nz-form-item>
-                                <nz-form-label>Stock General</nz-form-label>
-                                <nz-form-control nzErrorTip="Por favor ingrese un valor válido">
-                                    <nz-input-number formControlName="stock" [nzMin]="0" [nzStep]="1" [nzPrecision]="0"
-                                        style="width: 100%" [nzDisabled]="showVariantsMatrix"></nz-input-number>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                        <div nz-col [nzXs]="24" [nzSm]="8">
-                            <nz-form-item>
-                                <nz-form-label>Imagen</nz-form-label>
-                                <nz-form-control>
-                                    <div class="size-image-upload">
-                                        <div class="size-image-preview"
-                                            *ngIf="sizeImages.get(sizeForm.get('name')?.value)?.url">
-                                            <img [src]="sizeImages.get(sizeForm.get('name')?.value)?.url"
-                                                alt="Size preview">
+                    <!-- Lista COMPACTA de tallas -->
+                    <div *ngFor="let sizeForm of sizeFormsControls; let i = index" class="size-item">
+                        <div nz-row [nzGutter]="12" [formGroup]="sizeForm">
+                            <!-- Nombre de talla -->
+                            <div nz-col [nzXs]="24" [nzSm]="8" [nzMd]="6">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Talla</nz-form-label>
+                                    <nz-form-control nzErrorTip="Ingrese una talla">
+                                        <input nz-input formControlName="name" placeholder="Ej. XL">
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+
+                            <!-- Stock base (opcional, se puede usar solo para referencia) -->
+                            <div nz-col [nzXs]="24" [nzSm]="8" [nzMd]="6">
+                                <nz-form-item>
+                                    <nz-form-label>
+                                        Stock Base
+                                        <span class="optional-label">(Opcional)</span>
+                                    </nz-form-label>
+                                    <nz-form-control>
+                                        <nz-input-number formControlName="stock" [nzMin]="0" [nzMax]="9999"
+                                            nzPlaceHolder="0" style="width: 100%">
+                                        </nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+
+                            <!-- Imagen de talla -->
+                            <div nz-col [nzXs]="24" [nzSm]="8" [nzMd]="8">
+                                <nz-form-item>
+                                    <nz-form-label>
+                                        Imagen
+                                        <span class="optional-label">(Opcional)</span>
+                                    </nz-form-label>
+                                    <nz-form-control>
+                                        <div class="size-image-upload">
+                                            <div class="size-image-preview"
+                                                *ngIf="sizeImages.get(sizeForm.get('name')?.value)?.url">
+                                                <img [src]="sizeImages.get(sizeForm.get('name')?.value)?.url"
+                                                    alt="Talla preview">
+                                            </div>
+                                            <button type="button" nz-button nzSize="small"
+                                                (click)="sizeImageInput.click()">
+                                                <span nz-icon nzType="upload"></span>
+                                                {{sizeImages.get(sizeForm.get('name')?.value)?.url ? 'Cambiar' :
+                                                'Subir'}}
+                                            </button>
+                                            <input type="file" #sizeImageInput style="display: none"
+                                                (change)="onSizeImageChange($event, sizeForm.get('name')?.value)"
+                                                accept="image/*">
                                         </div>
-                                        <button type="button" nz-button nzSize="small" (click)="sizeImageInput.click()">
-                                            <span nz-icon nzType="upload"></span>
-                                        </button>
-                                        <input type="file" #sizeImageInput style="display: none"
-                                            (change)="onSizeImageChange($event, sizeForm.get('name')?.value)"
-                                            accept="image/*">
-                                    </div>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                    </div>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
 
-                    <button type="button" nz-button nzType="default" nzDanger (click)="removeSize(i)" nz-tooltip
-                        nzTooltipTitle="Eliminar talla">
-                        <span nz-icon nzType="delete"></span>
-                    </button>
-                    <nz-divider></nz-divider>
+                            <!-- Acciones -->
+                            <div nz-col [nzXs]="24" [nzMd]="4" style="display: flex; align-items: flex-end;">
+                                <button type="button" nz-button nzType="default" nzDanger (click)="removeSize(i)"
+                                    nz-tooltip nzTooltipTitle="Eliminar talla" style="margin-bottom: 24px;">
+                                    <span nz-icon nzType="delete"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Info adicional compacta -->
+                        <div class="form-help-text"
+                            style="margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 4px;">
+                            <small>
+                                <span nz-icon nzType="info-circle"></span>
+                                El stock específico se gestiona en la pestaña <strong>Inventario</strong> por
+                                combinación color-talla.
+                            </small>
+                        </div>
+
+                        <!-- Divider solo si no es el último -->
+                        <nz-divider *ngIf="i < sizeForms.length - 1" style="margin: 16px 0;"></nz-divider>
+                    </div>
+                </div>
+
+                <!-- Info final -->
+                <div *ngIf="sizeForms.length > 0" style="margin-top: 16px;">
+                    <nz-alert nzType="info"
+                        nzMessage="Orden en inventario: Las tallas se mostrarán ordenadas automáticamente (XS, S, M, L, XL, XXL)"
+                        nzShowIcon>
+                    </nz-alert>
                 </div>
             </nz-tab>
 
@@ -435,19 +510,24 @@
             <nz-tab nzTitle="Inventario" [nzDisabled]="!showVariantsMatrix">
                 <div *ngIf="colorForms.length > 0 && sizeForms.length > 0" class="inventory-info">
                     <nz-alert nzType="info" nzMessage="El stock se gestiona por combinación color-talla"
-                        nzDescription="Puede gestionar el stock específico para cada combinación color-talla en la matriz de abajo."
+                        nzDescription="Configure el stock específico para cada combinación. Las tallas se ordenan automáticamente: XS, S, M, L, XL, XXL."
                         nzShowIcon>
                     </nz-alert>
                 </div>
+
                 <div *ngIf="colorForms.length === 0 || sizeForms.length === 0" class="empty-message">
-                    <nz-alert nzType="info"
+                    <nz-alert nzType="warning"
                         nzMessage="Para gestionar el inventario, primero debe agregar al menos un color y una talla en las pestañas correspondientes."
-                        nzShowIcon></nz-alert>
+                        nzShowIcon>
+                    </nz-alert>
                 </div>
 
                 <div *ngIf="showVariantsMatrix" class="variants-matrix-container">
-                    <h3>Gestión de Inventario por Variante</h3>
-                    <p>Configure el stock para cada combinación de color y talla:</p>
+                    <h3>
+                        <span nz-icon nzType="table"></span>
+                        Gestión de Inventario por Variante
+                    </h3>
+                    <p>Configure el stock para cada combinación de color y talla (ordenadas automáticamente):</p>
 
                     <div class="variants-table-container">
                         <table class="variants-table">
@@ -458,7 +538,7 @@
                                         <div class="color-header">
                                             <span class="color-indicator"
                                                 [style.background-color]="color.get('code')?.value"></span>
-                                            {{color.get('name')?.value}}
+                                            <small>{{color.get('name')?.value}}</small>
                                         </div>
                                     </th>
                                 </tr>
@@ -468,7 +548,7 @@
                                     <td class="size-cell">{{row.size}}</td>
                                     <td *ngFor="let variant of row.colorVariants">
                                         <nz-input-number [ngModel]="variant.stock" [ngModelOptions]="{standalone: true}"
-                                            [nzMin]="0" [nzMax]="9999" [nzStep]="1" [nzSize]="'small'"
+                                            [nzMin]="0" [nzMax]="9999" [nzStep]="1" [nzSize]="'small'" nzPlaceHolder="0"
                                             (ngModelChange)="updateVariantStock(variant.colorName, variant.sizeName, $event)">
                                         </nz-input-number>
                                     </td>
@@ -478,24 +558,31 @@
                     </div>
 
                     <div class="total-stock-info">
-                        <nz-alert nzType="info" [nzMessage]="'Stock total: ' + totalStock + ' unidades'"
-                            nzShowIcon></nz-alert>
+                        <nz-alert nzType="success" [nzMessage]="'Stock total: ' + totalStock + ' unidades'" nzShowIcon>
+                        </nz-alert>
                     </div>
                 </div>
 
                 <div *ngIf="showVariantsMatrix" class="variant-images-section">
-                    <nz-divider nzText="Imágenes de Variantes (Opcional)"></nz-divider>
-                    <p>Puede subir imágenes específicas para cada combinación color-talla:</p>
+                    <nz-divider nzText="Imágenes de Variantes (Opcional)" nzPlain></nz-divider>
+                    <p>
+                        <span nz-icon nzType="picture"></span>
+                        Suba imágenes específicas para mostrar cada combinación color-talla:
+                    </p>
 
                     <div class="variant-images-grid">
                         <div *ngFor="let row of variantsMatrix" class="variant-row">
-                            <h5>Talla: {{row.size}}</h5>
+                            <h5>
+                                <span nz-icon nzType="tag"></span>
+                                Talla: {{row.size}}
+                            </h5>
                             <div class="variant-colors">
                                 <div *ngFor="let variant of row.colorVariants" class="variant-image-item">
                                     <div class="variant-info">
                                         <span class="color-indicator"
                                             [style.background-color]="getColorCode(variant.colorName)"></span>
                                         <span class="variant-label">{{variant.colorName}} - {{variant.sizeName}}</span>
+                                        <small style="color: #666;">Stock: {{variant.stock}}</small>
                                     </div>
 
                                     <div class="variant-image-upload">
@@ -504,30 +591,32 @@
                                                 [alt]="variant.colorName + ' ' + variant.sizeName">
                                         </div>
 
-                                        <button type="button" nz-button nzSize="small"
-                                            (click)="variantImageInput.click()" nz-tooltip
-                                            nzTooltipTitle="Subir imagen específica para esta variante">
-                                            <span nz-icon nzType="upload"></span>
-                                            {{variantImages.get(variant.key)?.url ? 'Cambiar' : 'Subir'}}
-                                        </button>
+                                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                                            <button type="button" nz-button nzSize="small"
+                                                (click)="variantImageInput.click()" nz-tooltip
+                                                nzTooltipTitle="Subir imagen específica para esta variante">
+                                                <span nz-icon nzType="upload"></span>
+                                                {{variantImages.get(variant.key)?.url ? 'Cambiar' : 'Subir'}}
+                                            </button>
+
+                                            <button type="button" *ngIf="variantImages.get(variant.key)?.url" nz-button
+                                                nzSize="small" nzDanger (click)="removeVariantImage(variant.key)"
+                                                nz-tooltip nzTooltipTitle="Eliminar imagen">
+                                                <span nz-icon nzType="delete"></span>
+                                            </button>
+                                        </div>
 
                                         <input type="file" #variantImageInput style="display: none"
                                             (change)="onVariantImageChange($event, variant.colorName, variant.sizeName)"
                                             accept="image/*">
-
-                                        <button type="button" *ngIf="variantImages.get(variant.key)?.url" nz-button
-                                            nzSize="small" nzDanger (click)="removeVariantImage(variant.key)" nz-tooltip
-                                            nzTooltipTitle="Eliminar imagen">
-                                            <span nz-icon nzType="delete"></span>
-                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <nz-alert nzType="info"
-                        nzMessage="Tip: Si no sube una imagen específica para una variante, se usará la imagen del color correspondiente."
+                    <nz-alert nzType="info" nzMessage="Imágenes de respaldo"
+                        nzDescription="Si no sube una imagen específica para una variante, se usará automáticamente: 1) Imagen del color, 2) Imagen principal del producto."
                         nzShowIcon>
                     </nz-alert>
                 </div>

@@ -148,6 +148,19 @@ export class ProductImageService {
     return { url, path };
   }
 
+  async deleteImageByUrl(imageUrl: string): Promise<void> {
+  try {
+    if (!imageUrl) return;
+    
+    const imageRef = ref(this.storage, imageUrl);
+    await deleteObject(imageRef);
+    console.log('✅ Imagen eliminada de Firebase:', imageUrl);
+  } catch (error) {
+    console.error('❌ Error al eliminar imagen:', error);
+    throw error;
+  }
+}
+
   /**
    * Comprime imagen y convierte a webp
    */

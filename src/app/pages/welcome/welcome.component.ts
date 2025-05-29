@@ -30,7 +30,6 @@ import { PromocionesSectionComponent } from "../../components/promociones-sectio
     NewsletterComponent,
     InstagramComponent,
     IconosLargeSectionComponent,
-    PromocionesSectionComponent
 ],
   standalone: true,
   templateUrl: './welcome.component.html',

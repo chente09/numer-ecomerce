@@ -827,12 +827,17 @@ export class ProductService {
 
     // Procesar imágenes adicionales
     if (additionalImages && additionalImages.length > 0) {
-      console.log('📤 Subiendo imágenes adicionales...');
       const additionalImageUrls = await this.imageService.uploadAdditionalImages(productId, additionalImages);
 
-      const existingAdditionalImages = productData.additionalImages || [];
-      updateData.additionalImages = [...existingAdditionalImages, ...additionalImageUrls];
-      console.log('✅ Imágenes adicionales procesadas:', additionalImageUrls.length);
+      // 🔧 CORRECCIÓN: No concatenar, usar lo que viene en productData
+      updateData.additionalImages = productData.additionalImages || [];
+
+      // Solo agregar las nuevas URLs si no están ya incluidas
+      const newUrls = additionalImageUrls.filter(url =>
+        !updateData.additionalImages.includes(url)
+      );
+      updateData.additionalImages.push(...newUrls);
+
     }
 
     // Procesar imágenes de colores y tallas
@@ -883,6 +888,21 @@ export class ProductService {
     await this.variantService.updateProductBase(productId, updateData);
 
     console.log('🎉 Producto actualizado exitosamente:', productId);
+  }
+
+  /**
+ * Elimina una imagen específica de Firebase Storage
+ */
+  deleteImage(imageUrl: string): Promise<void> {
+    return this.imageService.deleteImageByUrl(imageUrl);
+  }
+
+  /**
+   * Elimina múltiples imágenes específicas
+   */
+  async deleteImages(imageUrls: string[]): Promise<void> {
+    const deletePromises = imageUrls.map(url => this.deleteImage(url));
+    await Promise.allSettled(deletePromises); // Usar allSettled para no fallar si una imagen no existe
   }
 
   /**
