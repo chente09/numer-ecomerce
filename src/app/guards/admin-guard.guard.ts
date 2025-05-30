@@ -10,7 +10,6 @@ export const adminGuardGuard: CanActivateFn = (route, state) => {
   const message = inject(NzMessageService);
 
   return usersService.user$.pipe(
-    take(1),
     switchMap(user => {
       if (!user) {
         message.warning('Acceso denegado');

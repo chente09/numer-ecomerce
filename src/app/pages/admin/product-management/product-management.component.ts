@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { BehaviorSubject, Subject, debounceTime, finalize, takeUntil } from 'rxjs';
+import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 
@@ -9,9 +9,9 @@ import { NzModalService } from 'ng-zorro-antd/modal';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { ColorService } from '../../../services/admin/color/color.service';
 import { SizeService } from '../../../services/admin/size/size.service';
-import { ProductPriceService } from '../../../services/admin/price/product-price.service';
 import { CategoryService, Category } from '../../../services/admin/category/category.service';
 import { CacheService } from '../../../services/admin/cache/cache.service';
+import { StockUpdateService, StockUpdate } from '../../../services/admin/stockUpdate/stock-update.service';
 
 // Modelos
 import { Product, Color, Size } from '../../../models/models';
@@ -131,7 +131,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     private productService: ProductService,
     private colorService: ColorService,
     private sizeService: SizeService,
-    private productPriceService: ProductPriceService,
+    private stockUpdateService: StockUpdateService,
     private categoryService: CategoryService,
     private cacheService: CacheService,
     private message: NzMessageService,
@@ -148,7 +148,11 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
     // Suscribirse a cambios de caché
     this.cacheService.getInvalidationNotifier('products')
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        debounceTime(1000), // 🆕 Evitar spam de recargas
+        distinctUntilChanged()
+      )
       .subscribe(() => {
         this.loadProducts();
       });
@@ -164,11 +168,41 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
     // Carga inicial
     this.loadProducts();
+    this.subscribeToStockUpdates();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private subscribeToStockUpdates(): void {
+    this.stockUpdateService.onStockUpdate()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(update => {
+        this.handleStockUpdate(update);
+      });
+  }
+
+  private handleStockUpdate(update: StockUpdate): void {
+    console.log('📦 Actualizando stock en management:', update);
+
+    const productIndex = this.products.findIndex(p => p.id === update.productId);
+
+    if (productIndex !== -1) {
+      // Actualizar solo el producto afectado
+      this.products[productIndex] = {
+        ...this.products[productIndex],
+        totalStock: Math.max(0, this.products[productIndex].totalStock + update.stockChange)
+      };
+
+      // Actualizar producto seleccionado si coincide
+      if (this.selectedProduct?.id === update.productId) {
+        this.selectedProduct = { ...this.products[productIndex] };
+      }
+
+      this.cdr.detectChanges();
+    }
   }
 
   initFilterForm(): void {
@@ -217,12 +251,10 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       });
   }
 
+  // ✅ MODIFICAR en ProductManagementComponent
   loadProducts(): void {
 
-
     this.loading = true;
-
-    // Mantener backup antes de cargar nuevos datos
     this.originalProductsBackup = [...this.products];
 
     const filterValues = this.filterForm.value;
@@ -236,49 +268,40 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       limit: this.pageSize
     };
 
-    if (filter.searchQuery) {
-      this.productService.searchProducts(filter.searchQuery)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: (products) => {
-            this.products = this.applyClientSideFilters(products, filter);
-            this.total = this.products.length;
-            this.loading = false;
-            this.cdr.detectChanges();
-          },
-          error: (error) => {
-            console.error('❌ [MANAGEMENT] Error al buscar productos:', error);
-            this.message.error('Error al buscar productos: ' + (error.message || 'Error desconocido'));
+    // 🚀 USAR forceReloadProducts para obtener datos frescos
+    const products$ = filter.searchQuery
+      ? this.productService.searchProducts(filter.searchQuery)
+      : this.productService.forceReloadProducts(); // 🆕 CAMBIO AQUÍ
 
-            // ROLLBACK: Restaurar productos anteriores en caso de error
-            this.products = this.originalProductsBackup;
-            this.loading = false;
-            this.cdr.detectChanges();
-          }
-        });
-    } else {
-      this.productService.getProducts()
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: (products) => {
-            const filteredProducts = this.applyClientSideFilters(products, filter);
-            this.products = filteredProducts;
-            this.total = this.products.length;
-            this.loading = false;
+    products$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (products) => {
+          const filteredProducts = this.applyClientSideFilters(products, filter);
+          this.products = filteredProducts;
+          this.total = this.products.length;
+          this.loading = false;
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          console.error('❌ [MANAGEMENT] Error al cargar productos:', error);
+          this.message.error('Error al cargar productos: ' + (error.message || 'Error desconocido'));
 
-            this.cdr.detectChanges();
-          },
-          error: (error) => {
-            console.error('❌ [MANAGEMENT] Error al cargar productos:', error);
-            this.message.error('Error al cargar productos: ' + (error.message || 'Error desconocido'));
+          this.products = this.originalProductsBackup;
+          this.loading = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
 
-            // ROLLBACK: Restaurar productos anteriores en caso de error
-            this.products = this.originalProductsBackup;
-            this.loading = false;
-            this.cdr.detectChanges();
-          }
-        });
-    }
+  reloadProducts(): void {
+
+    // Limpiar caché
+    this.cacheService.invalidate('products');
+    this.cacheService.invalidatePattern('products_');
+
+    // Recargar
+    this.loadProducts();
   }
 
   loadCategories(): void {
@@ -825,6 +848,22 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
           totalStock: newStock
         };
       }
+    }
+
+    if (typeof event.stockChange === 'number') {
+      const stockUpdate: StockUpdate = {
+        productId: event.productId,
+        variantId: 'unknown', // Si tienes el variantId, úsalo
+        stockChange: event.stockChange,
+        newStock: (this.products.find(p => p.id === event.productId)?.totalStock || 0) + event.stockChange,
+        timestamp: new Date(),
+        source: 'admin',
+        metadata: {
+          userAction: 'inventory_management'
+        }
+      };
+
+      this.stockUpdateService.notifyStockChange(stockUpdate);
     }
 
     this.cdr.detectChanges();

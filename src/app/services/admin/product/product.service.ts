@@ -52,44 +52,99 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Obtiene todos los productos con caché optimizado
    */
+  // ✅ CORREGIDO en ProductService
   getProducts(): Observable<Product[]> {
     return this.cacheService.getCached<Product[]>(this.productsCacheKey, () => {
+      console.log('🔄 ProductService: Creando observable de productos');
 
       const productsRef = collection(this.firestore, this.productsCollection);
       return collectionData(productsRef, { idField: 'id' }).pipe(
-        take(1), // ✅ CRÍTICO: Forzar que se complete después del primer emit
+        // ❌ REMOVER: take(1) 
         map(data => {
+          console.log(`📦 ProductService: Productos recibidos de Firestore: ${data.length}`);
           return data as Product[];
         }),
         switchMap(products => {
+          console.log('🔄 ProductService: Enriqueciendo productos con stock...');
           return this.enrichProductsWithRealTimeStock(products);
         }),
         catchError(error => {
           console.error('❌ ProductService: Error en getProducts:', error);
           return ErrorUtil.handleError(error, 'getProducts');
+        }),
+        // 🆕 AGREGAR: shareReplay para múltiples suscriptores
+        shareReplay({ bufferSize: 1, refCount: true }),
+        finalize(() => {
+          console.log('🏁 ProductService: getProducts completado');
         })
       );
     });
+  }
+
+  // ✅ AGREGAR en ProductService
+  forceReloadProducts(): Observable<Product[]> {
+    console.log('🔄 [PRODUCT SERVICE] Forzando recarga de productos...');
+
+    // Invalidar caché
+    this.cacheService.invalidate(this.productsCacheKey);
+
+    // Obtener productos frescos
+    const productsRef = collection(this.firestore, this.productsCollection);
+    return collectionData(productsRef, { idField: 'id' }).pipe(
+      map(data => {
+        return data as Product[];
+      }),
+      switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+      tap(products => {
+        // Actualizar caché con nuevos datos
+        this.cacheService.getCached(this.productsCacheKey, () => of(products));
+      }),
+      catchError(error => ErrorUtil.handleError(error, 'forceReloadProducts'))
+    );
   }
 
   /**
    * 🚀 CORREGIDO: Obtiene todos los productos SIN caché cuando se force
    */
   getProductsNoCache(): Observable<Product[]> {
+    console.log('📦 [PRODUCT SERVICE] Obteniendo productos sin caché...');
 
-    const productsRef = collection(this.firestore, this.productsCollection);
-    return collectionData(productsRef, { idField: 'id' }).pipe(
-      take(1), // ✅ NUEVO: Forzar completar
-      map(data => {
-        console.log(`📦 ProductService: Productos recibidos (no cache): ${data.length}`);
-        return data as Product[];
-      }),
-      switchMap(products => this.enrichProductsWithRealTimeStock(products)),
-      tap(products => {
-        console.log('✅ [PRODUCT SERVICE] Productos obtenidos sin caché:', products.length);
-      }),
-      catchError(error => ErrorUtil.handleError(error, 'getProductsNoCache'))
-    );
+    return new Observable<Product[]>(observer => {
+      const productsRef = collection(this.firestore, this.productsCollection);
+
+      // ✅ USAR getDocs en lugar de collectionData para evitar observables infinitos
+      getDocs(productsRef).then(querySnapshot => {
+        console.log(`📦 [PRODUCT SERVICE] ${querySnapshot.size} documentos obtenidos`);
+
+        const products: Product[] = [];
+
+        querySnapshot.forEach(doc => {
+          const product = {
+            id: doc.id,
+            ...doc.data()
+          } as Product;
+          products.push(product);
+        });
+
+        console.log(`✅ [PRODUCT SERVICE] ${products.length} productos procesados`);
+
+        // Enriquecer con stock básico (sin tiempo real para evitar complejidad)
+        const enrichedProducts = products.map(product => ({
+          ...product,
+          totalStock: product.totalStock || 0,
+          variants: product.variants || [],
+          colors: product.colors || [],
+          sizes: product.sizes || []
+        }));
+
+        observer.next(enrichedProducts);
+        observer.complete();
+
+      }).catch(error => {
+        console.error('❌ [PRODUCT SERVICE] Error en getProductsNoCache:', error);
+        observer.error(error);
+      });
+    });
   }
 
   /**
@@ -427,65 +482,65 @@ export class ProductService {
    * 🚀 CORREGIDO: Obtiene producto completo con variantes, precios y promociones
    */
   getCompleteProduct(productId: string): Observable<Product | null> {
-  if (!productId) {
-    return of(null);
+    if (!productId) {
+      return of(null);
+    }
+
+    const cacheKey = `${this.productsCacheKey}_complete_${productId}`;
+
+    return this.cacheService.getCached<Product | null>(cacheKey, () => {
+      return this.getProductById(productId).pipe(
+        take(1),
+        switchMap(product => {
+          if (!product) {
+            return of(null);
+          }
+
+          // ✅ USAR INVENTORYSERVICE DIRECTAMENTE (más confiable)
+          return this.inventoryService.getVariantsByProductId(productId).pipe(
+            take(1),
+            map(variants => {
+
+              // ✅ VERIFICACIÓN CRÍTICA: Asegurar que son objetos
+              if (!variants || !Array.isArray(variants)) {
+                console.error('❌ ProductService: Variantes inválidas recibidas');
+                return product; // Devolver producto sin variantes si fallan
+              }
+
+              // ✅ VERIFICAR QUE EL PRIMER ELEMENTO SEA UN OBJETO VÁLIDO
+              if (variants.length > 0 && typeof variants[0] === 'string') {
+                console.error('❌ ProductService: Variantes son strings, no objetos válidos');
+                return product; // Devolver producto original sin sobreescribir
+              }
+
+              // ✅ ENRIQUECER SOLO SI LAS VARIANTES SON VÁLIDAS
+              const enrichedProduct = this.enrichProductWithVariants(product, variants);
+
+              return enrichedProduct;
+            }),
+            switchMap(enrichedProduct => {
+              // Aplicar promociones
+              return from(this.priceService.addPromotionsToProduct(enrichedProduct)).pipe(
+                take(1),
+                map(productWithPromotions => {
+                  const productWithPricing = this.priceService.calculateDiscountedPrice(productWithPromotions);
+                  return productWithPricing;
+                }),
+                catchError(error => {
+                  console.error('❌ Error aplicando promociones:', error);
+                  return of(enrichedProduct); // Fallback sin promociones
+                })
+              );
+            })
+          );
+        }),
+        catchError(error => {
+          console.error(`❌ ProductService: Error en getCompleteProduct:`, error);
+          return ErrorUtil.handleError(error, `getCompleteProduct(${productId})`);
+        })
+      );
+    });
   }
-
-  const cacheKey = `${this.productsCacheKey}_complete_${productId}`;
-
-  return this.cacheService.getCached<Product | null>(cacheKey, () => {    
-    return this.getProductById(productId).pipe(
-      take(1),
-      switchMap(product => {
-        if (!product) {
-          return of(null);
-        }
-        
-        // ✅ USAR INVENTORYSERVICE DIRECTAMENTE (más confiable)
-        return this.inventoryService.getVariantsByProductId(productId).pipe(
-          take(1),
-          map(variants => {
-
-            // ✅ VERIFICACIÓN CRÍTICA: Asegurar que son objetos
-            if (!variants || !Array.isArray(variants)) {
-              console.error('❌ ProductService: Variantes inválidas recibidas');
-              return product; // Devolver producto sin variantes si fallan
-            }
-
-            // ✅ VERIFICAR QUE EL PRIMER ELEMENTO SEA UN OBJETO VÁLIDO
-            if (variants.length > 0 && typeof variants[0] === 'string') {
-              console.error('❌ ProductService: Variantes son strings, no objetos válidos');
-              return product; // Devolver producto original sin sobreescribir
-            }
-
-            // ✅ ENRIQUECER SOLO SI LAS VARIANTES SON VÁLIDAS
-            const enrichedProduct = this.enrichProductWithVariants(product, variants);
-
-            return enrichedProduct;
-          }),
-          switchMap(enrichedProduct => {            
-            // Aplicar promociones
-            return from(this.priceService.addPromotionsToProduct(enrichedProduct)).pipe(
-              take(1),
-              map(productWithPromotions => {
-                const productWithPricing = this.priceService.calculateDiscountedPrice(productWithPromotions);
-                return productWithPricing;
-              }),
-              catchError(error => {
-                console.error('❌ Error aplicando promociones:', error);
-                return of(enrichedProduct); // Fallback sin promociones
-              })
-            );
-          })
-        );
-      }),
-      catchError(error => {
-        console.error(`❌ ProductService: Error en getCompleteProduct:`, error);
-        return ErrorUtil.handleError(error, `getCompleteProduct(${productId})`);
-      })
-    );
-  });
-}
 
   /**
    * 🚀 CORREGIDO: Obtiene productos por categoría
@@ -503,7 +558,6 @@ export class ProductService {
       const q = query(productsRef, where('category', '==', categoryId));
 
       return collectionData(q, { idField: 'id' }).pipe(
-        take(1), // ✅ CRÍTICO: Forzar completar
         map(products => {
           return products as Product[];
         }),
@@ -898,7 +952,6 @@ export class ProductService {
 
       updateData.colors = updatedColors;
       updateData.sizes = updatedSizes;
-
     }
 
     // Procesar imágenes de variantes
@@ -915,11 +968,55 @@ export class ProductService {
       );
 
       updateData.totalStock = calculatedTotalStock;
+
+      // ✅ NUEVO: Sincronizar variantes cuando cambian colores/tallas
+      console.log('🔄 Sincronizando stock de variantes con colorStocks...');
+      await this.syncVariantsWithColorStocks(productId, updateData.colors, updateData.sizes);
     }
 
     // Actualizar datos del producto
     await this.variantService.updateProductBase(productId, updateData);
+  }
 
+  private async syncVariantsWithColorStocks(
+    productId: string,
+    colors: Color[],
+    sizes: Size[]
+  ): Promise<void> {
+    // Obtener variantes existentes
+    const existingVariants = await firstValueFrom(this.getProductVariants(productId));
+
+    const batch = writeBatch(this.firestore);
+    let totalStock = 0;
+
+    // Para cada variante, actualizar con el stock correcto de colorStocks
+    existingVariants.forEach(variant => {
+      const size = sizes.find(s => s.name === variant.sizeName);
+      const colorStock = size?.colorStocks?.find(cs => cs.colorName === variant.colorName);
+      const correctStock = colorStock?.quantity || 0;
+
+      if (variant.stock !== correctStock) {
+        console.log(`🔄 Sincronizando ${variant.colorName}-${variant.sizeName}: ${variant.stock} → ${correctStock}`);
+
+        const variantRef = doc(this.firestore, 'productVariants', variant.id);
+        batch.update(variantRef, {
+          stock: correctStock,
+          updatedAt: new Date()
+        });
+      }
+
+      totalStock += correctStock;
+    });
+
+    // Actualizar stock total del producto
+    const productRef = doc(this.firestore, this.productsCollection, productId);
+    batch.update(productRef, {
+      totalStock,
+      updatedAt: new Date()
+    });
+
+    await batch.commit();
+    console.log('✅ Sincronización de stock completada');
   }
 
   /**
@@ -980,7 +1077,6 @@ export class ProductService {
     sizes: Size[]
   ): Promise<number> {
     try {
-
       const existingVariants = await firstValueFrom(this.getProductVariants(productId));
       const batch = writeBatch(this.firestore);
 
@@ -992,7 +1088,7 @@ export class ProductService {
 
       let totalStock = 0;
 
-      // Recorrer combinaciones de colores y tallas
+      // Tu código existente...
       for (const color of colors) {
         for (const size of sizes) {
           const stockEntry = size.colorStocks?.find(cs => cs.colorName === color.name);
@@ -1002,7 +1098,6 @@ export class ProductService {
           const key = `${color.name}-${size.name}`;
 
           if (variantMap.has(key)) {
-            // Actualizar variante existente
             const variant = variantMap.get(key)!;
             const variantRef = doc(this.firestore, 'productVariants', variant.id);
 
@@ -1014,7 +1109,6 @@ export class ProductService {
 
             variantMap.delete(key);
           } else if (stock > 0) {
-            // Crear nueva variante si tiene stock
             const variantId = uuidv4();
             const variantRef = doc(this.firestore, 'productVariants', variantId);
 
@@ -1042,15 +1136,34 @@ export class ProductService {
         batch.delete(variantRef);
       });
 
-      // CORRECCIÓN CRÍTICA: Actualizar el stock total en el producto
+      // ✅ AGREGAR ESTA PARTE - Recalcular sizes correctamente
+      const updatedSizes = sizes.map(size => {
+        // Calcular stock total de la talla desde colorStocks
+        const sizeStock = size.colorStocks?.reduce((sum, cs) => sum + (cs.quantity || 0), 0) || 0;
+
+        return {
+          ...size,
+          stock: sizeStock, // ✅ Stock recalculado
+          colorStocks: size.colorStocks?.filter(cs => (cs.quantity || 0) > 0) || []
+        };
+      });
+
+      // ✅ MODIFICAR ESTA PARTE - Incluir sizes actualizados
       const productRef = doc(this.firestore, this.productsCollection, productId);
       batch.update(productRef, {
         totalStock,
+        sizes: updatedSizes, // ✅ CRÍTICO: Actualizar sizes
         updatedAt: new Date()
       });
 
-      // Ejecutar todas las operaciones en una sola transacción
       await batch.commit();
+
+      console.log(`✅ Actualización completa - Stock total: ${totalStock}`);
+      console.log(`📊 Sizes actualizados:`, updatedSizes.map(s => ({
+        name: s.name,
+        stock: s.stock,
+        colorStocks: s.colorStocks?.length
+      })));
 
       return totalStock;
     } catch (error) {

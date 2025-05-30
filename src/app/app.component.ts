@@ -6,7 +6,7 @@ import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NavBarComponent } from "./components/nav-bar/nav-bar.component";
 import { FooterComponent } from "./components/footer/footer.component";
 import { WppComponent } from "./components/wpp/wpp.component";
-import { filter } from 'rxjs';
+import { filter, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ScrollService } from './services/scroll/scroll.service';
 
@@ -36,7 +36,7 @@ export class AppComponent {
   ngOnInit(): void {
     // Escucha cambios en la navegación para ocultar el layout en rutas específicas
     this.router.events
-      .pipe(filter((event) => event instanceof NavigationEnd))
+      .pipe(filter((event) => event instanceof NavigationEnd), take(1))
       .subscribe((event: NavigationEnd) => {
         // Oculta el layout si la ruta actual es '/cpanel' o '/formularios' o alguna de sus subrutas
         this.showLayout = !(

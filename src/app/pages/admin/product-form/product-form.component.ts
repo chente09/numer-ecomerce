@@ -1,4 +1,5 @@
 import {
+  AfterViewInit,
   ChangeDetectorRef,
   Component,
   EventEmitter,
@@ -25,7 +26,7 @@ import {
   Size,
   AdditionalImageItem,
 } from '../../../models/models';
-import { finalize } from 'rxjs';
+import { finalize, take } from 'rxjs';
 
 // Importar módulos de ng-zorro necesarios
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -45,6 +46,7 @@ import { FormsModule } from '@angular/forms';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
+import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
 
 // 🚀 Interfaces para actualización optimista
 interface ProductBackup {
@@ -86,7 +88,7 @@ interface OptimisticProductUpdate {
   templateUrl: './product-form.component.html',
   styleUrls: ['./product-form.component.css'],
 })
-export class ProductFormComponent implements OnInit, OnChanges {
+export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() product: Product | null = null;
   @Input() isEditMode = false;
   @Input() categories: Category[] = [];
@@ -200,7 +202,8 @@ export class ProductFormComponent implements OnInit, OnChanges {
     private fb: FormBuilder,
     private productService: ProductService,
     private message: NzMessageService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private inventoryService: ProductInventoryService
   ) { }
 
   ngOnInit(): void {
@@ -1130,8 +1133,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
       if (!this.isEditMode) {
         // ==================== CREAR PRODUCTO ====================
-        this.productService
-          .createProduct(
+        this.productService.createProduct(
             productData,
             formData.colors,
             formData.sizes,
@@ -1141,7 +1143,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
             variantImagesMap,
             newImageFiles
           )
-          .pipe(finalize(() => (this.submitting = false)))
+          .pipe(take(1),finalize(() => (this.submitting = false)))
           .subscribe({
             next: (id) => {
               this.message.success(
@@ -1200,6 +1202,8 @@ export class ProductFormComponent implements OnInit, OnChanges {
               this.deleteRemovedImages();
               this.message.success('Producto actualizado correctamente');
 
+              this.syncStockAfterUpdate(this.product!.id);
+
               // ✅ La actualización optimista ya se aplicó antes del envío
               this.confirmOptimisticUpdate();
 
@@ -1241,6 +1245,28 @@ export class ProductFormComponent implements OnInit, OnChanges {
       );
     }
   }
+  
+  /**
+ * 🚀 NUEVO: Sincroniza stock después de actualizar
+ */
+private syncStockAfterUpdate(productId: string): void {
+  console.log(`🔄 [FORM] Sincronizando stock para: ${productId}`);
+  
+  // Usar el método existente del inventoryService
+  this.inventoryService.getVariantsByProductId(productId)
+    .pipe(take(1))
+    .subscribe({
+      next: (variants) => {
+        console.log('✅ [FORM] Variantes actualizadas:', variants.length);
+        // Opcional: Mostrar mensaje de confirmación
+        this.message.info('Stock sincronizado correctamente');
+      },
+      error: (error) => {
+        console.error('❌ [FORM] Error sincronizando stock:', error);
+        this.message.warning('Producto actualizado, pero revise el stock manualmente');
+      }
+    });
+}
 
   private deleteRemovedImages(): void {
     if (this.imagesToDelete.length === 0) {
@@ -1339,22 +1365,20 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
   // ==================== CÁLCULO DE STOCK ====================
   calculateTotalStock(): number {
-    let total = 0;
+  let total = 0;
 
-    for (let i = 0; i < this.sizeForms.length; i++) {
-      const sizeForm = this.sizeForms.at(i);
-      const sizeName = sizeForm.get('name')?.value;
-      const colorStocks = this.getColorStockForms(i);
-
-      for (let j = 0; j < colorStocks.length; j++) {
-        const quantity = colorStocks.at(j).get('quantity')?.value || 0;
-        const colorName = colorStocks.at(j).get('colorName')?.value;
-        total += quantity;
-      }
+  // Recalcular basado en colorStocks (fuente de verdad)
+  for (let i = 0; i < this.sizeForms.length; i++) {
+    const colorStocks = this.getColorStockForms(i);
+    for (let j = 0; j < colorStocks.length; j++) {
+      const quantity = colorStocks.at(j).get('quantity')?.value || 0;
+      total += quantity;
     }
-
-    return total;
   }
+
+  console.log(`📊 [FORM] Stock total calculado: ${total}`);
+  return total;
+}
 
   listenToStockChanges(): void {
     this.productForm.valueChanges.subscribe(() => {
@@ -1439,14 +1463,14 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
   updateVariantStock(colorName: string, sizeName: string, stock: number): void {
     this.variantsMatrix.forEach((row) => {
-      if (row.size === sizeName) {
-        row.colorVariants.forEach((variant) => {
-          if (variant.colorName === colorName) {
-            variant.stock = stock;
-          }
-        });
-      }
-    });
+    if (row.size === sizeName) {
+      row.colorVariants.forEach((variant) => {
+        if (variant.colorName === colorName) {
+          variant.stock = stock;
+        }
+      });
+    }
+  });
 
     const sizeIndex = this.getSizeIndexByName(sizeName);
     if (sizeIndex !== -1) {

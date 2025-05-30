@@ -16,6 +16,7 @@ import { getAnalytics, provideAnalytics, ScreenTrackingService, UserTrackingServ
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { getStorage, provideStorage } from '@angular/fire/storage';
 import { FirebaseInitService } from './services/firebase/firebase-init.service';
+import { StockUpdateService } from './services/admin/stockUpdate/stock-update.service';
 
 registerLocaleData(en);
 
@@ -33,6 +34,7 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(FormsModule), 
     provideAnimationsAsync(), 
     provideHttpClient(), 
+    StockUpdateService,
     provideFirebaseApp(() => initializeApp({ 
       projectId: "numer-16f35", 
       appId: "1:1010054110379:web:212389b0d3e9e17a896bee", 

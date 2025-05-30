@@ -25,6 +25,7 @@ import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { ProductPriceService } from '../../../services/admin/price/product-price.service';
+import { StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 
 // 🚀 Interfaces para el backup y control de estado
 interface VariantBackup {
@@ -91,6 +92,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
   constructor(
     private productService: ProductService,
     private inventoryService: ProductInventoryService,
+    private stockUpdateService: StockUpdateService,
     private message: NzMessageService,
     private modal: NzModalService,
     private cdr: ChangeDetectorRef,
@@ -164,6 +166,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
     const currentStock = variant.stock || 0;
     const stockChange = this.editingStock - currentStock;
 
+
     if (stockChange === 0) {
       this.cancelEdit();
       return;
@@ -184,17 +187,27 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
         totalStock: newTotalStock
       };
 
+      // 🚀 NOTIFICAR CAMBIO DE STOCK A TODO EL SISTEMA
+      this.stockUpdateService.notifyStockChange({
+        productId: this.product.id,
+        variantId: variant.id,
+        stockChange: stockChange,
+        newStock: this.editingStock,
+        timestamp: new Date(),
+        source: 'admin',
+        metadata: {
+          colorName: variant.colorName,
+          sizeName: variant.sizeName,
+          productName: this.product.name,
+          userAction: 'manual_update'
+        }
+      });
+
       // 🚀 EMITIR EVENTO AL COMPONENTE PADRE INMEDIATAMENTE
       this.inventoryChanged.emit({
         productId: this.product.id,
         stockChange: stockChange,
         updatedProduct: this.product
-      });
-
-      console.log('📦 [INVENTORY] Evento emitido al padre:', {
-        productId: this.product.id,
-        stockChange,
-        newTotalStock
       });
     }
 
@@ -234,6 +247,22 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
               ...this.product,
               totalStock: oldTotalStock
             };
+
+            // 🔄 NOTIFICAR ROLLBACK
+            this.stockUpdateService.notifyStockChange({
+              productId: this.product.id,
+              variantId: variant.id,
+              stockChange: -stockChange, // Revertir el cambio
+              newStock: currentStock,
+              timestamp: new Date(),
+              source: 'admin',
+              metadata: {
+                colorName: variant.colorName,
+                sizeName: variant.sizeName,
+                productName: this.product.name,
+                userAction: 'rollback_error'
+              }
+            });
 
             // Emitir rollback al padre
             this.inventoryChanged.emit({
@@ -474,6 +503,22 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
             totalStock: newTotalStock
           };
 
+          // 🚀 NOTIFICAR ELIMINACIÓN DE STOCK
+          this.stockUpdateService.notifyStockChange({
+            productId: this.product.id,
+            variantId: variant.id,
+            stockChange: -(variant.stock || 0),
+            newStock: 0, // La variante se elimina, stock = 0
+            timestamp: new Date(),
+            source: 'admin',
+            metadata: {
+              colorName: variant.colorName,
+              sizeName: variant.sizeName,
+              productName: this.product.name,
+              userAction: 'variant_deletion'
+            }
+          });
+
           // 🚀 EMITIR EVENTO AL PADRE
           this.inventoryChanged.emit({
             productId: this.product.id,
@@ -511,6 +556,22 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
                   totalStock: restoredTotalStock
                 };
 
+                // 🔄 NOTIFICAR ROLLBACK DE ELIMINACIÓN
+                this.stockUpdateService.notifyStockChange({
+                  productId: this.product.id,
+                  variantId: variant.id,
+                  stockChange: variant.stock || 0, // Restaurar stock
+                  newStock: variant.stock || 0,
+                  timestamp: new Date(),
+                  source: 'admin',
+                  metadata: {
+                    colorName: variant.colorName,
+                    sizeName: variant.sizeName,
+                    productName: this.product.name,
+                    userAction: 'rollback_deletion'
+                  }
+                });
+
                 this.inventoryChanged.emit({
                   productId: this.product.id,
                   stockChange: variant.stock || 0, // Restaurar stock
@@ -524,6 +585,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
       }
     });
   }
+
+
 
   // 🗑️ Eliminar variante optimísticamente
   private deleteVariantOptimistically(variantId: string, backup: VariantBackup): void {

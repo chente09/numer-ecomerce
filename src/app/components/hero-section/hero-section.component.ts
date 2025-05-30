@@ -18,7 +18,8 @@ import {
   startWith, 
   catchError,
   tap,
-  retry
+  retry,
+  take
 } from 'rxjs/operators';
 import { of } from 'rxjs';
 

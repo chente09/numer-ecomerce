@@ -93,7 +93,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
     this.productService.getProducts()
       .pipe(
         takeUntil(this.destroy$),
-        take(1),
         map(products => {
           if (!products?.length) return [];
           

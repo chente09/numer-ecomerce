@@ -16,7 +16,7 @@ import { ProductImageService } from '../image/product-image.service';
 export class ProductVariantService {
   // 🔧 CORRECCIÓN: Usar inject() para Firestore
   private firestore = inject(Firestore);
-  
+
   private productsCollection = 'products';
   private variantsCollection = 'productVariants';
 
@@ -39,7 +39,7 @@ export class ProductVariantService {
     if (!id || !productData) {
       throw new Error('ID y datos del producto son requeridos');
     }
-    
+
     try {
       const docRef = doc(this.firestore, this.productsCollection, id);
       await setDoc(docRef, {
@@ -47,7 +47,7 @@ export class ProductVariantService {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error creando producto base ${id}:`, error);
       throw new Error(`Error al crear producto base: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -61,14 +61,14 @@ export class ProductVariantService {
     if (!id || !productData) {
       throw new Error('ID y datos del producto son requeridos');
     }
-    
+
     try {
       const docRef = doc(this.firestore, this.productsCollection, id);
       await updateDoc(docRef, {
         ...productData,
         updatedAt: new Date()
       });
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error actualizando producto base ${id}:`, error);
       throw new Error(`Error al actualizar producto base: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -82,15 +82,15 @@ export class ProductVariantService {
     if (!id) {
       throw new Error('ID del producto es requerido');
     }
-    
+
     try {
       // Primero eliminar todas las variantes
       await this.deleteProductVariants(id);
-      
+
       // Luego eliminar el producto base
       const docRef = doc(this.firestore, this.productsCollection, id);
       await deleteDoc(docRef);
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error eliminando producto ${id}:`, error);
       throw new Error(`Error al eliminar producto: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -105,18 +105,18 @@ export class ProductVariantService {
       console.warn('⚠️ VariantService: ProductId no proporcionado');
       return [];
     }
-    
+
     try {
       const variantsRef = collection(this.firestore, this.variantsCollection);
       const q = query(variantsRef, where('productId', '==', productId));
       const snapshot = await getDocs(q);
-      
+
       const variants = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as ProductVariant));
 
-      
+
       if (variants.length > 0) {
         variants.forEach(variant => {
           console.log(`   🧬 Variante: ${variant.colorName}-${variant.sizeName}, Stock: ${variant.stock}`);
@@ -180,13 +180,13 @@ export class ProductVariantService {
 
     // Procesar imágenes de colores
     if (colorImages && colorImages.size > 0) {
-      
+
       for (let i = 0; i < updatedColors.length; i++) {
         const colorFile = colorImages.get(updatedColors[i].name);
         if (colorFile && colorFile.size > 0) {
           const colorIndex = i;
           const colorName = updatedColors[i].name;
-                    
+
           const colorPromise = this.imageService.uploadCompressedImage(
             `products/${productId}/colors/${colorName.toLowerCase().replace(/\s+/g, '_')}.webp`,
             colorFile
@@ -207,13 +207,13 @@ export class ProductVariantService {
 
     // Procesar imágenes de tallas
     if (sizeImages && sizeImages.size > 0) {
-      
+
       for (let i = 0; i < updatedSizes.length; i++) {
         const sizeFile = sizeImages.get(updatedSizes[i].name);
         if (sizeFile && sizeFile.size > 0) {
           const sizeIndex = i;
           const sizeName = updatedSizes[i].name;
-                    
+
           const sizePromise = this.imageService.uploadCompressedImage(
             `products/${productId}/sizes/${sizeName.toLowerCase().replace(/\s+/g, '_')}.webp`,
             sizeFile
@@ -238,7 +238,7 @@ export class ProductVariantService {
       const colorsWithImages = updatedColors.filter(c => c.imageUrl).length;
       const sizesWithImages = updatedSizes.filter(s => s.imageUrl).length;
 
-  
+
 
       return { colors: updatedColors, sizes: updatedSizes };
     } catch (error) {
@@ -261,78 +261,59 @@ export class ProductVariantService {
       throw new Error('ProductId es requerido');
     }
 
-
     try {
-      const batch = writeBatch(this.firestore);
-      const variants: ProductVariant[] = [];
-      const variantImagePromises: Promise<void>[] = [];
-
       // Verificar datos de entrada
-      if (!colors || !colors.length || !sizes || !sizes.length) {
+      if (!colors?.length || !sizes?.length) {
         console.warn('⚠️ VariantService: No hay colores o tallas para crear variantes');
         return;
       }
+
+      const batch = writeBatch(this.firestore);
+      const variants: ProductVariant[] = [];
+      const variantImagePromises: Promise<void>[] = [];
 
       let totalStock = 0;
       let variantsCreated = 0;
       let variantsSkipped = 0;
 
+      // Generar todas las variantes primero
       for (const color of colors) {
         for (const size of sizes) {
-          // Identificar stock específico para esta combinación color-talla
-          let variantStock = 0;
           const colorStock = size.colorStocks?.find(cs => cs.colorName === color.name);
-          if (colorStock) {
-            variantStock = colorStock.quantity || 0;
-          }
+          const variantStock = colorStock?.quantity || 0;
 
-          // Solo crear variantes con stock > 0
           if (variantStock > 0) {
-            const variantId = this.generateId();
-            const variantSKU = productSku ?
-              `${productSku}-${color.name}-${size.name}`.toUpperCase().replace(/\s+/g, '-') :
-              `SKU-${variantId.substring(0, 8)}`;
+            const variantId = this.generateId(); // ✅ ID generado una sola vez
+            const variantSKU = this.generateVariantSKU(productSku, color.name, size.name, variantId);
 
             const variant: ProductVariant = {
-              id: variantId,
+              id: variantId, // ✅ USAR EL ID GENERADO, NO GENERAR OTRO
               productId,
               colorName: color.name,
               colorCode: color.code,
               sizeName: size.name,
               stock: variantStock,
-              sku: variantSKU,
-              imageUrl: '' // Se establecerá después
+              sku: variantSKU, // ✅ USAR LA VARIABLE variantSKU
+              imageUrl: color.imageUrl || '' // Imagen inicial (puede cambiar después)
             };
 
+            variants.push(variant); // ✅ SOLO AGREGAR UNA VEZ
+            totalStock += variantStock; // ✅ SOLO SUMAR UNA VEZ
+            variantsCreated++;
 
-            // ========== LÓGICA CRÍTICA PARA IMÁGENES ==========
+            // Procesar imagen de variante si existe
+            const imagePromise = this.processVariantImage(
+              variant,
+              color,
+              size,
+              productId,
+              variantImages
+            );
 
-            // 1. Verificar si hay imagen específica para esta variante
-            const variantImageKey = `${color.name}-${size.name}`;
-
-            if (variantImages?.has(variantImageKey)) {
-              const variantImage = variantImages.get(variantImageKey)!;
-              
-              const variantImagePromise = this.imageService.uploadVariantImage(
-                productId,
-                variantId,
-                variantImage
-              ).then(url => {
-                variant.imageUrl = url;
-              }).catch(error => {
-                // Usar imagen de color como fallback
-                variant.imageUrl = color.imageUrl || '';
-              });
-
-              variantImagePromises.push(variantImagePromise);
-            } else {
-              // 2. Usar imagen del color como fallback
-              variant.imageUrl = color.imageUrl || '';
+            if (imagePromise) {
+              variantImagePromises.push(imagePromise as Promise<void>);
             }
 
-            variants.push(variant);
-            totalStock += variantStock;
-            variantsCreated++;
           } else {
             console.log(`⚠️ VariantService: Saltando variante ${color.name}-${size.name} sin stock`);
             variantsSkipped++;
@@ -340,16 +321,20 @@ export class ProductVariantService {
         }
       }
 
-      // Si no se creó ninguna variante, salir
+      // Validar que se crearon variantes
       if (variants.length === 0) {
         console.warn(`❌ VariantService: No se crearon variantes para el producto ${productId}`);
         return;
       }
 
-      // Esperar a que todas las imágenes de variantes estén listas
-      await Promise.all(variantImagePromises);
+      console.log(`✅ VariantService: Procesando ${variantsCreated} variantes, ${variantsSkipped} saltadas`);
 
-      // Ahora crear todas las variantes en Firestore con las URLs correctas
+      // Esperar a que se procesen todas las imágenes
+      if (variantImagePromises.length > 0) {
+        await Promise.all(variantImagePromises);
+      }
+
+      // Crear todas las variantes en Firestore
       variants.forEach(variant => {
         const variantRef = doc(collection(this.firestore, this.variantsCollection), variant.id);
         batch.set(variantRef, {
@@ -358,22 +343,70 @@ export class ProductVariantService {
         });
       });
 
-      // Ejecutar la escritura por lotes
+      // Ejecutar batch
       await batch.commit();
 
-      // Actualizar el producto con referencias a las variantes y stock total
-      const productRef = doc(this.firestore, this.productsCollection, productId);
-      await updateDoc(productRef, {
-        variants: variants.map(v => v.id),
-        totalStock: totalStock,
-        updatedAt: new Date()
-      });
+      // Actualizar el producto principal
+      await this.updateProductWithVariants(productId, variants, totalStock);
 
+      console.log(`✅ VariantService: Producto ${productId} actualizado con ${variants.length} variantes y stock total: ${totalStock}`);
 
     } catch (error) {
       console.error(`💥 VariantService: Error al crear variantes de producto ${productId}:`, error);
       throw new Error(`Error al crear variantes de producto: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
+  }
+
+  private generateVariantSKU(productSku: string | undefined, colorName: string, sizeName: string, variantId: string): string {
+    if (productSku) {
+      return `${productSku}-${colorName}-${sizeName}`.toUpperCase().replace(/\s+/g, '-');
+    }
+    return `SKU-${variantId.substring(0, 8)}`;
+  }
+
+  private async processVariantImage(
+    variant: ProductVariant,
+    color: Color,
+    size: Size,
+    productId: string,
+    variantImages?: Map<string, File>
+  ): Promise<void | null> {
+
+    const variantImageKey = `${color.name}-${size.name}`;
+
+    if (!variantImages?.has(variantImageKey)) {
+      // No hay imagen específica, usar la del color
+      variant.imageUrl = color.imageUrl || '';
+      return null;
+    }
+
+    // Hay imagen específica para esta variante
+    const variantImage = variantImages.get(variantImageKey)!;
+
+    return this.imageService.uploadVariantImage(productId, variant.id, variantImage)
+      .then(url => {
+        variant.imageUrl = url;
+        console.log(`✅ VariantService: Imagen subida para variante ${variantImageKey}: ${url}`);
+      })
+      .catch(error => {
+        console.error(`❌ VariantService: Error subiendo imagen para variante ${variantImageKey}:`, error);
+        // Fallback a imagen del color
+        variant.imageUrl = color.imageUrl || '';
+      });
+  }
+
+  private async updateProductWithVariants(
+    productId: string,
+    variants: ProductVariant[],
+    totalStock: number
+  ): Promise<void> {
+    const productRef = doc(this.firestore, this.productsCollection, productId);
+
+    await updateDoc(productRef, {
+      variants: variants.map(v => v.id),
+      totalStock: totalStock,
+      updatedAt: new Date()
+    });
   }
 
   /**
@@ -383,14 +416,14 @@ export class ProductVariantService {
     if (!variantId || newStock < 0) {
       throw new Error('VariantId es requerido y el stock no puede ser negativo');
     }
-    
+
     try {
       const variantRef = doc(this.firestore, this.variantsCollection, variantId);
-      await updateDoc(variantRef, { 
+      await updateDoc(variantRef, {
         stock: newStock,
         updatedAt: new Date()
       });
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error actualizando stock de variante ${variantId}:`, error);
       throw new Error(`Error al actualizar stock: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -404,14 +437,14 @@ export class ProductVariantService {
     if (!variantId || !imageUrl) {
       throw new Error('VariantId e imageUrl son requeridos');
     }
-    
+
     try {
       const variantRef = doc(this.firestore, this.variantsCollection, variantId);
-      await updateDoc(variantRef, { 
+      await updateDoc(variantRef, {
         imageUrl,
         updatedAt: new Date()
       });
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error actualizando imagen de variante ${variantId}:`, error);
       throw new Error(`Error al actualizar imagen: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -426,14 +459,14 @@ export class ProductVariantService {
       throw new Error('VariantId es requerido y la cantidad no puede ser 0');
     }
 
-    
+
     try {
       const variantRef = doc(this.firestore, this.variantsCollection, variantId);
-      await updateDoc(variantRef, { 
+      await updateDoc(variantRef, {
         stock: increment(quantity),
         updatedAt: new Date()
       });
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error actualizando cantidad de stock para variante ${variantId}:`, error);
       throw new Error(`Error al actualizar cantidad de stock: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -448,14 +481,14 @@ export class ProductVariantService {
       console.warn('⚠️ VariantService: ProductId no proporcionado para incrementar vistas');
       return;
     }
-    
+
     try {
       const docRef = doc(this.firestore, this.productsCollection, productId);
-      await updateDoc(docRef, { 
+      await updateDoc(docRef, {
         views: increment(1),
         lastViewedAt: new Date()
       });
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error incrementando vistas para producto ${productId}:`, error);
       // No lanzar error aquí para no afectar la funcionalidad principal
@@ -481,7 +514,7 @@ export class ProductVariantService {
       // Actualizar stock de cada variante
       for (const item of variants) {
         const variantRef = doc(this.firestore, this.variantsCollection, item.variantId);
-        batch.update(variantRef, { 
+        batch.update(variantRef, {
           stock: increment(-item.quantity),
           updatedAt: new Date()
         });
@@ -490,7 +523,7 @@ export class ProductVariantService {
 
       // Actualizar el producto
       const productRef = doc(this.firestore, this.productsCollection, productId);
-      
+
       // Obtener datos actuales del producto para calcular popularidad
       const productDoc = await getDoc(productRef);
       if (productDoc.exists()) {
@@ -521,7 +554,7 @@ export class ProductVariantService {
       }
 
       await batch.commit();
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error registrando venta para producto ${productId}:`, error);
       throw new Error(`Error al registrar venta: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -535,7 +568,7 @@ export class ProductVariantService {
     if (!productId) {
       throw new Error('ProductId es requerido');
     }
-    
+
     try {
       const variantsRef = collection(this.firestore, this.variantsCollection);
       const q = query(variantsRef, where('productId', '==', productId));
@@ -552,14 +585,14 @@ export class ProductVariantService {
       // Procesar cada variante
       snapshot.docs.forEach((doc, index) => {
         const variantData = doc.data() as ProductVariant;
-        
+
         // Eliminar imagen si existe
         if (variantData.imageUrl) {
           imageDeletePromises.push(
             this.imageService.deleteImageIfExists(variantData.imageUrl)
           );
         }
-        
+
         batch.delete(doc.ref);
       });
 
@@ -570,7 +603,7 @@ export class ProductVariantService {
 
       // Ejecutar eliminación en lote
       await batch.commit();
-      
+
     } catch (error) {
       console.error(`❌ VariantService: Error eliminando variantes del producto ${productId}:`, error);
       throw new Error(`Error al eliminar variantes: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -584,7 +617,7 @@ export class ProductVariantService {
     if (!variantId) {
       throw new Error('VariantId es requerido');
     }
-   
+
     try {
       // Obtener información de la variante antes de eliminarla
       const variant = await this.getVariantById(variantId);
@@ -624,7 +657,7 @@ export class ProductVariantService {
     if (threshold < 0) {
       throw new Error('El umbral no puede ser negativo');
     }
-    
+
     try {
       const variantsRef = collection(this.firestore, this.variantsCollection);
       const q = query(
@@ -638,7 +671,7 @@ export class ProductVariantService {
         id: doc.id,
         ...doc.data()
       } as ProductVariant));
-      
+
       if (variants.length > 0) {
         variants.forEach(variant => {
           console.log(`   ⚠️ ${variant.colorName}-${variant.sizeName}: ${variant.stock} unidades`);
@@ -656,7 +689,7 @@ export class ProductVariantService {
    * 🚀 MEJORADO: Obtiene todas las variantes sin stock
    */
   async getOutOfStockVariants(): Promise<ProductVariant[]> {
-    
+
     try {
       const variantsRef = collection(this.firestore, this.variantsCollection);
       const q = query(variantsRef, where('stock', '==', 0));
@@ -666,7 +699,7 @@ export class ProductVariantService {
         id: doc.id,
         ...doc.data()
       } as ProductVariant));
-      
+
       if (variants.length > 0) {
         variants.forEach(variant => {
           console.log(`   🚫 ${variant.colorName}-${variant.sizeName}: Sin stock`);
@@ -684,22 +717,22 @@ export class ProductVariantService {
    * 🚀 MEJORADO: Obtiene todas las variantes
    */
   async getAllVariants(): Promise<ProductVariant[]> {
-    
+
     try {
       const variantsRef = collection(this.firestore, this.variantsCollection);
       const snapshot = await getDocs(variantsRef);
-      
+
       const variants = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as ProductVariant));
-      
+
       if (variants.length > 0) {
         // Estadísticas generales
         const withStock = variants.filter(v => v.stock > 0).length;
         const withoutStock = variants.filter(v => v.stock === 0).length;
         const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
-        
+
       }
 
       return variants;
@@ -717,12 +750,12 @@ export class ProductVariantService {
       console.warn('⚠️ VariantService: ColorName no proporcionado');
       return [];
     }
-    
+
     try {
       const variantsRef = collection(this.firestore, this.variantsCollection);
       const q = query(variantsRef, where('colorName', '==', colorName));
       const snapshot = await getDocs(q);
-      
+
       const variants = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -743,12 +776,12 @@ export class ProductVariantService {
       console.warn('⚠️ VariantService: SizeName no proporcionado');
       return [];
     }
-    
+
     try {
       const variantsRef = collection(this.firestore, this.variantsCollection);
       const q = query(variantsRef, where('sizeName', '==', sizeName));
       const snapshot = await getDocs(q);
-      
+
       const variants = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -768,11 +801,11 @@ export class ProductVariantService {
     if (!productId) {
       return 0;
     }
-    
+
     try {
       const variants = await this.getVariantsByProductId(productId);
       const totalStock = variants.reduce((sum, variant) => sum + variant.stock, 0);
-      
+
       return totalStock;
     } catch (error) {
       console.error(`❌ VariantService: Error calculando stock total para producto ${productId}:`, error);
@@ -784,23 +817,23 @@ export class ProductVariantService {
    * 🆕 NUEVO: Verifica disponibilidad de una variante específica
    */
   async checkVariantAvailability(
-    productId: string, 
-    colorName: string, 
-    sizeName: string, 
+    productId: string,
+    colorName: string,
+    sizeName: string,
     requiredQuantity: number = 1
   ): Promise<{ available: boolean; currentStock: number; variant?: ProductVariant }> {
-    
+
     try {
       const variants = await this.getVariantsByProductId(productId);
       const variant = variants.find(v => v.colorName === colorName && v.sizeName === sizeName);
-      
+
       if (!variant) {
         return { available: false, currentStock: 0 };
       }
 
       const available = variant.stock >= requiredQuantity;
-      
-      
+
+
       return {
         available,
         currentStock: variant.stock,
@@ -819,7 +852,7 @@ export class ProductVariantService {
     if (!restockData || restockData.length === 0) {
       throw new Error('Datos de reabastecimiento son requeridos');
     }
-    
+
     try {
       const batch = writeBatch(this.firestore);
       let totalAdded = 0;
@@ -841,7 +874,7 @@ export class ProductVariantService {
       }
 
       await batch.commit();
-      
+
       console.log(`🎉 VariantService: Reabastecimiento completado - ${totalAdded} unidades agregadas en total`);
     } catch (error) {
       console.error(`❌ VariantService: Error en reabastecimiento:`, error);
@@ -860,7 +893,7 @@ export class ProductVariantService {
     lowStockVariants: number;
     averageStockPerVariant: number;
   }> {
-    
+
     try {
       const [allVariants, lowStockVariants] = await Promise.all([
         this.getAllVariants(),
@@ -894,14 +927,14 @@ export class ProductVariantService {
    */
   debugVariantService(): void {
     console.group('🧬 [VARIANT SERVICE DEBUG] Estado del servicio');
-    
+
     // Información de conexiones
     console.log('🔧 Configuración:');
     console.log(`   📦 Colección de productos: ${this.productsCollection}`);
     console.log(`   🧬 Colección de variantes: ${this.variantsCollection}`);
     console.log(`   🔥 Firestore:`, this.firestore ? '✅ Conectado' : '❌ No conectado');
     console.log(`   📸 ImageService:`, this.imageService ? '✅ Disponible' : '❌ No disponible');
-    
+
     // Obtener estadísticas
     this.getInventoryStats().then(stats => {
       console.log('📊 Estadísticas actuales:');
@@ -909,7 +942,7 @@ export class ProductVariantService {
     }).catch(error => {
       console.error('❌ Error obteniendo estadísticas:', error);
     });
-    
+
     console.groupEnd();
   }
 
@@ -917,12 +950,12 @@ export class ProductVariantService {
    * 🆕 NUEVO: Exporta datos de variantes para backup o análisis
    */
   async exportVariantsData(productId?: string): Promise<ProductVariant[]> {
-    
+
     try {
-      const variants = productId 
+      const variants = productId
         ? await this.getVariantsByProductId(productId)
         : await this.getAllVariants();
-        
+
       return variants;
     } catch (error) {
       console.error(`❌ VariantService: Error exportando datos:`, error);

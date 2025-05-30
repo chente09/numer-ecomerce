@@ -4,6 +4,7 @@ import { Product, ProductVariant } from '../../../models/models';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { ProductInventoryService, SaleItem } from '../../../services/admin/inventario/product-inventory.service';
 import { ErrorUtil } from '../../../utils/error-util';
+import { StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 
 export interface CartItem {
   productId: string;
@@ -69,7 +70,8 @@ export class CartService {
 
   constructor(
     private productService: ProductService,
-    private inventoryService: ProductInventoryService
+    private inventoryService: ProductInventoryService,
+    private stockUpdateService: StockUpdateService
   ) {
     // Intentar recuperar el carrito del localStorage al iniciar
     this.loadCartFromStorage();
@@ -200,6 +202,23 @@ export class CartService {
             this.cartSubject.next(currentCart);
             this.saveCartToStorage();
 
+            // 🚀 NOTIFICAR CAMBIO DE STOCK POR COMPRA
+            this.stockUpdateService.notifyStockChange({
+              productId: productId,
+              variantId: variantId,
+              stockChange: -quantity, // Reducir stock
+              newStock: Math.max(0, (variant.stock || 0) - quantity),
+              timestamp: new Date(),
+              source: 'purchase',
+              metadata: {
+                colorName: variant.colorName,
+                sizeName: variant.sizeName,
+                productName: product.name,
+                userAction: 'add_to_cart_existing'
+              }
+            });
+
+
             console.log(`✅ CartService: Cantidad actualizada - Nueva cantidad: ${newQuantity}`);
             return true;
           }),
@@ -230,6 +249,22 @@ export class CartService {
         this.cartSubject.next(currentCart);
         this.saveCartToStorage();
 
+        // 🚀 NOTIFICAR CAMBIO DE STOCK POR COMPRA NUEVA
+        this.stockUpdateService.notifyStockChange({
+          productId: productId,
+          variantId: variantId,
+          stockChange: -quantity, // Reducir stock
+          newStock: Math.max(0, (variant.stock || 0) - quantity),
+          timestamp: new Date(),
+          source: 'purchase',
+          metadata: {
+            colorName: variant.colorName,
+            sizeName: variant.sizeName,
+            productName: product.name,
+            userAction: 'add_to_cart_new'
+          }
+        });
+
         console.log(`✅ CartService: Nuevo item agregado - Items en carrito: ${currentCart.items.length}`);
         return of(true);
       }
@@ -246,7 +281,6 @@ export class CartService {
     console.log(`🔄 CartService: Actualizando cantidad - Variant: ${variantId}, Qty: ${quantity}`);
 
     if (quantity <= 0) {
-      console.log('🗑️ CartService: Cantidad <= 0, eliminando item...');
       return this.removeItem(variantId);
     }
 
@@ -266,6 +300,10 @@ export class CartService {
           return false;
         }
 
+        const item = currentCart.items[itemIndex];
+        const oldQuantity = item.quantity;
+        const quantityChange = quantity - oldQuantity;
+
         // Actualizar cantidad
         currentCart.items[itemIndex].quantity = quantity;
         currentCart.items[itemIndex].totalPrice =
@@ -277,6 +315,24 @@ export class CartService {
         // Actualizar el estado y guardar
         this.cartSubject.next(currentCart);
         this.saveCartToStorage();
+
+        // 🚀 NOTIFICAR CAMBIO DE STOCK POR ACTUALIZACIÓN DE CANTIDAD
+        if (quantityChange !== 0) {
+          this.stockUpdateService.notifyStockChange({
+            productId: item.productId,
+            variantId: variantId,
+            stockChange: -quantityChange, // Si aumenta qty, reduce stock
+            newStock: Math.max(0, (item.variant?.stock || 0) - quantityChange),
+            timestamp: new Date(),
+            source: 'purchase',
+            metadata: {
+              colorName: item.variant?.colorName,
+              sizeName: item.variant?.sizeName,
+              productName: item.product?.name,
+              userAction: 'update_cart_quantity'
+            }
+          });
+        }
 
         console.log(`✅ CartService: Cantidad actualizada exitosamente`);
         return true;
@@ -299,12 +355,31 @@ export class CartService {
       console.log(`🗑️ CartService: Eliminando item - Variant: ${variantId}`);
 
       const currentCart = this.getCart();
+      const itemToRemove = currentCart.items.find(item => item.variantId === variantId);
       const updatedItems = currentCart.items.filter(item => item.variantId !== variantId);
 
       if (updatedItems.length === currentCart.items.length) {
         // No se encontró el item
         console.warn('⚠️ CartService: Item no encontrado para eliminar');
         return of(false);
+      }
+
+      if (itemToRemove) {
+        // 🚀 NOTIFICAR DEVOLUCIÓN DE STOCK
+        this.stockUpdateService.notifyStockChange({
+          productId: itemToRemove.productId,
+          variantId: itemToRemove.variantId,
+          stockChange: itemToRemove.quantity, // Devolver stock
+          newStock: (itemToRemove.variant?.stock || 0) + itemToRemove.quantity,
+          timestamp: new Date(),
+          source: 'purchase',
+          metadata: {
+            colorName: itemToRemove.variant?.colorName,
+            sizeName: itemToRemove.variant?.sizeName,
+            productName: itemToRemove.product?.name,
+            userAction: 'remove_from_cart'
+          }
+        });
       }
 
       currentCart.items = updatedItems;

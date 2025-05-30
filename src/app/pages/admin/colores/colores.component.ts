@@ -21,7 +21,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
 import { NzColorPickerModule } from 'ng-zorro-antd/color-picker';
 import { EMPTY, Subject, catchError, of } from 'rxjs';
-import { takeUntil, finalize } from 'rxjs/operators';
+import { takeUntil, finalize, take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-colores',
@@ -103,7 +103,8 @@ export class ColoresComponent implements OnInit, OnDestroy {
 
     // Escuchar cambios SOLO del input de texto
     this.colorForm.get('code')?.valueChanges.pipe(
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
+      take(1)
     ).subscribe(value => {
       if (value && /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
         // Actualizar vista previa

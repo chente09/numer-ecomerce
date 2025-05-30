@@ -296,6 +296,73 @@ export class ProductInventoryService {
     );
   }
 
+  // ✅ NUEVO MÉTODO: Sincronizar stock desde colorStocks
+  async syncVariantsStockFromProduct(productId: string): Promise<void> {
+    console.log(`🔄 InventoryService: Sincronizando stock para producto: ${productId}`);
+
+    try {
+      // Obtener producto completo
+      const productRef = doc(this.firestore, 'products', productId);
+      const productSnap = await getDoc(productRef);
+
+      if (!productSnap.exists()) {
+        throw new Error('Producto no encontrado');
+      }
+
+      const productData = productSnap.data();
+      const sizes = productData['sizes'] || [];
+
+      // Obtener todas las variantes
+      const variantsRef = collection(this.firestore, 'productVariants');
+      const q = query(variantsRef, where('productId', '==', productId));
+      const variantsSnap = await getDocs(q);
+
+      const batch = writeBatch(this.firestore);
+      let totalStock = 0;
+
+      // Actualizar cada variante con el stock correcto
+      variantsSnap.docs.forEach(variantDoc => {
+        const variant = variantDoc.data() as ProductVariant;
+
+        // Encontrar el stock correcto en colorStocks
+        const size = sizes.find((s: any) => s.name === variant.sizeName);
+        const colorStock = size?.colorStocks?.find((cs: any) => cs.colorName === variant.colorName);
+        const correctStock = colorStock?.quantity || 0;
+
+        if (variant.stock !== correctStock) {
+          console.log(`🔄 Corrigiendo ${variant.colorName}-${variant.sizeName}: ${variant.stock} → ${correctStock}`);
+
+          batch.update(variantDoc.ref, {
+            stock: correctStock,
+            updatedAt: new Date()
+          });
+        }
+
+        totalStock += correctStock;
+      });
+
+      // Actualizar stock total del producto
+      batch.update(productRef, {
+        totalStock,
+        updatedAt: new Date()
+      });
+
+      await batch.commit();
+      console.log(`✅ InventoryService: Sincronización completada - Stock total: ${totalStock}`);
+
+    } catch (error) {
+      console.error(`❌ InventoryService: Error en sincronización:`, error);
+      throw error;
+    }
+  }
+
+  // ✅ MÉTODO PÚBLICO: Para llamar desde admin
+  syncProductStock(productId: string): Observable<void> {
+    return from(this.syncVariantsStockFromProduct(productId)).pipe(
+      catchError(error => ErrorUtil.handleError(error, 'syncProductStock'))
+    );
+  }
+
   /**
    * 🚀 CORREGIDO: Transfiere stock entre variantes
    * (útil para corregir errores o mover inventario)
@@ -686,7 +753,7 @@ export class ProductInventoryService {
 
     const cacheKey = `${this.variantCacheKey}_product_${productId}`;
 
-    return this.cacheService.getCached<ProductVariant[]>(cacheKey, () => {      
+    return this.cacheService.getCached<ProductVariant[]>(cacheKey, () => {
       return from((async () => {
         const variantsRef = collection(this.firestore, this.variantsCollection);
         const q = query(variantsRef, where('productId', '==', productId));
@@ -699,7 +766,7 @@ export class ProductInventoryService {
             ...data
           } as ProductVariant;
 
-        
+
 
           return variant;
         });
