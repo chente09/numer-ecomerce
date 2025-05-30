@@ -4,6 +4,7 @@ import { CarritoComponent } from './pasarela-pago/carrito/carrito.component';
 import { RespuestaPagoComponent } from './pasarela-pago/respuesta-pago/respuesta-pago.component';
 import { NosotrosComponent } from './pages/nosotros/nosotros.component';
 import { DetalleProductoComponent } from './pages/shop/detalle-producto/detalle-producto/detalle-producto.component';
+import { ProductCatalogComponent } from './pages/shop/product-catalog/product-catalog.component';
 import { WelcomeComponent } from './pages/welcome/welcome.component';
 import { LayoutComponent } from './pages/admin/layout/layout.component';
 import { ProductManagementComponent } from './pages/admin/product-management/product-management.component';
@@ -30,6 +31,7 @@ export const routes: Routes = [
     { path: 'respuesta-pago', component: RespuestaPagoComponent, canActivate: [authGuard] },
     { path: 'nosotros', component: NosotrosComponent, pathMatch: 'full' },
     { path: 'products/:id', component: DetalleProductoComponent },
+    { path: 'shop', component: ProductCatalogComponent },
     { path: 'cuidado-producto', component: CuidadoProductoComponent },
     { path: 'review-form', component: ReviewFormComponent },
     

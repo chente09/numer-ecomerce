@@ -1,0 +1,348 @@
+<div class="catalog-container">
+    <!-- Desktop Sidebar Filters -->
+    <aside class="filters-sidebar" [class.hidden]="!showDesktopFilters">
+        <div class="filters-header">
+            <h3>Filtros</h3>
+            <button nz-button nzType="text" nzSize="small" (click)="clearAllFilters()" *ngIf="hasActiveFilters()">
+                Limpiar todo
+            </button>
+        </div>
+
+        <!-- Filter Form -->
+        <form [formGroup]="filterForm">
+            <nz-collapse nzGhost [nzExpandIconPosition]="'end'">
+
+                <!-- Size Filter -->
+                <nz-collapse-panel nzHeader="Talla" [nzActive]="true">
+                    <div class="filter-section">
+                        <nz-checkbox-group formControlName="sizes">
+                            <label nz-checkbox *ngFor="let size of filterOptions.sizes" [nzValue]="size.name">
+                                {{ size.name }}
+                            </label>
+                        </nz-checkbox-group>
+                    </div>
+                </nz-collapse-panel>
+
+                <!-- Color Filter -->
+                <nz-collapse-panel nzHeader="Color" [nzActive]="true">
+                    <div class="filter-section">
+                        <div class="color-swatches">
+                            <div *ngFor="let color of filterOptions.colors" class="color-swatch"
+                                [class.selected]="isColorSelected(color.name)" [style.background-color]="color.code"
+                                [title]="color.name" (click)="toggleColorFilter(color.name)">
+                            </div>
+                        </div>
+                    </div>
+                </nz-collapse-panel>
+
+                <!-- Category Filter -->
+                <nz-collapse-panel nzHeader="Categoría" [nzActive]="true">
+                    <div class="filter-section">
+                        <nz-checkbox-group formControlName="categories">
+                            <label nz-checkbox *ngFor="let category of filterOptions.categories" [nzValue]="category.id">
+                                {{ category.name }}
+                            </label>
+                        </nz-checkbox-group>
+                    </div>
+                </nz-collapse-panel>
+
+                <!-- Price Filter -->
+                <nz-collapse-panel nzHeader="Precio" [nzActive]="false">
+                    <div class="filter-section">
+                        <nz-checkbox-group formControlName="priceRanges">
+                            <label nz-checkbox *ngFor="let range of priceRanges" [nzValue]="range.value">
+                                {{ range.label }}
+                            </label>
+                        </nz-checkbox-group>
+                    </div>
+                </nz-collapse-panel>
+
+                <!-- Stock Filter -->
+                <nz-collapse-panel nzHeader="Disponibilidad" [nzActive]="false">
+                    <div class="filter-section">
+                        <label nz-checkbox formControlName="inStock">
+                            Solo productos en stock
+                        </label>
+                    </div>
+                </nz-collapse-panel>
+
+            </nz-collapse>
+        </form>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="catalog-main" [class.with-sidebar]="showDesktopFilters">
+
+        <!-- Header con título y búsqueda -->
+        <div class="catalog-header">
+            <h1 class="catalog-title">Catálogo de Productos</h1>
+
+            <!-- Search Bar -->
+            <div class="search-section">
+                <nz-input-group [nzSuffix]="suffixIconSearch" nzSize="large">
+                    <input type="text" nz-input placeholder="Buscar productos..."
+                        [formControl]="searchControl">
+                </nz-input-group>
+                <ng-template #suffixIconSearch>
+                    <span nz-icon nzType="search"></span>
+                </ng-template>
+            </div>
+        </div>
+
+        <!-- Mobile Filter Button & Sort -->
+        <div class="mobile-controls">
+            <button nz-button nzType="default" (click)="toggleMobileFilters()" class="filter-toggle">
+                <span nz-icon nzType="filter"></span>
+                Filtros
+                <nz-tag *ngIf="activeFiltersCount > 0" [nzColor]="'blue'">{{ activeFiltersCount }}</nz-tag>
+            </button>
+
+            <nz-select [formControl]="sortControl" nzPlaceHolder="Ordenar por" style="width: 200px;">
+                <nz-option *ngFor="let option of sortOptions" [nzLabel]="option.label" [nzValue]="option.value">
+                </nz-option>
+            </nz-select>
+        </div>
+
+        <!-- Active Filters Summary -->
+        <div class="active-filters" *ngIf="hasActiveFilters()">
+            <span class="active-filters-label">Filtros activos:</span>
+            <nz-tag *ngFor="let filter of getActiveFilterTags()" nzClosable="true"
+                (nzOnClose)="removeFilter(filter.type, filter.value)">
+                {{ filter.label }}
+            </nz-tag>
+            <button nz-button nzType="link" nzSize="small" (click)="clearAllFilters()">
+                Limpiar todo
+            </button>
+        </div>
+
+        <!-- Results Count -->
+        <div class="results-summary" *ngIf="!loading">
+            <span>{{ total }} {{ total === 1 ? 'producto encontrado' : 'productos encontrados' }}</span>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="loading" class="loading-container">
+            <nz-spin nzSize="large" nzTip="Cargando productos..."></nz-spin>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!loading && filteredProducts.length === 0" class="empty-state">
+            <nz-empty nzNotFoundContent="No se encontraron productos con los filtros seleccionados">
+                <button nz-button nzType="primary" (click)="clearAllFilters()">
+                    Limpiar filtros
+                </button>
+            </nz-empty>
+        </div>
+
+        <!-- Products Grid -->
+        <div *ngIf="!loading && filteredProducts.length > 0" class="product-grid">
+            <div *ngFor="let product of getDisplayedProducts(); trackBy: trackByProductId" class="product-card-section">
+
+                <!-- Imagen del producto -->
+                <div class="product-image-container" (click)="viewProductDetails(product.id)"
+                    [attr.aria-label]="'Ver detalles de ' + product.name">
+
+                    <img [src]="product.displayImageUrl || product.imageUrl"
+                        [alt]="product.name + (getActiveColorName(product) ? ' - Color: ' + getActiveColorName(product) : '')"
+                        class="product-image-section" (error)="handleImageError($event)" loading="lazy">
+
+                    <!-- Badges -->
+                    <div class="badges-container">
+                        <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
+                        <span *ngIf="hasDiscount(product)" class="discount-badge">
+                            -{{ product.discountPercentage }}%
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Color Options -->
+                <div class="color-options" *ngIf="hasColors(product)" [ngClass]="{'has-scroll': hasManyColors(product)}"
+                    [attr.aria-label]="'Colores disponibles: ' + product.colors.length">
+
+                    <!-- Scroll indicators -->
+                    <div *ngIf="hasManyColors(product)" class="scroll-indicator scroll-left"
+                        (click)="scrollColors(product.id, 'left')" [attr.aria-hidden]="true">
+                        ←
+                    </div>
+
+                    <!-- Colors container -->
+                    <div class="colors-container" [attr.data-product-id]="product.id">
+                        <div *ngFor="let color of product.colors; let i = index" class="color-option"
+                            [ngClass]="{'active': isColorActive(product, i)}"
+                            [style.background-image]="color.imageUrl ? 'url(' + color.imageUrl + ')' : null"
+                            [style.background-size]="color.imageUrl ? 'cover' : null"
+                            [style.background-position]="color.imageUrl ? 'center' : null"
+                            [style.background-repeat]="color.imageUrl ? 'no-repeat' : null"
+                            [style.background-color]="!color.imageUrl ? color.code : null"
+                            (click)="onColorSelect(product, color, i)" [attr.title]="'Color: ' + color.name"
+                            [attr.aria-label]="'Seleccionar color ' + color.name" tabindex="0"
+                            (keydown.enter)="onColorSelect(product, color, i)"
+                            (keydown.space)="$event.preventDefault(); onColorSelect(product, color, i)">
+                        </div>
+                    </div>
+
+                    <div *ngIf="hasManyColors(product)" class="scroll-indicator scroll-right"
+                        (click)="scrollColors(product.id, 'right')" [attr.aria-hidden]="true">
+                        →
+                    </div>
+                </div>
+
+                <!-- Product Info -->
+                <div class="product-info">
+                    <!-- Product Name -->
+                    <h3 class="product-name" (click)="viewProductDetails(product.id)" [title]="product.name">
+                        {{ product.name }}
+                    </h3>
+
+                    <!-- Variant Info -->
+                    <div *ngIf="product.selectedVariant" class="variant-info">
+                        <small class="variant-details">
+                            {{ product.selectedVariant.colorName }} - {{ product.selectedVariant.sizeName }}
+                        </small>
+                        <span class="stock-badge" [ngClass]="{
+              'in-stock': product.selectedVariant.stock > 5,
+              'low-stock': product.selectedVariant.stock <= 5 && product.selectedVariant.stock > 0,
+              'out-of-stock': product.selectedVariant.stock <= 0
+            }">
+                            {{ getStockText(product.selectedVariant.stock) }}
+                        </span>
+                    </div>
+
+                    <!-- Precio -->
+                    <div class="product-price">
+                        <span *ngIf="hasDiscount(product)" class="original-price">
+                            ${{ formatPrice(product.price) }}
+                        </span>
+                        <span class="current-price" [ngClass]="{'discounted': hasDiscount(product)}">
+                            ${{ formatPrice(product.currentPrice || product.price) }}
+                        </span>
+                    </div>
+
+                    <!-- Rating -->
+                    <div class="product-rating">
+                        <nz-rate [ngModel]="product.rating || 5" nzDisabled [nzAllowHalf]="true" class="black-stars"
+                            [attr.aria-label]="'Calificación: ' + (product.rating || 5) + ' de 5 estrellas'">
+                        </nz-rate>
+                    </div>
+
+                    <!-- Variant Selector (Dropdown for mobile) -->
+                    <div class="variant-selector"
+                        *ngIf="hasVariants(product) && getAvailableVariants(product).length > 1">
+                        <nz-select [ngModel]="product.selectedVariant?.id"
+                            (ngModelChange)="onVariantSelectFromDropdown(product, $event)"
+                            nzPlaceHolder="Seleccionar variante" style="width: 100%;" nzSize="small">
+                            <nz-option *ngFor="let variant of getAvailableVariants(product)" [nzValue]="variant.id"
+                                [nzLabel]="variant.colorName + ' - ' + variant.sizeName">
+                            </nz-option>
+                        </nz-select>
+                    </div>
+
+                    <!-- Add to Cart Button -->
+                    <button nz-button nzType="primary" nzBlock
+                        [disabled]="!product.selectedVariant || product.selectedVariant.stock <= 0"
+                        (click)="addToCart(product)" class="add-to-cart-btn">
+                        <span nz-icon nzType="shopping-cart"></span>
+                        {{ getAddToCartText(product) }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div *ngIf="!loading && total > pageSize" class="pagination-container">
+            <nz-pagination [nzPageIndex]="currentPage" [nzTotal]="total" [nzPageSize]="pageSize"
+                [nzShowSizeChanger]="true" [nzPageSizeOptions]="[20, 40, 60, 100]" [nzShowQuickJumper]="true"
+                [nzShowTotal]="totalTemplate" (nzPageIndexChange)="onPageChange($event)"
+                (nzPageSizeChange)="pageSize = $event; onPageChange(1)">
+            </nz-pagination>
+
+            <ng-template #totalTemplate let-total let-range="range">
+                {{ range[0] }}-{{ range[1] }} de {{ total }} productos
+            </ng-template>
+        </div>
+    </main>
+</div>
+
+<!-- Mobile Filters Drawer -->
+<nz-drawer [(nzVisible)]="showMobileFilters" nzPlacement="left" nzTitle="Filtros" [nzWidth]="320" [nzClosable]="true"
+    (nzOnClose)="showMobileFilters = false">
+    <ng-container *nzDrawerContent>
+        <div class="mobile-filters">
+
+            <!-- Mobile Filter Header -->
+            <div class="mobile-filters-header">
+                <button nz-button nzType="text" (click)="clearAllFilters()" *ngIf="hasActiveFilters()">
+                    Limpiar todo
+                </button>
+            </div>
+
+            <!-- Mobile Filter Form -->
+            <form [formGroup]="filterForm">
+                <nz-collapse nzGhost [nzExpandIconPosition]="'end'">
+
+                    <!-- Size Filter -->
+                    <nz-collapse-panel nzHeader="Talla" [nzActive]="true">
+                        <div class="filter-section">
+                            <nz-checkbox-group formControlName="sizes">
+                                <label nz-checkbox *ngFor="let size of filterOptions.sizes" [nzValue]="size.name">
+                                    {{ size.name }}
+                                </label>
+                            </nz-checkbox-group>
+                        </div>
+                    </nz-collapse-panel>
+
+                    <!-- Color Filter -->
+                    <nz-collapse-panel nzHeader="Color" [nzActive]="true">
+                        <div class="filter-section">
+                            <div class="color-swatches">
+                                <div *ngFor="let color of filterOptions.colors" class="color-swatch"
+                                    [class.selected]="isColorSelected(color.name)" [style.background-color]="color.code"
+                                    [title]="color.name" (click)="toggleColorFilter(color.name)">
+                                </div>
+                            </div>
+                        </div>
+                    </nz-collapse-panel>
+
+                    <!-- Category Filter -->
+                    <nz-collapse-panel nzHeader="Categoría" [nzActive]="true">
+                        <div class="filter-section">
+                            <nz-checkbox-group formControlName="categories">
+                                <label nz-checkbox *ngFor="let category of filterOptions.categories" [nzValue]="category.id">
+                                    {{ category.name }}
+                                </label>
+                            </nz-checkbox-group>
+                        </div>
+                    </nz-collapse-panel>
+
+                    <!-- Price Filter -->
+                    <nz-collapse-panel nzHeader="Precio" [nzActive]="false">
+                        <div class="filter-section">
+                            <nz-checkbox-group formControlName="priceRanges">
+                                <label nz-checkbox *ngFor="let range of priceRanges" [nzValue]="range.value">
+                                    {{ range.label }}
+                                </label>
+                            </nz-checkbox-group>
+                        </div>
+                    </nz-collapse-panel>
+
+                    <!-- Stock Filter -->
+                    <nz-collapse-panel nzHeader="Disponibilidad" [nzActive]="false">
+                        <div class="filter-section">
+                            <label nz-checkbox formControlName="inStock">
+                                Solo productos en stock
+                            </label>
+                        </div>
+                    </nz-collapse-panel>
+
+                </nz-collapse>
+            </form>
+
+            <!-- Mobile Apply Button -->
+            <div class="mobile-filters-footer">
+                <button nz-button nzType="primary" nzBlock (click)="showMobileFilters = false">
+                    Ver {{ total }} {{ total === 1 ? 'producto' : 'productos' }}
+                </button>
+            </div>
+        </div>
+    </ng-container>
+</nz-drawer>

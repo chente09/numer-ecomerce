@@ -50,7 +50,7 @@ export class NavBarComponent implements OnInit, OnDestroy {
   ];
 
   navItems = [
-    { label: 'TIENDA', link: '/productos' },
+    { label: 'TIENDA', link: '/shop' },
     { label: 'NOSOTROS', link: '/nosotros' },
     { label: 'RESEÑAS', link: '/review-form' },
   ];
