@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, updateDoc, getDoc, writeBatch, increment, DocumentReference, collection, query, where, getDocs, DocumentData } from '@angular/fire/firestore';
 import { Observable, from, throwError, of, forkJoin } from 'rxjs';
-import { map, catchError, switchMap, tap } from 'rxjs/operators';
+import { map, catchError, switchMap, tap, take, finalize } from 'rxjs/operators';
 
 // Importar utilidades
 import { ErrorUtil } from '../../../utils/error-util';
@@ -63,6 +63,8 @@ export interface LowStockProduct {
   providedIn: 'root'
 })
 export class ProductInventoryService {
+  // 🔧 CORRECCIÓN: Usar inject() para Firestore
+  private firestore = inject(Firestore);
   private productsCollection = 'products';
   private variantsCollection = 'productVariants';
   private readonly lowStockThreshold = 5;
@@ -73,21 +75,23 @@ export class ProductInventoryService {
   private readonly lowStockCacheKey = 'low_stock_products';
 
   constructor(
-    private firestore: Firestore,
     private cacheService: CacheService
-  ) { }
+  ) {
+  }
 
   /**
-   * Verifica la disponibilidad de stock para un conjunto de variantes
+   * 🚀 CORREGIDO: Verifica la disponibilidad de stock para un conjunto de variantes
    */
   checkVariantsAvailability(items: SaleItem[]): Observable<StockCheckResult> {
     if (!items || items.length === 0) {
       return of({ available: true, unavailableItems: [] });
     }
 
+
     // Obtener cada variante para verificar stock
     const variantChecks = items.map(item =>
       this.getVariantById(item.variantId).pipe(
+        take(1), // ✅ NUEVO: Forzar completar
         map(variant => {
           if (!variant) {
             return {
@@ -97,10 +101,12 @@ export class ProductInventoryService {
             };
           }
 
+          const available = variant.stock || 0;
+
           return {
             variantId: item.variantId,
             requested: item.quantity,
-            available: variant.stock || 0
+            available
           };
         })
       )
@@ -113,29 +119,37 @@ export class ProductInventoryService {
           item.available < item.requested
         );
 
+        const available = unavailableItems.length === 0;
+
         return {
-          available: unavailableItems.length === 0,
+          available,
           unavailableItems
         };
       }),
-      catchError(error => ErrorUtil.handleError(error, 'checkVariantsAvailability'))
+      catchError(error => ErrorUtil.handleError(error, 'checkVariantsAvailability')),
     );
   }
 
   /**
-   * Registra una venta actualizando el stock y estadísticas
+   * 🚀 CORREGIDO: Registra una venta actualizando el stock y estadísticas
    */
   registerSale(productId: string, items: SaleItem[]): Observable<void> {
+
     // Primero verificamos la disponibilidad
     return this.checkVariantsAvailability(items).pipe(
+      take(1), // ✅ NUEVO: Forzar completar
       switchMap(result => {
         if (!result.available) {
+          console.error('❌ InventoryService: No hay suficiente stock para completar la venta', result.unavailableItems);
           return throwError(() => new Error('No hay suficiente stock para completar la venta'));
         }
 
         return this.processSale(productId, items);
       }),
-      catchError(error => ErrorUtil.handleError(error, 'registerSale'))
+      catchError(error => ErrorUtil.handleError(error, 'registerSale')),
+      finalize(() => {
+        console.log('🏁 InventoryService: registerSale completado');
+      })
     );
   }
 
@@ -144,6 +158,7 @@ export class ProductInventoryService {
    */
   private processSale(productId: string, items: SaleItem[]): Observable<void> {
     return from((async () => {
+
       const batch = writeBatch(this.firestore);
       let totalQuantity = 0;
 
@@ -155,6 +170,7 @@ export class ProductInventoryService {
           lastSaleDate: new Date()
         });
         totalQuantity += item.quantity;
+
       }
 
       // Actualizar el producto
@@ -164,6 +180,7 @@ export class ProductInventoryService {
         sales: increment(totalQuantity),
         lastSaleDate: new Date()
       });
+
 
       // Actualizar puntuación de popularidad
       const productDoc = await getDoc(productRef);
@@ -176,19 +193,21 @@ export class ProductInventoryService {
 
         const popularityScore = (newSales * 5) + (views * 0.1);
         batch.update(productRef, { popularityScore });
+
       }
 
       await batch.commit();
 
       // Invalidar caché relacionado al inventario
       this.invalidateInventoryCache(undefined, productId);
+
     })()).pipe(
       catchError(error => ErrorUtil.handleError(error, 'processSale'))
     );
   }
 
   /**
-   * Actualiza el stock de una variante
+   * 🚀 CORREGIDO: Actualiza el stock de una variante
    */
   updateStock(update: StockUpdate): Observable<void> {
     if (!update || !update.productId || !update.variantId) {
@@ -217,12 +236,12 @@ export class ProductInventoryService {
       // Invalidar caché relacionado al inventario
       this.invalidateInventoryCache(update.variantId, update.productId);
     })()).pipe(
-      catchError(error => ErrorUtil.handleError(error, 'updateStock'))
+      catchError(error => ErrorUtil.handleError(error, 'updateStock')),
     );
   }
 
   /**
-   * Actualiza el stock de múltiples variantes en una sola operación
+   * 🚀 CORREGIDO: Actualiza el stock de múltiples variantes en una sola operación
    */
   updateStockBatch(updates: StockUpdate[]): Observable<void> {
     if (!updates || updates.length === 0) {
@@ -249,6 +268,7 @@ export class ProductInventoryService {
         // Acumular cambio para el producto
         const currentChange = productStockChanges.get(update.productId) || 0;
         productStockChanges.set(update.productId, currentChange + update.quantity);
+
       }
 
       // Actualizar los productos con el cambio acumulado
@@ -262,6 +282,7 @@ export class ProductInventoryService {
         }
 
         batch.update(productRef, updates);
+
       }
 
       await batch.commit();
@@ -276,7 +297,7 @@ export class ProductInventoryService {
   }
 
   /**
-   * Transfiere stock entre variantes 
+   * 🚀 CORREGIDO: Transfiere stock entre variantes
    * (útil para corregir errores o mover inventario)
    */
   transferStock(transfer: StockTransfer): Observable<void> {
@@ -286,20 +307,23 @@ export class ProductInventoryService {
 
     // Obtener información de ambas variantes
     return forkJoin({
-      source: this.getVariantById(transfer.sourceVariantId),
-      target: this.getVariantById(transfer.targetVariantId)
+      source: this.getVariantById(transfer.sourceVariantId).pipe(take(1)),
+      target: this.getVariantById(transfer.targetVariantId).pipe(take(1))
     }).pipe(
       switchMap(({ source, target }) => {
         // Verificar que ambas variantes existen
         if (!source) {
+          console.error(`❌ InventoryService: Variante de origen no existe: ${transfer.sourceVariantId}`);
           return throwError(() => new Error(`La variante de origen ${transfer.sourceVariantId} no existe`));
         }
         if (!target) {
+          console.error(`❌ InventoryService: Variante de destino no existe: ${transfer.targetVariantId}`);
           return throwError(() => new Error(`La variante de destino ${transfer.targetVariantId} no existe`));
         }
 
         // Verificar stock suficiente
         if ((source.stock || 0) < transfer.quantity) {
+          console.error(`❌ InventoryService: Stock insuficiente - Disponible: ${source.stock}, Solicitado: ${transfer.quantity}`);
           return throwError(() => new Error(`Stock insuficiente en la variante de origen (disponible: ${source.stock})`));
         }
 
@@ -322,6 +346,7 @@ export class ProductInventoryService {
 
           // Si las variantes pertenecen a diferentes productos, actualizar totales
           if (source.productId !== target.productId) {
+
             // Decrementar en producto origen
             const sourceProductRef = doc(this.firestore, this.productsCollection, source.productId);
             batch.update(sourceProductRef, { totalStock: increment(-transfer.quantity) });
@@ -343,7 +368,7 @@ export class ProductInventoryService {
   }
 
   /**
-   * Obtiene una variante por su ID
+   * 🚀 CORREGIDO: Obtiene una variante por su ID
    */
   getVariantById(variantId: string): Observable<ProductVariant | undefined> {
     if (!variantId) {
@@ -352,16 +377,19 @@ export class ProductInventoryService {
 
     const cacheKey = `${this.variantCacheKey}_${variantId}`;
     return this.cacheService.getCached<ProductVariant | undefined>(cacheKey, () => {
+
       return from((async () => {
         const variantRef = doc(this.firestore, this.variantsCollection, variantId);
         const variantSnap = await getDoc(variantRef);
 
         if (variantSnap.exists()) {
           const data = variantSnap.data();
-          return {
+          const variant = {
             id: variantSnap.id,
             ...data
           } as ProductVariant;
+
+          return variant;
         }
 
         return undefined;
@@ -372,10 +400,12 @@ export class ProductInventoryService {
   }
 
   /**
-   * Elimina una variante específica
+   * 🚀 CORREGIDO: Elimina una variante específica
    */
   deleteVariant(variantId: string): Observable<void> {
+
     return this.getVariantById(variantId).pipe(
+      take(1), // ✅ NUEVO: Forzar completar
       switchMap(variant => {
         if (!variant) {
           return throwError(() => new Error('Variante no encontrada'));
@@ -395,6 +425,7 @@ export class ProductInventoryService {
               totalStock: increment(-(variant.stock || 0)),
               updatedAt: new Date()
             });
+
           }
 
           await batch.commit();
@@ -408,12 +439,13 @@ export class ProductInventoryService {
   }
 
   /**
-   * Obtiene productos con bajo stock
+   * 🚀 CORREGIDO: Obtiene productos con bajo stock
    */
   getLowStockProducts(threshold: number = this.lowStockThreshold): Observable<LowStockProduct[]> {
     const cacheKey = `${this.lowStockCacheKey}_${threshold}`;
 
     return this.cacheService.getCached<LowStockProduct[]>(cacheKey, () => {
+
       return from((async () => {
         try {
           const productsMap = new Map<string, LowStockProduct>();
@@ -478,22 +510,25 @@ export class ProductInventoryService {
             }
           }
 
+          const result = Array.from(productsMap.values());
+
           // Convertir el mapa a un array
-          return Array.from(productsMap.values());
+          return result;
         } catch (error) {
           throw error;
         }
       })()).pipe(
-        catchError(error => ErrorUtil.handleError(error, 'getLowStockProducts'))
+        catchError(error => ErrorUtil.handleError(error, 'getLowStockProducts')),
       );
     });
   }
 
   /**
-   * Obtiene un informe general del inventario
+   * 🚀 CORREGIDO: Obtiene un informe general del inventario
    */
   getInventorySummary(): Observable<InventorySummary> {
     return this.cacheService.getCached<InventorySummary>(this.inventorySummaryCacheKey, () => {
+
       return from((async () => {
         try {
           // 1. Obtener todas las variantes
@@ -504,6 +539,8 @@ export class ProductInventoryService {
             ...doc.data()
           } as ProductVariant));
 
+          console.log(`📦 InventoryService: Total variantes encontradas: ${variants.length}`);
+
           // 2. Obtener datos de todos los productos relacionados
           const productIds = new Set<string>();
           variants.forEach(variant => {
@@ -511,6 +548,8 @@ export class ProductInventoryService {
               productIds.add(variant.productId);
             }
           });
+
+          console.log(`🏷️ InventoryService: Productos únicos: ${productIds.size}`);
 
           const productsData: DocumentData[] = [];
           for (const productId of productIds) {
@@ -558,7 +597,7 @@ export class ProductInventoryService {
           });
 
           // 4. Retornar resumen
-          return {
+          const summary = {
             totalProducts: productsData.length,
             totalVariants: variants.length,
             totalStock,
@@ -566,6 +605,16 @@ export class ProductInventoryService {
             outOfStockCount,
             categories
           };
+
+          console.log('📈 InventoryService: Resumen generado:', {
+            productos: summary.totalProducts,
+            variantes: summary.totalVariants,
+            stockTotal: summary.totalStock,
+            stockBajo: summary.lowStockCount,
+            sinStock: summary.outOfStockCount
+          });
+
+          return summary;
         } catch (error) {
           throw error;
         }
@@ -576,7 +625,7 @@ export class ProductInventoryService {
   }
 
   /**
-   * Obtiene variantes sin stock
+   * 🚀 CORREGIDO: Obtiene variantes sin stock
    */
   getOutOfStockVariants(): Observable<ProductVariant[]> {
     const cacheKey = `${this.variantCacheKey}_out_of_stock`;
@@ -587,10 +636,12 @@ export class ProductInventoryService {
         const q = query(variantsRef, where('stock', '==', 0));
 
         const variantsSnap = await getDocs(q);
-        return variantsSnap.docs.map(doc => ({
+        const variants = variantsSnap.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         } as ProductVariant));
+
+        return variants;
       })()).pipe(
         catchError(error => ErrorUtil.handleError(error, 'getOutOfStockVariants'))
       );
@@ -598,7 +649,7 @@ export class ProductInventoryService {
   }
 
   /**
-   * Obtiene variantes con stock bajo
+   * 🚀 CORREGIDO: Obtiene variantes con stock bajo
    */
   getLowStockVariants(threshold: number = this.lowStockThreshold): Observable<ProductVariant[]> {
     const cacheKey = `${this.variantCacheKey}_low_stock_${threshold}`;
@@ -613,10 +664,12 @@ export class ProductInventoryService {
         );
 
         const variantsSnap = await getDocs(q);
-        return variantsSnap.docs.map(doc => ({
+        const variants = variantsSnap.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         } as ProductVariant));
+
+        return variants;
       })()).pipe(
         catchError(error => ErrorUtil.handleError(error, 'getLowStockVariants'))
       );
@@ -624,7 +677,7 @@ export class ProductInventoryService {
   }
 
   /**
-   * Obtiene todas las variantes de un producto
+   * 🚀 CORREGIDO: Obtiene todas las variantes de un producto
    */
   getVariantsByProductId(productId: string): Observable<ProductVariant[]> {
     if (!productId) {
@@ -633,16 +686,25 @@ export class ProductInventoryService {
 
     const cacheKey = `${this.variantCacheKey}_product_${productId}`;
 
-    return this.cacheService.getCached<ProductVariant[]>(cacheKey, () => {
+    return this.cacheService.getCached<ProductVariant[]>(cacheKey, () => {      
       return from((async () => {
         const variantsRef = collection(this.firestore, this.variantsCollection);
         const q = query(variantsRef, where('productId', '==', productId));
 
         const variantsSnap = await getDocs(q);
-        return variantsSnap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as ProductVariant));
+        const variants = variantsSnap.docs.map(doc => {
+          const data = doc.data();
+          const variant = {
+            id: doc.id,
+            ...data
+          } as ProductVariant;
+
+        
+
+          return variant;
+        });
+
+        return variants;
       })()).pipe(
         catchError(error => ErrorUtil.handleError(error, `getVariantsByProductId(${productId})`))
       );
@@ -650,7 +712,7 @@ export class ProductInventoryService {
   }
 
   /**
-   * Incrementa el contador de vistas de un producto
+   * 🚀 CORREGIDO: Incrementa el contador de vistas de un producto
    */
   incrementProductViews(productId: string): Observable<void> {
     if (!productId) {
@@ -663,17 +725,19 @@ export class ProductInventoryService {
         views: increment(1),
         lastViewDate: new Date()
       });
+
     })()).pipe(
       catchError(error => ErrorUtil.handleError(error, `incrementProductViews(${productId})`))
     );
   }
 
   /**
- * Invalida los cachés relacionados con el inventario de forma específica
- * @param variantId ID de la variante para invalidación específica (opcional)
- * @param productId ID del producto para invalidación específica (opcional)
- */
+   * Invalida los cachés relacionados con el inventario de forma específica
+   * @param variantId ID de la variante para invalidación específica (opcional)
+   * @param productId ID del producto para invalidación específica (opcional)
+   */
   private invalidateInventoryCache(variantId?: string, productId?: string): void {
+
     // Siempre invalidar cachés principales
     this.cacheService.invalidate(this.inventorySummaryCacheKey);
     this.cacheService.invalidate(this.lowStockCacheKey);
@@ -690,5 +754,99 @@ export class ProductInventoryService {
       this.cacheService.invalidate(`${this.variantCacheKey}_out_of_stock`);
       this.cacheService.invalidate(`${this.variantCacheKey}_low_stock_${this.lowStockThreshold}`);
     }
+
+  }
+
+  /**
+   * 🆕 NUEVO: Método de debugging para ver el estado del inventario
+   */
+  debugInventory(): void {
+
+    this.getInventorySummary().pipe(
+      take(1)
+    ).subscribe({
+      next: (summary) => {
+        if (Object.keys(summary.categories).length > 0) {
+          console.log('📂 Por Categoría:');
+          Object.entries(summary.categories).forEach(([category, count]) => {
+            console.log(`   ${category}: ${count} productos`);
+          });
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error obteniendo resumen de inventario:', error);
+      }
+    });
+
+    // Mostrar productos con stock bajo
+    this.getLowStockProducts().pipe(
+      take(1)
+    ).subscribe({
+      next: (lowStockProducts) => {
+        if (lowStockProducts.length > 0) {
+          lowStockProducts.forEach(product => {
+            console.log(`   📦 ${product.productName} (${product.sku}):`);
+            product.variants.forEach(variant => {
+              console.log(`      - ${variant.colorName}-${variant.sizeName}: ${variant.currentStock} unidades`);
+            });
+          });
+        } else {
+          console.log('✅ No hay productos con stock bajo');
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error obteniendo productos con stock bajo:', error);
+      }
+    });
+
+    console.groupEnd();
+  }
+
+  /**
+   * 🆕 NUEVO: Método para obtener estadísticas rápidas (sin caché)
+   */
+  getQuickStats(): Observable<{
+    totalVariants: number;
+    totalStock: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+  }> {
+    console.log('⚡ InventoryService: Obteniendo estadísticas rápidas...');
+
+    return from((async () => {
+      const variantsRef = collection(this.firestore, this.variantsCollection);
+      const variantsSnap = await getDocs(variantsRef);
+
+      let totalStock = 0;
+      let lowStockCount = 0;
+      let outOfStockCount = 0;
+
+      variantsSnap.docs.forEach(doc => {
+        const variant = doc.data() as ProductVariant;
+        const stock = variant.stock || 0;
+
+        totalStock += stock;
+
+        if (stock === 0) {
+          outOfStockCount++;
+        } else if (stock <= this.lowStockThreshold) {
+          lowStockCount++;
+        }
+      });
+
+      const stats = {
+        totalVariants: variantsSnap.size,
+        totalStock,
+        lowStockCount,
+        outOfStockCount
+      };
+
+      return stats;
+    })()).pipe(
+      catchError(error => {
+        console.error('❌ Error obteniendo estadísticas rápidas:', error);
+        return ErrorUtil.handleError(error, 'getQuickStats');
+      })
+    );
   }
 }

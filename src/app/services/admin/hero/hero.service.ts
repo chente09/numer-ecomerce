@@ -115,7 +115,6 @@ export class HeroService {
               this.convertFirestoreData(doc.data(), doc.id)
             );
             
-            console.log('🔄 Heroes actualizados desde Firestore:', heroes.length);
             subscriber.next(heroes);
             
             // Actualizar hero activo automáticamente
@@ -156,7 +155,6 @@ export class HeroService {
     const activeHero = heroes.find(hero => hero.isActive === true);
     
     if (activeHero) {
-      console.log('✅ Hero activo encontrado:', activeHero.title, 'GIF:', activeHero.isGif);
       this.activeHeroSubject$.next(activeHero);
       this.errorSubject$.next(null);
     } else {
@@ -167,7 +165,6 @@ export class HeroService {
 
   // 🛡️ CARGAR HERO POR DEFECTO COMO RESPALDO
   private loadDefaultHeroAsFallback(): void {
-    console.log('🔧 Cargando hero por defecto como respaldo');
     this.activeHeroSubject$.next(this.DEFAULT_HERO);
     this.errorSubject$.next(null);
   }
@@ -183,11 +180,6 @@ export class HeroService {
                prev.isActive === curr.isActive &&
                prev.isGif === curr.isGif;
       }),
-      tap(hero => {
-        if (hero) {
-          console.log(`🎯 Hero activo emitido: ${hero.title} (GIF: ${hero.isGif})`);
-        }
-      })
     );
   }
 
@@ -264,7 +256,6 @@ export class HeroService {
   ): Promise<string> {
     try {
       const heroId = uuidv4();
-      console.log('🎯 Creando hero:', heroId);
 
       const nextOrder = await this.getNextOrder();
       const imageUrl = await this.uploadHeroImage(heroId, imageFile, 'desktop', HERO_DESKTOP_CONFIG);
@@ -285,8 +276,6 @@ export class HeroService {
 
       const docRef = doc(this.firestore, this.collectionName, heroId);
       await setDoc(docRef, heroData);
-
-      console.log('✅ Hero creado:', heroId);
       
       // El listener en tiempo real se encargará del refresh automático
       return heroId;
@@ -305,7 +294,6 @@ export class HeroService {
     mobileImageFile?: File
   ): Promise<void> {
     try {
-      console.log('🔄 Actualizando hero:', id);
 
       const currentHero = await this.getHeroById(id);
       if (!currentHero) {
@@ -346,7 +334,6 @@ export class HeroService {
         await updateDoc(docRef, updates);
       }
 
-      console.log('✅ Hero actualizado:', id);
       // El listener se encarga del refresh automático
 
     } catch (error: any) {
@@ -358,7 +345,6 @@ export class HeroService {
   // ✅ ESTABLECER HERO ACTIVO MEJORADO
   async setActiveHero(id: string): Promise<void> {
     try {
-      console.log('🎯 Estableciendo hero activo:', id);
 
       const batch = writeBatch(this.firestore);
       const allHeroesQuery = query(collection(this.firestore, this.collectionName));
@@ -373,7 +359,6 @@ export class HeroService {
       });
 
       await batch.commit();
-      console.log('✅ Hero activado:', id);
       // El listener se encarga del refresh automático
 
     } catch (error: any) {
@@ -385,7 +370,6 @@ export class HeroService {
   // ✅ ELIMINAR HERO (SIN CAMBIOS)
   async deleteHero(id: string): Promise<void> {
     try {
-      console.log('🗑️ Eliminando hero:', id);
 
       const hero = await this.getHeroById(id);
       if (!hero) {
@@ -408,7 +392,6 @@ export class HeroService {
       const docRef = doc(this.firestore, this.collectionName, id);
       await deleteDoc(docRef);
 
-      console.log('✅ Hero eliminado:', id);
       // El listener se encarga del refresh automático
 
     } catch (error: any) {

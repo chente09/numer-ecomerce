@@ -13,13 +13,12 @@
             <span *ngIf="product.activePromotion" class="sale-badge">OFERTA</span>
         </div>
 
-        <!-- Miniaturas de colores -->
-        <div class="thumbnails-container">
-            <div *ngFor="let color of product.colors" class="thumbnail"
-                [ngClass]="{'active': selectedColor?.name === color.name}" (click)="selectColor(color)">
-                <img [src]="color.imageUrl" [alt]="color.name">
-            </div>
+        <!-- Miniaturas de imagenes aducionales -->
+        <div class="thumbnail-images">
+            <img *ngFor="let image of product.additionalImages" [src]="image" alt="{{ product.name }}"
+                (click)="showImagePreview(image)">
         </div>
+        
     </div>
 
     <div class="product-info">

@@ -201,10 +201,18 @@ export class ProductFormComponent implements OnInit, OnChanges {
     private productService: ProductService,
     private message: NzMessageService,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.initProductForm();
+  }
+
+  ngAfterViewInit(): void {
+    // ✅ Solo una ejecución, con mejor timing
+    this.setupFormListeners();
+  }
+
+  private setupFormListeners(): void {
     this.listenToStockChanges();
     this.createVariantsMatrix();
   }
@@ -1046,15 +1054,15 @@ export class ProductFormComponent implements OnInit, OnChanges {
     try {
       const tags = formData.tags
         ? formData.tags
-            .split(',')
-            .map((tag: string) => tag.trim())
-            .filter(Boolean)
+          .split(',')
+          .map((tag: string) => tag.trim())
+          .filter(Boolean)
         : [];
       const searchKeywords = formData.searchKeywords
         ? formData.searchKeywords
-            .split(',')
-            .map((kw: string) => kw.trim())
-            .filter(Boolean)
+          .split(',')
+          .map((kw: string) => kw.trim())
+          .filter(Boolean)
         : [];
 
       // Crear objeto de producto
@@ -1159,7 +1167,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
               console.error('❌ [FORM] Error al crear producto:', error);
               this.message.error(
                 'Error al crear producto: ' +
-                  (error.message || 'Error desconocido')
+                (error.message || 'Error desconocido')
               );
             },
           });
@@ -1211,7 +1219,7 @@ export class ProductFormComponent implements OnInit, OnChanges {
 
               this.message.error(
                 'Error al actualizar producto: ' +
-                  (error.message || 'Error desconocido')
+                (error.message || 'Error desconocido')
               );
 
               this.formSubmitted.emit({
@@ -1227,9 +1235,9 @@ export class ProductFormComponent implements OnInit, OnChanges {
       console.error('💥 [FORM] Error en submitForm:', error);
       this.message.error(
         'Error al ' +
-          (this.isEditMode ? 'actualizar' : 'crear') +
-          ' producto: ' +
-          (error.message || 'Error desconocido')
+        (this.isEditMode ? 'actualizar' : 'crear') +
+        ' producto: ' +
+        (error.message || 'Error desconocido')
       );
     }
   }

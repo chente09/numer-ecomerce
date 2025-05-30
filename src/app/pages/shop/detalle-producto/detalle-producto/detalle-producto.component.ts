@@ -14,7 +14,8 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ProductPriceService } from '../../../../services/admin/price/product-price.service';
 import { ProductInventoryService } from '../../../../services/admin/inventario/product-inventory.service';
-import { Observable, catchError, finalize, of, switchMap, take } from 'rxjs';
+import { Observable, catchError, finalize, map, of, switchMap, take } from 'rxjs';
+import { CacheService } from '../../../../services/admin/cache/cache.service';
 
 @Component({
   selector: 'app-detalle-producto',
@@ -68,7 +69,8 @@ export class DetalleProductoComponent implements OnInit {
     private productPriceService: ProductPriceService,
     private inventoryService: ProductInventoryService,
     private modalService: NzModalService,
-    private cartService: CartService
+    private cartService: CartService,
+    private cacheService: CacheService
   ) { }
 
   ngOnInit(): void {
@@ -91,14 +93,55 @@ export class DetalleProductoComponent implements OnInit {
   loadProduct(productId: string): void {
     this.productsLoading = true;
 
-    // Usar el servicio de producto con su método Observable en lugar de Promise
     this.productService.getCompleteProduct(productId)
       .pipe(
-        // Aplicar precios con descuento
+        take(1),
+        map(product => {
+
+          if (product?.variants) {
+            if (Array.isArray(product.variants) && product.variants.length > 0) {
+
+              if (typeof product.variants[0] === 'string') {
+                console.warn('⚠️ COMPONENTE: Variantes son IDs, cargando objetos completos...');
+                return { ...product, needsVariantLoad: true };
+              }
+            }
+          }
+
+          return product;
+        }),
         switchMap(product => {
           if (!product) return of(null);
+
+          if ((product as any).needsVariantLoad) {
+            console.log('🔧 COMPONENTE: Cargando variantes correctamente...');
+
+            return this.inventoryService.getVariantsByProductId(productId).pipe(
+              take(1),
+              map(variants => {
+                console.log('✅ COMPONENTE: Variantes cargadas:', variants.length);
+                return {
+                  ...product,
+                  variants: variants,
+                  needsVariantLoad: undefined
+                };
+              }),
+              switchMap(productWithVariants => {
+                return this.productPriceService.calculateDiscountedPriceAsync(productId)
+                  .pipe(
+                    take(1),
+                    catchError(error => {
+                      console.error('Error al obtener precios con descuento:', error);
+                      return of(productWithVariants);
+                    })
+                  );
+              })
+            );
+          }
+
           return this.productPriceService.calculateDiscountedPriceAsync(productId)
             .pipe(
+              take(1),
               catchError(error => {
                 console.error('Error al obtener precios con descuento:', error);
                 return of(product);
@@ -110,32 +153,35 @@ export class DetalleProductoComponent implements OnInit {
         })
       )
       .subscribe({
+        // 🎯 AQUÍ VA LA CORRECCIÓN 3 - REEMPLAZAR TODO EL BLOQUE NEXT
         next: (product) => {
           if (!product) {
             console.error('Producto no encontrado');
-            this.productsLoading = false;
             return;
           }
 
+          // ✅ VERIFICACIÓN CRÍTICA: Si las variantes son strings, cargar manualmente
+          if (product.variants && Array.isArray(product.variants) &&
+            product.variants.length > 0 && typeof product.variants[0] === 'string') {
+
+            console.warn('⚠️ COMPONENTE: Variantes son IDs, cargando objetos...');
+
+            // Cargar variantes correctas manualmente
+            this.inventoryService.getVariantsByProductId(productId)
+              .pipe(take(1))
+              .subscribe(variants => {
+                this.product = { ...product, variants };
+                this.currentImageUrl = product.imageUrl;
+                this.continueProductSetup(product, productId);
+              });
+
+            return; // Salir temprano para evitar duplicación
+          }
+
+          // ✅ FLUJO NORMAL SI LAS VARIANTES SON CORRECTAS
           this.product = product;
           this.currentImageUrl = product.imageUrl;
-
-          // Inicializar selecciones por defecto
-          this.loadCategoryInfo(product.category);
-
-          if (product.colors.length > 0) {
-            this.selectColor(product.colors[0]);
-          }
-
-          if (product.sizes.length > 0) {
-            this.selectSize(product.sizes[0]);
-          }
-
-          // Cargar productos relacionados
-          this.loadRelatedProducts(product.category, productId);
-
-          // Incrementar vistas (en segundo plano)
-          this.incrementProductViews(productId);
+          this.continueProductSetup(product, productId);
         },
         error: (error) => {
           console.error('Error al cargar el producto:', error);
@@ -148,20 +194,25 @@ export class DetalleProductoComponent implements OnInit {
       });
   }
 
+
   // Incrementar vistas del producto
   incrementProductViews(productId: string): void {
     this.inventoryService.incrementProductViews(productId)
+      .pipe(take(1))
       .subscribe({
         error: (error) => {
           console.error('Error al incrementar vistas:', error);
-          // No mostramos error al usuario porque esto se ejecuta en segundo plano
         }
       });
   }
 
+
+
+
   // Cargar información de la categoría usando el servicio
   loadCategoryInfo(categoryId: string): void {
     this.categoryService.getCategoryById(categoryId)
+      .pipe(take(1))
       .subscribe({
         next: (category) => {
           if (category) {
@@ -190,20 +241,18 @@ export class DetalleProductoComponent implements OnInit {
 
   // Métodos para manejar selecciones
   selectColor(color: Color): void {
-  this.selectedColor = color;
+    this.selectedColor = color;
 
-  // Actualizar la imagen del producto 
-  if (color.imageUrl) {
-    this.currentImageUrl = color.imageUrl;
-  } else if (this.product) {
-    this.currentImageUrl = this.product.imageUrl;
+    // Actualizar la imagen del producto 
+    if (color.imageUrl) {
+      this.currentImageUrl = color.imageUrl;
+    } else if (this.product) {
+      this.currentImageUrl = this.product.imageUrl;
+    }
+
+    this.updateSelectedVariant();
+
   }
-
-  this.updateSelectedVariant();
-
-  // Añade este log para facilitar la depuración
-  console.log('Color seleccionado:', color.name, 'imagen:', this.currentImageUrl);
-}
 
   // Versión mejorada para seleccionar una talla con validación de stock
   selectSize(size: Size): void {
@@ -449,7 +498,6 @@ export class DetalleProductoComponent implements OnInit {
   }
 
   // Agregar al carrito
-  // Agregar al carrito - Versión corregida
   addToCart(): void {
     if (!this.product || !this.selectedVariant) {
       this.modalService.warning({
@@ -459,67 +507,39 @@ export class DetalleProductoComponent implements OnInit {
       return;
     }
 
-    // Verificar stock en tiempo real
-    this.inventoryService.checkVariantsAvailability([
-      { variantId: this.selectedVariant.id, quantity: this.quantity }
-    ]).pipe(
+    // ✅ CORRECCIÓN: Usar el método correcto del CartService
+    this.cartService.addToCart(
+      this.product.id,
+      this.selectedVariant.id,
+      this.quantity,
+      this.product,
+      this.selectedVariant
+    ).pipe(
       take(1)
     ).subscribe({
-      next: (result) => {
-        if (result.available) {
-          // Si hay stock disponible, agregar al carrito
-          this.cartService.addToCart(
-            this.product!.id,
-            this.selectedVariant!.id,
-            this.quantity,
-            this.product,
-            this.selectedVariant
-          ).subscribe({
-            next: (success: boolean) => {
-              if (success) {
-                this.modalService.success({
-                  nzTitle: 'Producto añadido al carrito',
-                  nzContent: `Has agregado ${this.quantity} unidad(es) de ${this.product!.name} a tu carrito.`,
-                  nzOkText: 'Ir al carrito',
-                  nzCancelText: 'Continuar comprando',
-                  nzOnOk: () => {
-                    this.router.navigate(['/carrito']);
-                  }
-                });
-              } else {
-                this.modalService.error({
-                  nzTitle: 'Error',
-                  nzContent: 'No se pudo agregar el producto al carrito.'
-                });
-              }
-            },
-            error: (error: unknown) => {
-              console.error('Error al agregar al carrito:', error);
-              this.modalService.error({
-                nzTitle: 'Error',
-                nzContent: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta nuevamente.'
-              });
+      next: (success: boolean) => {
+        if (success) {
+          this.modalService.success({
+            nzTitle: 'Producto añadido al carrito',
+            nzContent: `Has agregado ${this.quantity} unidad(es) de ${this.product!.name} a tu carrito.`,
+            nzOkText: 'Ir al carrito',
+            nzCancelText: 'Continuar comprando',
+            nzOnOk: () => {
+              this.router.navigate(['/carrito']);
             }
           });
         } else {
-          // Si no hay suficiente stock
-          const unavailableItem = result.unavailableItems[0];
-          this.modalService.warning({
-            nzTitle: 'Stock insuficiente',
-            nzContent: `Solo hay ${unavailableItem.available} unidades disponibles de este producto.`
+          this.modalService.error({
+            nzTitle: 'Error',
+            nzContent: 'No se pudo agregar el producto al carrito. Puede que no haya suficiente stock disponible.'
           });
-
-          // Actualizar la cantidad disponible
-          if (this.selectedVariant && unavailableItem.available > 0) {
-            this.quantity = unavailableItem.available;
-          }
         }
       },
       error: (error: unknown) => {
-        console.error('Error al verificar stock:', error);
+        console.error('Error al agregar al carrito:', error);
         this.modalService.error({
           nzTitle: 'Error',
-          nzContent: 'Ocurrió un error al verificar la disponibilidad del producto. Por favor, intenta nuevamente.'
+          nzContent: 'Ocurrió un error al procesar tu solicitud. Por favor, intenta nuevamente.'
         });
       }
     });
@@ -551,5 +571,27 @@ export class DetalleProductoComponent implements OnInit {
   // Método para generar array para mostrar las estrellas de rating
   getStarsArray(rating: number): number[] {
     return Array(5).fill(0).map((_, i) => i < Math.floor(rating) ? 1 : 0);
+  }
+
+  // ✅ AGREGAR ESTE MÉTODO NUEVO AL FINAL DE TU COMPONENTE
+  private continueProductSetup(product: Product, productId: string): void {
+    this.loadCategoryInfo(product.category);
+
+    if (product.colors?.length > 0) {
+      this.selectColor(product.colors[0]);
+    }
+
+    if (product.sizes?.length > 0) {
+      this.selectSize(product.sizes[0]);
+    }
+
+    this.loadRelatedProducts(product.category, productId);
+    this.incrementProductViews(productId);
+  }
+
+  // ✅ TAMBIÉN AGREGAR ESTE MÉTODO PARA LIMPIAR CACHÉ CORRUPTO
+  clearProblematicCache(): void {
+    this.cacheService.clearCache();
+    console.log('🧹 Caché limpiado - recarga la página');
   }
 }

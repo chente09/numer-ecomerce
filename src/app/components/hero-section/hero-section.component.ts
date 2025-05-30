@@ -123,18 +123,10 @@ export class HeroSectionComponent implements OnInit {
     // 🎯 Effect para debug y tracking
     effect(() => {
       const hero = this.activeHero();
-      if (hero) {
-        console.log(`🎯 Hero cargado: "${hero.title}"`);
-        console.log(`📱 Es GIF: ${hero.isGif}`);
-        console.log(`✅ Está activo: ${hero.isActive}`);
-        console.log(`🖼️ Desktop URL: ${hero.imageUrl}`);
-        console.log(`📱 Mobile URL: ${hero.mobileImageUrl || 'No definida'}`);
-      }
     });
   }
 
   ngOnInit(): void {
-    console.log('🚀 Inicializando Hero Section Component');
     
     // 🎯 SUSCRIPCIÓN PRINCIPAL SIMPLIFICADA
     this.heroService.getActiveHero().pipe(
@@ -177,9 +169,7 @@ export class HeroSectionComponent implements OnInit {
   }
 
   // 🔄 Procesar actualización de hero
-  private processHeroUpdate(hero: HeroItem | null): void {
-    console.log('🔄 Procesando actualización de hero:', hero?.title || 'null');
-    
+  private processHeroUpdate(hero: HeroItem | null): void {    
     this._heroData.set(hero);
     this._hasError.set(false);
     
@@ -207,7 +197,6 @@ export class HeroSectionComponent implements OnInit {
 
   // 🔄 Método público para forzar refresh
   refreshHero(): void {
-    console.log('🔄 Forzando refresh de hero...');
     this._isLoading.set(true);
     this._hasError.set(false);
     
@@ -215,9 +204,7 @@ export class HeroSectionComponent implements OnInit {
     this.heroService.getHeroes(true).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
-      next: () => {
-        console.log('✅ Heroes refrescados exitosamente');
-      },
+      
       error: (error) => {
         console.error('❌ Error al refrescar heroes:', error);
         this._hasError.set(true);

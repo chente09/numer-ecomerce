@@ -49,6 +49,16 @@
     transform: scale(1.05);
 }
 
+.thumbnail-images {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    height: 100px;
+
+}
+
 /* Badges */
 .new-badge,
 .bestseller-badge,

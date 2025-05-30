@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, firstValueFrom, map, tap, catchError, from, of, throwError, switchMap, forkJoin } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { BehaviorSubject, Observable, firstValueFrom, map, tap, catchError, from, of, throwError, switchMap, forkJoin, take, finalize } from 'rxjs';
 import { Product, ProductVariant } from '../../../models/models';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { ProductInventoryService, SaleItem } from '../../../services/admin/inventario/product-inventory.service';
@@ -46,7 +46,6 @@ export interface ICartService {
   checkout(): Observable<CheckoutResult>;
 }
 
-
 @Injectable({
   providedIn: 'root'
 })
@@ -84,7 +83,7 @@ export class CartService {
   }
 
   /**
-   * Agrega un producto al carrito
+   * 🚀 CORREGIDO: Agrega un producto al carrito
    * @returns Observable que emite true si se agregó correctamente, false si no
    */
   addToCart(
@@ -94,33 +93,44 @@ export class CartService {
     productData?: Product,
     variantData?: ProductVariant
   ): Observable<boolean> {
+    console.log(`🛒 CartService: Agregando al carrito - Product: ${productId}, Variant: ${variantId}, Qty: ${quantity}`);
+
     // Usar los datos proporcionados si están disponibles, o buscarlos si no
     if (productData && variantData) {
       return this.processAddToCart(productId, variantId, quantity, productData, variantData);
     } else {
       // Verificar disponibilidad de stock
       return this.checkStock(variantId, quantity).pipe(
+        take(1), // ✅ NUEVO: Forzar completar
         switchMap(stockCheck => {
           if (!stockCheck.available) {
-            console.error('No hay suficiente stock disponible', stockCheck);
+            console.error('❌ CartService: No hay suficiente stock disponible', stockCheck);
             return of(false);
           }
 
+          console.log('✅ CartService: Stock disponible, cargando datos del producto...');
+
           // Cargar datos completos del producto
           return this.productService.getProductById(productId).pipe(
+            take(1), // ✅ NUEVO: Forzar completar
             switchMap(product => {
               if (!product) {
-                console.error('Producto no encontrado');
+                console.error('❌ CartService: Producto no encontrado');
                 return of(false);
               }
 
+              console.log(`✅ CartService: Producto encontrado: ${product.name}`);
+
               // Encontrar la variante
               return this.productService.getVariantById(variantId).pipe(
+                take(1), // ✅ NUEVO: Forzar completar
                 switchMap(variant => {
                   if (!variant) {
-                    console.error('Variante no encontrada');
+                    console.error('❌ CartService: Variante no encontrada');
                     return of(false);
                   }
+
+                  console.log(`✅ CartService: Variante encontrada: ${variant.colorName}-${variant.sizeName}`);
 
                   // Proceder con la adición al carrito
                   return this.processAddToCart(productId, variantId, quantity, product, variant);
@@ -130,15 +140,19 @@ export class CartService {
           );
         }),
         catchError(error => {
+          console.error('❌ CartService: Error en addToCart:', error);
           ErrorUtil.handleError(error, 'addToCart');
           return of(false);
+        }),
+        finalize(() => {
+          console.log('🏁 CartService: addToCart completado');
         })
       );
     }
   }
 
   /**
-   * Procesa la adición de un producto al carrito (lógica interna)
+   * 🚀 CORREGIDO: Procesa la adición de un producto al carrito (lógica interna)
    */
   private processAddToCart(
     productId: string,
@@ -148,6 +162,8 @@ export class CartService {
     variant: ProductVariant
   ): Observable<boolean> {
     try {
+      console.log(`🔄 CartService: Procesando adición al carrito para ${product.name}`);
+
       // Obtener el precio actual (considerando descuentos)
       const unitPrice = product.currentPrice || product.price;
 
@@ -160,13 +176,16 @@ export class CartService {
       );
 
       if (existingItemIndex !== -1) {
+        console.log('🔄 CartService: Item ya existe en carrito, actualizando cantidad...');
+
         // Si el item ya existe, verificar stock para la nueva cantidad total
         const newQuantity = currentCart.items[existingItemIndex].quantity + quantity;
 
         return this.checkStock(variantId, newQuantity).pipe(
+          take(1), // ✅ NUEVO: Forzar completar
           map(stockCheck => {
             if (!stockCheck.available) {
-              console.error('No hay suficiente stock para la cantidad solicitada', stockCheck);
+              console.error('❌ CartService: No hay suficiente stock para la cantidad solicitada', stockCheck);
               return false;
             }
 
@@ -181,10 +200,16 @@ export class CartService {
             this.cartSubject.next(currentCart);
             this.saveCartToStorage();
 
+            console.log(`✅ CartService: Cantidad actualizada - Nueva cantidad: ${newQuantity}`);
             return true;
+          }),
+          finalize(() => {
+            console.log('🏁 CartService: processAddToCart (update) completado');
           })
         );
       } else {
+        console.log('➕ CartService: Agregando nuevo item al carrito...');
+
         // Agregar nuevo item al carrito
         const newItem: CartItem = {
           productId,
@@ -205,26 +230,31 @@ export class CartService {
         this.cartSubject.next(currentCart);
         this.saveCartToStorage();
 
+        console.log(`✅ CartService: Nuevo item agregado - Items en carrito: ${currentCart.items.length}`);
         return of(true);
       }
     } catch (error) {
-      console.error('Error al procesar adición al carrito:', error);
+      console.error('❌ CartService: Error al procesar adición al carrito:', error);
       return of(false);
     }
   }
 
   /**
-   * Actualiza la cantidad de un item en el carrito
+   * 🚀 CORREGIDO: Actualiza la cantidad de un item en el carrito
    */
   updateItemQuantity(variantId: string, quantity: number): Observable<boolean> {
+    console.log(`🔄 CartService: Actualizando cantidad - Variant: ${variantId}, Qty: ${quantity}`);
+
     if (quantity <= 0) {
+      console.log('🗑️ CartService: Cantidad <= 0, eliminando item...');
       return this.removeItem(variantId);
     }
 
     return this.checkStock(variantId, quantity).pipe(
+      take(1), // ✅ NUEVO: Forzar completar
       map(stockCheck => {
         if (!stockCheck.available) {
-          console.error('No hay suficiente stock disponible', stockCheck);
+          console.error('❌ CartService: No hay suficiente stock disponible', stockCheck);
           return false;
         }
 
@@ -232,7 +262,7 @@ export class CartService {
         const itemIndex = currentCart.items.findIndex(item => item.variantId === variantId);
 
         if (itemIndex === -1) {
-          console.error('Item no encontrado en el carrito');
+          console.error('❌ CartService: Item no encontrado en el carrito');
           return false;
         }
 
@@ -248,26 +278,32 @@ export class CartService {
         this.cartSubject.next(currentCart);
         this.saveCartToStorage();
 
+        console.log(`✅ CartService: Cantidad actualizada exitosamente`);
         return true;
       }),
       catchError(error => {
-        console.error('Error al actualizar cantidad:', error);
+        console.error('❌ CartService: Error al actualizar cantidad:', error);
         return of(false);
+      }),
+      finalize(() => {
+        console.log('🏁 CartService: updateItemQuantity completado');
       })
     );
   }
-
 
   /**
    * Elimina un item del carrito
    */
   removeItem(variantId: string): Observable<boolean> {
     try {
+      console.log(`🗑️ CartService: Eliminando item - Variant: ${variantId}`);
+
       const currentCart = this.getCart();
       const updatedItems = currentCart.items.filter(item => item.variantId !== variantId);
 
       if (updatedItems.length === currentCart.items.length) {
         // No se encontró el item
+        console.warn('⚠️ CartService: Item no encontrado para eliminar');
         return of(false);
       }
 
@@ -280,9 +316,10 @@ export class CartService {
       this.cartSubject.next(currentCart);
       this.saveCartToStorage();
 
+      console.log(`✅ CartService: Item eliminado - Items restantes: ${currentCart.items.length}`);
       return of(true);
     } catch (error) {
-      console.error('Error al eliminar item:', error);
+      console.error('❌ CartService: Error al eliminar item:', error);
       return of(false);
     }
   }
@@ -291,8 +328,10 @@ export class CartService {
    * Vacía completamente el carrito
    */
   clearCart(): void {
+    console.log('🧹 CartService: Limpiando carrito completo');
     this.cartSubject.next({ ...this.initialCartState });
     localStorage.removeItem('cart');
+    console.log('✅ CartService: Carrito limpiado');
   }
 
   /**
@@ -300,6 +339,8 @@ export class CartService {
    */
   applyDiscount(discountCode: string, discountAmount: number): boolean {
     try {
+      console.log(`💰 CartService: Aplicando descuento - Código: ${discountCode}, Monto: ${discountAmount}`);
+
       const currentCart = this.getCart();
 
       // Aplicar descuento
@@ -312,9 +353,10 @@ export class CartService {
       this.cartSubject.next(currentCart);
       this.saveCartToStorage();
 
+      console.log('✅ CartService: Descuento aplicado exitosamente');
       return true;
     } catch (error) {
-      console.error('Error al aplicar descuento:', error);
+      console.error('❌ CartService: Error al aplicar descuento:', error);
       return false;
     }
   }
@@ -337,29 +379,33 @@ export class CartService {
 
     // Calcular total general
     cart.total = cart.subtotal + cart.tax + cart.shipping - cart.discount;
+
+    console.log(`💰 CartService: Totales recalculados - Items: ${cart.totalItems}, Total: $${cart.total.toFixed(2)}`);
   }
 
   /**
-   * Verifica la disponibilidad de stock para una variante
+   * 🚀 CORREGIDO: Verifica la disponibilidad de stock para una variante
    */
   private checkStock(variantId: string, quantity: number): Observable<{
     available: boolean,
     requested: number,
     availableStock: number
   }> {
+    console.log(`🔍 CartService: Verificando stock - Variant: ${variantId}, Cantidad: ${quantity}`);
 
     return this.productService.getVariantById(variantId).pipe(
+      take(1), // ✅ NUEVO: Forzar completar
       map(variant => {
-
         if (!variant) {
-          console.error('Variante no encontrada con ID:', variantId);
+          console.error('❌ CartService: Variante no encontrada con ID:', variantId);
           return { available: false, requested: quantity, availableStock: 0 };
         }
 
         // Verificar explícitamente si el stock es undefined o null
         const stockAvailable = variant.stock !== undefined && variant.stock !== null ? variant.stock : 0;
-
         const available = stockAvailable >= quantity;
+
+        console.log(`📊 CartService: Stock verificado - Disponible: ${stockAvailable}, Solicitado: ${quantity}, OK: ${available}`);
 
         return {
           available,
@@ -368,8 +414,11 @@ export class CartService {
         };
       }),
       catchError(error => {
-        console.error('Error al verificar stock:', error);
+        console.error('❌ CartService: Error al verificar stock:', error);
         return of({ available: false, requested: quantity, availableStock: 0 });
+      }),
+      finalize(() => {
+        console.log('🏁 CartService: checkStock completado');
       })
     );
   }
@@ -400,13 +449,14 @@ export class CartService {
       };
 
       localStorage.setItem('cart', JSON.stringify(storageCart));
+      console.log('💾 CartService: Carrito guardado en localStorage');
     } catch (error) {
-      console.error('Error al guardar carrito en localStorage:', error);
+      console.error('❌ CartService: Error al guardar carrito en localStorage:', error);
     }
   }
 
   /**
-   * Recupera el carrito desde localStorage
+   * 🚀 CORREGIDO: Recupera el carrito desde localStorage
    */
   private loadCartFromStorage(): void {
     try {
@@ -420,8 +470,11 @@ export class CartService {
 
       // Si no hay items, no hacemos nada
       if (!parsedCart.items || parsedCart.items.length === 0) {
+        console.log('ℹ️ CartService: Carrito guardado está vacío');
         return;
       }
+
+      console.log(`📦 CartService: Carrito cargado con ${parsedCart.items.length} items`);
 
       // Inicializar un carrito básico con los items del storage
       const initialCart: Cart = {
@@ -438,87 +491,120 @@ export class CartService {
       // Cargar detalles de productos y variantes de forma asíncrona
       this.loadCartItemDetails(parsedCart.items);
     } catch (error) {
-      console.error('Error al cargar carrito desde localStorage:', error);
+      console.error('❌ CartService: Error al cargar carrito desde localStorage:', error);
     }
   }
 
   /**
-   * Carga los detalles de productos y variantes de forma asíncrona
+   * 🚀 CORREGIDO: Carga los detalles de productos y variantes de forma asíncrona
    */
   private loadCartItemDetails(items: CartItem[]): void {
-    // Para cada item del carrito, cargar detalles completos
-    items.forEach(item => {
+    console.log(`🔄 CartService: Cargando detalles para ${items.length} items del carrito...`);
+
+    if (items.length === 0) return;
+
+    // ✅ SOLUCIÓN: Usar forkJoin para procesar todos los items a la vez
+    const itemDetails$ = items.map((item, index) =>
       this.productService.getProductById(item.productId).pipe(
+        take(1),
         switchMap(product => {
           if (!product) {
-            // Si el producto no existe, lo eliminamos del carrito
-            this.removeItem(item.variantId);
-            return throwError(() => new Error(`Producto no encontrado: ${item.productId}`));
+            console.warn(`⚠️ CartService: Producto no encontrado: ${item.productId}`);
+            return of(null); // ✅ Retornar null en lugar de error
           }
 
           return this.productService.getVariantById(item.variantId).pipe(
+            take(1),
             map(variant => {
               if (!variant) {
-                // Si la variante no existe, lo eliminamos del carrito
-                this.removeItem(item.variantId);
-                throw new Error(`Variante no encontrada: ${item.variantId}`);
+                console.warn(`⚠️ CartService: Variante no encontrada: ${item.variantId}`);
+                return null; // ✅ Retornar null en lugar de error
               }
-
-              // Actualizar el carrito con el item completo
-              return { product, variant };
+              return { item, product, variant, index };
             })
           );
+        }),
+        catchError(error => {
+          console.error(`❌ CartService: Error cargando item ${index + 1}:`, error);
+          return of(null); // ✅ Continuar con otros items
         })
-      ).subscribe({
-        next: ({ product, variant }) => {
-          const currentCart = this.getCart();
-          const itemIndex = currentCart.items.findIndex(i => i.variantId === item.variantId);
+      )
+    );
 
-          if (itemIndex !== -1) {
-            // Actualizar precio unitario por si cambió
-            const unitPrice = product.currentPrice || product.price;
+    // ✅ SOLUCIÓN: Una sola actualización del carrito al final
+    forkJoin(itemDetails$).pipe(
+      finalize(() => {
+        console.log('🏁 CartService: loadCartItemDetails completado');
+      })
+    ).subscribe(results => {
+      const currentCart = this.getCart();
+      const validResults = results.filter(result => result !== null);
+      const itemsToRemove: string[] = [];
 
-            // Actualizar item con datos completos
-            currentCart.items[itemIndex] = {
-              ...currentCart.items[itemIndex],
-              product,
-              variant,
-              unitPrice,
-              totalPrice: currentCart.items[itemIndex].quantity * unitPrice
-            };
+      // Actualizar items válidos
+      validResults.forEach(({ item, product, variant }) => {
+        const itemIndex = currentCart.items.findIndex(i => i.variantId === item.variantId);
 
-            // Recalcular totales
-            this.recalculateCart(currentCart);
-
-            // Actualizar el estado
-            this.cartSubject.next({ ...currentCart });
-          }
-        },
-        error: error => {
-          console.error('Error al cargar detalles de item:', error);
-          // El item problemático ya fue eliminado en los operadores anteriores
+        if (itemIndex !== -1) {
+          const unitPrice = product.currentPrice || product.price;
+          currentCart.items[itemIndex] = {
+            ...currentCart.items[itemIndex],
+            product,
+            variant,
+            unitPrice,
+            totalPrice: currentCart.items[itemIndex].quantity * unitPrice
+          };
         }
       });
+
+      // Identificar items a eliminar
+      items.forEach(item => {
+        const wasLoaded = validResults.some(result =>
+          result && result.item.variantId === item.variantId
+        );
+        if (!wasLoaded) {
+          itemsToRemove.push(item.variantId);
+        }
+      });
+
+      // Eliminar items inválidos
+      if (itemsToRemove.length > 0) {
+        currentCart.items = currentCart.items.filter(
+          item => !itemsToRemove.includes(item.variantId)
+        );
+      }
+
+      // ✅ Una sola actualización del carrito
+      this.recalculateCart(currentCart);
+      this.cartSubject.next({ ...currentCart });
+      this.saveCartToStorage();
+
+      console.log(`✅ CartService: ${validResults.length}/${items.length} items cargados exitosamente`);
     });
   }
 
   /**
-   * Finaliza la compra con los items del carrito
+   * 🚀 CORREGIDO: Finaliza la compra con los items del carrito
    */
   checkout(): Observable<{
     success: boolean,
     orderId?: string,
     error?: string
   }> {
+    console.log('🛒 CartService: Iniciando proceso de checkout...');
+
     const cart = this.getCart();
 
     // Verificar que haya items
     if (cart.items.length === 0) {
+      console.warn('⚠️ CartService: El carrito está vacío');
       return of({
         success: false,
         error: 'El carrito está vacío'
       });
     }
+
+    console.log(`🔍 CartService: Verificando stock de ${cart.items.length} items...`);
 
     // Verificar stock de todos los items
     const unavailableItems: any[] = [];
@@ -535,12 +621,14 @@ export class CartService {
     }
 
     if (unavailableItems.length > 0) {
-      console.error('Items sin stock suficiente:', unavailableItems);
+      console.error('❌ CartService: Items sin stock suficiente:', unavailableItems);
       return of({
         success: false,
         error: 'Algunos productos no tienen suficiente stock disponible'
       });
     }
+
+    console.log('✅ CartService: Stock verificado, procesando venta...');
 
     // Preparar items para la venta
     const saleItems: SaleItem[] = cart.items.map(item => ({
@@ -564,10 +652,14 @@ export class CartService {
       });
     });
 
+    console.log(`📊 CartService: Registrando ventas para ${itemsByProduct.size} productos...`);
+
     // Crear operaciones de registro de venta
     itemsByProduct.forEach((items, productId) => {
       registerSaleOperations.push(
-        this.inventoryService.registerSale(productId, items)
+        this.inventoryService.registerSale(productId, items).pipe(
+          take(1) // ✅ NUEVO: Forzar completar cada operación
+        )
       );
     });
 
@@ -576,6 +668,8 @@ export class CartService {
       map(() => {
         // Aquí se integraría con el servicio de órdenes para crear la orden
         const orderId = 'ORD-' + Date.now();
+
+        console.log(`🎉 CartService: Checkout exitoso - Orden: ${orderId}`);
 
         // Limpiar el carrito después de la compra exitosa
         this.clearCart();
@@ -586,21 +680,60 @@ export class CartService {
         };
       }),
       catchError(error => {
-        console.error('Error al procesar el checkout:', error);
+        console.error('❌ CartService: Error al procesar el checkout:', error);
         return of({
           success: false,
           error: 'Ocurrió un error al procesar la compra'
         });
+      }),
+      finalize(() => {
+        console.log('🏁 CartService: checkout completado');
       })
     );
   }
 
   /**
-   * Obtiene el número de items en el carrito (para el badge)
+   * 🚀 CORREGIDO: Obtiene el número de items en el carrito (para el badge)
    */
   getCartItemCount(): Observable<number> {
     return this.cart$.pipe(
-      map(cart => cart.totalItems)
+      map(cart => cart.totalItems),
+      finalize(() => {
+        console.log('🏁 CartService: getCartItemCount completado');
+      })
     );
+  }
+
+  /**
+   * 🆕 NUEVO: Método de debugging para ver el estado del carrito
+   */
+  debugCart(): void {
+    console.group('🛒 [CART DEBUG] Estado actual del carrito');
+
+    const cart = this.getCart();
+
+    console.log(`📊 Total de items: ${cart.totalItems}`);
+    console.log(`💰 Subtotal: $${cart.subtotal.toFixed(2)}`);
+    console.log(`📦 Tax: $${cart.tax.toFixed(2)}`);
+    console.log(`🚚 Shipping: $${cart.shipping.toFixed(2)}`);
+    console.log(`🎯 Discount: $${cart.discount.toFixed(2)}`);
+    console.log(`💵 Total: $${cart.total.toFixed(2)}`);
+
+    if (cart.items.length > 0) {
+      const itemsSummary = cart.items.map(item => ({
+        product: item.product?.name || 'Cargando...',
+        variant: item.variant ? `${item.variant.colorName}-${item.variant.sizeName}` : 'Cargando...',
+        quantity: item.quantity,
+        unitPrice: `$${item.unitPrice.toFixed(2)}`,
+        totalPrice: `$${item.totalPrice.toFixed(2)}`,
+        stock: item.variant?.stock || 'N/A'
+      }));
+
+      console.table(itemsSummary);
+    } else {
+      console.log('🤷‍♂️ El carrito está vacío');
+    }
+
+    console.groupEnd();
   }
 }
