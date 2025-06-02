@@ -1134,16 +1134,16 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       if (!this.isEditMode) {
         // ==================== CREAR PRODUCTO ====================
         this.productService.createProduct(
-            productData,
-            formData.colors,
-            formData.sizes,
-            this.mainImageFile!,
-            colorImagesMap,
-            sizeImagesMap,
-            variantImagesMap,
-            newImageFiles
-          )
-          .pipe(take(1),finalize(() => (this.submitting = false)))
+          productData,
+          formData.colors,
+          formData.sizes,
+          this.mainImageFile!,
+          colorImagesMap,
+          sizeImagesMap,
+          variantImagesMap,
+          newImageFiles
+        )
+          .pipe(take(1), finalize(() => (this.submitting = false)))
           .subscribe({
             next: (id) => {
               this.message.success(
@@ -1245,28 +1245,28 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       );
     }
   }
-  
+
   /**
  * 🚀 NUEVO: Sincroniza stock después de actualizar
  */
-private syncStockAfterUpdate(productId: string): void {
-  console.log(`🔄 [FORM] Sincronizando stock para: ${productId}`);
-  
-  // Usar el método existente del inventoryService
-  this.inventoryService.getVariantsByProductId(productId)
-    .pipe(take(1))
-    .subscribe({
-      next: (variants) => {
-        console.log('✅ [FORM] Variantes actualizadas:', variants.length);
-        // Opcional: Mostrar mensaje de confirmación
-        this.message.info('Stock sincronizado correctamente');
-      },
-      error: (error) => {
-        console.error('❌ [FORM] Error sincronizando stock:', error);
-        this.message.warning('Producto actualizado, pero revise el stock manualmente');
-      }
-    });
-}
+  private syncStockAfterUpdate(productId: string): void {
+    console.log(`🔄 [FORM] Sincronizando stock para: ${productId}`);
+
+    // Usar el método existente del inventoryService
+    this.inventoryService.getVariantsByProductId(productId)
+      .pipe(take(1))
+      .subscribe({
+        next: (variants) => {
+          console.log('✅ [FORM] Variantes actualizadas:', variants.length);
+          // Opcional: Mostrar mensaje de confirmación
+          this.message.info('Stock sincronizado correctamente');
+        },
+        error: (error) => {
+          console.error('❌ [FORM] Error sincronizando stock:', error);
+          this.message.warning('Producto actualizado, pero revise el stock manualmente');
+        }
+      });
+  }
 
   private deleteRemovedImages(): void {
     if (this.imagesToDelete.length === 0) {
@@ -1365,20 +1365,20 @@ private syncStockAfterUpdate(productId: string): void {
 
   // ==================== CÁLCULO DE STOCK ====================
   calculateTotalStock(): number {
-  let total = 0;
+    let total = 0;
 
-  // Recalcular basado en colorStocks (fuente de verdad)
-  for (let i = 0; i < this.sizeForms.length; i++) {
-    const colorStocks = this.getColorStockForms(i);
-    for (let j = 0; j < colorStocks.length; j++) {
-      const quantity = colorStocks.at(j).get('quantity')?.value || 0;
-      total += quantity;
+    // Recalcular basado en colorStocks (fuente de verdad)
+    for (let i = 0; i < this.sizeForms.length; i++) {
+      const colorStocks = this.getColorStockForms(i);
+      for (let j = 0; j < colorStocks.length; j++) {
+        const quantity = colorStocks.at(j).get('quantity')?.value || 0;
+        total += quantity;
+      }
     }
-  }
 
-  console.log(`📊 [FORM] Stock total calculado: ${total}`);
-  return total;
-}
+    console.log(`📊 [FORM] Stock total calculado: ${total}`);
+    return total;
+  }
 
   listenToStockChanges(): void {
     this.productForm.valueChanges.subscribe(() => {
@@ -1463,14 +1463,14 @@ private syncStockAfterUpdate(productId: string): void {
 
   updateVariantStock(colorName: string, sizeName: string, stock: number): void {
     this.variantsMatrix.forEach((row) => {
-    if (row.size === sizeName) {
-      row.colorVariants.forEach((variant) => {
-        if (variant.colorName === colorName) {
-          variant.stock = stock;
-        }
-      });
-    }
-  });
+      if (row.size === sizeName) {
+        row.colorVariants.forEach((variant) => {
+          if (variant.colorName === colorName) {
+            variant.stock = stock;
+          }
+        });
+      }
+    });
 
     const sizeIndex = this.getSizeIndexByName(sizeName);
     if (sizeIndex !== -1) {

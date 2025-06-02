@@ -3,7 +3,7 @@ import { PayphoneFormComponent } from './pasarela-pago/payphone-form/payphone-fo
 import { CarritoComponent } from './pasarela-pago/carrito/carrito.component';
 import { RespuestaPagoComponent } from './pasarela-pago/respuesta-pago/respuesta-pago.component';
 import { NosotrosComponent } from './pages/nosotros/nosotros.component';
-import { DetalleProductoComponent } from './pages/shop/detalle-producto/detalle-producto/detalle-producto.component';
+import { DetalleProductoComponent } from './pages/shop/detalle-producto-component/detalle-producto-component.component';
 import { ProductCatalogComponent } from './pages/shop/product-catalog/product-catalog.component';
 import { WelcomeComponent } from './pages/welcome/welcome.component';
 import { LayoutComponent } from './pages/admin/layout/layout.component';

@@ -20,6 +20,7 @@ import { CacheService } from '../cache/cache.service';
 
 // Modelos
 import { Product, ProductVariant, Color, Size, Review, Promotion } from '../../../models/models';
+import { Auth, signInAnonymously } from '@angular/fire/auth';
 
 // Interfaces para estrategias de invalidación
 interface CacheInvalidationStrategy {
@@ -43,7 +44,8 @@ export class ProductService {
     private priceService: ProductPriceService,
     private variantService: ProductVariantService,
     private imageService: ProductImageService,
-    private cacheService: CacheService
+    private cacheService: CacheService,
+    private auth: Auth
   ) {
   }
 
@@ -714,23 +716,124 @@ export class ProductService {
    * 🚀 CORREGIDO: Obtiene productos relacionados (misma categoría)
    */
   getRelatedProducts(product: Product, limit: number = 4): Observable<Product[]> {
-    if (!product || !product.category) {
+    if (!product) {
       return of([]);
     }
 
     const cacheKey = `${this.productsCacheKey}_related_${product.id}_${limit}`;
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
-      return this.getProductsByCategory(product.category).pipe(
-        take(1), // ✅ NUEVO: Forzar completar
-        map(products => {
-          const filtered = products.filter(p => p.id !== product.id);
-          const limited = filtered.slice(0, limit);
-          return limited;
+      console.log(`🔍 ProductService: Calculando productos relacionados para ${product.name}`);
+
+      // 🆕 USAR forceReloadProducts en lugar de getProducts()
+      return this.forceReloadProducts().pipe(
+        take(1),
+        map(allProducts => {
+          console.log(`📦 ProductService: Analizando ${allProducts.length} productos para encontrar relacionados`);
+
+          const scored = allProducts
+            .filter(p => p.id !== product.id && p.totalStock > 0)
+            .map(p => ({
+              product: p,
+              score: this.calculateProductSimilarity(product, p)
+            }))
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, limit)
+            .map(item => item.product);
+
+          console.log(`✅ ProductService: Encontrados ${scored.length} productos relacionados`);
+
+          // 🆕 DEBUGGING: Mostrar qué productos se encontraron
+          if (scored.length === 0) {
+            console.warn(`⚠️ ProductService: No se encontraron productos relacionados para ${product.name} (categoría: ${product.category})`);
+          } else {
+            console.log('🎯 ProductService: Productos relacionados:',
+              scored.map(p => ({ name: p.name, category: p.category, id: p.id }))
+            );
+          }
+
+          return scored;
         }),
-        catchError(error => ErrorUtil.handleError(error, `getRelatedProducts(${product.id})`))
+        catchError(error => {
+          console.error('❌ ProductService: Error en getRelatedProducts:', error);
+          return of([]);
+        })
       );
     });
+  }
+
+  private calculateProductSimilarity(baseProduct: Product, compareProduct: Product): number {
+    let score = 0;
+    const reasons: string[] = []; // Para debugging
+
+    // 🎯 1. Misma categoría (peso alto)
+    if (baseProduct.category === compareProduct.category) {
+      score += 10;
+      reasons.push('misma categoría (+10)');
+    }
+
+    // 🎯 2. Mismo género (peso medio)
+    if (baseProduct.gender && compareProduct.gender && baseProduct.gender === compareProduct.gender) {
+      score += 5;
+      reasons.push('mismo género (+5)');
+    }
+
+    // 🎯 3. Tags en común (peso alto)
+    if (baseProduct.tags && compareProduct.tags && baseProduct.tags.length > 0 && compareProduct.tags.length > 0) {
+      const commonTags = baseProduct.tags.filter(tag =>
+        compareProduct.tags?.includes(tag)
+      );
+      if (commonTags.length > 0) {
+        const tagScore = commonTags.length * 3;
+        score += tagScore;
+        reasons.push(`tags comunes: ${commonTags.join(', ')} (+${tagScore})`);
+      }
+    }
+
+    // 🎯 4. Tecnologías en común (peso medio)
+    if (baseProduct.technologies && compareProduct.technologies &&
+      baseProduct.technologies.length > 0 && compareProduct.technologies.length > 0) {
+      const commonTech = baseProduct.technologies.filter(tech =>
+        compareProduct.technologies?.includes(tech)
+      );
+      if (commonTech.length > 0) {
+        const techScore = commonTech.length * 2;
+        score += techScore;
+        reasons.push(`tecnologías comunes: ${commonTech.join(', ')} (+${techScore})`);
+      }
+    }
+
+    // 🎯 5. Rango de precio similar (peso bajo)
+    const priceDiff = Math.abs(baseProduct.price - compareProduct.price);
+    const priceThreshold = baseProduct.price * 0.5; // ±50%
+    if (priceDiff <= priceThreshold) {
+      score += 2;
+      reasons.push('precio similar (+2)');
+    }
+
+    // 🎯 6. Misma temporada/colección (peso medio)
+    if (baseProduct.season && compareProduct.season && baseProduct.season === compareProduct.season) {
+      score += 3;
+      reasons.push('misma temporada (+3)');
+    }
+    if (baseProduct.collection && compareProduct.collection && baseProduct.collection === compareProduct.collection) {
+      score += 3;
+      reasons.push('misma colección (+3)');
+    }
+
+    // 🎯 7. Productos nuevos o bestsellers (boost)
+    if (compareProduct.isNew || compareProduct.isBestSeller) {
+      score += 1;
+      reasons.push(`producto ${compareProduct.isNew ? 'nuevo' : 'bestseller'} (+1)`);
+    }
+
+    // 🔍 Log para debugging (solo cuando hay score > 0)
+    if (score > 0) {
+      console.log(`📊 ProductService: ${compareProduct.name} - Score: ${score} (${reasons.join(', ')})`);
+    }
+
+    return score;
   }
 
   // -------------------- MÉTODOS DE ACTUALIZACIÓN --------------------
@@ -1297,12 +1400,30 @@ export class ProductService {
   /**
    * Incrementa contador de vistas (privado, uso interno)
    */
-  private incrementProductView(productId: string): void {
-    this.inventoryService.incrementProductViews(productId).pipe(
-      take(1) // ✅ NUEVO: Forzar completar
-    ).subscribe({
-      error: error => console.error(`Error al actualizar vistas del producto ${productId}:`, error)
-    });
+  private async incrementProductView(productId: string): Promise<void> {
+    try {
+      // Si no está autenticado, autenticar anónimamente
+      if (!this.auth.currentUser) {
+        await signInAnonymously(this.auth);
+        console.log('👤 Usuario anónimo creado para analytics');
+      }
+
+      // Ahora sí incrementar las vistas
+      this.inventoryService.incrementProductViews(productId).pipe(
+        take(1),
+        catchError(error => {
+          console.warn(`Error incrementando vistas para ${productId}:`, error.message);
+          return of(void 0);
+        })
+      ).subscribe({
+        next: () => console.log(`📊 Vista incrementada: ${productId}`),
+        error: () => { } // Error ya manejado en catchError
+      });
+
+    } catch (error) {
+      console.warn('No se pudo autenticar anónimamente:', error);
+      // Vista se pierde, pero la app sigue funcionando
+    }
   }
 
   // -------------------- MÉTODOS DE INFORMES --------------------

@@ -1,11 +1,11 @@
 <div class="carrito-container">
   <h1 class="carrito-title">Tu Carrito de Compras</h1>
-  
+
   <!-- Mostrar loader mientras carga -->
   <div *ngIf="loading" class="loading-container">
     <nz-spin nzTip="Cargando carrito..."></nz-spin>
   </div>
-  
+
   <!-- Carrito vacío -->
   <div *ngIf="!loading && (!cart || cart.items.length === 0)" class="empty-cart">
     <div class="empty-cart-icon">
@@ -17,7 +17,7 @@
       Continuar Comprando
     </button>
   </div>
-  
+
   <!-- Carrito con productos -->
   <div *ngIf="!loading && cart && cart.items.length > 0" class="cart-content">
     <!-- Tabla de productos -->
@@ -36,11 +36,7 @@
         <tr *ngFor="let item of cart.items">
           <td class="product-cell">
             <div class="product-info">
-              <img 
-                [src]="item.product?.imageUrl" 
-                [alt]="item.product?.name" 
-                class="product-thumbnail" 
-              />
+              <img [src]="item.product?.imageUrl" [alt]="item.product?.name" class="product-thumbnail" />
               <div>
                 <div class="product-name">{{ item.product?.name }}</div>
                 <div class="product-category">{{ item.product?.category }}</div>
@@ -55,71 +51,40 @@
           </td>
           <td>${{ item.unitPrice | number:'1.2-2' }}</td>
           <td>
-            <nz-input-number
-              [(ngModel)]="item.quantity"
-              [nzMin]="1"
-              [nzMax]="item.variant?.stock || 10"
-              [nzStep]="1"
-              [nzDisabled]="updating"
-              (ngModelChange)="updateQuantity(item, $event)"
-            ></nz-input-number>
+            <nz-input-number [(ngModel)]="item.quantity" [nzMin]="1" [nzMax]="item.variant?.stock || 10" [nzStep]="1"
+              [nzDisabled]="updating" (ngModelChange)="updateQuantity(item, $event)"></nz-input-number>
           </td>
           <td>${{ item.totalPrice | number:'1.2-2' }}</td>
           <td>
-            <button 
-              nz-button 
-              nzType="text" 
-              nzDanger 
-              (click)="removeItem(item)" 
-              [disabled]="updating"
-              nz-tooltip
-              nzTooltipTitle="Eliminar producto"
-            >
+            <button nz-button nzType="text" nzDanger (click)="removeItem(item)" [disabled]="updating" nz-tooltip
+              nzTooltipTitle="Eliminar producto">
               <i nz-icon nzType="delete" nzTheme="outline"></i>
             </button>
           </td>
         </tr>
       </tbody>
     </table>
-    
+
     <!-- Sección de totales y checkout -->
     <div class="cart-summary">
       <div class="summary-left">
         <!-- Código de descuento -->
         <div class="discount-section">
-          <input 
-            nz-input 
-            placeholder="Código de descuento" 
-            [(ngModel)]="discountCode" 
-            [disabled]="updating"
-          />
-          <button 
-            nz-button 
-            nzType="primary" 
-            (click)="applyDiscount()" 
-            [disabled]="updating || !discountCode"
-          >
+          <input nz-input placeholder="Código de descuento" [(ngModel)]="discountCode" [disabled]="updating" />
+          <button nz-button nzType="primary" (click)="applyDiscount()" [disabled]="updating || !discountCode">
             Aplicar
           </button>
         </div>
-        
-        <button 
-          nz-button 
-          (click)="clearCart()" 
-          [disabled]="updating"
-        >
+
+        <button nz-button (click)="clearCart()" [disabled]="updating">
           Vaciar Carrito
         </button>
-        
-        <button 
-          nz-button 
-          (click)="continueShopping()" 
-          [disabled]="updating"
-        >
+
+        <button nz-button (click)="continueShopping()" [disabled]="updating">
           Continuar Comprando
         </button>
       </div>
-      
+
       <div class="summary-right">
         <div class="summary-totals">
           <div class="summary-row">
@@ -144,17 +109,40 @@
             <span>${{ cart.total | number:'1.2-2' }}</span>
           </div>
         </div>
-        
-        <button 
-          nz-button 
-          nzType="primary" 
-          nzSize="large" 
-          class="checkout-button" 
-          [nzLoading]="updating"
-          (click)="proceedToCheckout()"
-        >
-          Pagar
-        </button>
+
+        <!-- 🚀 SECCIÓN DE CHECKOUT MEJORADA -->
+        <div class="checkout-section">
+          <!-- Aviso para usuarios no autenticados -->
+          <div *ngIf="!currentUser" class="auth-notice">
+            <nz-alert nzType="info" nzMessage="Inicia sesión para continuar"
+              nzDescription="Necesitas una cuenta para completar tu compra" nzShowIcon class="mb-3">
+            </nz-alert>
+            <button nz-button nzType="primary" nzSize="large" nzBlock (click)="redirectToLogin()">
+              <span nz-icon nzType="user"></span>
+              Iniciar Sesión
+            </button>
+          </div>
+
+          <!-- Aviso para usuarios anónimos -->
+          <div *ngIf="currentUser?.isAnonymous" class="registration-notice">
+            <nz-alert nzType="warning" nzMessage="Completa tu registro"
+              nzDescription="Los usuarios anónimos no pueden realizar compras" nzShowIcon class="mb-3">
+            </nz-alert>
+            <button nz-button nzType="primary" nzSize="large" nzBlock (click)="redirectToCompleteProfile()">
+              <span nz-icon nzType="form"></span>
+              Completar Registro
+            </button>
+          </div>
+
+          <!-- Botón de checkout para usuarios registrados -->
+          <div *ngIf="currentUser && !currentUser.isAnonymous">
+            <button nz-button nzType="primary" nzSize="large" nzBlock class="checkout-button" [nzLoading]="updating"
+              (click)="proceedToCheckout()" [disabled]="!cart || cart.items.length === 0 || updating">
+              <span nz-icon nzType="shopping-cart"></span>
+              Pagar - ${{ cart ? cart.total.toFixed(2) : '0.00' }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

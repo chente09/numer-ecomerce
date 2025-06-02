@@ -16,16 +16,38 @@ export const profileCompletionGuard: CanActivateFn = (route, state) => {
         message.warning('Debes iniciar sesión para acceder a esta página');
         return from(Promise.resolve(router.createUrlTree(['/welcome'])));
       }
-      
-      // Convertir la promesa en observable
-      return from(usersService.isProfileComplete()).pipe(
-        map(isComplete => {
-          if (isComplete) {
-            return true; // Permite el acceso si el perfil está completo
-          } else {
-            message.warning('Debes completar tu perfil para continuar');
-            return router.createUrlTree(['/completar-perfil']);
+
+      if (user.isAnonymous) {
+        if (state.url.includes('/pago')) {
+          message.warning('Necesitas una cuenta registrada para completar la compra');
+        } else {
+          message.warning('Necesitas una cuenta registrada para acceder a esta página');
+        }
+
+        return from(Promise.resolve(router.createUrlTree(['/completar-perfil'], {
+          queryParams: { returnUrl: state.url }
+        })));
+      }
+
+      return from(usersService.isProfileCompleteForCheckout()).pipe(
+        map(validation => {
+          if (validation.complete) {
+            return true;
           }
+
+          const missingInfo = [
+            ...validation.missingFields,
+            ...(validation.missingAddress ? ['Dirección de envío completa'] : [])
+          ].join(', ');
+
+          message.warning(`Completa tu perfil para continuar. Falta: ${missingInfo}`);
+
+          return router.createUrlTree(['/completar-perfil'], {
+            queryParams: {
+              returnUrl: state.url,
+              action: 'checkout'
+            }
+          });
         })
       );
     })

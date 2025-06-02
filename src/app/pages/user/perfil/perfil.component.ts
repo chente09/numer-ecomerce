@@ -23,6 +23,8 @@ import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 
 import { UsersService } from '../../../services/users/users.service';
 
@@ -48,8 +50,10 @@ import { UsersService } from '../../../services/users/users.service';
     NzDividerModule,
     NzIconModule,
     NzTableModule,
-    NzCheckboxModule
-],
+    NzCheckboxModule,
+    NzSelectModule,
+    NzInputNumberModule
+  ],
   templateUrl: './perfil.component.html',
   styleUrl: './perfil.component.css'
 })
@@ -73,10 +77,10 @@ export class PerfilComponent implements OnInit, OnDestroy {
   savingAddress = false;
 
   private userSubscription: Subscription | null = null;
-  
+
   // Referencia al template del modal
   @ViewChild('addressModalTemplate') addressModalTemplate!: TemplateRef<any>;
-  
+
   constructor(
     private usersService: UsersService,
     private fb: FormBuilder,
@@ -88,7 +92,13 @@ export class PerfilComponent implements OnInit, OnDestroy {
     this.profileForm = this.fb.group({
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
-      phone: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]]
+      phone: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
+      birthDate: [''], // 🆕 NUEVO
+      documentType: [''], // 🆕 NUEVO
+      documentNumber: [''], // 🆕 NUEVO
+      alternativePhone: [''], // 🆕 NUEVO
+      emergencyContact: [''], // 🆕 NUEVO
+      emergencyPhone: [''] // 🆕 NUEVO
     });
 
     this.editAddressForm = this.fb.group({
@@ -96,37 +106,72 @@ export class PerfilComponent implements OnInit, OnDestroy {
       address: ['', Validators.required],
       city: ['', Validators.required],
       province: ['', Validators.required],
+      canton: [''], // 🆕 NUEVO
+      neighborhood: [''], // 🆕 NUEVO
       postalCode: ['', Validators.required],
+      reference: [''], // 🆕 NUEVO
       isDefault: [false]
     });
   }
-  
+
   ngOnInit() {
     this.userSubscription = this.usersService.user$.subscribe(user => {
       this.currentUser = user;
-      
-      if (user) {
-        this.loadUserProfile();
-        this.loadRecentOrders();
-        this.loadAddresses();
-      } else {
-        // Redirigir al login si no hay usuario
+
+      if (!user) {
+        // No hay usuario autenticado → redirigir a welcome
+        this.message.warning('Debes iniciar sesión para acceder a tu perfil');
         this.router.navigate(['/welcome']);
+        return;
       }
+
+      if (user.isAnonymous) {
+        // Usuario anónimo → mostrar mensaje para registrarse
+        this.loading = false;
+        return; // No cargar datos del perfil para usuarios anónimos
+      }
+
+      // Usuario registrado → cargar perfil normalmente
+      this.loadUserProfile();
+      this.loadRecentOrders();
+      this.loadAddresses();
     });
   }
-  
+
+  goToWelcome() {
+    this.router.navigate(['/welcome']);
+  }
+
+  async signUpWithGoogle() {
+    try {
+      const result = await this.usersService.loginWithGoogle();
+      if (result.user) {
+        this.message.success('¡Bienvenido! Ahora puedes completar tu perfil.');
+        // Después del registro exitoso, los datos se cargarán automáticamente
+        // por la suscripción en ngOnInit
+      }
+    } catch (error) {
+      console.error('Error al registrarse con Google:', error);
+      this.message.error('No se pudo completar el registro. Intenta nuevamente.');
+    }
+  }
+
   async loadUserProfile() {
     try {
       this.loading = true;
       this.userProfile = await this.usersService.getUserProfile();
-      
-      // Rellenar formulario con datos existentes
+
       if (this.userProfile) {
         this.profileForm.patchValue({
           firstName: this.userProfile.firstName || '',
           lastName: this.userProfile.lastName || '',
-          phone: this.userProfile.phone || ''
+          phone: this.userProfile.phone || '',
+          birthDate: this.userProfile.birthDate || null, // 🆕 NUEVO
+          documentType: this.userProfile.documentType || '', // 🆕 NUEVO
+          documentNumber: this.userProfile.documentNumber || '', // 🆕 NUEVO
+          alternativePhone: this.userProfile.alternativePhone || '', // 🆕 NUEVO
+          emergencyContact: this.userProfile.emergencyContact || '', // 🆕 NUEVO
+          emergencyPhone: this.userProfile.emergencyPhone || '' // 🆕 NUEVO
         });
       }
     } catch (error) {
@@ -136,7 +181,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.loading = false;
     }
   }
-  
+
   // Cargar pedidos recientes (los últimos 5)
   async loadRecentOrders() {
     try {
@@ -166,45 +211,26 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.loadingOrders = false;
     }
   }
-  
+
   // Cargar direcciones guardadas
   async loadAddresses() {
     try {
       this.loadingAddresses = true;
-      // Reemplazar con tu servicio real de direcciones
-      setTimeout(() => {
-        this.addresses = [
-          {
-            id: 'addr1',
-            name: 'Casa',
-            address: 'Calle Principal 123',
-            city: 'Quito',
-            province: 'Pichincha',
-            postalCode: '170150',
-            isDefault: true
-          },
-          {
-            id: 'addr2',
-            name: 'Trabajo',
-            address: 'Av. Amazonas 45',
-            city: 'Quito',
-            province: 'Pichincha',
-            postalCode: '170143',
-            isDefault: false
-          }
-        ];
-        this.loadingAddresses = false;
-      }, 1000);
+      // ✅ CORRECCIÓN: Usar el servicio real
+      this.addresses = await this.usersService.getUserAddresses();
     } catch (error) {
       console.error('Error al cargar direcciones:', error);
+      this.message.error('No se pudieron cargar las direcciones');
+      this.addresses = []; // Array vacío si hay error
+    } finally {
       this.loadingAddresses = false;
     }
   }
-  
+
   // Métodos para información personal
   toggleEditMode() {
     this.editMode = !this.editMode;
-    
+
     if (!this.editMode) {
       // Restaurar valores originales si se cancela edición
       this.profileForm.patchValue({
@@ -214,27 +240,27 @@ export class PerfilComponent implements OnInit, OnDestroy {
       });
     }
   }
-  
+
   async saveProfile() {
     if (this.profileForm.invalid) return;
-    
+
     this.savingProfile = true;
-    
+
     try {
       const userData = {
         ...this.profileForm.value,
         updatedAt: new Date()
       };
-      
+
       // Si es la primera vez que completa el perfil, marcar como completo
       if (!this.userProfile?.profileCompleted) {
         userData.profileCompleted = true;
       }
-      
+
       await this.usersService.saveUserProfile(userData);
       this.editMode = false;
       this.message.success('Perfil actualizado correctamente');
-      
+
       // Recargar perfil para mostrar los cambios
       await this.loadUserProfile();
     } catch (error) {
@@ -244,7 +270,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.savingProfile = false;
     }
   }
-  
+
   // Métodos para direcciones
   openAddAddress() {
     this.editingAddress = null;
@@ -256,7 +282,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       postalCode: '',
       isDefault: this.addresses.length === 0 // Primera dirección es predeterminada
     });
-    
+
     this.modal.create({
       nzTitle: 'Agregar Nueva Dirección',
       nzContent: this.addressModalTemplate,
@@ -277,7 +303,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       nzMaskClosable: false
     });
   }
-  
+
   editAddress(address: any) {
     this.editingAddress = address;
     this.editAddressForm.patchValue({
@@ -288,7 +314,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       postalCode: address.postalCode,
       isDefault: address.isDefault
     });
-    
+
     this.modal.create({
       nzTitle: 'Editar Dirección',
       nzContent: this.addressModalTemplate,
@@ -309,55 +335,28 @@ export class PerfilComponent implements OnInit, OnDestroy {
       nzMaskClosable: false
     });
   }
-  
+
   async saveAddress() {
     if (this.editAddressForm.invalid) return;
-    
+
     this.savingAddress = true;
-    
+
     try {
       const addressData = {
         ...this.editAddressForm.value
       };
-      
+
       if (this.editingAddress) {
         // Actualizando dirección existente
-        console.log('Actualizar dirección:', { id: this.editingAddress.id, ...addressData });
-        
-        // Actualiza la lista local para ver cambios inmediatamente
-        this.addresses = this.addresses.map(addr => 
-          addr.id === this.editingAddress.id 
-            ? { ...addr, ...addressData } 
-            : addr
-        );
-        
-        // Si esta dirección se marcó como predeterminada, desmarca las demás
-        if (addressData.isDefault) {
-          this.addresses = this.addresses.map(addr => ({
-            ...addr,
-            isDefault: addr.id === this.editingAddress.id
-          }));
-        }
+        await this.usersService.updateUserAddress(this.editingAddress.id, addressData);
       } else {
         // Creando nueva dirección
-        const newId = `addr${Date.now()}`; // Genera un ID único
-        const newAddress = {
-          id: newId,
-          ...addressData
-        };
-        
-        // Si la nueva es predeterminada, desmarca las demás
-        if (newAddress.isDefault) {
-          this.addresses = this.addresses.map(addr => ({
-            ...addr,
-            isDefault: false
-          }));
-        }
-        
-        // Añade la nueva dirección
-        this.addresses = [...this.addresses, newAddress];
+        await this.usersService.saveUserAddress(addressData);
       }
-      
+
+      // ✅ CORRECCIÓN: Recargar direcciones desde Firebase
+      await this.loadAddresses();
+
       this.modal.closeAll();
       this.message.success('Dirección guardada correctamente');
     } catch (error) {
@@ -367,7 +366,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.savingAddress = false;
     }
   }
-  
+
   confirmDeleteAddress(addressId: string) {
     this.modal.confirm({
       nzTitle: '¿Estás seguro de eliminar esta dirección?',
@@ -378,22 +377,22 @@ export class PerfilComponent implements OnInit, OnDestroy {
       nzCancelText: 'Cancelar'
     });
   }
-  
+
   async deleteAddress(addressId: string) {
     try {
-      // Código para eliminar dirección (implementar servicio real)
-      console.log('Eliminar dirección:', addressId);
-      
-      // Actualizar la lista local
-      this.addresses = this.addresses.filter(addr => addr.id !== addressId);
-      
+      // ✅ CORRECCIÓN: Usar el servicio real
+      await this.usersService.deleteUserAddress(addressId);
+
+      // Recargar direcciones desde Firebase
+      await this.loadAddresses();
+
       this.message.success('Dirección eliminada correctamente');
     } catch (error) {
       console.error('Error al eliminar dirección:', error);
       this.message.error('No se pudo eliminar la dirección. Intente nuevamente.');
     }
   }
-  
+
   setDefaultAddress(addressId: string) {
     // Actualizar direcciones para establecer una como predeterminada
     console.log('Establecer dirección predeterminada:', addressId);
@@ -402,15 +401,38 @@ export class PerfilComponent implements OnInit, OnDestroy {
       isDefault: addr.id === addressId
     }));
   }
-  
+
   viewOrderDetails(orderId: string) {
     // Navegar a la página de detalles del pedido
     this.router.navigate(['/mis-pedidos', orderId]);
   }
-  
+
   ngOnDestroy() {
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }
+  }
+
+  convertFirebaseDate(timestamp: any): Date | null {
+    if (!timestamp) return null;
+
+    try {
+      if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+      }
+      if (timestamp instanceof Date) {
+        return timestamp;
+      }
+      if (typeof timestamp === 'string') {
+        return new Date(timestamp);
+      }
+      if (timestamp.seconds !== undefined) {
+        return new Date(timestamp.seconds * 1000);
+      }
+    } catch (error) {
+      console.warn('Error convirtiendo timestamp:', error);
+    }
+
+    return null;
   }
 }

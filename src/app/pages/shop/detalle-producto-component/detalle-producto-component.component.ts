@@ -1,9 +1,9 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { ProductService } from '../../../../services/admin/product/product.service';
-import { CategoryService, Category } from '../../../../services/admin/category/category.service';
-import { ProductVariantService } from '../../../../services/admin/productVariante/product-variant.service';
-import { CartService } from '../../../../pasarela-pago/services/cart/cart.service';
-import { Product, Color, Size, ProductVariant } from '../../../../models/models';
+import { ProductService } from '../../../services/admin/product/product.service';
+import { CategoryService, Category } from '../../../services/admin/category/category.service';
+import { ProductVariantService } from '../../../services/admin/productVariante/product-variant.service';
+import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
+import { Product, Color, Size, ProductVariant } from '../../../models/models';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NzRateModule } from 'ng-zorro-antd/rate';
@@ -12,11 +12,10 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { FormsModule } from '@angular/forms';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { ProductPriceService } from '../../../../services/admin/price/product-price.service';
-import { ProductInventoryService } from '../../../../services/admin/inventario/product-inventory.service';
-import { Observable, Subject, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
-import { CacheService } from '../../../../services/admin/cache/cache.service';
-import { StockUpdate, StockUpdateService } from '../../../../services/admin/stockUpdate/stock-update.service';
+import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
+import { Subject, debounceTime, distinctUntilChanged, finalize, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
+import { CacheService } from '../../../services/admin/cache/cache.service';
+import { StockUpdate, StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 
 @Component({
@@ -32,12 +31,14 @@ import { NzMessageService } from 'ng-zorro-antd/message';
     NzToolTipModule,
     NzIconModule
   ],
-  templateUrl: './detalle-producto.component.html',
-  styleUrl: './detalle-producto.component.css'
+  templateUrl: './detalle-producto-component.component.html',
+  styleUrl: './detalle-producto-component.component.css'
 })
 export class DetalleProductoComponent implements OnInit, OnDestroy {
   // Propiedades principales
-  product: Product | undefined;
+  product: Product | null = null;
+  relatedProducts: Product[] = []; // 🆕 AGREGAR
+  relatedLoading = false; // 🆕 AGREGAR
   selectedColor: Color | undefined;
   selectedSize: Size | undefined;
   selectedVariant: ProductVariant | undefined;
@@ -60,7 +61,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   // Estado adicional
   activeTab: string = 'description';
   isInWishlist: boolean = false;
-  relatedProducts: Product[] = [];
   currentImageUrl: string = '';
 
   constructor(
@@ -77,22 +77,22 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
-  // ✅ REEMPLAZAR loadProductFromRoute() con:
-  this.route.paramMap.pipe(
-    takeUntil(this.destroy$)
-  ).subscribe(params => {
-    const productId = params.get('id');
-    if (productId) {
-      this.loadProduct(productId);
-    } else {
-      console.error('ID de producto no proporcionado');
-      this.productsLoading = false;
-    }
-  });
-  
-  this.setupCacheNotifications();
-  this.setupStockUpdateListener();
-}
+
+    this.route.paramMap.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
+      const productId = params.get('id');
+      if (productId) {
+        this.loadProduct(productId);
+      } else {
+        console.error('ID de producto no proporcionado');
+        this.productsLoading = false;
+      }
+    });
+
+    this.setupCacheNotifications();
+    this.setupStockUpdateListener();
+  }
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -100,189 +100,227 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   }
 
   // 🚀 NUEVO MÉTODO: Configurar escucha de actualizaciones de stock
-private setupStockUpdateListener(): void {
-  this.route.paramMap.pipe(
-    takeUntil(this.destroy$)
-  ).subscribe(params => {
-    const productId = params.get('id');
-    if (!productId) return;
+  private setupStockUpdateListener(): void {
+    this.route.paramMap.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
+      const productId = params.get('id');
+      if (!productId) return;
 
-    // 👂 ESCUCHAR actualizaciones de stock para este producto
-    this.stockUpdateService.onProductStockUpdate(productId)
-      .pipe(
-        takeUntil(this.destroy$),
-        debounceTime(300), // Evitar actualizaciones muy frecuentes
-        distinctUntilChanged((prev, curr) => 
-          prev.variantId === curr.variantId && prev.newStock === curr.newStock
+      // 👂 ESCUCHAR actualizaciones de stock para este producto
+      this.stockUpdateService.onProductStockUpdate(productId)
+        .pipe(
+          takeUntil(this.destroy$),
+          debounceTime(300), // Evitar actualizaciones muy frecuentes
+          distinctUntilChanged((prev, curr) =>
+            prev.variantId === curr.variantId && prev.newStock === curr.newStock
+          )
         )
-      )
-      .subscribe(update => {
-        console.log('🔄 [DETALLE] Recibida actualización de stock:', update);
-        this.handleStockUpdate(update);
-      });
-  });
-}
-
-// 🔄 NUEVO MÉTODO: Manejar actualizaciones de stock en tiempo real
-private handleStockUpdate(update: StockUpdate): void {
-  if (!this.product || !this.product.variants) {
-    console.log('⚠️ [DETALLE] Producto no cargado, ignorando actualización');
-    return;
+        .subscribe(update => {
+          console.log('🔄 [DETALLE] Recibida actualización de stock:', update);
+          this.handleStockUpdate(update);
+        });
+    });
   }
 
-  // 🎯 Encontrar y actualizar la variante específica
-  const variantIndex = this.product.variants.findIndex(v => v.id === update.variantId);
-  
-  if (variantIndex === -1) {
-    console.log('⚠️ [DETALLE] Variante no encontrada:', update.variantId);
-    return;
+  // 🔄 NUEVO MÉTODO: Manejar actualizaciones de stock en tiempo real
+  private handleStockUpdate(update: StockUpdate): void {
+    if (!this.product || !this.product.variants) {
+      console.log('⚠️ [DETALLE] Producto no cargado, ignorando actualización');
+      return;
+    }
+
+    // 🎯 Encontrar y actualizar la variante específica
+    const variantIndex = this.product.variants.findIndex(v => v.id === update.variantId);
+
+    if (variantIndex === -1) {
+      console.log('⚠️ [DETALLE] Variante no encontrada:', update.variantId);
+      return;
+    }
+
+    // 📊 Actualizar stock de la variante
+    const oldStock = this.product.variants[variantIndex].stock;
+    this.product.variants[variantIndex].stock = update.newStock;
+
+    // 🧮 Recalcular stock total del producto
+    const newTotalStock = this.product.variants.reduce((sum, v) => sum + v.stock, 0);
+    this.product.totalStock = newTotalStock;
+
+    // 🎯 Actualizar variante seleccionada si coincide
+    if (this.selectedVariant?.id === update.variantId) {
+      this.selectedVariant.stock = update.newStock;
+
+      // 🔄 Ajustar cantidad si excede el nuevo stock
+      if (this.quantity > update.newStock) {
+        this.quantity = Math.max(1, update.newStock);
+      }
+    }
+
+    // 🎉 Mostrar notificación amigable al usuario
+    this.showStockUpdateNotification(update, oldStock);
+
+    console.log('✅ [DETALLE] Stock actualizado localmente:', {
+      variantId: update.variantId,
+      oldStock,
+      newStock: update.newStock,
+      newTotalStock,
+      source: update.source
+    });
   }
 
-  // 📊 Actualizar stock de la variante
-  const oldStock = this.product.variants[variantIndex].stock;
-  this.product.variants[variantIndex].stock = update.newStock;
+  // 🎉 NUEVO MÉTODO: Mostrar notificaciones amigables de stock
+  private showStockUpdateNotification(update: StockUpdate, oldStock: number): void {
+    const stockChange = update.newStock - oldStock;
+    const colorSize = update.metadata?.colorName && update.metadata?.sizeName
+      ? `${update.metadata.colorName} - ${update.metadata.sizeName}`
+      : 'esta variante';
 
-  // 🧮 Recalcular stock total del producto
-  const newTotalStock = this.product.variants.reduce((sum, v) => sum + v.stock, 0);
-  this.product.totalStock = newTotalStock;
-
-  // 🎯 Actualizar variante seleccionada si coincide
-  if (this.selectedVariant?.id === update.variantId) {
-    this.selectedVariant.stock = update.newStock;
-    
-    // 🔄 Ajustar cantidad si excede el nuevo stock
-    if (this.quantity > update.newStock) {
-      this.quantity = Math.max(1, update.newStock);
+    if (update.source === 'admin' && stockChange > 0) {
+      // Administrador aumentó stock
+      this.message.success(`¡Buenas noticias! Se agregaron ${stockChange} unidades a ${colorSize}`);
+    } else if (update.source === 'admin' && stockChange < 0) {
+      // Administrador redujo stock
+      this.message.info(`Stock actualizado: ${update.newStock} unidades disponibles para ${colorSize}`);
+    } else if (update.source === 'purchase' && stockChange < 0) {
+      // Otra persona compró
+      if (update.newStock === 0) {
+        this.message.warning(`¡Atención! ${colorSize} se agotó recientemente`);
+      } else if (update.newStock <= 3) {
+        this.message.warning(`¡Pocas unidades! Solo quedan ${update.newStock} de ${colorSize}`);
+      }
+    } else if (update.source === 'restock' && stockChange > 0) {
+      // Reabastecimiento
+      this.message.success(`¡Reabastecido! Ahora hay ${update.newStock} unidades de ${colorSize}`);
     }
   }
-
-  // 🎉 Mostrar notificación amigable al usuario
-  this.showStockUpdateNotification(update, oldStock);
-
-  console.log('✅ [DETALLE] Stock actualizado localmente:', {
-    variantId: update.variantId,
-    oldStock,
-    newStock: update.newStock,
-    newTotalStock,
-    source: update.source
-  });
-}
-
-// 🎉 NUEVO MÉTODO: Mostrar notificaciones amigables de stock
-private showStockUpdateNotification(update: StockUpdate, oldStock: number): void {
-  const stockChange = update.newStock - oldStock;
-  const colorSize = update.metadata?.colorName && update.metadata?.sizeName 
-    ? `${update.metadata.colorName} - ${update.metadata.sizeName}` 
-    : 'esta variante';
-
-  if (update.source === 'admin' && stockChange > 0) {
-    // Administrador aumentó stock
-    this.message.success(`¡Buenas noticias! Se agregaron ${stockChange} unidades a ${colorSize}`);
-  } else if (update.source === 'admin' && stockChange < 0) {
-    // Administrador redujo stock
-    this.message.info(`Stock actualizado: ${update.newStock} unidades disponibles para ${colorSize}`);
-  } else if (update.source === 'purchase' && stockChange < 0) {
-    // Otra persona compró
-    if (update.newStock === 0) {
-      this.message.warning(`¡Atención! ${colorSize} se agotó recientemente`);
-    } else if (update.newStock <= 3) {
-      this.message.warning(`¡Pocas unidades! Solo quedan ${update.newStock} de ${colorSize}`);
-    }
-  } else if (update.source === 'restock' && stockChange > 0) {
-    // Reabastecimiento
-    this.message.success(`¡Reabastecido! Ahora hay ${update.newStock} unidades de ${colorSize}`);
-  }
-}
 
   private setupCacheNotifications(): void {
-  this.route.paramMap.pipe(
-    takeUntil(this.destroy$)
-  ).subscribe(params => {
-    const productId = params.get('id');
-    if (!productId) return;
+    this.route.paramMap.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
+      const productId = params.get('id');
+      if (!productId) return;
 
-    // 🚀 ESCUCHAR invalidaciones de producto específico
-    this.cacheService.getInvalidationNotifier(`products_${productId}`)
-      .pipe(
-        takeUntil(this.destroy$),
-        debounceTime(500),
-        distinctUntilChanged()
-      )
-      .subscribe(() => {
-        console.log('🔄 Producto invalidado, recargando con datos frescos...');
-        this.loadProduct(productId);
-      });
+      // 🚀 ESCUCHAR invalidaciones de producto específico
+      this.cacheService.getInvalidationNotifier(`products_${productId}`)
+        .pipe(
+          takeUntil(this.destroy$),
+          debounceTime(500),
+          distinctUntilChanged()
+        )
+        .subscribe(() => {
+          console.log('🔄 Producto invalidado, recargando con datos frescos...');
+          this.loadProduct(productId);
+        });
 
-    // 🚀 ESCUCHAR invalidaciones generales de productos
-    this.cacheService.getInvalidationNotifier('products')
-      .pipe(
-        takeUntil(this.destroy$),
-        debounceTime(1000), // Más tiempo para evitar bucles
-        distinctUntilChanged()
-      )
-      .subscribe(() => {
-        console.log('🔄 Caché de productos invalidado, recargando...');
-        this.loadProduct(productId);
-      });
-  });
-}
+      // 🚀 ESCUCHAR invalidaciones generales de productos
+      this.cacheService.getInvalidationNotifier('products')
+        .pipe(
+          takeUntil(this.destroy$),
+          debounceTime(1000), // Más tiempo para evitar bucles
+          distinctUntilChanged()
+        )
+        .subscribe(() => {
+          console.log('🔄 Caché de productos invalidado, recargando...');
+          this.loadProduct(productId);
+        });
+    });
+  }
 
   loadProduct(productId: string): void {
-  this.productsLoading = true;
-  console.log('🔄 Cargando producto:', productId);
+    this.productsLoading = true;
+    console.log('🔄 Cargando producto:', productId);
 
-  // 🚀 INVALIDAR CACHÉ ANTES DE CARGAR
-  this.cacheService.invalidate(`products_${productId}`);
-  this.cacheService.invalidate(`product_variants_product_${productId}`);
+    // 🚀 INVALIDAR CACHÉ ANTES DE CARGAR
+    this.cacheService.invalidate(`products_${productId}`);
+    this.cacheService.invalidate(`product_variants_product_${productId}`);
 
-  // USAR getProductByIdNoCache en lugar de getProductById
-  const productObservable = this.productService.getProductByIdNoCache(productId).pipe(take(1));
-  const variantsObservable = this.inventoryService.getVariantsByProductId(productId).pipe(take(1));
+    // USAR getProductByIdNoCache en lugar de getProductById
+    const productObservable = this.productService.getProductByIdNoCache(productId).pipe(take(1));
+    const variantsObservable = this.inventoryService.getVariantsByProductId(productId).pipe(take(1));
 
-  forkJoin({ product: productObservable, variants: variantsObservable })
-    .pipe(
-      map(({ product, variants }) => {
-        if (!product) return null;
+    forkJoin({ product: productObservable, variants: variantsObservable })
+      .pipe(
+        map(({ product, variants }) => {
+          if (!product) return null;
 
-        // 🧮 FORZAR RECÁLCULO DEL STOCK
-        const realTotalStock = variants.reduce((sum, v) => sum + v.stock, 0);
-        
-        return {
-          ...product,
-          variants: variants,
-          totalStock: realTotalStock, // ✅ USAR STOCK REAL
-        };
-      }),
-      finalize(() => this.productsLoading = false)
-    )
-    .subscribe({
-      next: (product) => {
-        if (!product) return;
-        
-        this.product = product;
-        this.currentImageUrl = product.imageUrl;
-        this.continueProductSetup(product, productId);
-      },
-      error: (error) => {
-        console.error('❌ Error:', error);
-        this.modalService.error({
-          nzTitle: 'Error',
-          nzContent: 'No se pudo cargar el producto.'
-        });
-      }
-    });
-}
+          // 🧮 FORZAR RECÁLCULO DEL STOCK
+          const realTotalStock = variants.reduce((sum, v) => sum + v.stock, 0);
 
-forceReloadProduct(): void {
-  const productId = this.route.snapshot.paramMap.get('id');
-  if (!productId) return;
+          return {
+            ...product,
+            variants: variants,
+            totalStock: realTotalStock, // ✅ USAR STOCK REAL
+          };
+        }),
+        finalize(() => this.productsLoading = false)
+      )
+      .subscribe({
+        next: (product) => {
+          if (!product) return;
 
-  // 🧹 LIMPIAR TODO EL CACHÉ RELACIONADO
-  this.cacheService.clearCache();
-  
-  // 🔄 RECARGAR
-  this.loadProduct(productId);
-}
+          this.product = product;
+          this.currentImageUrl = product.imageUrl;
+          this.continueProductSetup(product, productId);
+
+          this.loadRelatedProducts(product);
+        },
+        error: (error) => {
+          console.error('❌ Error:', error);
+          this.modalService.error({
+            nzTitle: 'Error',
+            nzContent: 'No se pudo cargar el producto.'
+          });
+        }
+      });
+  }
+
+  getTechnologyLabel(value: string): string {
+    const technologiesMap: { [key: string]: string } = {
+      'secado_rapido': 'Secado Rápido',
+      'proteccion_uv': 'Protección UV',
+      'anti_transpirante': 'Anti-transpirante',
+      'impermeable': 'Impermeable',
+      'transpirable': 'Transpirable',
+      'anti_bacterial': 'Anti-bacterial',
+      'termico': 'Térmico',
+      'elastico': 'Elástico',
+      'resistente_viento': 'Resistente al viento',
+      'sin_costuras': 'Sin costuras'
+    };
+
+    return technologiesMap[value] || value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  private loadRelatedProducts(product: Product): void {
+    this.relatedLoading = true;
+
+    this.productService.getRelatedProducts(product, 4)
+      .pipe(
+        take(1),
+        finalize(() => this.relatedLoading = false)
+      )
+      .subscribe({
+        next: (products) => {
+          this.relatedProducts = products;
+        },
+        error: (error) => {
+          console.error('Error cargando relacionados:', error);
+          this.relatedProducts = [];
+        }
+      });
+  }
+
+  forceReloadProduct(): void {
+    const productId = this.route.snapshot.paramMap.get('id');
+    if (!productId) return;
+
+    // 🧹 LIMPIAR TODO EL CACHÉ RELACIONADO
+    this.cacheService.clearCache();
+
+    // 🔄 RECARGAR
+    this.loadProduct(productId);
+  }
 
 
   // Incrementar vistas del producto
@@ -291,20 +329,16 @@ forceReloadProduct(): void {
       .pipe(take(1))
       .subscribe({
         next: () => {
-          // ✅ SOLO actualizar local, NO invalidar caché
+          // ✅ SOLO actualizar local si fue exitoso
           if (this.product) {
             this.product.views = (this.product.views || 0) + 1;
           }
-          // ✅ NO hacer esto: this.cacheService.invalidate(...)
         },
-        error: (error) => {
-          console.error('Error al incrementar vistas:', error);
+        error: () => {
+          // Error ya manejado silenciosamente en el servicio
         }
       });
   }
-
-
-
 
   // Cargar información de la categoría usando el servicio
   loadCategoryInfo(categoryId: string): void {
@@ -324,17 +358,7 @@ forceReloadProduct(): void {
   }
 
   // Método para cargar productos relacionados
-  loadRelatedProducts(category: string, currentProductId: string): void {
-    this.productService.getRelatedProducts({ category, id: currentProductId } as Product, 4)
-      .subscribe({
-        next: (products) => {
-          this.relatedProducts = products;
-        },
-        error: (error) => {
-          console.error('Error al cargar productos relacionados:', error);
-        }
-      });
-  }
+
 
   // Métodos para manejar selecciones
   selectColor(color: Color): void {
@@ -439,7 +463,7 @@ forceReloadProduct(): void {
     return this.selectedVariant?.stock || 0;
   }
 
-  
+
 
   // Método para mostrar la previsualización de imagen
   showImagePreview(imageUrl: string): void {
@@ -453,11 +477,11 @@ forceReloadProduct(): void {
     this.previewImageUrl = '';
   }
 
-  
+
 
   // Método para abrir el modal de tallas
   openSizeGuide(): void {
-    this.showSizeGuide = true; 
+    this.showSizeGuide = true;
   }
 
   // Método auxiliar para obtener los colores disponibles para una talla
@@ -615,14 +639,14 @@ forceReloadProduct(): void {
       return;
     }
 
-     // ✅ Verificar stock actual antes de proceder
-  if (this.selectedVariant.stock < this.quantity) {
-    this.modalService.warning({
-      nzTitle: 'Stock insuficiente',
-      nzContent: `Solo hay ${this.selectedVariant.stock} unidades disponibles de ${this.selectedVariant.colorName} - ${this.selectedVariant.sizeName}`
-    });
-    return;
-  }
+    // ✅ Verificar stock actual antes de proceder
+    if (this.selectedVariant.stock < this.quantity) {
+      this.modalService.warning({
+        nzTitle: 'Stock insuficiente',
+        nzContent: `Solo hay ${this.selectedVariant.stock} unidades disponibles de ${this.selectedVariant.colorName} - ${this.selectedVariant.sizeName}`
+      });
+      return;
+    }
 
     // ✅ CORRECCIÓN: Usar el método correcto del CartService
     this.cartService.addToCart(
@@ -636,7 +660,7 @@ forceReloadProduct(): void {
     ).subscribe({
       next: (success: boolean) => {
         if (success) {
-          
+
           this.modalService.success({
             nzTitle: 'Producto añadido al carrito',
             nzContent: `Has agregado ${this.quantity} unidad(es) de ${this.product!.name} a tu carrito.`,
@@ -646,7 +670,7 @@ forceReloadProduct(): void {
               this.router.navigate(['/carrito']);
             }
           });// 🔄 Resetear cantidad a 1 después de agregar
-        this.quantity = 1;
+          this.quantity = 1;
         } else {
           this.modalService.error({
             nzTitle: 'Error',
@@ -704,8 +728,8 @@ forceReloadProduct(): void {
       this.selectSize(product.sizes[0]);
     }
 
-    this.loadRelatedProducts(product.category, productId);
     this.incrementProductViews(productId);
+    // ❌ ELIMINAR: this.loadRelatedProducts(product.category, productId);
   }
 
   // ✅ TAMBIÉN AGREGAR ESTE MÉTODO PARA LIMPIAR CACHÉ CORRUPTO
@@ -713,5 +737,7 @@ forceReloadProduct(): void {
     this.cacheService.clearCache();
     console.log('🧹 Caché limpiado - recarga la página');
   }
+
+
 
 }

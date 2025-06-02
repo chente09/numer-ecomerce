@@ -71,7 +71,7 @@
 
 /* Información de perfil */
 .profile-details .detail-group {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .profile-details h3 {
@@ -79,30 +79,63 @@
   margin-bottom: 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid #f0f0f0;
+  color: #262626;
+  font-weight: 600;
 }
 
 .detail-item {
   margin-bottom: 12px;
   display: flex;
+  align-items: flex-start;
 }
 
 .detail-item strong {
-  min-width: 120px;
+  min-width: 180px;
   display: inline-block;
   color: #666;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.detail-item span {
+  color: #262626;
+  line-height: 1.5;
 }
 
 .detail-actions {
   margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
 }
 
 /* Formulario de edición */
 .profile-edit-form {
-  max-width: 600px;
+  max-width: 100%;
+}
+
+.form-section {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.form-section h4 {
+  margin-bottom: 16px;
+  color: #262626;
+  font-weight: 600;
+  font-size: 16px;
 }
 
 .form-actions {
-  margin-top: 24px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0f0;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -114,28 +147,39 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .addresses-header h3 {
   margin-bottom: 0;
   font-size: 18px;
+  color: #262626;
+  font-weight: 600;
 }
 
 .addresses-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
 }
 
 .address-card {
   border: 1px solid #f0f0f0;
   border-radius: 8px;
-  padding: 16px;
-  transition: box-shadow 0.3s;
+  padding: 20px;
+  transition: all 0.3s ease;
+  background: #fff;
 }
 
 .address-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #d9d9d9;
+}
+
+.address-card.is-default {
+  border: 2px solid #52c41a;
+  background-color: #f6ffed;
 }
 
 .address-card-header {
@@ -143,16 +187,40 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .address-card-header h4 {
   margin-bottom: 0;
   font-size: 16px;
+  font-weight: 600;
+  color: #262626;
 }
 
 .address-card-body p {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   color: #666;
+  line-height: 1.4;
+}
+
+.address-card-body p:first-child {
+  color: #262626;
+  font-weight: 500;
+}
+
+.address-reference {
+  color: #666;
+  font-style: italic;
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.address-reference i {
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .address-card-actions {
@@ -162,6 +230,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
 }
 
 /* Pedidos */
@@ -178,32 +247,96 @@
 /* Estado vacío */
 .empty-state {
   text-align: center;
-  padding: 40px 0;
+  padding: 40px 20px;
 }
 
 .empty-state button {
   margin-top: 16px;
 }
 
-/* Responsive (continuación) */
+/* Estado de usuario anónimo */
+.anonymous-user-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 20px;
+}
+
+.registration-prompt {
+  max-width: 400px;
+  text-align: center;
+  width: 100%;
+}
+
+.registration-content {
+  padding: 20px;
+}
+
+.registration-icon {
+  font-size: 48px;
+  color: black;
+  margin-bottom: 20px;
+}
+
+.registration-content h2 {
+  margin-bottom: 16px;
+  color: #262626;
+}
+
+.registration-content p {
+  margin-bottom: 24px;
+  color: #595959;
+  line-height: 1.6;
+}
+
+.google-signup-btn {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.back-btn {
+  width: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .profile-container {
+    max-width: 100%;
+    margin: 20px auto;
+  }
+}
+
 @media (max-width: 768px) {
+  .profile-container {
+    margin: 16px auto;
+    padding: 0 16px;
+  }
+
   .profile-header {
     flex-direction: column;
     text-align: center;
+    align-items: center;
   }
   
   .avatar-section {
     margin-right: 0;
     margin-bottom: 16px;
   }
+
+  .user-info h2 {
+    font-size: 20px;
+  }
   
   .detail-item {
     flex-direction: column;
+    align-items: flex-start;
   }
   
   .detail-item strong {
     min-width: unset;
     margin-bottom: 4px;
+    width: 100%;
   }
   
   .addresses-header {
@@ -211,17 +344,95 @@
     align-items: flex-start;
     gap: 12px;
   }
+
+  .addresses-header button {
+    width: 100%;
+  }
   
   .addresses-list {
     grid-template-columns: 1fr;
   }
+
+  .address-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .address-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .address-card-actions button {
+    width: 100%;
+    justify-content: center;
+  }
   
   .form-actions {
     flex-direction: column;
+    gap: 8px;
   }
   
   .form-actions button {
     width: 100%;
+  }
+
+  .tab-content {
+    padding: 12px 4px;
+  }
+
+  .form-section h4 {
+    font-size: 14px;
+  }
+
+  .profile-details h3 {
+    font-size: 16px;
+  }
+
+  .addresses-header h3 {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .profile-container {
+    padding: 0 12px;
+    margin: 12px auto;
+  }
+
+  .registration-content {
+    padding: 16px;
+  }
+
+  .registration-icon {
+    font-size: 36px;
+  }
+
+  .address-card {
+    padding: 16px;
+  }
+
+  .detail-actions {
+    text-align: center;
+  }
+
+  .detail-actions button {
+    width: 100%;
+  }
+
+  /* Hacer las columnas del formulario stack en móvil */
+  :host ::ng-deep .ant-col-xs-24 {
+    width: 100% !important;
+    margin-bottom: 0;
+  }
+
+  /* Ajustar spacing de form items en móvil */
+  :host ::ng-deep .ant-form-item {
+    margin-bottom: 16px;
+  }
+
+  :host ::ng-deep .ant-form-item-label {
+    padding-bottom: 4px;
   }
 }
 
@@ -229,7 +440,8 @@
 .profile-alert,
 .address-card,
 .profile-edit-form,
-.tab-content {
+.tab-content,
+.form-section {
   animation: fadeIn 0.3s ease-in;
 }
 
@@ -260,11 +472,6 @@
   font-weight: 500;
 }
 
-/* Estilos para las tarjetas de direcciones por defecto */
-.address-card.is-default {
-  border: 2px solid #52c41a;
-}
-
 /* Mejorar la visualización de la tabla */
 :host ::ng-deep .ant-table-thead > tr > th {
   background-color: #fafafa;
@@ -281,18 +488,13 @@
   background-color: black;
 }
 
-::ng-deep .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
-    color: black !important;
-}
-
-
-/* Si quieres cambiar también el color al hacer hover */
-::ng-deep .ant-tabs-tab:hover {
-    color: #333 !important;
-}
-
 :host ::ng-deep .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: black !important;
   font-weight: 600;
+}
+
+:host ::ng-deep .ant-tabs-tab:hover {
+  color: #333 !important;
 }
 
 /* Mejoras en los botones */
@@ -315,7 +517,9 @@ button.ant-btn-primary:hover {
 /* Foco en campos de formulario */
 :host ::ng-deep .ant-input:focus,
 :host ::ng-deep .ant-input-affix-wrapper:focus,
-:host ::ng-deep .ant-input-affix-wrapper-focused {
+:host ::ng-deep .ant-input-affix-wrapper-focused,
+:host ::ng-deep .ant-select:focus,
+:host ::ng-deep .ant-select-focused {
   border-color: black;
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
 }
@@ -324,4 +528,68 @@ button.ant-btn-primary:hover {
 :host ::ng-deep .ant-form-item-explain-error {
   margin-top: 4px;
   font-size: 12px;
+}
+
+/* Estilos para select y textarea */
+:host ::ng-deep .ant-select-selection-item {
+  line-height: 32px;
+}
+
+:host ::ng-deep .ant-input {
+  border-radius: 4px;
+}
+
+:host ::ng-deep .ant-select {
+  border-radius: 4px;
+}
+
+/* Responsive para la tabla de pedidos */
+@media (max-width: 768px) {
+  :host ::ng-deep .ant-table {
+    font-size: 12px;
+  }
+
+  :host ::ng-deep .ant-table-thead > tr > th,
+  :host ::ng-deep .ant-table-tbody > tr > td {
+    padding: 8px 4px;
+  }
+
+  :host ::ng-deep .ant-btn-sm {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
+
+/* Mejoras para el contador de caracteres del textarea */
+:host ::ng-deep .ant-input-data-count {
+  color: #666;
+  font-size: 12px;
+}
+
+/* Espaciado mejorado para elementos de formulario */
+:host ::ng-deep .ant-form-item {
+  margin-bottom: 20px;
+}
+
+:host ::ng-deep .ant-form-item-label > label {
+  font-weight: 500;
+  color: #262626;
+}
+
+/* Hover effects para las cards de direcciones */
+.address-card-actions button:hover {
+  transform: translateY(-1px);
+  transition: transform 0.2s ease;
+}
+
+/* Estilos para estados de carga */
+.loading-container nz-spin {
+  display: flex;
+  justify-content: center;
+}
+
+/* Mejoras para el estado vacío */
+.empty-state .ant-empty-description {
+  color: #666;
+  margin-bottom: 16px;
 }

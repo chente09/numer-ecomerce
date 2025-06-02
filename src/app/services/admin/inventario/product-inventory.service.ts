@@ -10,6 +10,7 @@ import { CacheService } from '../cache/cache.service';
 
 // Importar modelos
 import { Product, ProductVariant } from '../../../models/models';
+import { getAuth, signInAnonymously } from '@angular/fire/auth';
 
 // Interfaces para el servicio de inventario
 export interface StockUpdate {
@@ -787,14 +788,41 @@ export class ProductInventoryService {
     }
 
     return from((async () => {
-      const productRef = doc(this.firestore, this.productsCollection, productId);
-      await updateDoc(productRef, {
-        views: increment(1),
-        lastViewDate: new Date()
-      });
+      try {
+        // 🆕 VERIFICAR Y CREAR AUTENTICACIÓN ANÓNIMA SI ES NECESARIO
+        const auth = getAuth();
+        if (!auth.currentUser) {
+          await signInAnonymously(auth);
+          console.log('👤 Usuario anónimo creado para analytics');
+        }
 
+        const productRef = doc(this.firestore, this.productsCollection, productId);
+        await updateDoc(productRef, {
+          views: increment(1),
+          lastViewDate: new Date(),
+          updatedAt: new Date() // 🆕 AGREGAR updatedAt para las reglas
+        });
+
+        console.log(`📊 Vista incrementada para producto: ${productId}`);
+      } catch (error: any) {
+        // 🆕 MANEJO ESPECÍFICO DE ERRORES DE PERMISOS
+        if (error?.code === 'permission-denied' ||
+          error?.message?.includes('Missing or insufficient permissions')) {
+          console.warn(`⚠️ Sin permisos para incrementar vistas del producto ${productId}. Continuando sin incrementar.`);
+          // No lanzar error, solo logear y continuar
+          return;
+        }
+
+        // Para otros errores, sí lanzar
+        throw error;
+      }
     })()).pipe(
-      catchError(error => ErrorUtil.handleError(error, `incrementProductViews(${productId})`))
+      catchError(error => {
+        // 🆕 MANEJO SILENCIOSO DE ERRORES DE VISTAS
+        console.warn(`No se pudo incrementar vistas para ${productId}:`, error.message);
+        // Retornar observable vacío en lugar de error para no interrumpir la app
+        return of(void 0);
+      })
     );
   }
 

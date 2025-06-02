@@ -3,7 +3,31 @@
         <nz-spin nzSize="large"></nz-spin>
     </div>
 
-    <div *ngIf="!loading && currentUser" class="profile-content">
+    <div *ngIf="currentUser?.isAnonymous && !loading" class="anonymous-user-state">
+        <nz-card class="registration-prompt">
+            <div class="registration-content">
+                <div class="registration-icon">
+                    <i nz-icon nzType="user-add" nzTheme="outline"></i>
+                </div>
+                <h2>Completa tu Registro</h2>
+                <p>Para acceder a tu perfil y realizar compras, necesitas registrarte con una cuenta de Google.</p>
+
+                <button nz-button nzType="primary" nzSize="large" (click)="signUpWithGoogle()"
+                    class="google-signup-btn">
+                    <i nz-icon nzType="google" nzTheme="outline"></i>
+                    Registrarse con Google
+                </button>
+
+                <nz-divider nzText="o"></nz-divider>
+
+                <button nz-button nzType="default" (click)="goToWelcome()" class="back-btn">
+                    Volver al Inicio
+                </button>
+            </div>
+        </nz-card>
+    </div>
+
+    <div *ngIf="!loading && currentUser && currentUser && !currentUser.isAnonymous" class="profile-content">
         <nz-card>
             <div class="profile-header">
                 <div class="avatar-section">
@@ -28,6 +52,7 @@
                 <nz-tab nzTitle="Información Personal">
                     <div class="tab-content">
                         <div *ngIf="!editMode" class="profile-details">
+                            <!-- Información de contacto -->
                             <div class="detail-group">
                                 <h3>Información de contacto</h3>
 
@@ -51,43 +76,161 @@
                                     <span>{{ userProfile?.phone || 'No especificado' }}</span>
                                 </div>
 
-                                <div class="detail-actions">
-                                    <button nz-button nzType="primary" (click)="toggleEditMode()">
-                                        <i nz-icon nzType="edit"></i> Editar Información
-                                    </button>
+                                <div class="detail-item">
+                                    <strong>Teléfono alternativo:</strong>
+                                    <span>{{ userProfile?.alternativePhone || 'No especificado' }}</span>
                                 </div>
+                            </div>
+
+                            <!-- Información personal adicional -->
+                            <div class="detail-group">
+                                <h3>Información personal</h3>
+
+                                <div class="detail-item">
+                                    <strong>Fecha de nacimiento:</strong>
+                                    <span>{{ convertFirebaseDate(userProfile?.birthDate) | date:'dd/MM/yyyy' }}</span>
+                                </div>
+
+                                <div class="detail-item">
+                                    <strong>Tipo de documento:</strong>
+                                    <span>{{ userProfile?.documentType || 'No especificado' }}</span>
+                                </div>
+
+                                <div class="detail-item">
+                                    <strong>Número de documento:</strong>
+                                    <span>{{ userProfile?.documentNumber || 'No especificado' }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Contacto de emergencia -->
+                            <div class="detail-group">
+                                <h3>Contacto de emergencia</h3>
+
+                                <div class="detail-item">
+                                    <strong>Contacto de emergencia:</strong>
+                                    <span>{{ userProfile?.emergencyContact || 'No especificado' }}</span>
+                                </div>
+
+                                <div class="detail-item">
+                                    <strong>Teléfono de emergencia:</strong>
+                                    <span>{{ userProfile?.emergencyPhone || 'No especificado' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="detail-actions">
+                                <button nz-button nzType="primary" (click)="toggleEditMode()">
+                                    <i nz-icon nzType="edit"></i> Editar Información
+                                </button>
                             </div>
                         </div>
 
                         <!-- Formulario de edición -->
                         <div *ngIf="editMode" class="profile-edit-form">
                             <form [formGroup]="profileForm">
-                                <div nz-row [nzGutter]="16">
-                                    <div nz-col [nzXs]="24" [nzSm]="12">
-                                        <nz-form-item>
-                                            <nz-form-label>Nombre</nz-form-label>
-                                            <nz-form-control nzErrorTip="Por favor ingresa tu nombre">
-                                                <input nz-input formControlName="firstName" placeholder="Nombre">
-                                            </nz-form-control>
-                                        </nz-form-item>
+                                <!-- Información básica -->
+                                <div class="form-section">
+                                    <h4>Información básica</h4>
+                                    <div nz-row [nzGutter]="16">
+                                        <div nz-col [nzXs]="24" [nzSm]="12">
+                                            <nz-form-item>
+                                                <nz-form-label>Nombre</nz-form-label>
+                                                <nz-form-control nzErrorTip="Por favor ingresa tu nombre">
+                                                    <input nz-input formControlName="firstName" placeholder="Nombre">
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
+
+                                        <div nz-col [nzXs]="24" [nzSm]="12">
+                                            <nz-form-item>
+                                                <nz-form-label>Apellido</nz-form-label>
+                                                <nz-form-control nzErrorTip="Por favor ingresa tu apellido">
+                                                    <input nz-input formControlName="lastName" placeholder="Apellido">
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
                                     </div>
 
-                                    <div nz-col [nzXs]="24" [nzSm]="12">
-                                        <nz-form-item>
-                                            <nz-form-label>Apellido</nz-form-label>
-                                            <nz-form-control nzErrorTip="Por favor ingresa tu apellido">
-                                                <input nz-input formControlName="lastName" placeholder="Apellido">
-                                            </nz-form-control>
-                                        </nz-form-item>
+                                    <div nz-row [nzGutter]="16">
+                                        <div nz-col [nzXs]="24" [nzSm]="12">
+                                            <nz-form-item>
+                                                <nz-form-label>Teléfono principal</nz-form-label>
+                                                <nz-form-control nzErrorTip="Por favor ingresa un número de teléfono válido">
+                                                    <input nz-input formControlName="phone" placeholder="Teléfono (10 dígitos)">
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
+
+                                        <div nz-col [nzXs]="24" [nzSm]="12">
+                                            <nz-form-item>
+                                                <nz-form-label>Teléfono alternativo</nz-form-label>
+                                                <nz-form-control>
+                                                    <input nz-input formControlName="alternativePhone" placeholder="Teléfono alternativo (opcional)">
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <nz-form-item>
-                                    <nz-form-label>Teléfono</nz-form-label>
-                                    <nz-form-control nzErrorTip="Por favor ingresa un número de teléfono válido">
-                                        <input nz-input formControlName="phone" placeholder="Teléfono (10 dígitos)">
-                                    </nz-form-control>
-                                </nz-form-item>
+                                <!-- Información personal -->
+                                <div class="form-section">
+                                    <h4>Información personal</h4>
+                                    <div nz-row [nzGutter]="16">
+                                        <div nz-col [nzXs]="24" [nzSm]="8">
+                                            <nz-form-item>
+                                                <nz-form-label>Fecha de nacimiento</nz-form-label>
+                                                <nz-form-control>
+                                                    <input nz-input type="date" formControlName="birthDate">
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
+
+                                        <div nz-col [nzXs]="24" [nzSm]="8">
+                                            <nz-form-item>
+                                                <nz-form-label>Tipo de documento</nz-form-label>
+                                                <nz-form-control>
+                                                    <nz-select formControlName="documentType" nzPlaceHolder="Selecciona tipo">
+                                                        <nz-option nzValue="cedula" nzLabel="Cédula"></nz-option>
+                                                        <nz-option nzValue="pasaporte" nzLabel="Pasaporte"></nz-option>
+                                                        <nz-option nzValue="ruc" nzLabel="RUC"></nz-option>
+                                                    </nz-select>
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
+
+                                        <div nz-col [nzXs]="24" [nzSm]="8">
+                                            <nz-form-item>
+                                                <nz-form-label>Número de documento</nz-form-label>
+                                                <nz-form-control>
+                                                    <input nz-input formControlName="documentNumber" placeholder="Número de documento">
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Contacto de emergencia -->
+                                <div class="form-section">
+                                    <h4>Contacto de emergencia</h4>
+                                    <div nz-row [nzGutter]="16">
+                                        <div nz-col [nzXs]="24" [nzSm]="12">
+                                            <nz-form-item>
+                                                <nz-form-label>Nombre del contacto</nz-form-label>
+                                                <nz-form-control>
+                                                    <input nz-input formControlName="emergencyContact" placeholder="Nombre completo del contacto de emergencia">
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
+
+                                        <div nz-col [nzXs]="24" [nzSm]="12">
+                                            <nz-form-item>
+                                                <nz-form-label>Teléfono de emergencia</nz-form-label>
+                                                <nz-form-control>
+                                                    <input nz-input formControlName="emergencyPhone" placeholder="Teléfono del contacto de emergencia">
+                                                </nz-form-control>
+                                            </nz-form-item>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div class="form-actions">
                                     <button nz-button (click)="toggleEditMode()">Cancelar</button>
@@ -123,7 +266,7 @@
                         </div>
 
                         <div *ngIf="!loadingAddresses && addresses.length > 0" class="addresses-list">
-                            <div *ngFor="let address of addresses" class="address-card">
+                            <div *ngFor="let address of addresses" class="address-card" [class.is-default]="address.isDefault">
                                 <div class="address-card-content">
                                     <div class="address-card-header">
                                         <h4>{{ address.name }}</h4>
@@ -131,9 +274,14 @@
                                     </div>
 
                                     <div class="address-card-body">
-                                        <p>{{ address.address }}</p>
+                                        <p><strong>{{ address.address }}</strong></p>
                                         <p>{{ address.city }}, {{ address.province }}</p>
+                                        <p *ngIf="address.canton">{{ address.canton }}</p>
+                                        <p *ngIf="address.neighborhood">{{ address.neighborhood }}</p>
                                         <p>{{ address.postalCode }}</p>
+                                        <p *ngIf="address.reference" class="address-reference">
+                                            <i nz-icon nzType="info-circle"></i> {{ address.reference }}
+                                        </p>
                                     </div>
                                 </div>
 
@@ -248,10 +396,39 @@
             </div>
         </div>
 
+        <div nz-row [nzGutter]="16">
+            <div nz-col [nzXs]="24" [nzSm]="12">
+                <nz-form-item>
+                    <nz-form-label>Cantón</nz-form-label>
+                    <nz-form-control>
+                        <input nz-input formControlName="canton" placeholder="Cantón (opcional)">
+                    </nz-form-control>
+                </nz-form-item>
+            </div>
+
+            <div nz-col [nzXs]="24" [nzSm]="12">
+                <nz-form-item>
+                    <nz-form-label>Barrio</nz-form-label>
+                    <nz-form-control>
+                        <input nz-input formControlName="neighborhood" placeholder="Barrio (opcional)">
+                    </nz-form-control>
+                </nz-form-item>
+            </div>
+        </div>
+
         <nz-form-item>
             <nz-form-label>Código Postal</nz-form-label>
             <nz-form-control nzErrorTip="Por favor ingresa el código postal">
                 <input nz-input formControlName="postalCode" placeholder="Código postal">
+            </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+            <nz-form-label>Referencias adicionales</nz-form-label>
+            <nz-form-control>
+                <nz-textarea-count [nzMaxCharacterCount]="200">
+                    <textarea nz-input formControlName="reference" placeholder="Referencias para encontrar la dirección (opcional)" rows="3"></textarea>
+                </nz-textarea-count>
             </nz-form-control>
         </nz-form-item>
 

@@ -1,43 +1,268 @@
 <div class="complete-profile-container">
-    <h1>Completa tu perfil</h1>
-    <p>Necesitamos algunos datos adicionales para procesar tus pedidos</p>
 
-    <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
-        <div nz-row [nzGutter]="24">
-            <div nz-col [nzSpan]="12">
-                <nz-form-item>
-                    <nz-form-label>Nombre</nz-form-label>
-                    <nz-form-control>
-                        <input nz-input formControlName="firstName" placeholder="Nombre">
-                    </nz-form-control>
-                </nz-form-item>
+    <!-- Loading state -->
+    <div *ngIf="loading" class="loading-container">
+        <nz-spin nzSize="large" nzTip="Cargando..."></nz-spin>
+    </div>
+
+    <!-- Estado para usuarios anónimos -->
+    <div *ngIf="currentUser?.isAnonymous && !loading" class="anonymous-state">
+        <nz-card class="registration-card">
+            <div class="registration-content">
+                <div class="registration-icon">
+                    <i nz-icon nzType="user-add" nzTheme="outline"></i>
+                </div>
+                <h2>Completa tu Registro</h2>
+                <p>Para completar tu perfil y realizar compras, necesitas registrarte con una cuenta de Google.</p>
+
+                <nz-alert nzType="info" nzMessage="¿Por qué Google?"
+                    nzDescription="Usamos Google para garantizar la seguridad de tu cuenta y simplificar el proceso de registro."
+                    nzShowIcon class="info-alert">
+                </nz-alert>
+
+                <div class="action-buttons">
+                    <button nz-button nzType="primary" nzSize="large" (click)="signUpWithGoogle()" class="google-btn">
+                        <i nz-icon nzType="google" nzTheme="outline"></i>
+                        Registrarse con Google
+                    </button>
+
+                    <button nz-button nzType="default" (click)="goBack()" class="back-btn">
+                        Volver al Inicio
+                    </button>
+                </div>
+            </div>
+        </nz-card>
+    </div>
+
+    <!-- Formulario principal (solo para usuarios registrados) -->
+    <div *ngIf="currentUser && !currentUser.isAnonymous && !loading" class="form-container">
+        <nz-card class="profile-card">
+            <div class="header-section">
+                <h1>{{ headerMessage }}</h1>
+                <p>{{ descriptionMessage }}</p>
             </div>
 
-            <div nz-col [nzSpan]="12">
+            <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
+
+                <!-- Información Personal -->
+                <h3>
+                    <i nz-icon nzType="user" nzTheme="outline"></i>
+                    Información Personal
+                </h3>
+
+                <div nz-row [nzGutter]="[16, 16]">
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre</nz-form-label>
+                            <nz-form-control nzErrorTip="El nombre es requerido (mínimo 2 caracteres)">
+                                <input nz-input formControlName="firstName" placeholder="Ingresa tu nombre"
+                                    autocomplete="given-name">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Apellido</nz-form-label>
+                            <nz-form-control nzErrorTip="El apellido es requerido (mínimo 2 caracteres)">
+                                <input nz-input formControlName="lastName" placeholder="Ingresa tu apellido"
+                                    autocomplete="family-name">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
                 <nz-form-item>
-                    <nz-form-label>Apellido</nz-form-label>
-                    <nz-form-control>
-                        <input nz-input formControlName="lastName" placeholder="Apellido">
+                    <nz-form-label nzRequired>Teléfono</nz-form-label>
+                    <nz-form-control nzErrorTip="Formato: 09XXXXXXXX (10 dígitos)">
+                        <input nz-input formControlName="phone" placeholder="Ej: 0987654321" autocomplete="tel">
                     </nz-form-control>
                 </nz-form-item>
-            </div>
-        </div>
 
-        <nz-form-item>
-            <nz-form-label>Teléfono</nz-form-label>
-            <nz-form-control>
-                <input nz-input formControlName="phone" placeholder="Teléfono">
-            </nz-form-control>
-        </nz-form-item>
+                <!-- 🎂 NUEVO: Fecha de nacimiento -->
+                <nz-form-item>
+                    <nz-form-label nzRequired>Fecha de Nacimiento</nz-form-label>
+                    <nz-form-control [nzErrorTip]="birthDateErrorTpl">
+                        <nz-date-picker formControlName="birthDate" nzPlaceHolder="Selecciona tu fecha de nacimiento"
+                            [nzDisabledDate]="disabledDate" nzFormat="dd/MM/yyyy" style="width: 100%;">
+                        </nz-date-picker>
 
-        <h2>Dirección de envío</h2>
+                        <ng-template #birthDateErrorTpl let-control>
+                            <ng-container *ngIf="control.hasError('required')">
+                                La fecha de nacimiento es obligatoria
+                            </ng-container>
+                            <ng-container *ngIf="control.hasError('minimumAge')">
+                                Debes tener al menos {{ control.getError('minimumAge').requiredAge }} años
+                            </ng-container>
+                        </ng-template>
+                    </nz-form-control>
+                </nz-form-item>
 
-        <!-- Campos de dirección -->
+                <!-- 🆕 NUEVO: Información de identificación -->
+                <div nz-row [nzGutter]="[16, 16]">
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Tipo de Documento</nz-form-label>
+                            <nz-form-control nzErrorTip="Selecciona el tipo de documento">
+                                <nz-select formControlName="documentType" nzPlaceHolder="Selecciona tipo">
+                                    <nz-option nzValue="cedula" nzLabel="Cédula de Identidad"></nz-option>
+                                    <nz-option nzValue="pasaporte" nzLabel="Pasaporte"></nz-option>
+                                    <nz-option nzValue="ruc" nzLabel="RUC"></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
 
-        <div class="form-actions">
-            <button nz-button nzType="primary" [disabled]="profileForm.invalid || isSubmitting">
-                Guardar Información
-            </button>
-        </div>
-    </form>
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Número de Documento</nz-form-label>
+                            <nz-form-control
+                                nzErrorTip="Ingresa un número válido (10 dígitos para cédula, 13 para RUC)">
+                                <input nz-input formControlName="documentNumber" placeholder="1234567890"
+                                    autocomplete="off">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <nz-divider></nz-divider>
+
+                <!-- Dirección de Envío -->
+                <h3>
+                    <i nz-icon nzType="home" nzTheme="outline"></i>
+                    Dirección de Envío
+                </h3>
+
+                <nz-form-item>
+                    <nz-form-label nzRequired>Dirección Completa</nz-form-label>
+                    <nz-form-control nzErrorTip="Ingresa tu dirección completa (mínimo 10 caracteres)">
+                        <input nz-input formControlName="address" placeholder="Ej: Av. 6 de Diciembre N24-253 y Wilson"
+                            autocomplete="street-address">
+                    </nz-form-control>
+                </nz-form-item>
+
+                <div nz-row [nzGutter]="[16, 16]">
+                    <div nz-col [nzXs]="24" [nzSm]="8">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Ciudad</nz-form-label>
+                            <nz-form-control nzErrorTip="La ciudad es requerida">
+                                <input nz-input formControlName="city" placeholder="Ej: Quito"
+                                    autocomplete="address-level2">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzXs]="24" [nzSm]="8">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Provincia</nz-form-label>
+                            <nz-form-control nzErrorTip="La provincia es requerida">
+                                <input nz-input formControlName="province" placeholder="Ej: Pichincha"
+                                    autocomplete="address-level1">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- 🆕 NUEVO: Cantón -->
+                    <div nz-col [nzXs]="24" [nzSm]="8">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Cantón</nz-form-label>
+                            <nz-form-control nzErrorTip="El cantón es requerido">
+                                <input nz-input formControlName="canton" placeholder="Ej: Quito" autocomplete="off">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="[16, 16]">
+                    <!-- 🆕 NUEVO: Barrio/Sector -->
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label>Barrio/Sector</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="neighborhood" placeholder="Ej: La Carolina"
+                                    autocomplete="off">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Código Postal</nz-form-label>
+                            <nz-form-control nzErrorTip="Formato: 6 dígitos (Ej: 170150)">
+                                <input nz-input formControlName="postalCode" placeholder="Ej: 170150"
+                                    autocomplete="postal-code">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <!-- 🆕 NUEVO: Referencia -->
+                <nz-form-item>
+                    <nz-form-label>Referencia de la Dirección</nz-form-label>
+                    <nz-form-control>
+                        <textarea nz-input formControlName="reference"
+                            placeholder="Ej: Casa blanca de dos pisos, frente al parque central"
+                            [nzAutosize]="{ minRows: 2, maxRows: 4 }"></textarea>
+                        <small class="form-help">Esta información ayudará al repartidor a encontrar tu dirección más
+                            fácilmente</small>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-divider></nz-divider>
+
+                <!-- 🆕 NUEVO: Contactos Adicionales (Opcional) -->
+                <h3>
+                    <i nz-icon nzType="phone" nzTheme="outline"></i>
+                    Contactos Adicionales
+                    <small>(Opcional)</small>
+                </h3>
+
+                <div nz-row [nzGutter]="[16, 16]">
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label>Teléfono Alternativo</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="alternativePhone" placeholder="Ej: 0987654321"
+                                    autocomplete="tel">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzXs]="24" [nzSm]="12">
+                        <nz-form-item>
+                            <nz-form-label>Contacto de Emergencia</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="emergencyContact" placeholder="Nombre completo"
+                                    autocomplete="name">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <nz-form-item>
+                    <nz-form-label>Teléfono de Emergencia</nz-form-label>
+                    <nz-form-control>
+                        <input nz-input formControlName="emergencyPhone" placeholder="Ej: 0987654321"
+                            autocomplete="tel">
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-divider></nz-divider>
+
+                <!-- Botones de acción -->
+                <div class="form-actions">
+                    <button nz-button nzType="default" (click)="goBack()" [disabled]="isSubmitting" class="cancel-btn">
+                        <i nz-icon nzType="arrow-left"></i>
+                        Volver
+                    </button>
+
+                    <button nz-button nzType="primary" nzSize="large" [nzLoading]="isSubmitting"
+                        [disabled]="profileForm.invalid" type="submit" class="submit-btn">
+                        <i nz-icon nzType="check"></i>
+                        Completar Perfil
+                    </button>
+                </div>
+            </form>
+        </nz-card>
+    </div>
 </div>

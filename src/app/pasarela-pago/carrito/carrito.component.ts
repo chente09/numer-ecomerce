@@ -13,12 +13,15 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { UsersService } from '../../services/users/users.service';
+import { User } from '@angular/fire/auth';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
 
 @Component({
   selector: 'app-carrito',
   standalone: true,
   imports: [
-    CommonModule, 
+    CommonModule,
     FormsModule,
     NzButtonModule,
     NzInputModule,
@@ -28,6 +31,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
     NzToolTipModule,
     NzIconModule,
     NzModalModule,
+    NzAlertModule
 
   ],
   templateUrl: './carrito.component.html',
@@ -38,18 +42,28 @@ export class CarritoComponent implements OnInit, OnDestroy {
   loading = true;
   updating = false;
   discountCode = '';
-  
+
+  currentUser: User | null = null;
+  canCheckout = false;
+  checkoutMessage = '';
+
   // Para seguir la suscripción y poder limpiarla después
   private cartSubscription: Subscription | null = null;
-  
+
   constructor(
-    private cartService: CartService, 
+    private cartService: CartService,
     private router: Router,
     private modal: NzModalService,
-    private message: NzMessageService
-  ) {}
+    private message: NzMessageService,
+    private usersService: UsersService
+  ) { }
 
   ngOnInit(): void {
+    this.usersService.user$.subscribe(user => {
+      this.currentUser = user;
+      this.updateCheckoutStatus();
+    });
+
     // Suscribirse al observable del carrito
     this.cartSubscription = this.cartService.cart$.subscribe(
       (cart) => {
@@ -70,6 +84,20 @@ export class CarritoComponent implements OnInit, OnDestroy {
       this.cartSubscription.unsubscribe();
     }
   }
+
+  private updateCheckoutStatus(): void {
+    if (!this.currentUser) {
+      this.canCheckout = false;
+      this.checkoutMessage = 'Inicia sesión para continuar con tu compra';
+    } else if (this.currentUser.isAnonymous) {
+      this.canCheckout = false;
+      this.checkoutMessage = 'Completa tu registro para finalizar la compra';
+    } else {
+      this.canCheckout = true;
+      this.checkoutMessage = '';
+    }
+  }
+
 
   // Actualizar la cantidad de un producto
   async updateQuantity(item: CartItem, quantity: number): Promise<void> {
@@ -120,7 +148,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
     if (this.discountCode.toUpperCase() === 'DISCOUNT20') {
       const discountAmount = this.cart ? this.cart.subtotal * 0.2 : 0;
       const success = this.cartService.applyDiscount(this.discountCode, discountAmount);
-      
+
       if (success) {
         this.message.success(`Código de descuento aplicado: $${discountAmount.toFixed(2)}`);
       } else {
@@ -149,22 +177,51 @@ export class CarritoComponent implements OnInit, OnDestroy {
 
   // Proceder al checkout
   async proceedToCheckout(): Promise<void> {
-  if (!this.cart || this.cart.items.length === 0) {
-    this.message.warning('Tu carrito está vacío.');
-    return;
+    if (!this.cart || this.cart.items.length === 0) {
+      this.message.warning('Tu carrito está vacío.');
+      return;
+    }
+
+    // Si no puede hacer checkout, redirigir según el caso
+    if (!this.canCheckout) {
+      if (!this.currentUser) {
+        // Redirigir a login con returnUrl
+        this.router.navigate(['/welcome'], {
+          queryParams: { returnUrl: '/carrito' }
+        });
+      } else if (this.currentUser.isAnonymous) {
+        // Redirigir a completar perfil
+        this.router.navigate(['/completar-perfil'], {
+          queryParams: { returnUrl: '/carrito' }
+        });
+      }
+      return;
+    }
+
+    // Proceder normalmente al pago
+    this.router.navigate(['/pago'], {
+      queryParams: {
+        transId: `order-${Date.now()}`,
+        referencia: 'Compra desde carrito'
+      }
+    });
   }
 
-  // En lugar de hacer checkout aquí, solo navegamos a la pasarela de pago
-  this.router.navigate(['/pago'], {
-    queryParams: {
-      transId: `order-${Date.now()}`,
-      referencia: 'Compra desde carrito'
-    }
-  });
-}
+  // Métodos auxiliares para el template
+  redirectToLogin(): void {
+    this.router.navigate(['/welcome'], {
+      queryParams: { returnUrl: '/carrito' }
+    });
+  }
+
+  redirectToCompleteProfile(): void {
+    this.router.navigate(['/completar-perfil'], {
+      queryParams: { returnUrl: '/carrito' }
+    });
+  }
 
   // Continuar comprando
   continueShopping(): void {
-    this.router.navigate(['/productos']);
+    this.router.navigate(['/shop']);
   }
 }

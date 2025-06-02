@@ -13,12 +13,21 @@
             <span *ngIf="product.activePromotion" class="sale-badge">OFERTA</span>
         </div>
 
-        <!-- Miniaturas de imagenes aducionales -->
+        <!-- Miniaturas de imagenes adicionales -->
         <div class="thumbnail-images">
             <img *ngFor="let image of product.additionalImages" [src]="image" alt="{{ product.name }}"
                 (click)="showImagePreview(image)">
         </div>
-        
+
+        <!-- Tecnologías del producto -->
+        <div class="product-technologies" *ngIf="product.technologies && product.technologies.length > 0">
+            <h4 class="technologies-title">Tecnologías</h4>
+            <div class="technologies-list">
+                <span *ngFor="let tech of product.technologies" class="technology-badge">
+                    {{ getTechnologyLabel(tech) }}
+                </span>
+            </div>
+        </div>
     </div>
 
     <div class="product-info">
@@ -247,17 +256,51 @@
     </div>
 </div>
 
-<!-- Productos relacionados - Opcional -->
-<div *ngIf="relatedProducts && relatedProducts.length > 0" class="related-products-section">
-    <h2 class="section-title">También te puede gustar</h2>
-    <div class="related-products-grid">
-        <div *ngFor="let relatedProduct of relatedProducts" class="related-product-card"
-            [routerLink]="['/products', relatedProduct.id]">
-            <div class="related-product-image">
-                <img [src]="relatedProduct.imageUrl" [alt]="relatedProduct.name">
+<!-- Productos Relacionados Mejorados -->
+
+<div *ngIf="relatedProducts.length > 0" class="related-products-section">
+    <div class="related-header">
+        <h3 class="related-title">También te puede interesar</h3>
+        <div class="related-subtitle">Productos de la misma categoría</div>
+    </div>
+
+    <div class="related-products-container">
+        <div class="related-products-grid">
+            <div *ngFor="let relatedProduct of relatedProducts" class="related-product-card"
+                [routerLink]="['/products', relatedProduct.id]">
+
+                <div class="related-image-container">
+                    <img [src]="relatedProduct.imageUrl" [alt]="relatedProduct.name">
+
+                    <!-- Badges para productos relacionados -->
+                    <div class="related-badges">
+                        <span *ngIf="relatedProduct.isNew" class="new-badge">NUEVO</span>
+                        <span *ngIf="relatedProduct.discountPercentage" class="related-badge discount">
+                            -{{ relatedProduct.discountPercentage }}%
+                        </span>
+                    </div>
+                </div>
+
+                <div class="related-product-info">
+                    <h4 class="related-product-name">{{ relatedProduct.name }}</h4>
+
+                    <div class="related-price-container">
+                        <span
+                            *ngIf="relatedProduct.originalPrice && relatedProduct.originalPrice > relatedProduct.price"
+                            class="related-original-price">
+                            ${{ relatedProduct.originalPrice.toFixed(2) }}
+                        </span>
+                        <span class="related-current-price">
+                            ${{ (relatedProduct.currentPrice || relatedProduct.price).toFixed(2) }}
+                        </span>
+                    </div>
+
+                    <!-- Rating para productos relacionados -->
+                    <div class="product-rating" *ngIf="relatedProduct.rating">
+                        <nz-rate [ngModel]="relatedProduct.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
+                    </div>
+                </div>
             </div>
-            <h3 class="related-product-name">{{ relatedProduct.name }}</h3>
-            <div class="related-product-price">${{ relatedProduct.price.toFixed(2) }}</div>
         </div>
     </div>
 </div>
