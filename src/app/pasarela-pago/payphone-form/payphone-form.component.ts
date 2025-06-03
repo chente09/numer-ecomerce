@@ -42,18 +42,22 @@ interface PayphoneResponse {
   transactionId: string;
   clientTransactionId?: string;
   statusCode?: number;
+  [key: string]: any; // ✅ Permite acceso a propiedades dinámicas
+}
+
+// ✅ NUEVA INTERFAZ para respuesta de confirmación
+interface ConfirmationResponse {
+  transactionStatus?: string;
+  inventoryProcessed?: boolean;
+  transactionId?: string;
+  clientTransactionId?: string;
+  warning?: string;
   [key: string]: any;
 }
 
 interface ValidationResult {
   valid: boolean;
   message: string;
-}
-
-interface CheckoutResult {
-  success: boolean;
-  orderId?: string;
-  error?: string;
 }
 
 // Constantes centralizadas
@@ -321,29 +325,58 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
 
   // ✅ PRESERVADO: Manejo de pago exitoso (sin cambios en lógica)
   private handlePaymentSuccess(response: PayphoneResponse): void {
-    console.log('🎉 Pago exitoso:', response);
-    this.setLoading(true);
-    this.processSuccessfulPayment(response);
-  }
+  console.log('🎉 Pago exitoso:', response);
+  this.setLoading(true);
+  
+  // ✅ Verificar confirmación del pago antes de limpiar carrito
+  this.confirmPaymentAndCleanCart(response);
+}
 
-  // ✅ PRESERVADO: Procesamiento de pago exitoso (sin cambios)
-  private async processSuccessfulPayment(response: PayphoneResponse): Promise<void> {
+  // ✅ NUEVO: Método para confirmar pago y limpiar carrito
+  private async confirmPaymentAndCleanCart(response: PayphoneResponse): Promise<void> {
     try {
-      console.log('🎉 Pago exitoso, inventario procesado en backend:', response);
+      console.log('🔄 Confirmando pago con backend...');
 
-      // ✅ El inventario ya se procesó en el backend automáticamente
-      // Solo necesitamos limpiar el carrito y mostrar éxito
-
-      this.cartService.clearCart();
-
-      this.showSuccessModal(
-        response.transactionId || 'unknown',
-        response.transactionId || this.transactionId
+      // ✅ Llamar a confirmación con firstValueFrom (reemplaza toPromise)
+      const confirmationResponse = await firstValueFrom(
+        this.http.post<ConfirmationResponse>(
+          'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
+          {
+            id: response['id'] || response.transactionId, // ✅ Acceso correcto con []
+            clientTxId: response.clientTransactionId || this.transactionId
+          }
+        )
       );
 
+      console.log('📋 Respuesta de confirmación:', confirmationResponse);
+
+      // ✅ Verificación con tipos correctos
+      if (confirmationResponse &&
+        (confirmationResponse.transactionStatus === 'Approved' ||
+          confirmationResponse.inventoryProcessed === true)) {
+
+        console.log('✅ Inventario procesado exitosamente, limpiando carrito...');
+        this.cartService.clearCart();
+
+        this.showSuccessModal(
+          response.transactionId || 'unknown',
+          response.transactionId || this.transactionId
+        );
+
+      } else {
+        console.warn('⚠️ Pago no confirmado o inventario no procesado:', confirmationResponse);
+        this.handlePostPaymentError(
+          'Pago pendiente de confirmación',
+          response.transactionId || 'unknown'
+        );
+      }
+
     } catch (error: any) {
-      console.error('❌ Error post-pago:', error);
-      this.handlePostPaymentError(error.message, response.transactionId);
+      console.error('❌ Error confirmando pago:', error);
+      this.handlePostPaymentError(
+        `Error en confirmación: ${error.message}`,
+        response.transactionId || 'unknown'
+      );
     } finally {
       this.setLoading(false);
     }
