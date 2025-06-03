@@ -126,17 +126,27 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   ngOnInit(): void {
-  // ✅ Verificar si hay un pago pendiente al cargar
-  this.route.queryParams.pipe(take(1)).subscribe(params => {
-    if (params['id'] && params['clientTransactionId']) {
-      // Viene de redirección de Payphone - procesar confirmación
-      this.handleLateConfirmation(params);
-    } else {
-      // Flujo normal - continuar con inicialización en ngAfterViewInit
-      console.log('ℹ️ Flujo normal de pago');
-    }
-  });
-}
+    // ✅ Verificar si hay un pago pendiente al cargar
+    this.route.queryParams.pipe(take(1)).subscribe(params => {
+      if (params['id'] && params['clientTransactionId']) {
+        // Viene de redirección de Payphone - procesar confirmación
+        this.handleLateConfirmation(params);
+      } else {
+        // Flujo normal - continuar con inicialización en ngAfterViewInit
+        console.log('ℹ️ Flujo normal de pago');
+      }
+    });
+  }
+
+  ngAfterViewInit(): void {
+    // ✅ PRESERVADO: Verificar sesión existente + inicializar
+    this.checkExistingSessionAndInitialize();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   private handleLateConfirmation(params: any): void {
     console.log('🔄 Procesando confirmación tardía desde URL:', params);
@@ -150,20 +160,9 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       transactionId: params['id']
     };
 
-    // Usar la misma lógica de confirmación
+    // Usar la misma lógica de confirmación que ya tienes
     this.confirmPaymentAndCleanCart(response);
   }
-
-  ngAfterViewInit(): void {
-    // ✅ PRESERVADO: Verificar sesión existente + inicializar
-    this.checkExistingSessionAndInitialize();
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
   retryPayment(): void {
     this.setError(null);
     this.initializePayment();
@@ -382,9 +381,11 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   // ✅ PRESERVADO: Manejo de pago exitoso (sin cambios en lógica)
   private handlePaymentSuccess(response: PayphoneResponse): void {
     console.log('🎉 Pago exitoso:', response);
+
+    // ✅ AGREGAR: Limpiar errores previos
+    this.setError(null);
     this.setLoading(true);
 
-    // ✅ Verificar confirmación del pago antes de limpiar carrito
     this.confirmPaymentAndCleanCart(response);
   }
 
@@ -392,7 +393,10 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private async confirmPaymentAndCleanCart(response: PayphoneResponse): Promise<void> {
     try {
       this.setLoading(true);
-      this.setCurrentStep(2); // Paso "Confirmación"
+      this.setCurrentStep(2);
+
+      // ✅ AGREGAR: Limpiar errores previos
+      this.setError(null);
 
       console.log('🔄 Confirmando pago con backend...', response);
 
@@ -417,26 +421,20 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('✅ Inventario procesado exitosamente, limpiando carrito...');
         this.cartService.clearCart();
 
-        // ✅ MOSTRAR TICKET integrado (sin modal)
+        // ✅ MOSTRAR TICKET integrado
         this.setPaymentResult(confirmationResponse);
         this.setLoading(false);
 
       } else {
         console.warn('⚠️ Pago no confirmado:', confirmationResponse);
-        this.setCurrentStep(1); // ✅ VOLVER al paso de pago
-        this.handlePostPaymentError(
-          'Pago pendiente de confirmación',
-          response.transactionId || 'unknown'
-        );
+        this.setCurrentStep(1);
+        this.setError('Pago pendiente de confirmación');
       }
 
     } catch (error: any) {
       console.error('❌ Error confirmando pago:', error);
-      this.setCurrentStep(1); // ✅ VOLVER al paso de pago
-      this.handlePostPaymentError(
-        `Error en confirmación: ${error.message}`,
-        response.transactionId || 'unknown'
-      );
+      this.setCurrentStep(1);
+      this.setError(`Error en confirmación: ${error.message}`);
     } finally {
       this.setLoading(false);
     }
