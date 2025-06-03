@@ -4,9 +4,32 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CartService } from '../services/cart/cart.service';
 
+// ✅ AGREGAR imports de NG Zorro
+import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzResultModule } from 'ng-zorro-antd/result';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCardModule } from 'ng-zorro-antd/card';
+import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzCollapseModule } from 'ng-zorro-antd/collapse';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzStepsModule } from 'ng-zorro-antd/steps';
+
 @Component({
   selector: 'app-respuesta-pago',
-  imports: [CommonModule],
+  standalone: true,
+  imports: [
+    CommonModule,
+    NzSpinModule,
+    NzResultModule,
+    NzButtonModule,
+    NzCardModule,
+    NzTagModule,
+    NzCollapseModule,
+    NzAlertModule,
+    NzIconModule,
+    NzStepsModule
+  ],
   templateUrl: './respuesta-pago.component.html',
   styleUrl: './respuesta-pago.component.css'
 })
@@ -15,19 +38,17 @@ export class RespuestaPagoComponent implements OnInit {
   error: any = null;
   loading = true;
   public currencyCode = 'USD';
-  showFallbackNotice = true; // ✅ NUEVO: Mostrar aviso
 
   constructor(
     private route: ActivatedRoute,
     private http: HttpClient,
     private location: Location,
-    private router: Router, // ✅ AGREGAR Router
-    private cartService: CartService // ✅ AGREGAR CartService
+    private router: Router,
+    private cartService: CartService
   ) {}
 
   ngOnInit(): void {
-    // ✅ AVISO: Este debería ser un flujo de respaldo
-    console.warn('⚠️ Usuario llegó a respuesta-pago (flujo de respaldo)');
+    console.log('💳 Procesando respuesta de pago...');
 
     this.route.queryParams.subscribe(params => {
       const id = +params['id'] || 0;
@@ -44,12 +65,6 @@ export class RespuestaPagoComponent implements OnInit {
 
           // ✅ LIMPIAR CARRITO si es exitoso
           this.checkAndClearCart(res);
-
-          // ✅ OPCIONAL: Redirigir después de 5 segundos
-          setTimeout(() => {
-            this.showFallbackNotice = false;
-            // Podrías redirigir a /shop o mantener al usuario aquí
-          }, 5000);
         },
         error: err => {
           this.error = err.error || err;
@@ -59,7 +74,6 @@ export class RespuestaPagoComponent implements OnInit {
     });
   }
 
-  // ✅ NUEVA FUNCIÓN: Verificar y limpiar carrito
   private checkAndClearCart(confirmationResponse: any): void {
     const shouldClearCart = confirmationResponse && (
       confirmationResponse.inventoryProcessed === true ||
@@ -67,19 +81,17 @@ export class RespuestaPagoComponent implements OnInit {
     );
 
     if (shouldClearCart) {
-      console.log('✅ Pago confirmado en respuesta-pago (fallback), limpiando carrito...');
+      console.log('✅ Pago confirmado, limpiando carrito...');
       this.cartService.clearCart();
     } else {
-      console.warn('⚠️ Pago no confirmado en flujo de respaldo');
+      console.warn('⚠️ Pago no confirmado');
     }
   }
 
-  // ✅ NUEVO: Ir al flujo principal
   goToMainFlow(): void {
     this.router.navigate(['/shop']);
   }
 
-  // Métodos existentes...
   get friendlyStatus(): string {
     const status = this.resultado?.transactionStatus;
     switch (status) {
