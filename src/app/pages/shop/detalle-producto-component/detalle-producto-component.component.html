@@ -1,31 +1,94 @@
-<!-- HTML Mejorado y Traducido para el detalle de producto -->
+<!-- HTML Mejorado y con toque ecuatoriano para tienda de aventura -->
 <div *ngIf="!product && productsLoading" class="loading-container">
     <nz-spin nzSize="large"></nz-spin>
+    <p class="loading-text">Cargando tu próxima aventura...</p>
 </div>
 
 <div *ngIf="product" class="product-detail-container">
     <div class="product-gallery">
+        <div class="product-badges">
+            <span *ngIf="product.isNew" class="new-badge">¡RECIÉN LLEGADO!</span>
+            <span *ngIf="product.isBestSeller" class="bestseller-badge">EL MÁS CHEVERE</span>
+            <span *ngIf="product.activePromotion" class="sale-badge">¡OFERTÓN!</span>
+        </div>
+
         <div class="main-image-container">
             <img [src]="currentImageUrl" alt="{{ product.name }}" class="main-product-image"
                 (click)="showImagePreview(currentImageUrl)">
-            <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
-            <span *ngIf="product.isBestSeller" class="bestseller-badge">MÁS VENDIDO</span>
-            <span *ngIf="product.activePromotion" class="sale-badge">OFERTA</span>
         </div>
 
-        <!-- Miniaturas de imagenes adicionales -->
-        <div class="thumbnail-images">
-            <img *ngFor="let image of product.additionalImages" [src]="image" alt="{{ product.name }}"
-                (click)="showImagePreview(image)">
+        <!-- Miniaturas mejoradas para aventura -->
+        <div class="gallery-section">
+            <div class="thumbnail-images" *ngIf="product.additionalImages && product.additionalImages.length > 0">
+                <h5 class="gallery-subtitle">Otras vistas</h5>
+                <div class="thumbnails-grid">
+                    <img *ngFor="let image of product.additionalImages; let i = index" [src]="image"
+                        [alt]="product.name + ' - Vista ' + (i + 1)" [class.active]="currentImageUrl === image"
+                        (click)="showImagePreview(image)">
+                </div>
+            </div>
+
+            <!-- Galería de uso en aventura -->
+            <div class="adventure-gallery" *ngIf="product.adventureImages && product.adventureImages.length > 0">
+                <h5 class="gallery-subtitle">En acción</h5>
+                <div class="adventure-grid">
+                    <div *ngFor="let adventureImg of product.adventureImages" class="adventure-item"
+                        (click)="showImagePreview(adventureImg.url)">
+                        <img [src]="adventureImg.url" [alt]="adventureImg.description">
+                        <div class="adventure-overlay">
+                            <span class="adventure-location">{{ adventureImg.location }}</span>
+                            <small class="adventure-activity">{{ adventureImg.activity }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Tecnologías del producto -->
-        <div class="product-technologies" *ngIf="product.technologies && product.technologies.length > 0">
-            <h4 class="technologies-title">Tecnologías</h4>
-            <div class="technologies-list">
-                <span *ngFor="let tech of product.technologies" class="technology-badge">
-                    {{ getTechnologyLabel(tech) }}
-                </span>
+        <!-- Tecnologías y características ampliadas -->
+        <div class="product-features">
+            <!-- Tecnologías existentes -->
+            <div class="product-technologies" *ngIf="product.technologies && product.technologies.length > 0">
+                <h4 class="features-title">Tecnologías</h4>
+                <div class="technologies-list">
+                    <span *ngFor="let tech of product.technologies" class="technology-badge"
+                        [attr.title]="getTechnologyDescription(tech)">
+                        {{ getTechnologyLabel(tech) }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Resistencia y durabilidad -->
+            <div class="product-durability" *ngIf="product.durabilityFeatures && product.durabilityFeatures.length > 0">
+                <h4 class="features-title">Resistencia</h4>
+                <div class="durability-list">
+                    <span *ngFor="let feature of product.durabilityFeatures" class="durability-badge">
+                        <i nz-icon [nzType]="getDurabilityIcon(feature)" nzTheme="outline"></i>
+                        {{ feature }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Actividades recomendadas -->
+            <div class="recommended-activities"
+                *ngIf="product.recommendedActivities && product.recommendedActivities.length > 0">
+                <h4 class="features-title">Ideal para</h4>
+                <div class="activities-list">
+                    <span *ngFor="let activity of product.recommendedActivities" class="activity-badge">
+                        <i nz-icon [nzType]="getActivityIcon(activity)" nzTheme="outline"></i>
+                        {{ activity }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Clima y temporadas -->
+            <div class="weather-conditions" *ngIf="product.weatherConditions && product.weatherConditions.length > 0">
+                <h4 class="features-title">Condiciones</h4>
+                <div class="weather-list">
+                    <span *ngFor="let condition of product.weatherConditions" class="weather-badge">
+                        <i nz-icon [nzType]="getWeatherIcon(condition)" nzTheme="outline"></i>
+                        {{ condition }}
+                    </span>
+                </div>
             </div>
         </div>
     </div>
@@ -33,33 +96,46 @@
     <div class="product-info">
         <div class="product-header">
             <div class="product-categories">
-                <!-- Categoría y/o colección -->
                 <span class="product-category">{{ categoryName || product.category }}</span>
                 <span *ngIf="product.collection" class="product-collection">{{ product.collection }}</span>
             </div>
             <h1 class="product-name">{{ product.name }}</h1>
+
+            <!-- Rating con toque ecuatoriano -->
             <div class="product-rating">
                 <nz-rate [ngModel]="product.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
-                <span class="rating-count">{{ product.views }} Visitas</span>
+                <span class="rating-count">{{ product.views }} aventureros lo han elegido</span>
             </div>
 
-            <!-- Precio con descuento si existe -->
+            <!-- Precio con jerga ecuatoriana -->
             <div class="product-price-container">
-                <span *ngIf="product.originalPrice && product.originalPrice > product.price" class="original-price">${{
-                    product.originalPrice.toFixed(2) }}</span>
+                <span *ngIf="product.originalPrice && product.originalPrice > product.price" class="original-price">
+                    ${{ product.originalPrice.toFixed(2) }}
+                </span>
                 <span class="product-price">${{ product.price.toFixed(2) }}</span>
-                <span *ngIf="product.discountPercentage" class="discount-badge">-{{ product.discountPercentage
-                    }}%</span>
+                <span *ngIf="product.discountPercentage" class="discount-badge">
+                    -{{ product.discountPercentage }}% ¡Qué chévere!
+                </span>
             </div>
 
-            <!-- Promoción activa si existe -->
+            <!-- Promoción con expresión ecuatoriana -->
             <div *ngIf="product.activePromotion" class="active-promotion">
-                <span class="promotion-tag">{{ product.activePromotion }}</span>
+                <span class="promotion-tag">🔥 {{ product.activePromotion }} - ¡No te la pierdas, loco!</span>
+            </div>
+
+            <!-- Características especiales del producto -->
+            <div class="product-highlights" *ngIf="product.highlights && product.highlights.length > 0">
+                <div class="highlights-list">
+                    <div *ngFor="let highlight of product.highlights" class="highlight-item">
+                        <i nz-icon [nzType]="getHighlightIcon(highlight.type)" nzTheme="outline"></i>
+                        <span>{{ highlight.text }}</span>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="product-options">
-            <!-- Colores disponibles -->
+            <!-- Colores existentes -->
             <div class="option-section">
                 <h3 class="option-title">Colores</h3>
                 <div class="color-options">
@@ -69,11 +145,12 @@
                         <div class="color-thumbnail">
                             <img [src]="color.imageUrl" [alt]="color.name">
                         </div>
+                        <span class="color-name">{{ color.name }}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Tallas disponibles -->
+            <!-- Tallas mejoradas con mejor UX -->
             <div class="option-section" *ngIf="product.sizes && product.sizes.length > 0">
                 <div class="size-header">
                     <h3 class="option-title">Talla</h3>
@@ -81,6 +158,37 @@
                         <i nz-icon nzType="file-text" nzTheme="outline"></i> Guía de tallas
                     </button>
                 </div>
+
+                <!-- Mejorada información de tallas -->
+                <div class="size-info">
+                    <div class="size-help-text">
+                        <p class="help-main">
+                            <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+                            Si no encuentras tu talla en stock, dale un vistazo a nuestra Guía de Tallas o contactanos por el botón WhatsApp
+                        </p>
+                        <p class="help-secondary">
+                            ¿Dudas con la talla? <a routerLink="/servicio-cliente" class="help-link">Escríbenos</a>
+                            y te ayudamos a encontrar la perfecta para tu aventura
+                        </p>
+                    </div>
+
+                    <!-- Indicador de disponibilidad -->
+                    <div class="size-availability-legend">
+                        <div class="legend-item">
+                            <div class="legend-indicator available"></div>
+                            <span>Disponible</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-indicator low-stock"></div>
+                            <span>Pocas unidades</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-indicator out-of-stock"></div>
+                            <span>Agotado</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="size-options">
                     <div *ngFor="let sizeName of standardSizes" class="size-option" [ngClass]="{
                             'active': selectedSize?.name === sizeName,
@@ -89,27 +197,43 @@
                             'low-stock': isSizeAvailable(sizeName) && hasLowStockForSizeName(sizeName)
                         }" (click)="handleSizeClick(sizeName)">
                         <span class="size-name">{{ sizeName }}</span>
+                        <div class="size-stock-indicator"
+                            *ngIf="isSizeAvailable(sizeName) && hasLowStockForSizeName(sizeName)">
+                            <i nz-icon nzType="exclamation-circle" nzTheme="fill"></i>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Modal de Guía de Tallas -->
-            <!-- Modal de Guía de Tallas Mejorado -->
-            <nz-modal [(nzVisible)]="showSizeGuide" nzTitle="Guía de Tallas" [nzFooter]="null"
-                (nzOnCancel)="showSizeGuide = false" nzWidth="700" nzCentered="true"
+            <!-- Modal mejorado de guía de tallas -->
+            <nz-modal [(nzVisible)]="showSizeGuide" nzTitle="Guía de Tallas - Encuentra tu fit perfecto"
+                [nzFooter]="null" (nzOnCancel)="showSizeGuide = false" nzWidth="700" nzCentered="true"
                 nzClassName="size-guide-modal-container">
                 <ng-container *nzModalContent>
                     <div class="size-guide-content">
-                        <div class="size-guide-info">
-                            <h4>Cómo elegir tu talla correcta</h4>
-                            <p>1. Mide la circunferencia de tu pecho, cintura y cadera.</p>
-                            <p>2. Consulta la tabla para encontrar tu talla ideal.</p>
-                            <p>3. Si estás entre dos tallas, elige la mayor para un ajuste más cómodo.</p>
+                        <div class="size-guide-intro">
+                            <h4>¿Cómo elegir tu talla perfecta para la aventura?</h4>
+                            <div class="guide-steps">
+                                <div class="step-item">
+                                    <span class="step-number">1</span>
+                                    <p>Mide tu cuerpo con ropa ligera, sin apretar la cinta</p>
+                                </div>
+                                <div class="step-item">
+                                    <span class="step-number">2</span>
+                                    <p>Consulta nuestra tabla de medidas específica</p>
+                                </div>
+                                <div class="step-item">
+                                    <span class="step-number">3</span>
+                                    <p>Si estás entre dos tallas, elige la mayor para mayor comodidad</p>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Tabla de tallas con scroll horizontal -->
+                        <!-- Tabla de tallas con scroll horizontal mejorado -->
                         <div class="size-chart-container">
-                            <h4 class="size-guide-subtitle">Tallas disponibles</h4>
+                            <h4 class="size-guide-subtitle">Tallas disponibles para esta aventura</h4>
+
+                            <!-- Tallas del producto -->
                             <div class="size-grid-container" #gridContainer>
                                 <div *ngFor="let size of product.sizes" class="size-grid-item">
                                     <div *ngIf="size.imageUrl" class="size-cell-image"
@@ -120,19 +244,45 @@
                                         </div>
                                     </div>
                                     <span class="size-cell-name">{{ size.name }}</span>
+                                    <div class="size-measurements" *ngIf="size.measurements">
+                                        <small *ngFor="let measurement of size.measurements">
+                                            {{ measurement.part }}: {{ measurement.value }}
+                                        </small>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <!-- Imagen del cuadro de tallas (fuera del ngFor) -->
+                            <div class="size-item">
+                                <div class="size-image"
+                                    (click)="showImagePreview('https://i.postimg.cc/15fRBmqy/tallas-table-2.png')">
+                                    <img src="https://i.postimg.cc/15fRBmqy/tallas-table-2.png" alt="Guía de tallas" class="size-cell-image-guia">
+                                    <div class="image-zoom-icon">
+                                        <i nz-icon nzType="zoom-in" nzTheme="outline"></i>
+                                    </div>
+                                </div>
+                                <span class="size-cell-name">Guía de tallas</span>
                             </div>
                         </div>
 
-                        <!-- Recomendaciones adicionales -->
+                        <!-- Tips ecuatorianos -->
                         <div class="size-guide-tips">
-                            <h4 class="size-guide-subtitle">Consejos de medición</h4>
-                            <ul>
-                                <li>Usa una cinta métrica flexible para tomar tus medidas.</li>
-                                <li>Mide sobre ropa ligera, no sobre prendas gruesas.</li>
-                                <li>Mantén la cinta métrica ajustada pero no apretada.</li>
-                                <li>Si tienes dudas, puedes contactar a nuestro servicio al cliente.</li>
-                            </ul>
+                            <h4 class="size-guide-subtitle">Tips de la casa</h4>
+                            <div class="tips-grid">
+                                <div class="tip-item">
+                                    <i nz-icon nzType="bulb" nzTheme="outline"></i>
+                                    <p>Para aventuras en altura (como nuestros páramos), considera una talla que permita
+                                        capas adicionales</p>
+                                </div>
+                                <div class="tip-item">
+                                    <i nz-icon nzType="message" nzTheme="outline"></i>
+                                    <p>¿Tienes dudas? Mándanos un WhatsApp y te asesoramos al toque</p>
+                                </div>
+                                <div class="tip-item">
+                                    <i nz-icon nzType="sync" nzTheme="outline"></i>
+                                    <p>Si no te queda chevere, cambios gratis en Quito y envío sin costo</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </ng-container>
@@ -152,7 +302,7 @@
                 </ng-container>
             </nz-modal>
 
-            <!-- Selector de cantidad -->
+            <!-- Resto de opciones existentes con pequeños ajustes -->
             <div class="option-section">
                 <h3 class="option-title">Cantidad</h3>
                 <div class="quantity-selector">
@@ -161,60 +311,85 @@
                     <button (click)="increaseQuantity()" class="qty-btn" [disabled]="!canIncreaseQuantity()">+</button>
                 </div>
 
-                <!-- Mostrar disponibilidad -->
+                <!-- Stock status con expresiones ecuatorianas -->
                 <div class="stock-status" *ngIf="selectedVariant">
-                    <span *ngIf="selectedVariant.stock > 10" class="in-stock">En stock</span>
-                    <span *ngIf="selectedVariant.stock > 0 && selectedVariant.stock <= 10" class="low-stock">Solo quedan
-                        {{
-                        selectedVariant.stock }}</span>
-                    <span *ngIf="selectedVariant.stock === 0" class="out-of-stock">Agotado</span>
+                    <span *ngIf="selectedVariant.stock > 10" class="in-stock">
+                        <i nz-icon nzType="check-circle" nzTheme="fill"></i>
+                        ¡Listo para la aventura!
+                    </span>
+                    <span *ngIf="selectedVariant.stock > 0 && selectedVariant.stock <= 10" class="low-stock">
+                        <i nz-icon nzType="exclamation-circle" nzTheme="fill"></i>
+                        ¡Apúrate! Solo quedan {{ selectedVariant.stock }}
+                    </span>
+                    <span *ngIf="selectedVariant.stock === 0" class="out-of-stock">
+                        <i nz-icon nzType="close-circle" nzTheme="fill"></i>
+                        Se nos acabó, pero pronto llega más
+                    </span>
                 </div>
             </div>
 
-            <!-- Botones de acción -->
+            <!-- Botones de acción con texto ecuatoriano -->
             <div class="actions">
                 <button class="add-to-cart-btn" [disabled]="!selectedVariant || selectedVariant.stock === 0"
                     (click)="addToCart()">
-                    {{ selectedVariant && selectedVariant.stock > 0 ? 'AÑADIR AL CARRITO' : 'AGOTADO' }}
+                    {{ selectedVariant && selectedVariant.stock > 0 ? '¡ME LO LLEVO!' : 'AGOTADO' }}
                 </button>
-                <button class="wishlist-btn" (click)="toggleWishlist()" aria-label="Añadir a favoritos">
+                <button class="wishlist-btn" (click)="toggleWishlist()"
+                    [attr.aria-label]="isInWishlist ? 'Quitar de favoritos' : 'Agregar a favoritos'"
+                    [attr.title]="isInWishlist ? 'Quitar de mis favoritos' : 'Guardar para después'">
                     <i nz-icon [nzType]="isInWishlist ? 'heart' : 'heart-o'"
                         [nzTheme]="isInWishlist ? 'fill' : 'outline'" [ngClass]="{'heart-filled': isInWishlist}">
                     </i>
                 </button>
             </div>
 
-            <!-- SKU -->
-            <div class="product-sku">
-                <span>SKU: {{ selectedVariant?.sku || product.sku }}</span>
+            <!-- SKU con info adicional -->
+            <div class="product-meta">
+                <div class="product-sku">
+                    <span>Código: {{ selectedVariant?.sku || product.sku }}</span>
+                </div>
+                <div class="shipping-estimate" *ngIf="userLocation">
+                    <i nz-icon nzType="truck" nzTheme="outline"></i>
+                    <span>Llega en 2-3 días a {{ userLocation }}</span>
+                </div>
             </div>
         </div>
 
-        <!-- Pestañas de información del producto -->
+        <!-- Pestañas mejoradas con contenido ecuatoriano -->
         <div class="product-details">
             <div class="details-tabs">
                 <div class="tab-headers">
                     <h3 class="tab-title" [ngClass]="{'active': activeTab === 'description'}"
                         (click)="setActiveTab('description')">Descripción</h3>
                     <h3 class="tab-title" [ngClass]="{'active': activeTab === 'details'}"
-                        (click)="setActiveTab('details')">Detalles</h3>
+                        (click)="setActiveTab('details')">Especificaciones</h3>
                     <h3 class="tab-title" [ngClass]="{'active': activeTab === 'delivery'}"
-                        (click)="setActiveTab('delivery')">Envío y Devoluciones</h3>
+                        (click)="setActiveTab('delivery')">Envío</h3>
+                    <h3 class="tab-title" [ngClass]="{'active': activeTab === 'care'}" (click)="setActiveTab('care')">
+                        Cuidados</h3>
                 </div>
 
-                <!-- Contenido de pestañas -->
+                <!-- Contenido de pestañas mejorado -->
                 <div class="tab-content" *ngIf="activeTab === 'description'">
-                    <p class="product-description">{{ product.description || 'No hay descripción disponible para este
-                        producto.'}}</p>
-                    <p *ngIf="categoryDescription" class="category-description">
-                        <strong>Acerca de {{ categoryName }}:</strong> {{ categoryDescription }}
-                    </p>
+                    <div class="description-content">
+                        <p class="product-description">{{ product.description || 'Prepárate para tu próxima aventura con
+                            este increíble producto.'}}</p>
+                        <p *ngIf="categoryDescription" class="category-description">
+                            <strong>¿Por qué elegir {{ categoryName }}?</strong> {{ categoryDescription }}
+                        </p>
+
+                        <!-- Historia del producto o marca -->
+                        <div class="product-story" *ngIf="product.story">
+                            <h5>La historia detrás del producto</h5>
+                            <p>{{ product.story }}</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="tab-content" *ngIf="activeTab === 'details'">
                     <div class="product-details-info">
                         <div class="detail-item" *ngIf="product.season">
-                            <span class="detail-label">Temporada:</span>
+                            <span class="detail-label">Temporada ideal:</span>
                             <span class="detail-value">{{ product.season }}</span>
                         </div>
                         <div class="detail-item" *ngIf="product.collection">
@@ -230,9 +405,20 @@
                             <span class="detail-value">{{ getSizesList() }}</span>
                         </div>
 
+                        <!-- Especificaciones técnicas -->
+                        <div class="technical-specs" *ngIf="product.technicalSpecs">
+                            <h5>Especificaciones técnicas</h5>
+                            <div class="specs-grid">
+                                <div *ngFor="let spec of product.technicalSpecs" class="spec-item">
+                                    <span class="spec-label">{{ spec.name }}:</span>
+                                    <span class="spec-value">{{ spec.value }}</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Tags -->
                         <div class="product-tags" *ngIf="product.tags && product.tags.length > 0">
-                            <span class="detail-label">Etiquetas:</span>
+                            <span class="detail-label">Características:</span>
                             <div class="tags-container">
                                 <span class="tag" *ngFor="let tag of product.tags">{{ tag }}</span>
                             </div>
@@ -242,13 +428,70 @@
 
                 <div class="tab-content" *ngIf="activeTab === 'delivery'">
                     <div class="shipping-info">
-                        <h4>Información de Envío</h4>
-                        <p>Envío estándar gratuito en todos los pedidos superiores a $50.</p>
-                        <p>Tiempo estimado de entrega: 3-5 días hábiles.</p>
+                        <div class="shipping-section">
+                            <h4><i nz-icon nzType="truck" nzTheme="outline"></i> Envío en Ecuador</h4>
+                            <div class="shipping-options">
+                                <div class="shipping-option">
+                                    <strong>Quito y Valle de los Chillos</strong>
+                                    <p>Entrega el mismo día o al siguiente - Desde $3</p>
+                                </div>
+                                <div class="shipping-option">
+                                    <strong>Resto del país</strong>
+                                    <p>2-5 días hábiles - Desde $5 (Gratis en compras +$50)</p>
+                                </div>
+                                <div class="shipping-option">
+                                    <strong>Zonas rurales</strong>
+                                    <p>Coordinamos contigo para la mejor opción</p>
+                                </div>
+                            </div>
+                        </div>
 
-                        <h4>Política de Devoluciones</h4>
-                        <p>Devoluciones fáciles dentro de los 30 días posteriores a la compra.</p>
-                        <p>Los artículos deben estar sin usar y en el embalaje original.</p>
+                        <div class="return-section">
+                            <h4><i nz-icon nzType="sync" nzTheme="outline"></i> Devoluciones sin problemas</h4>
+                            <ul>
+                                <li>30 días para cambios y devoluciones</li>
+                                <li>Productos sin usar y con etiquetas</li>
+                                <li>Recogemos en tu casa (solo Quito)</li>
+                                <li>¿No te gustó? Te devolvemos tu plata</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" *ngIf="activeTab === 'care'">
+                    <div class="care-info">
+                        <h4><i nz-icon nzType="tool" nzTheme="outline"></i> Cuida tu equipo de aventura</h4>
+                        <div class="care-sections">
+                            <div class="care-section">
+                                <h5>Limpieza</h5>
+                                <ul>
+                                    <li>Lava con agua fría después de cada aventura</li>
+                                    <li>Usa jabón neutro, nada de suavizante</li>
+                                    <li>Si está muy sucio, déjalo en remojo un ratito</li>
+                                </ul>
+                            </div>
+                            <div class="care-section">
+                                <h5>Secado</h5>
+                                <ul>
+                                    <li>Al aire libre, pero no al sol directo</li>
+                                    <li>Nunca en secadora ni plancha</li>
+                                    <li>En Quito aprovecha el aire seco del valle</li>
+                                </ul>
+                            </div>
+                            <div class="care-section">
+                                <h5>Almacenamiento</h5>
+                                <ul>
+                                    <li>Guarda limpio y seco</li>
+                                    <li>En lugar fresco y ventilado</li>
+                                    <li>Evita doblarlo mucho tiempo en el mismo lugar</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="care-tip">
+                            <p><strong>Tip ecuatoriano:</strong> En época de lluvias, usa un deshumidificador o guárdalo
+                                con silica gel para evitar hongos.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -256,51 +499,19 @@
     </div>
 </div>
 
-<!-- Productos Relacionados Mejorados -->
-
+<!-- Productos Relacionados con título ecuatoriano -->
 <div *ngIf="relatedProducts.length > 0" class="related-products-section">
     <div class="related-header">
-        <h3 class="related-title">También te puede interesar</h3>
-        <div class="related-subtitle">Productos de la misma categoría</div>
+        <h3 class="related-title">Otros que también están como mandado a hacer</h3>
+        <p class="related-subtitle">Complementa tu aventura con estos productos</p>
     </div>
 
     <div class="related-products-container">
         <div class="related-products-grid">
-            <div *ngFor="let relatedProduct of relatedProducts" class="related-product-card"
-                [routerLink]="['/products', relatedProduct.id]">
-
-                <div class="related-image-container">
-                    <img [src]="relatedProduct.imageUrl" [alt]="relatedProduct.name">
-
-                    <!-- Badges para productos relacionados -->
-                    <div class="related-badges">
-                        <span *ngIf="relatedProduct.isNew" class="new-badge">NUEVO</span>
-                        <span *ngIf="relatedProduct.discountPercentage" class="related-badge discount">
-                            -{{ relatedProduct.discountPercentage }}%
-                        </span>
-                    </div>
-                </div>
-
-                <div class="related-product-info">
-                    <h4 class="related-product-name">{{ relatedProduct.name }}</h4>
-
-                    <div class="related-price-container">
-                        <span
-                            *ngIf="relatedProduct.originalPrice && relatedProduct.originalPrice > relatedProduct.price"
-                            class="related-original-price">
-                            ${{ relatedProduct.originalPrice.toFixed(2) }}
-                        </span>
-                        <span class="related-current-price">
-                            ${{ (relatedProduct.currentPrice || relatedProduct.price).toFixed(2) }}
-                        </span>
-                    </div>
-
-                    <!-- Rating para productos relacionados -->
-                    <div class="product-rating" *ngIf="relatedProduct.rating">
-                        <nz-rate [ngModel]="relatedProduct.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
-                    </div>
-                </div>
-            </div>
+            <app-product-card *ngFor="let relatedProduct of relatedProducts; trackBy: trackByProductId"
+                [product]="relatedProduct" [showColorOptions]="true" [cardSize]="'small'"
+                (colorChanged)="onRelatedProductColorChange($event)">
+            </app-product-card>
         </div>
     </div>
 </div>

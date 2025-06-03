@@ -36,6 +36,14 @@
         <div *ngIf="shouldShowProducts()" class="product-grid">
             <div *ngFor="let product of featuredProducts; trackBy: trackByProductId" class="product-card-section">
 
+                <!-- Badges Container -->
+                <div class="badges-container">
+                    <span *ngIf="product.isNew" class="new-badge">NEW</span>
+                    <span *ngIf="hasDiscount(product)" class="discount-badge">
+                        -{{ getDiscountPercentage(product) }}%
+                    </span>
+                </div>
+
                 <!-- Imagen del producto con imagen dinámica -->
                 <div class="product-image-container" [routerLink]="['/products', product.id]" style="cursor: pointer;"
                     [attr.aria-label]="'Ver detalles de ' + product.name">
@@ -45,13 +53,7 @@
                         class="product-image-section" [attr.data-original-src]="product.imageUrl"
                         (error)="handleImageError($event)" loading="lazy">
 
-                    <!-- Badges Container -->
-                    <div class="badges-container">
-                        <span *ngIf="product.isNew" class="new-badge">NEW</span>
-                        <span *ngIf="hasDiscount(product)" class="discount-badge">
-                            -{{ getDiscountPercentage(product) }}%
-                        </span>
-                    </div>
+
                 </div>
 
                 <!-- Color Options con Scroll Optimizado y Indicadores Funcionales -->

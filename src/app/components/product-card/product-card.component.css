@@ -75,7 +75,7 @@
 
 .product-image-container {
     position: relative;
-    height: 320px;
+    height: 360px;
     background-color: #f3f3f3;
     overflow: hidden;
     cursor: pointer;
@@ -92,7 +92,7 @@
 }
 
 .product-image-section:hover {
-    transform: scale(1.03);
+    transform: scale(1.05);
 }
 
 /* =================================================================

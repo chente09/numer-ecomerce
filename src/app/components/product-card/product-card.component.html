@@ -1,0 +1,40 @@
+<div class="product-card-section">
+    <!-- Badges -->
+    <div class="badges-container">
+        <span *ngIf="product.isNew" class="new-badge">NEW</span>
+        <span *ngIf="hasDiscount()" class="discount-badge">-{{ getDiscountPercentage() }}%</span>
+    </div>
+
+    <!-- Imagen del producto -->
+    <div class="product-image-container" [routerLink]="['/products', product.id]">
+        <img [src]="getDisplayImageUrl()" [alt]="product.name" class="product-image-section" loading="lazy" />
+    </div>
+
+    <!-- Color Options -->
+    <div class="color-options" *ngIf="hasColors()">
+        <div class="colors-container">
+            <div *ngFor="let color of product.colors; let i = index" class="color-option"
+                [ngClass]="{ active: isColorActive(i) }" [style.background-image]="
+          color.imageUrl ? 'url(' + color.imageUrl + ')' : null
+        " [style.background-size]="'cover'" (click)="selectColor(color, i)"></div>
+        </div>
+    </div>
+
+    <!-- Product Info -->
+    <div class="product-info">
+        <h3 class="product-name" [routerLink]="['/products', product.id]">
+            {{ product.name }}
+        </h3>
+
+        <div class="product-price">
+            <span *ngIf="hasDiscount()" class="original-price">${{ formatPrice(getOriginalPrice()) }}</span>
+            <span class="current-price" [ngClass]="{ discounted: hasDiscount() }">
+                ${{ formatPrice(getCurrentPrice()) }}
+            </span>
+        </div>
+
+        <div class="product-rating">
+            <nz-rate [ngModel]="product.rating || 5" nzDisabled [nzAllowHalf]="true"></nz-rate>
+        </div>
+    </div>
+</div>
