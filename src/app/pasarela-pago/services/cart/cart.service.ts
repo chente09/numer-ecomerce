@@ -564,124 +564,22 @@ export class CartService {
   /**
    * 🚀 CORREGIDO: Finaliza la compra con los items del carrito
    */
-  checkout(): Observable<{
-    success: boolean,
-    orderId?: string,
-    error?: string
-  }> {
-    console.log('🛒 CartService: Iniciando proceso de checkout...');
+  checkout(): Observable<{ success: boolean, orderId?: string, error?: string }> {
+    console.log('🛒 CartService: Preparando para checkout...');
 
     const cart = this.getCart();
 
     if (cart.items.length === 0) {
-      console.warn('⚠️ CartService: El carrito está vacío');
-      return of({
-        success: false,
-        error: 'El carrito está vacío'
-      });
+      return of({ success: false, error: 'El carrito está vacío' });
     }
 
-    // ✅ VALIDAR stock nuevamente antes del checkout
-    console.log(`🔍 CartService: Verificando stock en tiempo real de ${cart.items.length} items...`);
+    // ✅ AHORA: Solo validar que haya items, el inventario se procesa en backend
+    console.log(`✅ CartService: ${cart.items.length} items listos para checkout`);
 
-    // Verificar stock actual (sin descontar aún)
-    const stockValidations = cart.items.map(item =>
-      this.productService.getVariantById(item.variantId).pipe(
-        take(1),
-        map(variant => ({
-          item,
-          variant,
-          hasStock: variant && variant.stock >= item.quantity
-        }))
-      )
-    );
-
-    return forkJoin(stockValidations).pipe(
-      switchMap(validations => {
-        // Verificar si todos los items tienen stock
-        const unavailableItems = validations.filter(v => !v.hasStock);
-
-        if (unavailableItems.length > 0) {
-          console.error('❌ CartService: Items sin stock suficiente:', unavailableItems);
-          return of({
-            success: false,
-            error: 'Algunos productos no tienen suficiente stock disponible'
-          });
-        }
-
-        // ✅ AQUÍ ES DONDE SE DESCUENTA EL STOCK REAL
-        console.log('✅ CartService: Stock validado, procesando descuento de inventario...');
-
-        // Preparar items para la venta (esto SÍ descuenta el stock)
-        const saleItems: SaleItem[] = cart.items.map(item => ({
-          variantId: item.variantId,
-          quantity: item.quantity
-        }));
-
-        // Agrupar por producto para registrar ventas
-        const itemsByProduct = new Map<string, SaleItem[]>();
-        cart.items.forEach(item => {
-          if (!itemsByProduct.has(item.productId)) {
-            itemsByProduct.set(item.productId, []);
-          }
-          itemsByProduct.get(item.productId)!.push({
-            variantId: item.variantId,
-            quantity: item.quantity
-          });
-        });
-
-        // ✅ DESCUENTO REAL: Registrar ventas (esto descuenta del inventario)
-        const registerSaleOperations: Observable<void>[] = [];
-        itemsByProduct.forEach((items, productId) => {
-          registerSaleOperations.push(
-            this.inventoryService.registerSale(productId, items).pipe(take(1))
-          );
-        });
-
-        return forkJoin(registerSaleOperations).pipe(
-          map(() => {
-            const orderId = 'ORD-' + Date.now();
-            console.log(`🎉 CartService: Checkout exitoso - Orden: ${orderId}`);
-
-            // ✅ AHORA SÍ notificar los cambios de stock (después del descuento real)
-            cart.items.forEach(item => {
-              this.stockUpdateService.notifyStockChange({
-                productId: item.productId,
-                variantId: item.variantId,
-                stockChange: -item.quantity,
-                newStock: Math.max(0, (item.variant?.stock || 0) - item.quantity),
-                timestamp: new Date(),
-                source: 'purchase', // ✅ AHORA SÍ es una compra real
-                metadata: {
-                  colorName: item.variant?.colorName,
-                  sizeName: item.variant?.sizeName,
-                  productName: item.product?.name,
-                  userAction: 'checkout_completed'
-                }
-              });
-            });
-
-            // Limpiar carrito después de compra exitosa
-            this.clearCart();
-
-            return {
-              success: true,
-              orderId
-            };
-          })
-        );
-      }),
-      catchError(error => {
-        console.error('❌ CartService: Error al procesar el checkout:', error);
-        return of({
-          success: false,
-          error: 'Ocurrió un error al procesar la compra'
-        });
-      }),
-      finalize(() => {
-        console.log('🏁 CartService: checkout completado');
-      })
-    );
+    return of({
+      success: true,
+      orderId: `temp-${Date.now()}` // ID temporal
+    });
   }
 
   /**

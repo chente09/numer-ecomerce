@@ -29,6 +29,7 @@ import {
   timeout,
 } from 'rxjs';
 import { ErrorUtil } from '../../utils/error-util';
+import { UsersService } from '../../services/users/users.service';
 
 // Interfaces (sin cambios)
 interface PayphoneInitData {
@@ -96,7 +97,8 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
     private router: Router,
     private cartService: CartService,
     private http: HttpClient,
-    private modalService: NzModalService
+    private modalService: NzModalService,
+    private usersService: UsersService
   ) {
     this.cartSummary$ = this.cartService.cart$;
   }
@@ -191,6 +193,8 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
 
   // ✅ PRESERVADO: Validación de stock (sin cambios)
   private validateCartStock(cart: Cart): ValidationResult {
+    // Esta validación es opcional ahora, ya que el backend hace la validación final
+    // Pero la puedes mantener para UX (mostrar problemas antes de intentar pagar)
     for (const item of cart.items) {
       if (!item.variant || item.variant.stock < item.quantity) {
         return {
@@ -219,11 +223,33 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
 
   // ✅ PRESERVADO: Llamada a API (sin cambios)
   private callPayphoneAPI(data: PayphoneInitData): Observable<any> {
-    return this.http.post(PAYPHONE_CONFIG.API_ENDPOINT, data).pipe(
-      catchError((error) => {
+    return this.cartService.cart$.pipe(
+      take(1),
+      switchMap(cart => {
+        const cartItems = cart.items.map(item => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          productName: item.product?.name,
+          variantName: `${item.variant?.colorName}-${item.variant?.sizeName}`
+        }));
+
+        return this.http.post(PAYPHONE_CONFIG.API_ENDPOINT, {
+          ...data,
+          cartItems, // ✅ Enviar items al backend
+          userId: this.getCurrentUserId() || 'anonymous'
+        });
+      }),
+      catchError(error => {
         throw ErrorUtil.handleCatchError(error, 'PayphoneAPI');
       })
     );
+  }
+
+  private getCurrentUserId(): string | null {
+    const user = this.usersService.getCurrentUser();
+    return user ? user.uid : null; // Firebase usa .uid, no .id
   }
 
   // ✅ PRESERVADO: Manejo de éxito de API
@@ -303,76 +329,26 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
   // ✅ PRESERVADO: Procesamiento de pago exitoso (sin cambios)
   private async processSuccessfulPayment(response: PayphoneResponse): Promise<void> {
     try {
-      console.log('🔄 Procesando pago exitoso...');
+      console.log('🎉 Pago exitoso, inventario procesado en backend:', response);
 
-      const cart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
+      // ✅ El inventario ya se procesó en el backend automáticamente
+      // Solo necesitamos limpiar el carrito y mostrar éxito
 
-      if (!cart || cart.items.length === 0) {
-        throw new Error('Carrito vacío durante procesamiento');
-      }
+      this.cartService.clearCart();
 
-      // ✅ AQUÍ es donde ocurre el descuento real del inventario
-      console.log('📦 Procesando checkout y descontando inventario...');
-      const checkoutResult = await this.processCheckoutWithRetry(cart);
-
-      if (!checkoutResult.success) {
-        throw new Error(checkoutResult.error || 'Error en checkout');
-      }
-
-      console.log('✅ Proceso completado exitosamente');
       this.showSuccessModal(
-        checkoutResult.orderId || 'unknown',
+        response.transactionId || 'unknown',
         response.transactionId || this.transactionId
       );
 
     } catch (error: any) {
-      console.error('❌ Error en processSuccessfulPayment:', error);
+      console.error('❌ Error post-pago:', error);
       this.handlePostPaymentError(error.message, response.transactionId);
     } finally {
       this.setLoading(false);
     }
   }
 
-  // ✅ PRESERVADO: Checkout con retry (sin cambios)
-  private async processCheckoutWithRetry(cart: Cart): Promise<CheckoutResult> {
-    for (let attempt = 1; attempt <= PAYPHONE_CONFIG.CHECKOUT_MAX_RETRIES; attempt++) {
-      try {
-        console.log(`🔄 Intento de checkout ${attempt}/${PAYPHONE_CONFIG.CHECKOUT_MAX_RETRIES}`);
-
-        const stockValidation = this.validateCartStock(cart);
-        if (!stockValidation.valid) {
-          throw new Error(`Stock insuficiente: ${stockValidation.message}`);
-        }
-
-        const result = await firstValueFrom(
-          this.cartService.checkout().pipe(
-            take(1),
-            timeout(PAYPHONE_CONFIG.CHECKOUT_TIMEOUT)
-          )
-        );
-
-        if (result.success) {
-          console.log(`✅ Checkout exitoso en intento ${attempt}`);
-          return result;
-        } else {
-          throw new Error(result.error || 'Error desconocido en checkout');
-        }
-
-      } catch (error: any) {
-        console.error(`❌ Error en intento ${attempt}:`, error.message);
-
-        if (attempt === PAYPHONE_CONFIG.CHECKOUT_MAX_RETRIES) {
-          throw error;
-        }
-
-        const delay = Math.pow(2, attempt) * 1000;
-        console.log(`⏳ Esperando ${delay / 1000}s antes del siguiente intento...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-
-    throw new Error('Todos los intentos de checkout fallaron');
-  }
 
   // ✅ PRESERVADO: Manejo de errores de pago
   private handlePaymentError(error: any): void {
