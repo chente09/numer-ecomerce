@@ -77,17 +77,17 @@ const PAYPHONE_CONFIG = {
   selector: 'app-payphone-form',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
-    NzSpinModule, 
-    NzAlertModule, 
+    CommonModule,
+    FormsModule,
+    NzSpinModule,
+    NzAlertModule,
     NzButtonModule,
-    NzModalModule, 
-    NzIconModule, 
-    NzTagModule, 
-    NzStepsModule, 
+    NzModalModule,
+    NzIconModule,
+    NzTagModule,
+    NzStepsModule,
     NzCardModule,
-    NzDividerModule, 
+    NzDividerModule,
     NzResultModule,
     NzCollapseModule
   ],
@@ -314,7 +314,13 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
             defaultMethod: 'card',
             timeZone: -5,
             ...PAYPHONE_CONFIG.COORDINATES,
-            onSuccess: (response: PayphoneResponse) => this.handlePaymentSuccess(response),
+            // ✅ CONFIGURACIÓN SIN REDIRECCIÓN
+            autoRedirect: false, // Prevenir redirección automática
+            onSuccess: (response: PayphoneResponse) => {
+              console.log('🎉 Pago exitoso - manejo interno:', response);
+              this.handlePaymentSuccess(response);
+              return false; // ✅ CRÍTICO: Prevenir redirección
+            },
             onError: (error: any) => this.handlePaymentError(error),
             onCancel: () => {
               console.log('🚫 Pago cancelado por el usuario');
@@ -322,7 +328,7 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
             }
           }).render('pp-button');
 
-          console.log('✅ Botón de Payphone renderizado exitosamente');
+          console.log('✅ Botón de Payphone renderizado con configuración sin redirección');
         } catch (error) {
           console.error('❌ Error al renderizar el botón:', error);
           this.setError('Error al inicializar el botón de pago. Por favor, recarga la página.');
@@ -353,7 +359,9 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
   private async confirmPaymentAndCleanCart(response: PayphoneResponse): Promise<void> {
     try {
       this.setLoading(true);
-      this.setCurrentStep(2); // ✅ Correcto: Mostrar paso "Confirmación"
+      this.setCurrentStep(2); // Paso "Confirmación"
+
+      console.log('🔄 Confirmando pago con backend...', response);
 
       const confirmationResponse = await firstValueFrom(
         this.http.post<ConfirmationResponse>(
@@ -376,13 +384,13 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
         console.log('✅ Inventario procesado exitosamente, limpiando carrito...');
         this.cartService.clearCart();
 
-        // ✅ MOSTRAR TICKET en lugar de modal
+        // ✅ MOSTRAR TICKET integrado (sin modal)
         this.setPaymentResult(confirmationResponse);
         this.setLoading(false);
 
       } else {
         console.warn('⚠️ Pago no confirmado:', confirmationResponse);
-        this.setCurrentStep(1); // ✅ VOLVER al paso de pago si hay error
+        this.setCurrentStep(1); // ✅ VOLVER al paso de pago
         this.handlePostPaymentError(
           'Pago pendiente de confirmación',
           response.transactionId || 'unknown'
@@ -391,13 +399,12 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
 
     } catch (error: any) {
       console.error('❌ Error confirmando pago:', error);
-      this.setCurrentStep(1); // ✅ VOLVER al paso de pago si hay error
+      this.setCurrentStep(1); // ✅ VOLVER al paso de pago
       this.handlePostPaymentError(
         `Error en confirmación: ${error.message}`,
         response.transactionId || 'unknown'
       );
     } finally {
-      // ✅ CORRECTO: Se ejecuta siempre
       this.setLoading(false);
     }
   }
