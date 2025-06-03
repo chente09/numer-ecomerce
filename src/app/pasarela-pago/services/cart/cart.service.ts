@@ -215,22 +215,22 @@ export class CartService {
       user: userCart.items.length
     });
 
+    // ✅ SOLUCIÓN: Usar carrito de usuario como base, NO sumar local
     const mergedItems = [...userCart.items];
 
-    // Agregar items del carrito local que no estén en el de usuario
+    // Solo agregar items del carrito local que NO estén en el de usuario
     localCart.items.forEach(localItem => {
       const existingIndex = mergedItems.findIndex(
         item => item.variantId === localItem.variantId
       );
 
-      if (existingIndex !== -1) {
-        // Item existe: sumar cantidades
-        mergedItems[existingIndex].quantity += localItem.quantity;
-        mergedItems[existingIndex].totalPrice =
-          mergedItems[existingIndex].quantity * mergedItems[existingIndex].unitPrice;
-      } else {
-        // Item nuevo: agregar
+      if (existingIndex === -1) {
+        // ✅ Solo agregar si NO existe en el carrito del usuario
+        console.log(`➕ Agregando item local no existente: ${localItem.product?.name}`);
         mergedItems.push(localItem);
+      } else {
+        // ✅ NO sumar - mantener la cantidad del usuario
+        console.log(`🔄 Item ya existe en carrito de usuario, manteniendo cantidad del servidor: ${mergedItems[existingIndex].quantity}`);
       }
     });
 
