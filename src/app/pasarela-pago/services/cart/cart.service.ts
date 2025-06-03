@@ -147,7 +147,6 @@ export class CartService {
           return of(false);
         }),
         finalize(() => {
-          console.log('🏁 CartService: addToCart completado');
         })
       );
     }

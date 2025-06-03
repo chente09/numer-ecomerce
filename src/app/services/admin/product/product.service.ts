@@ -61,6 +61,7 @@ export class ProductService {
 
       const productsRef = collection(this.firestore, this.productsCollection);
       return collectionData(productsRef, { idField: 'id' }).pipe(
+  
         // ❌ REMOVER: take(1) 
         map(data => {
           console.log(`📦 ProductService: Productos recibidos de Firestore: ${data.length}`);
@@ -77,7 +78,6 @@ export class ProductService {
         // 🆕 AGREGAR: shareReplay para múltiples suscriptores
         shareReplay({ bufferSize: 1, refCount: true }),
         finalize(() => {
-          console.log('🏁 ProductService: getProducts completado');
         })
       );
     });
@@ -85,7 +85,6 @@ export class ProductService {
 
   // ✅ AGREGAR en ProductService
   forceReloadProducts(): Observable<Product[]> {
-    console.log('🔄 [PRODUCT SERVICE] Forzando recarga de productos...');
 
     // Invalidar caché
     this.cacheService.invalidate(this.productsCacheKey);
@@ -109,14 +108,12 @@ export class ProductService {
    * 🚀 CORREGIDO: Obtiene todos los productos SIN caché cuando se force
    */
   getProductsNoCache(): Observable<Product[]> {
-    console.log('📦 [PRODUCT SERVICE] Obteniendo productos sin caché...');
 
     return new Observable<Product[]>(observer => {
       const productsRef = collection(this.firestore, this.productsCollection);
 
       // ✅ USAR getDocs en lugar de collectionData para evitar observables infinitos
       getDocs(productsRef).then(querySnapshot => {
-        console.log(`📦 [PRODUCT SERVICE] ${querySnapshot.size} documentos obtenidos`);
 
         const products: Product[] = [];
 
@@ -127,8 +124,6 @@ export class ProductService {
           } as Product;
           products.push(product);
         });
-
-        console.log(`✅ [PRODUCT SERVICE] ${products.length} productos procesados`);
 
         // Enriquecer con stock básico (sin tiempo real para evitar complejidad)
         const enrichedProducts = products.map(product => ({

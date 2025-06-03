@@ -1,48 +1,202 @@
-<div class="payphone-container">
-  <h2 class="payment-title">Procesar Pago</h2>
-  
-  <!-- Loader - Adaptado para usar el observable isLoading$ -->
-  <div *ngIf="isLoading$ | async" class="loading-container">
-    <nz-spin nzTip="Conectando con el servicio de pago..."></nz-spin>
-  </div>
-  
-  <!-- Error message - Adaptado para usar el observable error$ -->
-  <div *ngIf="error$ | async as errorMessage" class="error-container">
-    <nz-alert
-      nzType="error"
-      nzMessage="Error de pago"
-      [nzDescription]="errorMessage"
-      nzShowIcon
-    ></nz-alert>
-    
-    <div class="actions-container">
-      <button nz-button nzType="primary" (click)="volverAlCarrito()">
-        Volver al carrito
+<div class="payment-layout">
+  <!-- Sidebar: Resumen del carrito -->
+  <aside class="cart-sidebar" *ngIf="cartSummary$ | async as cart">
+    <div class="sidebar-header">
+      <h2>Resumen de compra</h2>
+      <button nz-button nzType="text" nzSize="small" (click)="volverAlCarrito()" class="edit-btn">
+        <span nz-icon nzType="edit"></span>
+        Editar
       </button>
     </div>
-  </div>
-  
-  <!-- Payment container - Adaptado para usar observables -->
-  <div *ngIf="(isLoading$ | async) === false && !(error$ | async)" class="payment-content">
-    <div class="payment-info">
-      <p>Selecciona tu método de pago preferido y completa la información solicitada.</p>
-      <p>Tu transacción está protegida con encriptación segura.</p>
-      <p *ngIf="transactionId" class="transaction-id">
-        ID de transacción: <strong>{{ transactionId }}</strong>
-      </p>
-    </div>
-    
-    <!-- Payphone button container -->
-    <div id="pp-button" class="payphone-button-container"></div>
-    
-    <div class="payment-footer">
-      <div class="security-info">
-        <i nz-icon nzType="lock" nzTheme="outline"></i>
-        Pago 100% seguro. Tus datos están protegidos.
+
+    <div class="cart-content">
+      <!-- Items del carrito -->
+      <div class="cart-items-list">
+        <div *ngFor="let item of cart.items" class="cart-item-card">
+          <div class="item-main">
+            <div class="item-details">
+              <h4 class="item-name">{{ item.product?.name }}</h4>
+              <p class="item-variant">{{ item.variant?.colorName }} · {{ item.variant?.sizeName }}</p>
+            </div>
+            <div class="item-pricing">
+              <span class="quantity">{{ item.quantity }}×</span>
+              <span class="price">${{ item.totalPrice.toFixed(2) }}</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <button nz-button (click)="volverAlCarrito()">
-        Cancelar y volver al carrito
-      </button>
+
+      <!-- Separador -->
+      <div class="divider"></div>
+
+      <!-- Totales -->
+      <div class="cart-totals">
+        <div class="total-line">
+          <span>Subtotal</span>
+          <span>${{ cart.subtotal.toFixed(2) }}</span>
+        </div>
+        <div class="total-line" *ngIf="cart.discount > 0">
+          <span>Descuento</span>
+          <span class="discount-amount">-${{ cart.discount.toFixed(2) }}</span>
+        </div>
+        <div class="total-line">
+          <span>IVA (15%)</span>
+          <span>${{ cart.tax.toFixed(2) }}</span>
+        </div>
+        <div class="total-line">
+          <span>Envío</span>
+          <span class="shipping-amount">
+            {{ cart.shipping === 0 ? 'Gratis' : '$' + cart.shipping.toFixed(2) }}
+          </span>
+        </div>
+        <div class="total-line total-final">
+          <span>Total</span>
+          <span>${{ cart.total.toFixed(2) }}</span>
+        </div>
+      </div>
     </div>
-  </div>
+  </aside>
+
+  <!-- Main content: Proceso de pago -->
+  <main class="payment-main">
+    <!-- Header con pasos -->
+    <header class="payment-header">
+      <div class="progress-container">
+        <nz-steps [nzCurrent]="1" nzSize="small" class="payment-steps">
+          <nz-step nzTitle="Carrito" nzIcon="shopping-cart"></nz-step>
+          <nz-step nzTitle="Pago" nzIcon="credit-card"></nz-step>
+          <nz-step nzTitle="Confirmación" nzIcon="check-circle"></nz-step>
+        </nz-steps>
+      </div>
+      <h1 class="main-title">Finalizar compra</h1>
+    </header>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading$ | async" class="state-container">
+      <div class="loading-state">
+        <div class="spinner-container">
+          <nz-spin nzSize="large" nzTip="Preparando pago seguro..."></nz-spin>
+        </div>
+        <div class="loading-details">
+          <div class="loading-step">
+            <span class="step-icon">🔒</span>
+            <span>Verificando seguridad</span>
+          </div>
+          <div class="loading-step">
+            <span class="step-icon">💳</span>
+            <span>Conectando con Payphone</span>
+          </div>
+          <div class="loading-step">
+            <span class="step-icon">✨</span>
+            <span>Preparando experiencia de pago</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error$ | async as errorMessage" class="state-container">
+      <div class="error-state">
+        <div class="error-icon">
+          <span nz-icon nzType="exclamation-circle" nzTheme="outline"></span>
+        </div>
+        <h2>Problema con el pago</h2>
+        <p class="error-message">{{ errorMessage }}</p>
+        <div class="error-actions">
+          <button nz-button nzType="primary" nzSize="large" (click)="retryPayment()">
+            <span nz-icon nzType="reload"></span>
+            Intentar nuevamente
+          </button>
+          <button nz-button nzType="default" nzSize="large" (click)="volverAlCarrito()">
+            <span nz-icon nzType="arrow-left"></span>
+            Volver al carrito
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Content -->
+    <div *ngIf="(isLoading$ | async) === false && !(error$ | async)" class="payment-content">
+      <!-- Security Notice -->
+      <div class="security-notice">
+        <div class="notice-icon">
+          <span nz-icon nzType="shield-check" nzTheme="outline"></span>
+        </div>
+        <div class="notice-content">
+          <h3>Pago 100% seguro</h3>
+          <p>Protegido con encriptación SSL y certificación PCI DSS</p>
+        </div>
+      </div>
+
+      <!-- Payment Methods Info -->
+      <div class="payment-methods-info">
+        <h3>Métodos de pago disponibles</h3>
+        <div class="methods-list">
+          <div class="method-chip">
+            <span nz-icon nzType="credit-card" nzTheme="outline"></span>
+            <span>Tarjetas de crédito</span>
+          </div>
+          <div class="method-chip">
+            <span nz-icon nzType="bank" nzTheme="outline"></span>
+            <span>Tarjetas de débito</span>
+          </div>
+          <div class="method-chip">
+            <span nz-icon nzType="mobile" nzTheme="outline"></span>
+            <span>Pagos móviles</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payphone Button Section -->
+      <div class="payphone-container">
+        <div class="payphone-header">
+          <h3>Completar pago</h3>
+          <p>Selecciona tu método de pago preferido</p>
+        </div>
+        
+        <div id="pp-button" class="payphone-widget">
+          <!-- Payphone button renders here -->
+        </div>
+
+        <!-- Transaction ID -->
+        <div *ngIf="transactionId" class="transaction-id">
+          <span class="id-label">ID de transacción:</span>
+          <code class="id-value">{{ transactionId }}</code>
+        </div>
+      </div>
+
+      <!-- Trust Indicators -->
+      <div class="trust-indicators">
+        <div class="indicator">
+          <span nz-icon nzType="shield-check" nzTheme="outline"></span>
+          <div class="indicator-text">
+            <strong>Protección total</strong>
+            <small>Tu compra está garantizada</small>
+          </div>
+        </div>
+        <div class="indicator">
+          <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+          <div class="indicator-text">
+            <strong>Procesamiento inmediato</strong>
+            <small>Confirmación al instante</small>
+          </div>
+        </div>
+        <div class="indicator">
+          <span nz-icon nzType="customer-service" nzTheme="outline"></span>
+          <div class="indicator-text">
+            <strong>Soporte 24/7</strong>
+            <small>Estamos aquí para ayudarte</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Back to cart option -->
+      <div class="back-option">
+        <button nz-button nzType="text" nzSize="large" (click)="volverAlCarrito()">
+          <span nz-icon nzType="arrow-left"></span>
+          Regresar al carrito
+        </button>
+      </div>
+    </div>
+  </main>
 </div>

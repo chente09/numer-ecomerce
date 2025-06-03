@@ -1,149 +1,187 @@
 <div class="carrito-container">
-  <h1 class="carrito-title">Tu Carrito de Compras</h1>
 
-  <!-- Mostrar loader mientras carga -->
+  <!-- Header minimalista -->
+  <div class="carrito-header" *ngIf="!loading && cart && cart.items.length > 0">
+    <h1 class="carrito-title">Equipamiento Seleccionado</h1>
+    <div class="cart-stats" *ngIf="cart && cart.items.length > 0">
+      <div class="stat-item">
+        <span class="stat-label">Productos</span>
+        <span class="stat-value">{{ cart.totalItems }}</span>
+      </div>
+      <div class="stat-item" *ngIf="hasDiscounts()">
+        <span class="stat-label">Ahorros</span>
+        <span class="stat-value">${{ getTotalSavings().toFixed(2) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading state -->
   <div *ngIf="loading" class="loading-container">
-    <nz-spin nzTip="Cargando carrito..."></nz-spin>
+    <nz-spin nzSize="large"></nz-spin>
   </div>
 
   <!-- Carrito vacío -->
   <div *ngIf="!loading && (!cart || cart.items.length === 0)" class="empty-cart">
     <div class="empty-cart-icon">
-      <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
+      <span nz-icon nzType="shopping-cart" nzTheme="outline"></span>
     </div>
-    <h2>Tu carrito está vacío</h2>
-    <p>Parece que no has agregado ningún producto a tu carrito.</p>
-    <button nz-button nzType="primary" (click)="continueShopping()">
-      Continuar Comprando
+    <h2>Carrito Vacío</h2>
+    <p>Explora nuestro catálogo y encuentra productos para tu próxima aventura.</p>
+    <button nz-button nzSize="large" (click)="continueShopping()" class="continue-shopping-button">
+      Explorar Catálogo
     </button>
   </div>
 
-  <!-- Carrito con productos -->
+  <!-- Layout principal: Items + Sidebar -->
   <div *ngIf="!loading && cart && cart.items.length > 0" class="cart-content">
-    <!-- Tabla de productos -->
-    <table class="cart-table">
-      <thead>
-        <tr>
-          <th>Producto</th>
-          <th>Variante</th>
-          <th>Precio</th>
-          <th>Cantidad</th>
-          <th>Total</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let item of cart.items">
-          <td class="product-cell">
-            <div class="product-info">
-              <img [src]="item.product?.imageUrl" [alt]="item.product?.name" class="product-thumbnail" />
-              <div>
-                <div class="product-name">{{ item.product?.name }}</div>
-                <div class="product-category">{{ item.product?.category }}</div>
+
+    <!-- Sección de items (lado izquierdo) -->
+    <div class="cart-items-section">
+      <div class="cart-items">
+
+        <div *ngFor="let item of cart.items; trackBy: trackByVariantId" class="cart-item">
+
+          <!-- Imagen del producto -->
+          <div class="item-image">
+            <img [src]="item.product?.imageUrl" [alt]="item.product?.name" class="product-thumbnail"
+              (error)="handleImageError($event)" />
+          </div>
+
+          <!-- Información del producto -->
+          <div class="item-info">
+            <h4 class="product-name">{{ item.product?.name }}</h4>
+            <p class="product-category">{{ item.product?.category }}</p>
+
+            <div class="variant-info">
+              <span class="color-indicator" [style.background-color]="item.variant?.colorCode"></span>
+              <span class="variant-text">{{ item.variant?.colorName }} / {{ item.variant?.sizeName }}</span>
+            </div>
+
+            <div class="unit-price">${{ item.unitPrice | number:'1.2-2' }}</div>
+          </div>
+
+          <!-- Controles -->
+          <div class="item-controls">
+
+            <!-- Cantidad -->
+            <div class="quantity-section">
+              <span class="quantity-label">Cantidad</span>
+              <div class="quantity-selector">
+                <button class="qty-btn" [disabled]="updating || item.quantity <= 1"
+                  (click)="updateQuantity(item, item.quantity - 1)">−</button>
+
+                <input class="qty-value" [(ngModel)]="item.quantity" [disabled]="updating"
+                  (change)="updateQuantity(item, item.quantity)" type="number" min="1"
+                  [max]="item.variant?.stock || 10">
+
+                <button class="qty-btn" [disabled]="updating || item.quantity >= (item.variant?.stock || 0)"
+                  (click)="updateQuantity(item, item.quantity + 1)">+</button>
               </div>
             </div>
-          </td>
-          <td>
-            <div class="variant-info">
-              <span class="color-dot" [style.background-color]="item.variant?.colorCode"></span>
-              <span>{{ item.variant?.colorName }} / {{ item.variant?.sizeName }}</span>
-            </div>
-          </td>
-          <td>${{ item.unitPrice | number:'1.2-2' }}</td>
-          <td>
-            <nz-input-number [(ngModel)]="item.quantity" [nzMin]="1" [nzMax]="item.variant?.stock || 10" [nzStep]="1"
-              [nzDisabled]="updating" (ngModelChange)="updateQuantity(item, $event)"></nz-input-number>
-          </td>
-          <td>${{ item.totalPrice | number:'1.2-2' }}</td>
-          <td>
-            <button nz-button nzType="text" nzDanger (click)="removeItem(item)" [disabled]="updating" nz-tooltip
-              nzTooltipTitle="Eliminar producto">
-              <i nz-icon nzType="delete" nzTheme="outline"></i>
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
 
-    <!-- Sección de totales y checkout -->
-    <div class="cart-summary">
-      <div class="summary-left">
+            <!-- Total y eliminar -->
+            <div class="item-total-section">
+              <div class="total-price">${{ item.totalPrice | number:'1.2-2' }}</div>
+              <button class="remove-item" (click)="removeItem(item)" [disabled]="updating">
+                <span nz-icon nzType="close" nzTheme="outline"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Sidebar derecho - Resumen fijo -->
+    <div class="summary-right">
+      <div class="summary-card">
+
+        <!-- Título -->
+        <h4 class="summary-title">Resumen</h4>
+
         <!-- Código de descuento -->
         <div class="discount-section">
-          <input nz-input placeholder="Código de descuento" [(ngModel)]="discountCode" [disabled]="updating" />
-          <button nz-button nzType="primary" (click)="applyDiscount()" [disabled]="updating || !discountCode">
-            Aplicar
-          </button>
+          <h5>Código de Descuento</h5>
+          <div class="discount-input-group">
+            <input class="discount-input" placeholder="Código" [(ngModel)]="discountCode" [disabled]="updating">
+            <button class="discount-btn" (click)="applyDiscount()" [disabled]="updating || !discountCode.trim()">
+              Aplicar
+            </button>
+          </div>
         </div>
 
-        <button nz-button (click)="clearCart()" [disabled]="updating">
-          Vaciar Carrito
-        </button>
-
-        <button nz-button (click)="continueShopping()" [disabled]="updating">
-          Continuar Comprando
-        </button>
-      </div>
-
-      <div class="summary-right">
+        <!-- Totales -->
         <div class="summary-totals">
           <div class="summary-row">
-            <span>Subtotal:</span>
-            <span>${{ cart.subtotal | number:'1.2-2' }}</span>
+            <span class="summary-label">Subtotal</span>
+            <span class="summary-value">${{ cart.subtotal | number:'1.2-2' }}</span>
           </div>
+
           <div class="summary-row" *ngIf="cart.discount > 0">
-            <span>Descuento:</span>
-            <span>-${{ cart.discount | number:'1.2-2' }}</span>
+            <span class="summary-label">Descuento</span>
+            <span class="summary-value">-${{ cart.discount | number:'1.2-2' }}</span>
           </div>
+
           <div class="summary-row">
-            <span>IVA (15%):</span>
-            <span>${{ cart.tax | number:'1.2-2' }}</span>
+            <span class="summary-label">IVA</span>
+            <span class="summary-value">${{ cart.tax | number:'1.2-2' }}</span>
           </div>
+
           <div class="summary-row">
-            <span>Envío:</span>
-            <span *ngIf="cart.shipping > 0">${{ cart.shipping | number:'1.2-2' }}</span>
-            <span *ngIf="cart.shipping === 0" class="free-shipping">GRATIS</span>
+            <span class="summary-label">Envío</span>
+            <span class="summary-value">
+              <span *ngIf="cart.shipping > 0">${{ cart.shipping | number:'1.2-2' }}</span>
+              <span *ngIf="cart.shipping === 0">Gratis</span>
+            </span>
           </div>
+
           <div class="summary-row total-row">
-            <span>Total:</span>
-            <span>${{ cart.total | number:'1.2-2' }}</span>
+            <span class="summary-label">Total</span>
+            <span class="summary-value">${{ cart.total | number:'1.2-2' }}</span>
           </div>
         </div>
 
-        <!-- 🚀 SECCIÓN DE CHECKOUT MEJORADA -->
+        <!-- Checkout -->
         <div class="checkout-section">
-          <!-- Aviso para usuarios no autenticados -->
+
+          <!-- No autenticado -->
           <div *ngIf="!currentUser" class="auth-notice">
-            <nz-alert nzType="info" nzMessage="Inicia sesión para continuar"
-              nzDescription="Necesitas una cuenta para completar tu compra" nzShowIcon class="mb-3">
-            </nz-alert>
-            <button nz-button nzType="primary" nzSize="large" nzBlock (click)="redirectToLogin()">
-              <span nz-icon nzType="user"></span>
+            <p>Inicia sesión para continuar</p>
+            <button class="auth-button" (click)="redirectToLogin()">
               Iniciar Sesión
             </button>
           </div>
 
-          <!-- Aviso para usuarios anónimos -->
-          <div *ngIf="currentUser?.isAnonymous" class="registration-notice">
-            <nz-alert nzType="warning" nzMessage="Completa tu registro"
-              nzDescription="Los usuarios anónimos no pueden realizar compras" nzShowIcon class="mb-3">
-            </nz-alert>
-            <button nz-button nzType="primary" nzSize="large" nzBlock (click)="redirectToCompleteProfile()">
-              <span nz-icon nzType="form"></span>
+          <!-- Usuario anónimo -->
+          <div *ngIf="currentUser?.isAnonymous" class="auth-notice">
+            <p>Completa tu registro</p>
+            <button class="auth-button" (click)="redirectToCompleteProfile()">
               Completar Registro
             </button>
           </div>
 
-          <!-- Botón de checkout para usuarios registrados -->
+          <!-- Usuario registrado -->
           <div *ngIf="currentUser && !currentUser.isAnonymous">
-            <button nz-button nzType="primary" nzSize="large" nzBlock class="checkout-button" [nzLoading]="updating"
-              (click)="proceedToCheckout()" [disabled]="!cart || cart.items.length === 0 || updating">
-              <span nz-icon nzType="shopping-cart"></span>
-              Pagar - ${{ cart ? cart.total.toFixed(2) : '0.00' }}
+            <button class="checkout-button" [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout"
+              (click)="proceedToCheckout()">
+              <span *ngIf="!processingCheckout">Proceder al Pago</span>
+              <span *ngIf="processingCheckout">Procesando...</span>
             </button>
           </div>
         </div>
+
       </div>
     </div>
   </div>
+
+  <!-- Acciones flotantes (móvil) -->
+  <div class="cart-actions" *ngIf="cart && cart.items.length > 0">
+    <button class="floating-action" (click)="clearCart()" [disabled]="updating">
+      Vaciar
+    </button>
+    <button class="floating-action" (click)="continueShopping()">
+      Continuar
+    </button>
+  </div>
+
 </div>

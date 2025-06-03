@@ -27,21 +27,6 @@
                         (click)="showImagePreview(image)">
                 </div>
             </div>
-
-            <!-- Galería de uso en aventura -->
-            <div class="adventure-gallery" *ngIf="product.adventureImages && product.adventureImages.length > 0">
-                <h5 class="gallery-subtitle">En acción</h5>
-                <div class="adventure-grid">
-                    <div *ngFor="let adventureImg of product.adventureImages" class="adventure-item"
-                        (click)="showImagePreview(adventureImg.url)">
-                        <img [src]="adventureImg.url" [alt]="adventureImg.description">
-                        <div class="adventure-overlay">
-                            <span class="adventure-location">{{ adventureImg.location }}</span>
-                            <small class="adventure-activity">{{ adventureImg.activity }}</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Tecnologías y características ampliadas -->
@@ -164,7 +149,8 @@
                     <div class="size-help-text">
                         <p class="help-main">
                             <i nz-icon nzType="info-circle" nzTheme="outline"></i>
-                            Si no encuentras tu talla en stock, dale un vistazo a nuestra Guía de Tallas o contactanos por el botón WhatsApp
+                            Si no encuentras tu talla en stock, dale un vistazo a nuestra Guía de Tallas o contactanos
+                            por el botón WhatsApp
                         </p>
                         <p class="help-secondary">
                             ¿Dudas con la talla? <a routerLink="/servicio-cliente" class="help-link">Escríbenos</a>
@@ -191,11 +177,11 @@
 
                 <div class="size-options">
                     <div *ngFor="let sizeName of standardSizes" class="size-option" [ngClass]="{
-                            'active': selectedSize?.name === sizeName,
-                            'unavailable': !isSizeAvailable(sizeName),
-                            'out-of-stock': isSizeAvailable(sizeName) && !hasStockForSizeName(sizeName),
-                            'low-stock': isSizeAvailable(sizeName) && hasLowStockForSizeName(sizeName)
-                        }" (click)="handleSizeClick(sizeName)">
+                        'active': selectedSize?.name === sizeName,
+                        'unavailable': !isSizeAvailable(sizeName),
+                        'out-of-stock': isSizeAvailable(sizeName) && !hasStockForSizeName(sizeName),
+                        'low-stock': isSizeAvailable(sizeName) && hasLowStockForSizeName(sizeName)}"
+                        (click)="handleSizeClick(sizeName)">
                         <span class="size-name">{{ sizeName }}</span>
                         <div class="size-stock-indicator"
                             *ngIf="isSizeAvailable(sizeName) && hasLowStockForSizeName(sizeName)">
@@ -256,7 +242,8 @@
                             <div class="size-item">
                                 <div class="size-image"
                                     (click)="showImagePreview('https://i.postimg.cc/15fRBmqy/tallas-table-2.png')">
-                                    <img src="https://i.postimg.cc/15fRBmqy/tallas-table-2.png" alt="Guía de tallas" class="size-cell-image-guia">
+                                    <img src="https://i.postimg.cc/15fRBmqy/tallas-table-2.png" alt="Guía de tallas"
+                                        class="size-cell-image-guia">
                                     <div class="image-zoom-icon">
                                         <i nz-icon nzType="zoom-in" nzTheme="outline"></i>
                                     </div>
@@ -350,7 +337,7 @@
                 </div>
                 <div class="shipping-estimate" *ngIf="userLocation">
                     <i nz-icon nzType="truck" nzTheme="outline"></i>
-                    <span>Llega en 2-3 días a {{ userLocation }}</span>
+                    <span>Llega en 1-2 días a {{ userLocation }}</span>
                 </div>
             </div>
         </div>
@@ -497,6 +484,17 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Botón de Completar Compra -->
+<div class="section-footer">
+    <a routerLink="/carrito" class="view-all-btn">
+        <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
+        <span>Ya tengo mi pinta lista! ¿En dónde Pago?</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l9 7-9 7V2z" />
+        </svg>
+    </a>
 </div>
 
 <!-- Productos Relacionados con título ecuatoriano -->

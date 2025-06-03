@@ -13,20 +13,13 @@ import { FormsModule } from '@angular/forms';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
-import { Subject, debounceTime, distinctUntilChanged, finalize, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
+import { Observable, Subject, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
 import { CacheService } from '../../../services/admin/cache/cache.service';
 import { StockUpdate, StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ProductCardComponent } from "../../../components/product-card/product-card.component";
 
 // 🆕 Interfaces para las nuevas funcionalidades
-interface AdventureImage {
-  url: string;
-  description: string;
-  location: string;
-  activity: string;
-}
-
 interface TechnicalSpec {
   name: string;
   value: string;
@@ -47,7 +40,6 @@ interface ExtendedSize extends Size {
 }
 
 interface ExtendedProduct extends Product {
-  adventureImages?: AdventureImage[];
   durabilityFeatures?: string[];
   recommendedActivities?: string[];
   weatherConditions?: string[];
@@ -104,7 +96,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   currentImageUrl: string = '';
 
   // 🆕 Nuevas propiedades para funcionalidades ecuatorianas
-  userLocation: string = 'Quito'; // Detectar o configurar ubicación del usuario
+  userLocation: string = 'Tu ciudad'; // Detectar o configurar ubicación del usuario
 
   constructor(
     private route: ActivatedRoute,
@@ -120,6 +112,9 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
+
+    this.detectUserLocation();
+
     this.route.paramMap.pipe(
       takeUntil(this.destroy$)
     ).subscribe(params => {
@@ -487,19 +482,34 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   hasStockForSizeName(sizeName: string): boolean {
     if (!this.product) return false;
 
-    const size = this.product.sizes.find(s => s.name === sizeName);
-    if (!size) return false;
+    if (this.selectedColor) {
+      return this.product.variants.some(variant =>
+        variant.sizeName === sizeName &&
+        variant.colorName === this.selectedColor?.name &&
+        variant.stock > 0
+      );
+    }
 
-    return this.hasStockForSize(size);
+    return this.product.variants.some(variant =>
+      variant.sizeName === sizeName &&
+      variant.stock > 0
+    );
   }
 
   hasLowStockForSizeName(sizeName: string): boolean {
     if (!this.product) return false;
 
-    const size = this.product.sizes.find(s => s.name === sizeName);
-    if (!size) return false;
+    const variants = this.selectedColor
+      ? this.product.variants.filter(v =>
+        v.sizeName === sizeName &&
+        v.colorName === this.selectedColor?.name
+      )
+      : this.product.variants.filter(v => v.sizeName === sizeName);
 
-    return this.hasLowStockForSize(size);
+    if (variants.length === 0) return false;
+
+    // Considerar stock bajo si alguna variante tiene stock > 0 pero <= 5
+    return variants.some(variant => variant.stock > 0 && variant.stock <= 5);
   }
 
   getCurrentVariantStock(): number {
@@ -515,14 +525,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     );
 
     return variant?.stock || 0;
-  }
-
-  getTotalStockForSize(sizeName: string): number {
-    if (!this.product?.variants) return 0;
-
-    return this.product.variants
-      .filter(v => v.sizeName === sizeName)
-      .reduce((total, variant) => total + variant.stock, 0);
   }
 
   getMaxQuantityAvailable(): number {
@@ -627,55 +629,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     this.activeTab = tabName;
   }
 
-  openSizeGuideModal(): void {
-    let sizesHtml = '';
-
-    if (this.product && this.product.sizes && this.product.sizes.length > 0) {
-      sizesHtml = `
-      <div class="size-guide-grid">
-        ${this.product.sizes.map(size => `
-          <div class="size-guide-item">
-            ${size.imageUrl ?
-          `<img src="${size.imageUrl}" alt="Talla ${size.name}" class="size-guide-image">` :
-          '<div class="size-guide-no-image"></div>'
-        }
-            <div class="size-guide-size-name">${size.name}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-    }
-
-    this.modalService.create({
-      nzTitle: 'Guía de Tallas - Encuentra tu fit perfecto',
-      nzContent: `
-      <div class="size-guide-modal">
-        <div class="size-guide-content">
-          <h4>¿Cómo elegir tu talla perfecta para la aventura?</h4>
-          <p>1. Mide tu cuerpo con ropa ligera, sin apretar la cinta</p>
-          <p>2. Consulta nuestra tabla de medidas específica</p>
-          <p>3. Si estás entre dos tallas, elige la mayor para mayor comodidad</p>
-          
-          <h4 class="size-guide-subtitle">Tallas disponibles para esta aventura</h4>
-          ${sizesHtml}
-          
-          <div class="ecuadorian-tips">
-            <h4>Tips de la casa 🏔️</h4>
-            <p>• Para aventuras en altura (como nuestros páramos), considera una talla que permita capas adicionales</p>
-            <p>• ¿Tienes dudas? Mándanos un WhatsApp y te asesoramos al toque</p>
-            <p>• Si no te queda chevere, cambios gratis en Quito y envío sin costo</p>
-          </div>
-        </div>
-      </div>
-    `,
-      nzWidth: 700,
-      nzFooter: null,
-      nzCentered: true,
-      nzBodyStyle: { padding: '20px' },
-      nzClassName: 'size-guide-modal-container'
-    });
-  }
-
   // 🆕 Método mejorado para agregar al carrito con mensajes ecuatorianos
   addToCart(): void {
     if (!this.product || !this.selectedVariant) {
@@ -686,40 +639,32 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.selectedVariant.stock < this.quantity) {
-      this.modalService.warning({
-        nzTitle: 'No hay suficiente stock',
-        nzContent: `Solo hay ${this.selectedVariant.stock} unidades disponibles de ${this.selectedVariant.colorName} - ${this.selectedVariant.sizeName}. ¡Apúrate que se acaba!`
-      });
-      return;
-    }
+    // 🆕 VALIDAR STOCK EN TIEMPO REAL
+    this.validateStockBeforeAddToCart().pipe(
+      take(1),
+      switchMap(hasStock => {
+        if (!hasStock) {
+          this.modalService.warning({
+            nzTitle: 'No hay suficiente stock',
+            nzContent: `Solo hay ${this.selectedVariant!.stock} unidades disponibles. ¡Apúrate que se acaba!`
+          });
+          return of(false);
+        }
 
-    this.cartService.addToCart(
-      this.product.id,
-      this.selectedVariant.id,
-      this.quantity,
-      this.product,
-      this.selectedVariant
-    ).pipe(
-      take(1)
+        return this.cartService.addToCart(
+          this.product!.id,
+          this.selectedVariant!.id,
+          this.quantity,
+          this.product!,
+          this.selectedVariant!
+        );
+      })
     ).subscribe({
       next: (success: boolean) => {
         if (success) {
-          this.modalService.success({
-            nzTitle: '¡Listo para la aventura! 🎒',
-            nzContent: `Has agregado ${this.quantity} unidad(es) de ${this.product!.name} a tu mochila.`,
-            nzOkText: 'Ver mi mochila',
-            nzCancelText: 'Seguir explorando',
-            nzOnOk: () => {
-              this.router.navigate(['/carrito']);
-            }
-          });
+          this.trackAddToCart(); // 🆕 AGREGAR ANALYTICS
+          this.message.success(`${this.product!.name} agregado al carrito`);
           this.quantity = 1;
-        } else {
-          this.modalService.error({
-            nzTitle: '¡Uy, qué lástima!',
-            nzContent: 'No se pudo agregar el producto a tu mochila. Puede que ya no haya stock disponible.'
-          });
         }
       },
       error: (error: unknown) => {
@@ -734,13 +679,48 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
 
   toggleWishlist(): void {
     this.isInWishlist = !this.isInWishlist;
+    this.saveToWishlist();
 
     if (this.isInWishlist) {
       this.message.success('¡Guardado en favoritos! 💝');
-      console.log('Producto agregado a favoritos:', this.product?.id);
     } else {
       this.message.info('Eliminado de favoritos');
-      console.log('Producto eliminado de favoritos:', this.product?.id);
+    }
+  }
+
+  private checkIfInWishlist(): void {
+    if (!this.product) return;
+
+    const wishlist = this.getWishlistFromStorage();
+    this.isInWishlist = wishlist.includes(this.product.id);
+  }
+
+  private saveToWishlist(): void {
+    if (!this.product) return;
+
+    let wishlist = this.getWishlistFromStorage();
+
+    if (this.isInWishlist) {
+      // Agregar a favoritos
+      if (!wishlist.includes(this.product.id)) {
+        wishlist.push(this.product.id);
+      }
+    } else {
+      // Quitar de favoritos
+      if (this.product) {
+        wishlist = wishlist.filter(id => id !== this.product!.id);
+      }
+    }
+
+    localStorage.setItem('wishlist', JSON.stringify(wishlist));
+  }
+
+  private getWishlistFromStorage(): string[] {
+    try {
+      const wishlist = localStorage.getItem('wishlist');
+      return wishlist ? JSON.parse(wishlist) : [];
+    } catch {
+      return [];
     }
   }
 
@@ -754,12 +734,10 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     return this.product.sizes.map(size => size.name).join(', ');
   }
 
-  getStarsArray(rating: number): number[] {
-    return Array(5).fill(0).map((_, i) => i < Math.floor(rating) ? 1 : 0);
-  }
-
   private continueProductSetup(product: ExtendedProduct, productId: string): void {
     this.loadCategoryInfo(product.category);
+    this.checkIfInWishlist();
+    this.trackProductView();
 
     if (product.colors?.length > 0) {
       this.selectColor(product.colors[0]);
@@ -772,7 +750,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     this.incrementProductViews(productId);
   }
 
-  onRelatedProductColorChange(event: {product: Product, color: Color, index: number}): void {
+  onRelatedProductColorChange(event: { product: Product, color: Color, index: number }): void {
     console.log('Color cambiado en producto relacionado:', event);
   }
 
@@ -780,12 +758,161 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     return product?.id || `product-${index}`;
   }
 
-  private initializeRelatedProducts(): void {
-    this.relatedProducts = this.relatedProducts.map(product => ({
-      ...product,
-      selectedColorIndex: 0,
-      displayImageUrl: product.colors?.[0]?.imageUrl || product.imageUrl
-    }));
+  private detectUserLocation(): void {
+    // Primero intentar geolocalización
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          this.getUserLocationFromCoords(position.coords.latitude, position.coords.longitude);
+        },
+        () => {
+          // Si falla, usar IP detection como fallback
+          this.getUserLocationFromIP();
+        }
+      );
+    } else {
+      this.getUserLocationFromIP();
+    }
+  }
+
+  private getUserLocationFromCoords(lat: number, lng: number): void {
+    // Usar servicio de geocoding reverso (opcional)
+    // Por ahora, detectar si está en Ecuador
+    if (lat >= -5 && lat <= 2 && lng >= -81 && lng <= -75) {
+      this.userLocation = 'Ecuador';
+    } else {
+      this.userLocation = 'Tu ubicación';
+    }
+  }
+
+  private getUserLocationFromIP(): void {
+    // Usar un servicio como ipapi.co (gratis)
+    fetch('https://ipapi.co/json/')
+      .then(response => response.json())
+      .then(data => {
+        if (data.country_code === 'EC') {
+          this.userLocation = data.city || 'Ecuador';
+        } else {
+          this.userLocation = data.country_name || 'Tu ubicación';
+        }
+      })
+      .catch(() => {
+        this.userLocation = 'Tu ciudad';
+      });
+  }
+
+  // ✅ 3. VALIDACIÓN DE STOCK EN TIEMPO REAL
+  private validateStockBeforeAddToCart(): Observable<boolean> {
+    if (!this.selectedVariant) {
+      return of(false);
+    }
+
+    // Verificar stock actualizado en el servidor
+    return this.inventoryService.getVariantById(this.selectedVariant.id).pipe(
+      take(1),
+      map(variant => {
+        if (!variant) return false;
+
+        // Actualizar stock local si es diferente
+        if (variant.stock !== this.selectedVariant!.stock) {
+          this.selectedVariant!.stock = variant.stock;
+
+          // Ajustar cantidad si es necesario
+          if (this.quantity > variant.stock) {
+            this.quantity = Math.max(1, variant.stock);
+          }
+        }
+
+        return variant.stock >= this.quantity;
+      }),
+      catchError(() => of(false))
+    );
+  }
+
+  // 🎨 4. COLORES DISPONIBLES PARA TALLA SELECCIONADA
+  getAvailableColorsForSelectedSize(): Color[] {
+    if (!this.product || !this.selectedSize) {
+      return this.product?.colors || [];
+    }
+
+    // Filtrar colores que tienen stock para la talla seleccionada
+    const availableColorNames = this.product.variants
+      .filter(v => v.sizeName === this.selectedSize!.name && v.stock > 0)
+      .map(v => v.colorName);
+
+    return this.product.colors.filter(color =>
+      availableColorNames.includes(color.name)
+    );
+  }
+
+  // 🚚 5. CÁLCULO DE ENVÍO
+  calculateShippingEstimate(): string {
+    if (!this.userLocation) return 'Calculando envío...';
+
+    const location = this.userLocation.toLowerCase();
+
+    if (location.includes('quito') || location.includes('ecuador')) {
+      return 'Llega mañana o pasado';
+    } else if (location.includes('guayaquil') || location.includes('cuenca')) {
+      return 'Llega en 2-3 días';
+    } else {
+      return 'Llega en 2-5 días';
+    }
+  }
+
+  private trackProductView(): void {
+    if (!this.product) return;
+
+    // Almacenar en localStorage para analytics
+    const viewData = {
+      productId: this.product.id,
+      productName: this.product.name,
+      category: this.product.category,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent
+    };
+
+    const views = this.getStoredViews();
+    views.push(viewData);
+
+    // Mantener solo los últimos 50 views
+    const recentViews = views.slice(-50);
+    localStorage.setItem('product_views', JSON.stringify(recentViews));
+  }
+
+  private trackAddToCart(): void {
+    if (!this.product || !this.selectedVariant) return;
+
+    const cartData = {
+      productId: this.product.id,
+      variantId: this.selectedVariant.id,
+      quantity: this.quantity,
+      price: this.product.price,
+      timestamp: new Date().toISOString()
+    };
+
+    const cartEvents = this.getStoredCartEvents();
+    cartEvents.push(cartData);
+
+    localStorage.setItem('cart_events', JSON.stringify(cartEvents.slice(-20)));
+  }
+
+  private getStoredViews(): any[] {
+    try {
+      const views = localStorage.getItem('product_views');
+      return views ? JSON.parse(views) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private getStoredCartEvents(): any[] {
+    try {
+      const events = localStorage.getItem('cart_events');
+      return events ? JSON.parse(events) : [];
+    } catch {
+      return [];
+    }
   }
 
   clearProblematicCache(): void {

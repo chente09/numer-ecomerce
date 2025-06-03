@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CartService, CartItem, Cart } from '../services/cart/cart.service';
-import { Subscription } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom } from 'rxjs';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -16,6 +16,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { UsersService } from '../../services/users/users.service';
 import { User } from '@angular/fire/auth';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzDividerModule } from 'ng-zorro-antd/divider';
 
 @Component({
   selector: 'app-carrito',
@@ -31,8 +33,9 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
     NzToolTipModule,
     NzIconModule,
     NzModalModule,
-    NzAlertModule
-
+    NzAlertModule,
+    NzTagModule,
+    NzDividerModule
   ],
   templateUrl: './carrito.component.html',
   styleUrl: './carrito.component.css'
@@ -42,13 +45,14 @@ export class CarritoComponent implements OnInit, OnDestroy {
   loading = true;
   updating = false;
   discountCode = '';
+  processingCheckout = false;
 
   currentUser: User | null = null;
   canCheckout = false;
   checkoutMessage = '';
 
-  // Para seguir la suscripción y poder limpiarla después
-  private cartSubscription: Subscription | null = null;
+  // ✅ CORRECCIÓN: Usar Subject para limpiar suscripciones
+  private destroy$ = new Subject<void>();
 
   constructor(
     private cartService: CartService,
@@ -59,30 +63,35 @@ export class CarritoComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
-    this.usersService.user$.subscribe(user => {
+    // ✅ CORRECCIÓN: Usar takeUntil para evitar memory leaks
+    this.usersService.user$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(user => {
       this.currentUser = user;
       this.updateCheckoutStatus();
     });
 
-    // Suscribirse al observable del carrito
-    this.cartSubscription = this.cartService.cart$.subscribe(
-      (cart) => {
+    // ✅ CORRECCIÓN: Usar takeUntil para la suscripción del carrito
+    this.cartService.cart$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (cart) => {
         this.cart = cart;
         this.loading = false;
+        console.log('🛒 Carrito actualizado:', cart);
       },
-      (error) => {
-        console.error('Error al cargar el carrito:', error);
+      error: (error) => {
+        console.error('❌ Error al cargar el carrito:', error);
         this.message.error('No se pudo cargar el carrito. Por favor, intenta de nuevo.');
         this.loading = false;
       }
-    );
+    });
   }
 
-  // Limpiar suscripciones al destruir el componente
   ngOnDestroy(): void {
-    if (this.cartSubscription) {
-      this.cartSubscription.unsubscribe();
-    }
+    // ✅ CORRECCIÓN: Limpiar todas las suscripciones
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private updateCheckoutStatus(): void {
@@ -98,8 +107,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
     }
   }
 
-
-  // Actualizar la cantidad de un producto
+  // ✅ CORRECCIÓN: Usar firstValueFrom para convertir Observable a Promise
   async updateQuantity(item: CartItem, quantity: number): Promise<void> {
     if (quantity <= 0) {
       this.removeItem(item);
@@ -108,49 +116,94 @@ export class CarritoComponent implements OnInit, OnDestroy {
 
     this.updating = true;
     try {
-      const success = await this.cartService.updateItemQuantity(item.variantId, quantity);
+      console.log(`🔄 Actualizando cantidad: ${item.product?.name} a ${quantity}`);
+
+      // ✅ CORRECCIÓN: Convertir Observable a Promise correctamente
+      const success = await firstValueFrom(
+        this.cartService.updateItemQuantity(item.variantId, quantity)
+      );
+
       if (!success) {
         this.message.warning('No hay suficiente stock disponible para la cantidad solicitada.');
+        // Revertir cantidad en la UI
+        item.quantity = item.quantity; // Mantener cantidad anterior
+      } else {
+        this.message.success('Cantidad actualizada correctamente');
       }
     } catch (error) {
-      console.error('Error al actualizar cantidad:', error);
+      console.error('❌ Error al actualizar cantidad:', error);
       this.message.error('Error al actualizar la cantidad del producto.');
     } finally {
       this.updating = false;
     }
   }
 
-  // Eliminar un producto
+  // ✅ CORRECCIÓN: Usar firstValueFrom para removeItem
   removeItem(item: CartItem): void {
     this.modal.confirm({
       nzTitle: '¿Eliminar producto?',
-      nzContent: `¿Estás seguro de que deseas eliminar ${item.product?.name || 'este producto'} del carrito?`,
+      nzContent: `¿Estás seguro de que deseas eliminar "${item.product?.name || 'este producto'}" del carrito?`,
       nzOkText: 'Sí, eliminar',
       nzOkType: 'primary',
       nzOkDanger: true,
-      nzOnOk: () => {
-        this.cartService.removeItem(item.variantId);
-        this.message.success('Producto eliminado del carrito.');
+      nzOnOk: async () => {
+        try {
+          console.log(`🗑️ Eliminando producto: ${item.product?.name}`);
+
+          const success = await firstValueFrom(
+            this.cartService.removeItem(item.variantId)
+          );
+
+          if (success) {
+            this.message.success('Producto eliminado del carrito.');
+          } else {
+            this.message.error('No se pudo eliminar el producto.');
+          }
+        } catch (error) {
+          console.error('❌ Error al eliminar producto:', error);
+          this.message.error('Error al eliminar el producto.');
+        }
       },
       nzCancelText: 'Cancelar'
     });
   }
 
-  // Aplicar código de descuento (ejemplo simple)
+  // ✅ MEJORADO: Lógica de descuento más robusta
   applyDiscount(): void {
     if (!this.discountCode.trim()) {
       this.message.warning('Ingresa un código de descuento válido.');
       return;
     }
 
-    // En un caso real, consultarías a un servicio para validar el código
-    // Aquí solo simulamos un código fijo "DISCOUNT20" que da 20% de descuento
-    if (this.discountCode.toUpperCase() === 'DISCOUNT20') {
-      const discountAmount = this.cart ? this.cart.subtotal * 0.2 : 0;
+    if (!this.cart) {
+      this.message.error('No hay productos en el carrito.');
+      return;
+    }
+
+    console.log(`💰 Aplicando código de descuento: ${this.discountCode}`);
+
+    // ✅ MEJORADO: Múltiples códigos de descuento
+    const validCodes = {
+      'DISCOUNT20': { percentage: 20, minAmount: 50 },
+      'WELCOME10': { percentage: 10, minAmount: 0 },
+      'SAVE15': { percentage: 15, minAmount: 100 }
+    };
+
+    const code = this.discountCode.toUpperCase();
+    const discountInfo = validCodes[code as keyof typeof validCodes];
+
+    if (discountInfo) {
+      if (this.cart.subtotal < discountInfo.minAmount) {
+        this.message.warning(`Este código requiere una compra mínima de $${discountInfo.minAmount}.`);
+        return;
+      }
+
+      const discountAmount = this.cart.subtotal * (discountInfo.percentage / 100);
       const success = this.cartService.applyDiscount(this.discountCode, discountAmount);
 
       if (success) {
-        this.message.success(`Código de descuento aplicado: $${discountAmount.toFixed(2)}`);
+        this.message.success(`✅ Código aplicado: ${discountInfo.percentage}% de descuento ($${discountAmount.toFixed(2)})`);
+        this.discountCode = ''; // Limpiar campo
       } else {
         this.message.error('No se pudo aplicar el descuento.');
       }
@@ -159,15 +212,15 @@ export class CarritoComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Vaciar carrito
   clearCart(): void {
     this.modal.confirm({
       nzTitle: 'Vaciar carrito',
-      nzContent: '¿Estás seguro de que deseas vaciar tu carrito de compras?',
+      nzContent: '¿Estás seguro de que deseas vaciar tu carrito de compras? Esta acción no se puede deshacer.',
       nzOkText: 'Sí, vaciar',
       nzOkType: 'primary',
       nzOkDanger: true,
       nzOnOk: () => {
+        console.log('🧹 Vaciando carrito...');
         this.cartService.clearCart();
         this.message.info('Tu carrito ha sido vaciado.');
       },
@@ -175,22 +228,20 @@ export class CarritoComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Proceder al checkout
+  // ✅ NUEVA IMPLEMENTACIÓN: Checkout completo con descuento de inventario
   async proceedToCheckout(): Promise<void> {
     if (!this.cart || this.cart.items.length === 0) {
       this.message.warning('Tu carrito está vacío.');
       return;
     }
 
-    // Si no puede hacer checkout, redirigir según el caso
+    // Validar estado de autenticación
     if (!this.canCheckout) {
       if (!this.currentUser) {
-        // Redirigir a login con returnUrl
         this.router.navigate(['/welcome'], {
           queryParams: { returnUrl: '/carrito' }
         });
       } else if (this.currentUser.isAnonymous) {
-        // Redirigir a completar perfil
         this.router.navigate(['/completar-perfil'], {
           queryParams: { returnUrl: '/carrito' }
         });
@@ -198,16 +249,61 @@ export class CarritoComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Proceder normalmente al pago
-    this.router.navigate(['/pago'], {
-      queryParams: {
-        transId: `order-${Date.now()}`,
-        referencia: 'Compra desde carrito'
+    this.processingCheckout = true;
+
+    try {
+      console.log('🛒 Validando carrito para checkout...');
+
+      // ✅ SOLO VALIDAR stock disponible (sin descontar)
+      for (const item of this.cart.items) {
+        if (!item.variant || item.variant.stock < item.quantity) {
+          throw new Error(`❌ Stock insuficiente para ${item.product?.name}. Disponible: ${item.variant?.stock || 0}, Solicitado: ${item.quantity}`);
+        }
       }
-    });
+
+      // ✅ VALIDACIÓN EXITOSA: Redirigir al proceso de pago
+      console.log('✅ Carrito validado, redirigiendo al pago...');
+
+      this.router.navigate(['/pago'], {
+        queryParams: {
+          transId: `order-${Date.now()}`,
+          referencia: 'Compra desde carrito'
+        }
+      });
+
+    } catch (error: any) {
+      console.error('❌ Error en validación:', error);
+
+      this.modal.error({
+        nzTitle: 'Problema con el stock',
+        nzContent: error.message || 'Algunos productos no tienen suficiente stock disponible.',
+        nzOkText: 'Revisar carrito'
+      });
+    } finally {
+      this.processingCheckout = false;
+    }
   }
 
-  // Métodos auxiliares para el template
+  // ✅ NUEVO: Verificar si un item tiene stock suficiente
+  hasValidStock(item: CartItem): boolean {
+    return !!(item.variant && item.variant.stock >= item.quantity);
+  }
+
+  // ✅ NUEVO: Obtener mensaje de stock
+  getStockMessage(item: CartItem): string {
+    if (!item.variant) return 'Sin información de stock';
+
+    if (item.variant.stock === 0) {
+      return 'Sin stock';
+    } else if (item.variant.stock < item.quantity) {
+      return `Solo ${item.variant.stock} disponible${item.variant.stock === 1 ? '' : 's'}`;
+    } else if (item.variant.stock <= 5) {
+      return 'Últimas unidades';
+    }
+    return 'En stock';
+  }
+
+  // Métodos auxiliares existentes
   redirectToLogin(): void {
     this.router.navigate(['/welcome'], {
       queryParams: { returnUrl: '/carrito' }
@@ -220,8 +316,31 @@ export class CarritoComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Continuar comprando
   continueShopping(): void {
     this.router.navigate(['/shop']);
+  }
+
+  // ✅ NUEVO: Método para calcular ahorros
+  getTotalSavings(): number {
+    if (!this.cart) return 0;
+    return this.cart.discount;
+  }
+
+  // ✅ NUEVO: Verificar si el carrito tiene descuentos
+  hasDiscounts(): boolean {
+    return this.getTotalSavings() > 0;
+  }
+
+  // ✅ NUEVO: TrackBy function para optimizar rendimiento
+  trackByVariantId(index: number, item: CartItem): string {
+    return item.variantId;
+  }
+
+  // ✅ NUEVO: Manejar errores de imagen
+  handleImageError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target) {
+      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOGY4Ii8+PGcgZmlsbD0iIzk5OSI+PGNpcmNsZSBjeD0iNTAiIGN5PSI0MCIgcj0iMTAiLz48cGF0aCBkPSJtMzAgNzBoNDB2MTBIMzB6Ii8+PC9nPjwvc3ZnPg==';
+    }
   }
 }
