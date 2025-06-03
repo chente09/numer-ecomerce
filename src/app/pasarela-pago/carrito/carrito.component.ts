@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CartService, CartItem, Cart } from '../services/cart/cart.service';
-import { Subject, takeUntil, firstValueFrom } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom, take } from 'rxjs';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -235,7 +235,6 @@ export class CarritoComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Validar estado de autenticación
     if (!this.canCheckout) {
       if (!this.currentUser) {
         this.router.navigate(['/welcome'], {
@@ -252,17 +251,22 @@ export class CarritoComponent implements OnInit, OnDestroy {
     this.processingCheckout = true;
 
     try {
-      console.log('🛒 Validando carrito para checkout...');
+      console.log('🛒 Validando stock disponible para checkout...');
 
-      // ✅ SOLO VALIDAR stock disponible (sin descontar)
+      // ✅ SOLO VALIDAR disponibilidad (sin descontar)
       for (const item of this.cart.items) {
-        if (!item.variant || item.variant.stock < item.quantity) {
-          throw new Error(`❌ Stock insuficiente para ${item.product?.name}. Disponible: ${item.variant?.stock || 0}, Solicitado: ${item.quantity}`);
+        // Verificar stock en tiempo real
+        const currentVariant = await firstValueFrom(
+          this.cartService['productService'].getVariantById(item.variantId).pipe(take(1))
+        );
+
+        if (!currentVariant || currentVariant.stock < item.quantity) {
+          throw new Error(`❌ Stock insuficiente para ${item.product?.name}. Disponible: ${currentVariant?.stock || 0}, Solicitado: ${item.quantity}`);
         }
       }
 
       // ✅ VALIDACIÓN EXITOSA: Redirigir al proceso de pago
-      console.log('✅ Carrito validado, redirigiendo al pago...');
+      console.log('✅ Stock validado, redirigiendo al pago...');
 
       this.router.navigate(['/pago'], {
         queryParams: {

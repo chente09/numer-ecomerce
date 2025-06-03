@@ -303,7 +303,7 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
   // ✅ PRESERVADO: Procesamiento de pago exitoso (sin cambios)
   private async processSuccessfulPayment(response: PayphoneResponse): Promise<void> {
     try {
-      console.log('🔄 Procesando pago exitoso en secuencia...');
+      console.log('🔄 Procesando pago exitoso...');
 
       const cart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
 
@@ -311,15 +311,13 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
         throw new Error('Carrito vacío durante procesamiento');
       }
 
+      // ✅ AQUÍ es donde ocurre el descuento real del inventario
       console.log('📦 Procesando checkout y descontando inventario...');
       const checkoutResult = await this.processCheckoutWithRetry(cart);
 
       if (!checkoutResult.success) {
         throw new Error(checkoutResult.error || 'Error en checkout');
       }
-
-      console.log('🧹 Limpiando carrito...');
-      this.cartService.clearCart();
 
       console.log('✅ Proceso completado exitosamente');
       this.showSuccessModal(
@@ -422,8 +420,8 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
       generic: `🔧 Error técnico: ${errorMessage}<br>🛡️ Tu pago está protegido y procesaremos tu orden.`
     };
 
-    return baseContent + `<p>${errorMessages[errorType]}</p>` + 
-           '<p>📞 Nuestro equipo te contactará pronto o puedes escribirnos directamente.</p></div>';
+    return baseContent + `<p>${errorMessages[errorType]}</p>` +
+      '<p>📞 Nuestro equipo te contactará pronto o puedes escribirnos directamente.</p></div>';
   }
 
   // ✅ PRESERVADO: Redirección con mensaje
