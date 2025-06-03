@@ -652,6 +652,25 @@
   }
 }
 
+::ng-deep .payment-steps .ant-steps-item-process .ant-steps-item-icon .ant-steps-icon,
+::ng-deep .payment-steps .ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon {
+  color: #000000 !important;
+}
+
+::ng-deep .payment-steps .ant-steps-item-process .ant-steps-item-title,
+::ng-deep .payment-steps .ant-steps-item-finish .ant-steps-item-title {
+  color: #000000 !important;
+  font-weight: 600 !important;
+}
+
+::ng-deep .payment-steps .ant-steps-item-process .ant-steps-item-title::after,
+::ng-deep .payment-steps .ant-steps-item-finish .ant-steps-item-title::after {
+  background-color: #000000 !important;
+}
+
+::ng-deep .payment-steps .ant-steps-item-finish .ant-steps-item-tail::after {
+  background-color: #000000 !important;
+}
 
 /* Layout responsivo para confirmación */
 .payment-main.full-width {

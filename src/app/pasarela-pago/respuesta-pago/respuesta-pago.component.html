@@ -1,9 +1,67 @@
 <div class="payment-layout">
-  
-  <!-- Main content - Full width para respuesta -->
-  <main class="payment-main full-width">
-    
-    <!-- Header con pasos DINÁMICO -->
+  <!-- Sidebar: Resumen de la compra -->
+  <aside class="cart-sidebar">
+    <div class="sidebar-header">
+      <h2>Tu compra</h2>
+    </div>
+
+    <div class="cart-content" *ngIf="resultado && !isCanceled()">
+      <!-- Resumen de transacción -->
+      <div class="purchase-summary">
+        <div class="summary-item">
+          <span class="summary-label">Total pagado</span>
+          <span class="summary-value highlight">{{ (resultado.amount/100) | currency:currencyCode:'symbol':'1.2-2' }}</span>
+        </div>
+        
+        <div class="summary-item">
+          <span class="summary-label">Método de pago</span>
+          <span class="summary-value">
+            <span *ngIf="resultado.cardBrand">{{ resultado.cardBrand }}</span>
+            <span *ngIf="resultado.lastDigits"> **** {{ resultado.lastDigits }}</span>
+            <span *ngIf="!resultado.cardBrand">Tarjeta</span>
+          </span>
+        </div>
+        
+        <div class="summary-item">
+          <span class="summary-label">Fecha</span>
+          <span class="summary-value">{{ resultado.date | date:'short' }}</span>
+        </div>
+        
+        <div class="summary-item">
+          <span class="summary-label">Estado</span>
+          <nz-tag [nzColor]="'green'">{{ friendlyStatus }}</nz-tag>
+        </div>
+      </div>
+
+      <!-- ID de transacción destacado -->
+      <div class="transaction-highlight">
+        <div class="transaction-label">ID de transacción</div>
+        <code class="transaction-code">{{ resultado.transactionId }}</code>
+      </div>
+    </div>
+
+    <!-- Para casos de cancelación o error -->
+    <div class="cart-content" *ngIf="!resultado || isCanceled() || error">
+      <div class="status-message">
+        <div *ngIf="loading" class="loading-message">
+          <nz-spin nzSize="small"></nz-spin>
+          <span>Procesando...</span>
+        </div>
+        <div *ngIf="error" class="error-message">
+          <span nz-icon nzType="exclamation-circle" nzTheme="outline"></span>
+          <span>Error en el proceso</span>
+        </div>
+        <div *ngIf="isCanceled()" class="cancel-message">
+          <span nz-icon nzType="close-circle" nzTheme="outline"></span>
+          <span>Pago cancelado</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content: Confirmación detallada -->
+  <main class="payment-main">
+    <!-- Header con pasos -->
     <header class="payment-header">
       <div class="progress-container">
         <nz-steps [nzCurrent]="2" nzSize="small" class="payment-steps">
@@ -13,7 +71,6 @@
         </nz-steps>
       </div>
 
-      <!-- Título dinámico -->
       <h1 class="main-title">
         <ng-container *ngIf="loading">Procesando...</ng-container>
         <ng-container *ngIf="!loading && resultado && !isCanceled()">¡Compra exitosa!</ng-container>
@@ -22,10 +79,10 @@
       </h1>
     </header>
 
-    <!-- Contenido de confirmación -->
+    <!-- Contenido principal -->
     <div class="confirmation-content">
       
-      <!-- Loading de confirmación -->
+      <!-- Loading -->
       <div *ngIf="loading" class="confirmation-loading">
         <div class="loading-state">
           <div class="spinner-container">
@@ -35,181 +92,102 @@
         </div>
       </div>
 
-      <!-- Error en confirmación -->
+      <!-- Error -->
       <div *ngIf="!loading && error" class="confirmation-error">
         <nz-result 
           nzStatus="error" 
           nzTitle="Error al confirmar el pago"
-          [nzSubTitle]="'Hubo un problema procesando tu transacción'">
+          nzSubTitle="Hubo un problema procesando tu transacción">
           <div nz-result-extra>
-            <nz-alert
-              nzType="info"
-              nzMessage="💬 Puedes contactarnos por WhatsApp para ayuda inmediata"
-              nzShowIcon
-              class="whatsapp-notice">
-            </nz-alert>
-            
-            <div class="error-details">
-              <nz-collapse>
-                <nz-collapse-panel nzHeader="Ver detalles del error">
-                  <pre>{{ error | json }}</pre>
-                </nz-collapse-panel>
-              </nz-collapse>
-            </div>
-
             <div class="error-actions">
-              <button nz-button nzType="default" (click)="goToMainFlow()">
-                <span nz-icon nzType="shop"></span>
-                Ir a tienda
+              <button nz-button nzType="default" (click)="goBack()">
+                <span nz-icon nzType="arrow-left"></span>
+                Volver
               </button>
             </div>
           </div>
         </nz-result>
       </div>
 
-      <!-- Ticket exitoso -->
-      <div *ngIf="!loading && resultado && !error" class="ticket-container">
+      <!-- Cancelado -->
+      <div *ngIf="!loading && resultado && isCanceled()" class="confirmation-canceled">
+        <nz-result
+          nzStatus="info"
+          nzTitle="Pago Cancelado"
+          nzSubTitle="La transacción ha sido cancelada y no se ha realizado ningún cargo">
+          <div nz-result-extra>
+            <button nz-button nzType="primary" (click)="goBack()">
+              <span nz-icon nzType="shopping"></span>
+              Continuar comprando
+            </button>
+          </div>
+        </nz-result>
+      </div>
+
+      <!-- Éxito -->
+      <div *ngIf="!loading && resultado && !isCanceled() && !error" class="confirmation-success">
         
-        <!-- Cancelado -->
-        <div *ngIf="isCanceled()" class="canceled-notice">
-          <nz-result
-            nzStatus="info"
-            nzTitle="Pago Cancelado"
-            nzSubTitle="La transacción ha sido cancelada y no se ha realizado ningún cargo.">
-            <div nz-result-extra>
-              <button nz-button nzType="primary" (click)="goToMainFlow()">
-                <span nz-icon nzType="shopping"></span>
-                Continuar comprando
-              </button>
-            </div>
+        <div class="success-icon">
+          <nz-result nzStatus="success" nzTitle="¡Pago procesado correctamente!">
           </nz-result>
         </div>
 
-        <!-- Exitoso -->
-        <div *ngIf="!isCanceled()" class="success-ticket">
+        <!-- Detalles completos -->
+        <nz-card nzTitle="Información de la transacción" class="transaction-details">
           
-          <!-- Header de éxito -->
-          <div class="ticket-header">
-            <nz-result
-              nzStatus="success"
-              nzTitle="¡Pago Exitoso!"
-              nzSubTitle="Tu compra ha sido procesada correctamente">
-            </nz-result>
-          </div>
+          <nz-collapse>
+            <nz-collapse-panel nzHeader="Ver detalles completos" [nzActive]="false">
+              <div class="detail-grid">
+                
+                <div class="detail-row" *ngIf="resultado.clientTransactionId">
+                  <span class="label">ID Cliente:</span>
+                  <code>{{ resultado.clientTransactionId }}</code>
+                </div>
+                
+                <div class="detail-row" *ngIf="resultado.authorizationCode">
+                  <span class="label">Código de Autorización:</span>
+                  <code>{{ resultado.authorizationCode }}</code>
+                </div>
+                
+                <div class="detail-row" *ngIf="resultado.reference">
+                  <span class="label">Referencia:</span>
+                  <span>{{ resultado.reference }}</span>
+                </div>
+                
+                <div class="detail-row" *ngIf="resultado.email">
+                  <span class="label">Email:</span>
+                  <span>{{ resultado.email }}</span>
+                </div>
+                
+                <div class="detail-row" *ngIf="resultado.phoneNumber">
+                  <span class="label">Teléfono:</span>
+                  <span>{{ resultado.phoneNumber }}</span>
+                </div>
+                
+                <div class="detail-row" *ngIf="resultado.storeName">
+                  <span class="label">Comercio:</span>
+                  <span>{{ resultado.storeName }}</span>
+                </div>
+                
+              </div>
+            </nz-collapse-panel>
+          </nz-collapse>
+        </nz-card>
 
-          <!-- Detalles de la transacción -->
-          <nz-card nzTitle="Detalles de la transacción" class="ticket-details">
-            <div class="detail-grid">
-              
-              <!-- Detalles principales -->
-              <div class="detail-item highlight">
-                <span class="label">Estado:</span>
-                <nz-tag [nzColor]="'green'">{{ friendlyStatus }}</nz-tag>
-              </div>
-              
-              <div class="detail-item highlight">
-                <span class="label">Monto:</span>
-                <strong class="amount">{{ (resultado.amount/100) | currency:currencyCode:'symbol':'1.2-2' }}</strong>
-              </div>
-              
-              <div class="detail-item">
-                <span class="label">ID Transacción:</span>
-                <code class="transaction-id">{{ resultado.transactionId }}</code>
-              </div>
-              
-              <div class="detail-item">
-                <span class="label">Fecha:</span>
-                <span>{{ resultado.date | date:'medium' }}</span>
-              </div>
-
-              <div class="detail-item" *ngIf="resultado.authorizationCode">
-                <span class="label">Código de Autorización:</span>
-                <code>{{ resultado.authorizationCode }}</code>
-              </div>
-
-              <!-- Más detalles colapsables -->
-              <div class="detail-item full-width">
-                <nz-collapse class="detail-collapse">
-                  <nz-collapse-panel nzHeader="Ver información completa">
-                    <div class="extended-details">
-                      
-                      <div class="detail-row" *ngIf="resultado.clientTransactionId">
-                        <span>ID Cliente:</span> 
-                        <code>{{ resultado.clientTransactionId }}</code>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.currency">
-                        <span>Moneda:</span> 
-                        <span>{{ resultado.currency }}</span>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.reference">
-                        <span>Referencia:</span> 
-                        <span>{{ resultado.reference }}</span>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.email">
-                        <span>Email:</span> 
-                        <span>{{ resultado.email }}</span>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.phoneNumber">
-                        <span>Teléfono:</span> 
-                        <span>{{ resultado.phoneNumber }}</span>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.document">
-                        <span>Documento:</span> 
-                        <span>{{ resultado.document }}</span>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.cardBrand">
-                        <span>Tarjeta:</span> 
-                        <span>{{ resultado.cardBrand }} 
-                          <span *ngIf="resultado.cardType">({{ resultado.cardType }})</span>
-                          <span *ngIf="resultado.lastDigits"> **** {{ resultado.lastDigits }}</span>
-                        </span>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.storeName">
-                        <span>Comercio:</span> 
-                        <span>{{ resultado.storeName }}</span>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.optionalParameter3">
-                        <span>Nota:</span> 
-                        <span>{{ resultado.optionalParameter3 }}</span>
-                      </div>
-                      
-                      <div class="detail-row" *ngIf="resultado.optionalParameter4">
-                        <span>Cliente:</span> 
-                        <span>{{ resultado.optionalParameter4 }}</span>
-                      </div>
-                      
-                    </div>
-                  </nz-collapse-panel>
-                </nz-collapse>
-              </div>
-            </div>
-          </nz-card>
-
-          <!-- Acciones -->
-          <div class="ticket-actions">
-            <button nz-button nzSize="large" (click)="printTicket()">
-              <span nz-icon nzType="printer"></span>
-              Imprimir comprobante
-            </button>
-            
-            <button nz-button nzType="primary" nzSize="large" (click)="goToMainFlow()">
-              <span nz-icon nzType="shopping"></span>
-              Seguir comprando
-            </button>
-          </div>
-
+        <!-- Acciones principales -->
+        <div class="main-actions">
+          <button nz-button nzSize="large" (click)="printTicket()">
+            <span nz-icon nzType="printer"></span>
+            Imprimir comprobante
+          </button>
+          
+          <button nz-button  nzSize="large" (click)="goBack()">
+            <span nz-icon nzType="shopping"></span>
+            Seguir comprando
+          </button>
         </div>
+
       </div>
-
     </div>
-
   </main>
 </div>
