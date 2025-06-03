@@ -5,6 +5,9 @@ import { ProductService } from '../../../services/admin/product/product.service'
 import { ProductInventoryService, SaleItem } from '../../../services/admin/inventario/product-inventory.service';
 import { ErrorUtil } from '../../../utils/error-util';
 import { StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
+import { UsersService } from '../../../services/users/users.service';
+import { deleteDoc, doc, Firestore, getDoc, setDoc } from '@angular/fire/firestore';
+import { User } from '@angular/fire/auth';
 
 export interface CartItem {
   productId: string;
@@ -51,6 +54,10 @@ export interface ICartService {
   providedIn: 'root'
 })
 export class CartService {
+
+  private firestore = inject(Firestore);
+  private currentUserId: string | null = null;
+
   // Estado inicial del carrito
   private initialCartState: Cart = {
     items: [],
@@ -71,11 +78,191 @@ export class CartService {
   constructor(
     private productService: ProductService,
     private inventoryService: ProductInventoryService,
-    private stockUpdateService: StockUpdateService
+    private stockUpdateService: StockUpdateService,
+    private usersService: UsersService
   ) {
-    // Intentar recuperar el carrito del localStorage al iniciar
-    this.loadCartFromStorage();
+    // ✅ CAMBIAR: Cargar storage DESPUÉS de suscribirse a usuario
+    this.usersService.user$.subscribe(user => {
+      this.handleUserChange(user);
+    });
+
+    // ✅ MOVER al final o hacer condicional
+    // Solo cargar si no hay usuario logueado
+    setTimeout(() => {
+      if (!this.currentUserId) {
+        this.loadCartFromStorage();
+      }
+    }, 100);
   }
+
+  // ✅ NUEVO: Manejar cambio de usuario
+  private async handleUserChange(user: User | null): Promise<void> {
+    const previousUserId = this.currentUserId;
+    this.currentUserId = user?.uid || null;
+
+    console.log('👤 Cambio de usuario:', {
+      previous: previousUserId,
+      current: this.currentUserId
+    });
+
+    if (user && !user.isAnonymous) {
+      // Usuario se logueó
+      await this.handleUserLogin(previousUserId);
+    } else if (previousUserId) {
+      // Usuario se deslogueó
+      await this.handleUserLogout();
+    }
+  }
+
+  // ✅ NUEVO: Cuando usuario se loguea
+  private async handleUserLogin(previousUserId: string | null): Promise<void> {
+    try {
+      console.log('🔄 Usuario logueado, sincronizando carrito...');
+
+      const currentCart = this.getCart();
+      const userCart = await this.loadUserCartFromFirestore();
+      const mergedCart = this.mergeCartItems(currentCart, userCart);
+
+      this.cartSubject.next(mergedCart);
+      await this.saveCartToFirestore();
+      this.saveCartToStorage();
+
+      // ✅ AGREGAR: Cargar detalles de productos si hay items
+      if (mergedCart.items.length > 0) {
+        this.loadCartItemDetails(mergedCart.items);
+      }
+
+      console.log('✅ Carrito sincronizado exitosamente');
+    } catch (error) {
+      console.error('❌ Error sincronizando carrito:', error);
+    }
+  }
+
+  // ✅ NUEVO: Cuando usuario se desloguea
+  private async handleUserLogout(): Promise<void> {
+    console.log('👋 Usuario deslogueado, limpiando carrito...');
+    this.cartSubject.next({ ...this.initialCartState });
+    localStorage.removeItem('cart');
+  }
+
+  // ✅ NUEVO: Cargar carrito de Firestore
+  private async loadUserCartFromFirestore(): Promise<Cart> {
+    if (!this.currentUserId) return { ...this.initialCartState };
+
+    try {
+      const cartRef = doc(this.firestore, `users/${this.currentUserId}/cart`, 'current');
+      const cartSnap = await getDoc(cartRef);
+
+      if (cartSnap.exists()) {
+        const data = cartSnap.data();
+        console.log('📦 Carrito cargado desde Firestore:', data);
+
+        // Validar y limpiar datos
+        return this.sanitizeCartData(data as Cart);
+      }
+    } catch (error) {
+      console.error('❌ Error cargando carrito de Firestore:', error);
+    }
+
+    return { ...this.initialCartState };
+  }
+
+  // ✅ NUEVO: Guardar carrito en Firestore
+  private async saveCartToFirestore(): Promise<void> {
+    if (!this.currentUserId) return;
+
+    try {
+      const cart = this.getCart();
+
+      // ✅ VALIDAR que hay algo que guardar
+      if (cart.items.length === 0) {
+        // Si carrito vacío, eliminar documento
+        await this.clearUserCart();
+        return;
+      }
+
+      const cartRef = doc(this.firestore, `users/${this.currentUserId}/cart`, 'current');
+
+      const cartToSave = {
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice
+        })),
+        totalItems: cart.totalItems,
+        subtotal: cart.subtotal,
+        tax: cart.tax,
+        shipping: cart.shipping,
+        discount: cart.discount,
+        total: cart.total,
+        updatedAt: new Date()
+      };
+
+      await setDoc(cartRef, cartToSave);
+      console.log('💾 Carrito guardado en Firestore');
+    } catch (error) {
+      console.error('❌ Error guardando carrito en Firestore:', error);
+      // ✅ NO lanzar error - continuar sin sincronización
+    }
+  }
+
+  // ✅ NUEVO: Merge inteligente de carritos
+  private mergeCartItems(localCart: Cart, userCart: Cart): Cart {
+    console.log('🔀 Mergeando carritos...', {
+      local: localCart.items.length,
+      user: userCart.items.length
+    });
+
+    const mergedItems = [...userCart.items];
+
+    // Agregar items del carrito local que no estén en el de usuario
+    localCart.items.forEach(localItem => {
+      const existingIndex = mergedItems.findIndex(
+        item => item.variantId === localItem.variantId
+      );
+
+      if (existingIndex !== -1) {
+        // Item existe: sumar cantidades
+        mergedItems[existingIndex].quantity += localItem.quantity;
+        mergedItems[existingIndex].totalPrice =
+          mergedItems[existingIndex].quantity * mergedItems[existingIndex].unitPrice;
+      } else {
+        // Item nuevo: agregar
+        mergedItems.push(localItem);
+      }
+    });
+
+    const mergedCart = {
+      ...this.initialCartState,
+      items: mergedItems
+    };
+
+    this.recalculateCart(mergedCart);
+    return mergedCart;
+  }
+
+  // ✅ NUEVO: Sanitizar datos del carrito
+  private sanitizeCartData(data: any): Cart {
+    return {
+      items: (data.items || []).map((item: any) => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        totalPrice: item.totalPrice || 0,
+        // ✅ NO incluir product/variant - se cargarán después
+      })),
+      totalItems: data.totalItems || 0,
+      subtotal: data.subtotal || 0,
+      tax: data.tax || 0,
+      shipping: data.shipping || 0,
+      discount: data.discount || 0,
+      total: data.total || 0
+    };
+  }
+
 
   /**
    * Obtiene el estado actual del carrito
@@ -103,7 +290,7 @@ export class CartService {
     } else {
       // Verificar disponibilidad de stock
       return this.checkStock(variantId, quantity).pipe(
-        take(1), // ✅ NUEVO: Forzar completar
+        take(1),
         switchMap(stockCheck => {
           if (!stockCheck.available) {
             console.error('❌ CartService: No hay suficiente stock disponible', stockCheck);
@@ -114,7 +301,7 @@ export class CartService {
 
           // Cargar datos completos del producto
           return this.productService.getProductById(productId).pipe(
-            take(1), // ✅ NUEVO: Forzar completar
+            take(1),
             switchMap(product => {
               if (!product) {
                 console.error('❌ CartService: Producto no encontrado');
@@ -125,7 +312,7 @@ export class CartService {
 
               // Encontrar la variante
               return this.productService.getVariantById(variantId).pipe(
-                take(1), // ✅ NUEVO: Forzar completar
+                take(1),
                 switchMap(variant => {
                   if (!variant) {
                     console.error('❌ CartService: Variante no encontrada');
@@ -141,12 +328,19 @@ export class CartService {
             })
           );
         }),
+        // ✅ NUEVO: Sincronizar con Firestore después de agregar
+        tap(success => {
+          if (success && this.currentUserId) {
+            this.saveCartToFirestore();
+          }
+        }),
         catchError(error => {
           console.error('❌ CartService: Error en addToCart:', error);
           ErrorUtil.handleError(error, 'addToCart');
           return of(false);
         }),
         finalize(() => {
+          console.log('🏁 CartService: addToCart completado');
         })
       );
     }
@@ -184,7 +378,7 @@ export class CartService {
               return false;
             }
 
-            // ✅ SOLO actualizar cantidad en el carrito, NO descontar stock real
+            // Actualizar cantidad en el carrito
             currentCart.items[existingItemIndex].quantity = newQuantity;
             currentCart.items[existingItemIndex].totalPrice = newQuantity * unitPrice;
 
@@ -226,6 +420,7 @@ export class CartService {
     }
   }
 
+
   /**
    * 🚀 CORREGIDO: Actualiza la cantidad de un item en el carrito
    */
@@ -252,13 +447,18 @@ export class CartService {
           return false;
         }
 
-        // ✅ SOLO actualizar cantidad en carrito, NO notificar cambio de stock
+        // Actualizar cantidad en carrito
         currentCart.items[itemIndex].quantity = quantity;
         currentCart.items[itemIndex].totalPrice = quantity * currentCart.items[itemIndex].unitPrice;
 
         this.recalculateCart(currentCart);
         this.cartSubject.next(currentCart);
         this.saveCartToStorage();
+
+        // ✅ NUEVO: Sincronizar con Firestore
+        if (this.currentUserId) {
+          this.saveCartToFirestore();
+        }
 
         console.log(`✅ CartService: Cantidad actualizada exitosamente`);
         return true;
@@ -277,24 +477,30 @@ export class CartService {
    * Elimina un item del carrito
    */
   removeItem(variantId: string): Observable<boolean> {
+    console.log(`🗑️ CartService: Eliminando item - Variant: ${variantId}`);
+
     try {
-      console.log(`🗑️ CartService: Eliminando item - Variant: ${variantId}`);
-
       const currentCart = this.getCart();
-      const updatedItems = currentCart.items.filter(item => item.variantId !== variantId);
+      const itemIndex = currentCart.items.findIndex(item => item.variantId === variantId);
 
-      if (updatedItems.length === currentCart.items.length) {
-        console.warn('⚠️ CartService: Item no encontrado para eliminar');
+      if (itemIndex === -1) {
+        console.error('❌ CartService: Item no encontrado en el carrito');
         return of(false);
       }
 
-      // ✅ SOLO eliminar del carrito, NO devolver stock (aún no se había descontado)
-      currentCart.items = updatedItems;
+      // Eliminar item del carrito
+      currentCart.items.splice(itemIndex, 1);
+
       this.recalculateCart(currentCart);
       this.cartSubject.next(currentCart);
       this.saveCartToStorage();
 
-      console.log(`✅ CartService: Item eliminado - Items restantes: ${currentCart.items.length}`);
+      // ✅ NUEVO: Sincronizar con Firestore
+      if (this.currentUserId) {
+        this.saveCartToFirestore();
+      }
+
+      console.log('✅ CartService: Item eliminado exitosamente');
       return of(true);
     } catch (error) {
       console.error('❌ CartService: Error al eliminar item:', error);
@@ -305,12 +511,36 @@ export class CartService {
   /**
    * Vacía completamente el carrito
    */
-  clearCart(): void {
+  async clearCart(): Promise<void> {
     console.log('🧹 CartService: Limpiando carrito completo');
+
+    // 1. Limpiar estado local
     this.cartSubject.next({ ...this.initialCartState });
+
+    // 2. Limpiar localStorage (usuarios anónimos)
     localStorage.removeItem('cart');
-    console.log('✅ CartService: Carrito limpiado');
+
+    // 3. ✅ NUEVO: Limpiar carrito del usuario autenticado
+    if (this.currentUserId) {
+      await this.clearUserCart();
+    }
+
+    console.log('✅ CartService: Carrito limpiado (local y remoto)');
   }
+
+
+  private async clearUserCart(): Promise<void> {
+    if (!this.currentUserId) return;
+
+    try {
+      const cartRef = doc(this.firestore, `users/${this.currentUserId}/cart`, 'current');
+      await deleteDoc(cartRef);
+      console.log('✅ Carrito remoto limpiado');
+    } catch (error) {
+      console.error('❌ Error limpiando carrito remoto:', error);
+    }
+  }
+
 
   /**
    * Aplicar código de descuento al carrito
@@ -361,6 +591,7 @@ export class CartService {
     console.log(`💰 CartService: Totales recalculados - Items: ${cart.totalItems}, Total: $${cart.total.toFixed(2)}`);
   }
 
+
   /**
    * 🚀 CORREGIDO: Verifica la disponibilidad de stock para una variante
    */
@@ -372,7 +603,7 @@ export class CartService {
     console.log(`🔍 CartService: Verificando stock - Variant: ${variantId}, Cantidad: ${quantity}`);
 
     return this.productService.getVariantById(variantId).pipe(
-      take(1), // ✅ NUEVO: Forzar completar
+      take(1),
       map(variant => {
         if (!variant) {
           console.error('❌ CartService: Variante no encontrada con ID:', variantId);
@@ -477,87 +708,43 @@ export class CartService {
    * 🚀 CORREGIDO: Carga los detalles de productos y variantes de forma asíncrona
    */
   private loadCartItemDetails(items: CartItem[]): void {
-    console.log(`🔄 CartService: Cargando detalles para ${items.length} items del carrito...`);
+    if (!items || items.length === 0) return;
 
-    if (items.length === 0) return;
+    console.log(`🔄 CartService: Cargando detalles de ${items.length} items del carrito`);
 
-    // ✅ SOLUCIÓN: Usar forkJoin para procesar todos los items a la vez
-    const itemDetails$ = items.map((item, index) =>
-      this.productService.getProductById(item.productId).pipe(
-        take(1),
-        switchMap(product => {
-          if (!product) {
-            console.warn(`⚠️ CartService: Producto no encontrado: ${item.productId}`);
-            return of(null); // ✅ Retornar null en lugar de error
-          }
-
-          return this.productService.getVariantById(item.variantId).pipe(
-            take(1),
-            map(variant => {
-              if (!variant) {
-                console.warn(`⚠️ CartService: Variante no encontrada: ${item.variantId}`);
-                return null; // ✅ Retornar null en lugar de error
-              }
-              return { item, product, variant, index };
-            })
-          );
-        }),
+    // Cargar todos los productos y variantes de manera paralela
+    const loadPromises = items.map(item => {
+      return forkJoin({
+        product: this.productService.getProductById(item.productId).pipe(take(1)),
+        variant: this.productService.getVariantById(item.variantId).pipe(take(1))
+      }).pipe(
+        map(({ product, variant }) => ({
+          ...item,
+          product: product || undefined,
+          variant: variant || undefined
+        })),
         catchError(error => {
-          console.error(`❌ CartService: Error cargando item ${index + 1}:`, error);
-          return of(null); // ✅ Continuar con otros items
+          console.error(`❌ Error cargando detalles del item ${item.productId}:`, error);
+          return of(item); // Devolver item sin detalles si hay error
         })
-      )
-    );
+      );
+    });
 
-    // ✅ SOLUCIÓN: Una sola actualización del carrito al final
-    forkJoin(itemDetails$).pipe(
-      finalize(() => {
-        console.log('🏁 CartService: loadCartItemDetails completado');
-      })
-    ).subscribe(results => {
-      const currentCart = this.getCart();
-      const validResults = results.filter(result => result !== null);
-      const itemsToRemove: string[] = [];
+    forkJoin(loadPromises).subscribe({
+      next: (enrichedItems) => {
+        console.log('✅ CartService: Detalles de items cargados exitosamente');
 
-      // Actualizar items válidos
-      validResults.forEach(({ item, product, variant }) => {
-        const itemIndex = currentCart.items.findIndex(i => i.variantId === item.variantId);
+        const currentCart = this.getCart();
+        const updatedCart = {
+          ...currentCart,
+          items: enrichedItems
+        };
 
-        if (itemIndex !== -1) {
-          const unitPrice = product.currentPrice || product.price;
-          currentCart.items[itemIndex] = {
-            ...currentCart.items[itemIndex],
-            product,
-            variant,
-            unitPrice,
-            totalPrice: currentCart.items[itemIndex].quantity * unitPrice
-          };
-        }
-      });
-
-      // Identificar items a eliminar
-      items.forEach(item => {
-        const wasLoaded = validResults.some(result =>
-          result && result.item.variantId === item.variantId
-        );
-        if (!wasLoaded) {
-          itemsToRemove.push(item.variantId);
-        }
-      });
-
-      // Eliminar items inválidos
-      if (itemsToRemove.length > 0) {
-        currentCart.items = currentCart.items.filter(
-          item => !itemsToRemove.includes(item.variantId)
-        );
+        this.cartSubject.next(updatedCart);
+      },
+      error: (error) => {
+        console.error('❌ CartService: Error al cargar detalles de items:', error);
       }
-
-      // ✅ Una sola actualización del carrito
-      this.recalculateCart(currentCart);
-      this.cartSubject.next({ ...currentCart });
-      this.saveCartToStorage();
-
-      console.log(`✅ CartService: ${validResults.length}/${items.length} items cargados exitosamente`);
     });
   }
 

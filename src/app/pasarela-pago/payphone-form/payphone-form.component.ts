@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnDestroy } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -94,7 +94,7 @@ const PAYPHONE_CONFIG = {
   templateUrl: './payphone-form.component.html',
   styleUrl: './payphone-form.component.css',
 })
-export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
+export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   // Estado reactivo (preservado)
   private readonly loadingSubject = new BehaviorSubject<boolean>(true);
   private readonly errorSubject = new BehaviorSubject<string | null>(null);
@@ -122,6 +122,36 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
     private usersService: UsersService
   ) {
     this.cartSummary$ = this.cartService.cart$;
+  }
+
+
+  ngOnInit(): void {
+  // ✅ Verificar si hay un pago pendiente al cargar
+  this.route.queryParams.pipe(take(1)).subscribe(params => {
+    if (params['id'] && params['clientTransactionId']) {
+      // Viene de redirección de Payphone - procesar confirmación
+      this.handleLateConfirmation(params);
+    } else {
+      // Flujo normal - continuar con inicialización en ngAfterViewInit
+      console.log('ℹ️ Flujo normal de pago');
+    }
+  });
+}
+
+  private handleLateConfirmation(params: any): void {
+    console.log('🔄 Procesando confirmación tardía desde URL:', params);
+
+    this.setCurrentStep(2);
+    this.setLoading(true);
+
+    const response = {
+      id: params['id'],
+      clientTransactionId: params['clientTransactionId'],
+      transactionId: params['id']
+    };
+
+    // Usar la misma lógica de confirmación
+    this.confirmPaymentAndCleanCart(response);
   }
 
   ngAfterViewInit(): void {
@@ -191,12 +221,12 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
           throw new Error('EMPTY_CART');
         }
 
-        // Validación de stock
+        // Validación básica (solo existencia de variantes)
         const stockValidation = this.validateCartStock(cart);
         if (!stockValidation.valid) {
-          this.setError(`Stock insuficiente: ${stockValidation.message}`);
-          this.redirectToCartWithMessage('Stock insuficiente');
-          throw new Error('INSUFFICIENT_STOCK');
+          this.setError(`Error en el carrito: ${stockValidation.message}`);
+          this.redirectToCartWithMessage('Error en carrito');
+          throw new Error('CART_ERROR');
         }
 
         // Validación de monto mínimo
@@ -214,16 +244,19 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
 
   // ✅ PRESERVADO: Validación de stock (sin cambios)
   private validateCartStock(cart: Cart): ValidationResult {
-    // Esta validación es opcional ahora, ya que el backend hace la validación final
-    // Pero la puedes mantener para UX (mostrar problemas antes de intentar pagar)
+    console.log('ℹ️ Validación de stock desactivada - Backend se encarga de la validación final');
+
+    // ✅ SOLO validar que existan las variantes, NO el stock
     for (const item of cart.items) {
-      if (!item.variant || item.variant.stock < item.quantity) {
+      if (!item.variant) {
         return {
           valid: false,
-          message: `${item.product?.name}: disponible ${item.variant?.stock || 0}, solicitado ${item.quantity}`
+          message: `${item.product?.name}: variante no encontrada`
         };
       }
     }
+
+    // ✅ SIEMPRE retornar válido - el backend validará el stock real
     return { valid: true, message: '' };
   }
 
