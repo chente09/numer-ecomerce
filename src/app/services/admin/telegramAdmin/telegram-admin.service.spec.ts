@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
-import { WhatsAppAdminService } from './whats-app-admin.service';
+import { TelegramAdminService } from './telegram-admin.service';
 
-describe('WhatsAppAdminService', () => {
-  let service: WhatsAppAdminService;
+describe('TelegramAdminService', () => {
+  let service: TelegramAdminService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(WhatsAppAdminService);
+    service = TestBed.inject(TelegramAdminService);
   });
 
   it('should be created', () => {

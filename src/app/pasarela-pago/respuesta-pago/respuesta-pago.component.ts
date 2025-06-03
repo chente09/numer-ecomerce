@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CartService } from '../services/cart/cart.service';
-import { WhatsAppAdminService, OrderNotification } from '../../services/admin/whatsAppAdmin/whats-app-admin.service';
+import { TelegramAdminService, OrderNotification } from '../../services/admin/telegramAdmin/telegram-admin.service';
 
 // ✅ AGREGAR imports de NG Zorro
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -46,7 +46,7 @@ export class RespuestaPagoComponent implements OnInit {
     private location: Location,
     private router: Router,
     private cartService: CartService,
-    private whatsappAdminService: WhatsAppAdminService
+    private telegramAdminService: TelegramAdminService
   ) { }
 
   ngOnInit(): void {
@@ -65,13 +65,13 @@ export class RespuestaPagoComponent implements OnInit {
           this.currencyCode = res.currency || this.currencyCode;
           this.loading = false;
 
+          // ✅ TELEGRAM: Notificación automática
           if (res && !this.isCanceled()) {
             this.notifyAdminNewOrder(res);
           } else if (this.isCanceled()) {
             this.notifyAdminCancellation(res);
           }
 
-          // ✅ LIMPIAR CARRITO si es exitoso
           this.checkAndClearCart(res);
         },
         error: err => {
@@ -83,9 +83,11 @@ export class RespuestaPagoComponent implements OnInit {
     });
   }
 
-   // ✅ NUEVO: Notificar nueva venta al admin
-  private notifyAdminNewOrder(transactionData: any): void {
+  // ✅ TELEGRAM: Notificar nueva venta automáticamente
+  private async notifyAdminNewOrder(transactionData: any): Promise<void> {
     try {
+      console.log('📱 Enviando notificación automática a Telegram...');
+
       const orderNotification: OrderNotification = {
         transactionId: transactionData.transactionId,
         clientTransactionId: transactionData.clientTransactionId,
@@ -93,7 +95,7 @@ export class RespuestaPagoComponent implements OnInit {
           email: transactionData.email,
           phone: transactionData.phoneNumber,
           document: transactionData.document,
-          name: transactionData.optionalParameter4 // Si tienes el nombre del cliente
+          name: transactionData.optionalParameter4
         },
         paymentInfo: {
           amount: transactionData.amount / 100,
@@ -102,38 +104,50 @@ export class RespuestaPagoComponent implements OnInit {
           authorizationCode: transactionData.authorizationCode,
           date: new Date(transactionData.date)
         },
-        cartItems: this.getCartItemsFromStorage() // Ver método abajo
+        cartItems: this.getCartItemsFromStorage()
       };
 
-      this.whatsappAdminService.notifyNewOrder(orderNotification);
-      
-      console.log('✅ Admin notificado sobre nueva venta');
+      // ✅ ENVÍO AUTOMÁTICO - NO requiere interacción del cliente
+      await this.telegramAdminService.sendOrderNotification(orderNotification);
+
+      console.log('✅ Admin notificado automáticamente via Telegram');
     } catch (error) {
-      console.error('❌ Error notificando admin:', error);
+      console.error('❌ Error notificando admin via Telegram:', error);
     }
   }
 
-  // ✅ NUEVO: Notificar cancelación al admin
-  private notifyAdminCancellation(transactionData: any): void {
-    this.whatsappAdminService.notifyPaymentCancellation(
-      transactionData?.transactionId || 'unknown',
-      {
-        email: transactionData?.email,
-        phone: transactionData?.phoneNumber
-      }
-    );
+  // ✅ TELEGRAM: Notificar cancelación
+  private async notifyAdminCancellation(transactionData: any): Promise<void> {
+    try {
+      await this.telegramAdminService.sendPaymentCancellation(
+        transactionData?.transactionId || 'unknown',
+        {
+          email: transactionData?.email,
+          phone: transactionData?.phoneNumber
+        }
+      );
+    } catch (error) {
+      console.error('❌ Error notificando cancelación:', error);
+    }
   }
 
-  // ✅ NUEVO: Notificar problema al admin
-  private notifyAdminPaymentIssue(error: any): void {
-    const transactionId = this.route.snapshot.queryParams['clientTransactionId'] || 'unknown';
-    const customerEmail = 'unknown'; // Podrías obtenerlo del usuario logueado
-    const errorDetails = error?.message || 'Error desconocido en confirmación';
+  // ✅ TELEGRAM: Notificar problema
+  private async notifyAdminPaymentIssue(error: any): Promise<void> {
+    try {
+      const transactionId = this.route.snapshot.queryParams['clientTransactionId'] || 'unknown';
+      const errorDetails = error?.message || 'Error desconocido en confirmación';
 
-    this.whatsappAdminService.notifyPaymentIssue(transactionId, customerEmail, errorDetails);
+      await this.telegramAdminService.sendPaymentIssue(transactionId, 'unknown', errorDetails);
+    } catch (err) {
+      console.error('❌ Error notificando problema:', err);
+    }
   }
 
-  // ✅ NUEVO: Obtener método de pago formateado
+  // Agregar estos métodos al final de tu clase RespuestaPagoComponent
+
+  /**
+   * ✅ MÉTODO FALTANTE: Obtener método de pago formateado
+   */
   private getPaymentMethodDisplay(data: any): string {
     if (data.cardBrand && data.lastDigits) {
       return `${data.cardBrand} **** ${data.lastDigits}`;
@@ -143,7 +157,9 @@ export class RespuestaPagoComponent implements OnInit {
     return 'Tarjeta';
   }
 
-  // ✅ NUEVO: Obtener items del carrito desde localStorage o servicio
+  /**
+   * ✅ MÉTODO FALTANTE: Obtener items del carrito desde localStorage
+   */
   private getCartItemsFromStorage(): any[] {
     try {
       // Intentar obtener del localStorage
@@ -161,7 +177,7 @@ export class RespuestaPagoComponent implements OnInit {
     } catch (error) {
       console.warn('No se pudo obtener items del carrito:', error);
     }
-    
+
     return []; // Retornar array vacío si no hay datos
   }
 
