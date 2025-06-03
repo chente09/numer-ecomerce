@@ -30,6 +30,7 @@ import {
 } from 'rxjs';
 import { ErrorUtil } from '../../utils/error-util';
 import { UsersService } from '../../services/users/users.service';
+import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 
 // Interfaces (sin cambios)
 interface PayphoneInitData {
@@ -76,9 +77,19 @@ const PAYPHONE_CONFIG = {
   selector: 'app-payphone-form',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, NzSpinModule, NzAlertModule, NzButtonModule,
-    NzModalModule, NzIconModule, NzTagModule, NzStepsModule, NzCardModule,
-    NzDividerModule, NzResultModule
+    CommonModule, 
+    FormsModule, 
+    NzSpinModule, 
+    NzAlertModule, 
+    NzButtonModule,
+    NzModalModule, 
+    NzIconModule, 
+    NzTagModule, 
+    NzStepsModule, 
+    NzCardModule,
+    NzDividerModule, 
+    NzResultModule,
+    NzCollapseModule
   ],
   templateUrl: './payphone-form.component.html',
   styleUrl: './payphone-form.component.css',
@@ -89,12 +100,18 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
   private readonly errorSubject = new BehaviorSubject<string | null>(null);
   private readonly destroy$ = new Subject<void>();
 
+  private readonly currentStepSubject = new BehaviorSubject<number>(1);
+  private readonly paymentResultSubject = new BehaviorSubject<any>(null);
+
   // Observables públicos (preservados)
   cartSummary$: Observable<Cart>;
   readonly isLoading$ = this.loadingSubject.asObservable();
   readonly error$ = this.errorSubject.asObservable();
+  readonly currentStep$ = this.currentStepSubject.asObservable();
+  readonly paymentResult$ = this.paymentResultSubject.asObservable();
 
   transactionId = '';
+  currencyCode = 'USD';
 
   constructor(
     private route: ActivatedRoute,
@@ -325,24 +342,24 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
 
   // ✅ PRESERVADO: Manejo de pago exitoso (sin cambios en lógica)
   private handlePaymentSuccess(response: PayphoneResponse): void {
-  console.log('🎉 Pago exitoso:', response);
-  this.setLoading(true);
-  
-  // ✅ Verificar confirmación del pago antes de limpiar carrito
-  this.confirmPaymentAndCleanCart(response);
-}
+    console.log('🎉 Pago exitoso:', response);
+    this.setLoading(true);
+
+    // ✅ Verificar confirmación del pago antes de limpiar carrito
+    this.confirmPaymentAndCleanCart(response);
+  }
 
   // ✅ NUEVO: Método para confirmar pago y limpiar carrito
   private async confirmPaymentAndCleanCart(response: PayphoneResponse): Promise<void> {
     try {
-      console.log('🔄 Confirmando pago con backend...');
+      this.setLoading(true);
+      this.setCurrentStep(2); // ✅ Correcto: Mostrar paso "Confirmación"
 
-      // ✅ Llamar a confirmación con firstValueFrom (reemplaza toPromise)
       const confirmationResponse = await firstValueFrom(
         this.http.post<ConfirmationResponse>(
           'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
           {
-            id: response['id'] || response.transactionId, // ✅ Acceso correcto con []
+            id: response['id'] || response.transactionId,
             clientTxId: response.clientTransactionId || this.transactionId
           }
         )
@@ -350,21 +367,22 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
 
       console.log('📋 Respuesta de confirmación:', confirmationResponse);
 
-      // ✅ Verificación con tipos correctos
-      if (confirmationResponse &&
-        (confirmationResponse.transactionStatus === 'Approved' ||
-          confirmationResponse.inventoryProcessed === true)) {
+      const shouldClearCart = confirmationResponse && (
+        confirmationResponse.inventoryProcessed === true ||
+        confirmationResponse.transactionStatus === 'Approved'
+      );
 
+      if (shouldClearCart) {
         console.log('✅ Inventario procesado exitosamente, limpiando carrito...');
         this.cartService.clearCart();
 
-        this.showSuccessModal(
-          response.transactionId || 'unknown',
-          response.transactionId || this.transactionId
-        );
+        // ✅ MOSTRAR TICKET en lugar de modal
+        this.setPaymentResult(confirmationResponse);
+        this.setLoading(false);
 
       } else {
-        console.warn('⚠️ Pago no confirmado o inventario no procesado:', confirmationResponse);
+        console.warn('⚠️ Pago no confirmado:', confirmationResponse);
+        this.setCurrentStep(1); // ✅ VOLVER al paso de pago si hay error
         this.handlePostPaymentError(
           'Pago pendiente de confirmación',
           response.transactionId || 'unknown'
@@ -373,15 +391,53 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
 
     } catch (error: any) {
       console.error('❌ Error confirmando pago:', error);
+      this.setCurrentStep(1); // ✅ VOLVER al paso de pago si hay error
       this.handlePostPaymentError(
         `Error en confirmación: ${error.message}`,
         response.transactionId || 'unknown'
       );
     } finally {
+      // ✅ CORRECTO: Se ejecuta siempre
       this.setLoading(false);
     }
   }
 
+  // ✅ NUEVOS métodos auxiliares
+  private setCurrentStep(step: number): void {
+    this.currentStepSubject.next(step);
+  }
+
+  private setPaymentResult(result: any): void {
+    this.paymentResultSubject.next(result);
+  }
+
+  // ✅ MÉTODOS para el ticket
+  get friendlyStatus(): string {
+    const result = this.paymentResultSubject.value;
+    const status = result?.transactionStatus;
+    switch (status) {
+      case 'Approved': return 'Aprobado';
+      case 'Canceled':
+      case 'Cancelled': return 'Cancelado';
+      case 'Error': return 'Error en la transacción';
+      default: return status || '';
+    }
+  }
+
+  isCanceled(): boolean {
+    const result = this.paymentResultSubject.value;
+    const s = result?.transactionStatus;
+    return s === 'Canceled' || s === 'Cancelled';
+  }
+
+  printTicket(): void {
+    window.print();
+  }
+
+  // ✅ NUEVO: Volver a comprar
+  goBackToShopping(): void {
+    this.router.navigate(['/shop']);
+  }
 
   // ✅ PRESERVADO: Manejo de errores de pago
   private handlePaymentError(error: any): void {
@@ -392,18 +448,6 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
   // 🎯 OPTIMIZADO: Manejo de errores post-pago con categorización
   private handlePostPaymentError(errorMessage: string, paymentId: string): void {
     console.error('❌ Error después del pago exitoso:', errorMessage);
-
-    const errorType = this.categorizeError(errorMessage);
-    const modalContent = this.buildErrorModalContent(errorMessage, paymentId, errorType);
-
-    this.modalService.error({
-      nzTitle: '⚠️ Problema procesando tu orden',
-      nzContent: modalContent,
-      nzOkText: '📱 Contactar por WhatsApp',
-      nzCancelText: '📄 Ver estado del pago',
-      nzOnOk: () => this.openWhatsAppSupport(paymentId, errorMessage),
-      nzOnCancel: () => this.redirectToConfirmation(paymentId, errorMessage)
-    });
   }
 
   // 🎯 NUEVO: Categorización de errores
@@ -412,25 +456,6 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
     if (lowerMessage.includes('stock') || lowerMessage.includes('inventario')) return 'inventory';
     if (lowerMessage.includes('timeout') || lowerMessage.includes('tiempo')) return 'timeout';
     return 'generic';
-  }
-
-  // 🎯 NUEVO: Construcción de contenido de modal
-  private buildErrorModalContent(errorMessage: string, paymentId: string, errorType: 'inventory' | 'timeout' | 'generic'): string {
-    const baseContent = `
-      <div>
-        <p><strong>✅ Tu pago fue procesado correctamente</strong></p>
-        <p>💳 ID de pago: <code>${paymentId}</code></p>
-        <hr>
-    `;
-
-    const errorMessages = {
-      inventory: '❌ No pudimos actualizar el inventario automáticamente.<br>🛒 <strong>No te preocupes:</strong> Tu pago está seguro y procesaremos tu orden manualmente.',
-      timeout: '⏱️ El proceso tomó más tiempo del esperado.<br>🔄 Tu orden puede estar siendo procesada en segundo plano.',
-      generic: `🔧 Error técnico: ${errorMessage}<br>🛡️ Tu pago está protegido y procesaremos tu orden.`
-    };
-
-    return baseContent + `<p>${errorMessages[errorType]}</p>` +
-      '<p>📞 Nuestro equipo te contactará pronto o puedes escribirnos directamente.</p></div>';
   }
 
   // ✅ PRESERVADO: Redirección con mensaje
@@ -452,23 +477,6 @@ export class PayphoneFormComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  // 🎯 NUEVO: Abrir soporte WhatsApp
-  private openWhatsAppSupport(paymentId: string, errorMessage: string): void {
-    const message = `🆘 Problema con orden\n💳 ID de pago: ${paymentId}\n❌ Error: ${errorMessage}\n⏰ Hora: ${new Date().toLocaleString()}`;
-    window.open(`${PAYPHONE_CONFIG.WHATSAPP_URL}?text=${encodeURIComponent(message)}`, '_blank');
-  }
-
-  // 🎯 NUEVO: Redirección a confirmación
-  private redirectToConfirmation(paymentId: string, errorMessage: string): void {
-    this.router.navigate(['/confirmacion'], {
-      queryParams: {
-        orderId: 'processing',
-        paymentId,
-        status: 'payment_success_processing_error',
-        error: errorMessage
-      }
-    });
-  }
 
   // 🛠️ UTILIDADES: Gestión de estado
   private setLoading(loading: boolean): void {
