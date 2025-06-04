@@ -46,7 +46,6 @@ export class RespuestaPagoComponent implements OnInit {
     private location: Location,
     private router: Router,
     private cartService: CartService,
-    private telegramAdminService: TelegramAdminService
   ) { }
 
   ngOnInit(): void {
@@ -65,96 +64,14 @@ export class RespuestaPagoComponent implements OnInit {
           this.currencyCode = res.currency || this.currencyCode;
           this.loading = false;
 
-          // ✅ TELEGRAM: Notificación automática
-          if (res && !this.isCanceled()) {
-            this.notifyAdminNewOrder(res);
-          } else if (this.isCanceled()) {
-            this.notifyAdminCancellation(res);
-          }
-
           this.checkAndClearCart(res);
         },
         error: err => {
           this.error = err.error || err;
           this.loading = false;
-          this.notifyAdminPaymentIssue(err);
         }
       });
     });
-  }
-
-  // ✅ TELEGRAM: Notificar nueva venta automáticamente
-  private async notifyAdminNewOrder(transactionData: any): Promise<void> {
-    try {
-      console.log('📱 Enviando notificación automática a Telegram...');
-
-      const orderNotification: OrderNotification = {
-        transactionId: transactionData.transactionId,
-        clientTransactionId: transactionData.clientTransactionId,
-        customerInfo: {
-          email: transactionData.email,
-          phone: transactionData.phoneNumber,
-          document: transactionData.document,
-          name: transactionData.optionalParameter4
-        },
-        paymentInfo: {
-          amount: transactionData.amount / 100,
-          currency: transactionData.currency || this.currencyCode,
-          paymentMethod: this.getPaymentMethodDisplay(transactionData),
-          authorizationCode: transactionData.authorizationCode,
-          date: new Date(transactionData.date)
-        },
-        cartItems: this.getCartItemsFromStorage()
-      };
-
-      // ✅ ENVÍO AUTOMÁTICO - NO requiere interacción del cliente
-      await this.telegramAdminService.sendOrderNotification(orderNotification);
-
-      console.log('✅ Admin notificado automáticamente via Telegram');
-    } catch (error) {
-      console.error('❌ Error notificando admin via Telegram:', error);
-    }
-  }
-
-  // ✅ TELEGRAM: Notificar cancelación
-  private async notifyAdminCancellation(transactionData: any): Promise<void> {
-    try {
-      await this.telegramAdminService.sendPaymentCancellation(
-        transactionData?.transactionId || 'unknown',
-        {
-          email: transactionData?.email,
-          phone: transactionData?.phoneNumber
-        }
-      );
-    } catch (error) {
-      console.error('❌ Error notificando cancelación:', error);
-    }
-  }
-
-  // ✅ TELEGRAM: Notificar problema
-  private async notifyAdminPaymentIssue(error: any): Promise<void> {
-    try {
-      const transactionId = this.route.snapshot.queryParams['clientTransactionId'] || 'unknown';
-      const errorDetails = error?.message || 'Error desconocido en confirmación';
-
-      await this.telegramAdminService.sendPaymentIssue(transactionId, 'unknown', errorDetails);
-    } catch (err) {
-      console.error('❌ Error notificando problema:', err);
-    }
-  }
-
-  // Agregar estos métodos al final de tu clase RespuestaPagoComponent
-
-  /**
-   * ✅ MÉTODO FALTANTE: Obtener método de pago formateado
-   */
-  private getPaymentMethodDisplay(data: any): string {
-    if (data.cardBrand && data.lastDigits) {
-      return `${data.cardBrand} **** ${data.lastDigits}`;
-    } else if (data.cardBrand) {
-      return data.cardBrand;
-    }
-    return 'Tarjeta';
   }
 
   /**
