@@ -1,9 +1,8 @@
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CartService } from '../services/cart/cart.service';
-import { TelegramAdminService, OrderNotification } from '../../services/admin/telegramAdmin/telegram-admin.service';
 
 // ✅ AGREGAR imports de NG Zorro
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -15,6 +14,25 @@ import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
+import { Subject, takeUntil } from 'rxjs';
+import { NzMessageService } from 'ng-zorro-antd/message';
+
+interface PaymentResult {
+  transactionStatus: string;
+  transactionId: string;
+  clientTransactionId?: string;
+  amount: number;
+  currency: string;
+  date: string;
+  authorizationCode?: string;
+  reference?: string;
+  cardBrand?: string;
+  lastDigits?: string;
+  email?: string;
+  inventoryProcessed?: boolean;
+  phoneNumber?: string;
+  storeName?: string;
+}
 
 @Component({
   selector: 'app-respuesta-pago',
@@ -29,16 +47,19 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
     NzCollapseModule,
     NzAlertModule,
     NzIconModule,
-    NzStepsModule
+    NzStepsModule,
+    RouterLink
   ],
   templateUrl: './respuesta-pago.component.html',
   styleUrl: './respuesta-pago.component.css'
 })
-export class RespuestaPagoComponent implements OnInit {
-  resultado: any = null;
+export class RespuestaPagoComponent implements OnInit, OnDestroy {
+  resultado: PaymentResult | null = null;
   error: any = null;
   loading = true;
   public currencyCode = 'USD';
+
+  private destroy$ = new Subject<void>();
 
   constructor(
     private route: ActivatedRoute,
@@ -46,14 +67,22 @@ export class RespuestaPagoComponent implements OnInit {
     private location: Location,
     private router: Router,
     private cartService: CartService,
+    private message: NzMessageService
   ) { }
 
   ngOnInit(): void {
-    console.log('💳 Procesando respuesta de pago...');
-
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
       const id = +params['id'] || 0;
       const clientTxId = params['clientTransactionId'] || '';
+
+      // ✅ AGREGAR validación
+      if (!id && !clientTxId) {
+        this.error = 'Parámetros de transacción inválidos';
+        this.loading = false;
+        return;
+      }
 
       this.http.post<any>(
         'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
@@ -63,10 +92,10 @@ export class RespuestaPagoComponent implements OnInit {
           this.resultado = res;
           this.currencyCode = res.currency || this.currencyCode;
           this.loading = false;
-
           this.checkAndClearCart(res);
         },
         error: err => {
+          console.error('Error en confirmación:', err); // ✅ AGREGAR log
           this.error = err.error || err;
           this.loading = false;
         }
@@ -74,29 +103,11 @@ export class RespuestaPagoComponent implements OnInit {
     });
   }
 
-  /**
-   * ✅ MÉTODO FALTANTE: Obtener items del carrito desde localStorage
-   */
-  private getCartItemsFromStorage(): any[] {
-    try {
-      // Intentar obtener del localStorage
-      const cartData = localStorage.getItem('cart');
-      if (cartData) {
-        const cart = JSON.parse(cartData);
-        return cart.items?.map((item: any) => ({
-          productName: item.product?.name || 'Producto',
-          variant: `${item.variant?.colorName || ''} - ${item.variant?.sizeName || ''}`.trim(),
-          quantity: item.quantity || 1,
-          unitPrice: item.unitPrice || 0,
-          totalPrice: item.totalPrice || 0
-        })) || [];
-      }
-    } catch (error) {
-      console.warn('No se pudo obtener items del carrito:', error);
-    }
-
-    return []; // Retornar array vacío si no hay datos
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
+
 
   private checkAndClearCart(confirmationResponse: any): void {
     const shouldClearCart = confirmationResponse && (
@@ -141,7 +152,7 @@ export class RespuestaPagoComponent implements OnInit {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
 
     if (!printWindow) {
-      console.error('No se pudo abrir la ventana de impresión');
+      this.message.warning('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
       return;
     }
 

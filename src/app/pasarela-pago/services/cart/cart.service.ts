@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, firstValueFrom, map, tap, catchError, from, of, throwError, switchMap, forkJoin, take, finalize } from 'rxjs';
+import { BehaviorSubject, Observable, firstValueFrom, map, tap, catchError, from, of, throwError, switchMap, forkJoin, take, finalize, takeUntil, Subject } from 'rxjs';
 import { Product, ProductVariant } from '../../../models/models';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { ErrorUtil } from '../../../utils/error-util';
@@ -70,6 +70,8 @@ export class CartService {
   // BehaviorSubject para mantener el estado del carrito
   private cartSubject = new BehaviorSubject<Cart>(this.initialCartState);
 
+  private destroy$ = new Subject<void>();
+
   // Observable público para que los componentes se suscriban
   public cart$: Observable<Cart> = this.cartSubject.asObservable();
 
@@ -77,20 +79,17 @@ export class CartService {
     private productService: ProductService,
     private usersService: UsersService
   ) {
-    // ✅ CAMBIAR: Cargar storage DESPUÉS de suscribirse a usuario
-    this.usersService.user$.subscribe(user => {
+    // ✅ SUSCRIPCIÓN con cleanup automático
+    this.usersService.user$.pipe(
+      takeUntil(this.destroy$) // Previene memory leaks
+    ).subscribe(user => {
       this.handleUserChange(user);
     });
+  }
 
-    // ✅ MOVER al final o hacer condicional
-    // Solo cargar si no hay usuario logueado
-    setTimeout(() => {
-      if (!this.currentUserId) {
-        this.loadCartFromStorage();
-      }
-    }, 100);
-
-    this.loadCartFromStorage();
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   // ✅ NUEVO: Manejar cambio de usuario
@@ -103,12 +102,20 @@ export class CartService {
       current: this.currentUserId
     });
 
+    // ✅ PREVENIR procesamiento innecesario
+    if (previousUserId === this.currentUserId) {
+      return;
+    }
+
     if (user && !user.isAnonymous) {
       // Usuario se logueó
       await this.handleUserLogin(previousUserId);
-    } else if (previousUserId) {
+    } else if (previousUserId && !user) {
       // Usuario se deslogueó
       await this.handleUserLogout();
+    } else if (!user && !previousUserId) {
+      // ✅ NUEVO: Usuario inicial no logueado - cargar desde localStorage
+      this.loadCartFromStorage();
     }
   }
 
@@ -387,6 +394,14 @@ export class CartService {
             console.log(`✅ CartService: Cantidad actualizada - Nueva cantidad: ${newQuantity}`);
             return true;
           }),
+          // ✅ AGREGAR: Sincronización con Firestore AQUÍ
+          tap(success => {
+            if (success && this.currentUserId) {
+              this.saveCartToFirestore().catch(error =>
+                console.error('Error sincronizando con Firestore:', error)
+              );
+            }
+          }),
           finalize(() => {
             console.log('🏁 CartService: processAddToCart (update) completado');
           })
@@ -409,12 +424,19 @@ export class CartService {
         this.cartSubject.next(currentCart);
         this.saveCartToStorage();
 
+        // ✅ CORREGIR: Sincronizar con Firestore para nuevos items también
+        if (this.currentUserId) {
+          this.saveCartToFirestore().catch(error =>
+            console.error('Error sincronizando con Firestore:', error)
+          );
+        }
+
         console.log(`✅ CartService: Nuevo item agregado - Items en carrito: ${currentCart.items.length}`);
         return of(true);
       }
     } catch (error) {
       console.error('❌ CartService: Error al procesar adición al carrito:', error);
-      return of(false);
+      return of(false); // ✅ CORREGIR: Retornar Observable con false
     }
   }
 
@@ -534,7 +556,7 @@ export class CartService {
 
     // ✅ FORZAR ACTUALIZACIÓN DE PRODUCTOS
     console.log('🔄 CartService: Forzando actualización de productos...');
-    this.productService.forceReloadAfterPayment().pipe(
+    this.productService.forceReloadProducts().pipe(
       take(1)
     ).subscribe({
       next: (products) => {

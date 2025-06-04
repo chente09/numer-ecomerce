@@ -116,7 +116,7 @@
           nzTitle="Pago Cancelado"
           nzSubTitle="La transacción ha sido cancelada y no se ha realizado ningún cargo">
           <div nz-result-extra>
-            <button nz-button nzType="primary" (click)="goBack()">
+            <button nz-button nzType="primary" [routerLink]="['/shop']" routerLinkActive="router-link-active" >
               <span nz-icon nzType="shopping"></span>
               Continuar comprando
             </button>
@@ -181,7 +181,7 @@
             Imprimir comprobante
           </button>
           
-          <button nz-button  nzSize="large" (click)="goBack()">
+          <button nz-button  nzSize="large" [routerLink]="['/shop']" routerLinkActive="router-link-active" >
             <span nz-icon nzType="shopping"></span>
             Seguir comprando
           </button>
