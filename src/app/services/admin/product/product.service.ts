@@ -56,13 +56,13 @@ export class ProductService {
    */
   // ✅ CORREGIDO en ProductService
   getProducts(): Observable<Product[]> {
+    console.log('🔄 ProductService: Solicitando productos desde caché...');
+
     return this.cacheService.getCached<Product[]>(this.productsCacheKey, () => {
-      console.log('🔄 ProductService: Creando observable de productos');
+      console.log('🔄 ProductService: Creando observable de productos (CACHE MISS)');
 
       const productsRef = collection(this.firestore, this.productsCollection);
       return collectionData(productsRef, { idField: 'id' }).pipe(
-  
-        // ❌ REMOVER: take(1) 
         map(data => {
           console.log(`📦 ProductService: Productos recibidos de Firestore: ${data.length}`);
           return data as Product[];
@@ -75,9 +75,9 @@ export class ProductService {
           console.error('❌ ProductService: Error en getProducts:', error);
           return ErrorUtil.handleError(error, 'getProducts');
         }),
-        // 🆕 AGREGAR: shareReplay para múltiples suscriptores
         shareReplay({ bufferSize: 1, refCount: true }),
         finalize(() => {
+          console.log('🏁 ProductService: getProducts completado');
         })
       );
     });
@@ -1617,4 +1617,39 @@ export class ProductService {
 
     console.groupEnd();
   }
+
+  /**
+ * 🆕 MÉTODO: Forzar recarga después de transacción exitosa
+ */
+  /**
+ * 🆕 MÉTODO: Forzar recarga después de transacción exitosa
+ */
+  forceReloadAfterPayment(): Observable<Product[]> {
+    console.log('🔄 ProductService: Forzando recarga después de pago exitoso...');
+
+    // Limpiar TODO el caché relacionado con productos
+    this.cacheService.clearCache();
+
+    // Obtener productos frescos desde Firestore
+    const productsRef = collection(this.firestore, this.productsCollection);
+    return collectionData(productsRef, { idField: 'id' }).pipe(
+      take(1), // ✅ Una sola emisión
+      map(data => {
+        console.log(`📦 ProductService: Productos frescos después de pago: ${data.length}`);
+        return data as Product[];
+      }),
+      switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+      tap(enrichedProducts => {
+        console.log(`✅ ProductService: ${enrichedProducts.length} productos enriquecidos y listos`);
+
+        // Actualizar el caché con los nuevos datos
+        this.cacheService.getCached(this.productsCacheKey, () => of(enrichedProducts));
+      }),
+      catchError(error => {
+        console.error('❌ ProductService: Error en forceReloadAfterPayment:', error);
+        return ErrorUtil.handleError(error, 'forceReloadAfterPayment');
+      })
+    );
+  }
+
 }

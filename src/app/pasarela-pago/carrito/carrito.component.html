@@ -1,187 +1,190 @@
-<div class="carrito-container">
-
-  <!-- Header minimalista -->
-  <div class="carrito-header" *ngIf="!loading && cart && cart.items.length > 0">
-    <h1 class="carrito-title">Equipamiento Seleccionado</h1>
-    <div class="cart-stats" *ngIf="cart && cart.items.length > 0">
-      <div class="stat-item">
-        <span class="stat-label">Productos</span>
-        <span class="stat-value">{{ cart.totalItems }}</span>
-      </div>
-      <div class="stat-item" *ngIf="hasDiscounts()">
-        <span class="stat-label">Ahorros</span>
-        <span class="stat-value">${{ getTotalSavings().toFixed(2) }}</span>
+<div class="cart-container">
+  <!-- Sección principal - Lado izquierdo -->
+  <div class="cart-main">
+    <!-- Header -->
+    <div class="cart-header" *ngIf="!loading && cart && cart.items.length > 0">
+      <div class="header-content">
+        <h1 class="cart-title">Equipamiento Seleccionado</h1>
+        <p class="cart-subtitle">Tu selección deportiva</p>
+        <div class="cart-stats">
+          <div class="stat-item">
+            <span class="stat-label">Productos</span>
+            <span class="stat-value">{{ cart.totalItems }}</span>
+          </div>
+          <div class="stat-item" *ngIf="hasDiscounts()">
+            <span class="stat-label">Ahorros</span>
+            <span class="stat-value">${{ getTotalSavings().toFixed(2) }}</span>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Loading state -->
-  <div *ngIf="loading" class="loading-container">
-    <nz-spin nzSize="large"></nz-spin>
-  </div>
-
-  <!-- Carrito vacío -->
-  <div *ngIf="!loading && (!cart || cart.items.length === 0)" class="empty-cart">
-    <div class="empty-cart-icon">
-      <span nz-icon nzType="shopping-cart" nzTheme="outline"></span>
+    <!-- Loading state -->
+    <div *ngIf="loading" class="loading-container">
+      <nz-spin nzSize="large"></nz-spin>
     </div>
-    <h2>Carrito Vacío</h2>
-    <p>Explora nuestro catálogo y encuentra productos para tu próxima aventura.</p>
-    <button nz-button nzSize="large" (click)="continueShopping()" class="continue-shopping-button">
-      Explorar Catálogo
-    </button>
-  </div>
 
-  <!-- Layout principal: Items + Sidebar -->
-  <div *ngIf="!loading && cart && cart.items.length > 0" class="cart-content">
+    <!-- Estado vacío -->
+    <div *ngIf="!loading && (!cart || cart.items.length === 0)" class="empty-state">
+      <div class="empty-icon">
+        <span nz-icon nzType="shopping-cart" nzTheme="outline"></span>
+      </div>
+      <h2 class="empty-title">Carrito Vacío</h2>
+      <p class="empty-subtitle">Explora nuestro catálogo y encuentra productos para tu próxima aventura.</p>
+      <button class="continue-btn" (click)="continueShopping()">
+        Explorar Catálogo
+      </button>
+    </div>
 
-    <!-- Sección de items (lado izquierdo) -->
-    <div class="cart-items-section">
+    <!-- Contenido del carrito -->
+    <div *ngIf="!loading && cart && cart.items.length > 0" class="cart-content">
       <div class="cart-items">
+        <div *ngFor="let item of cart.items; trackBy: trackByVariantId" class="cart-item"
+          [class.updating-item]="updating">
 
-        <div *ngFor="let item of cart.items; trackBy: trackByVariantId" class="cart-item">
-
-          <!-- Imagen del producto -->
           <div class="item-image">
-            <img [src]="item.product?.imageUrl" [alt]="item.product?.name" class="product-thumbnail"
+            <img [src]="item.product?.imageUrl" [alt]="item.product?.name" class="product-image"
               (error)="handleImageError($event)" />
           </div>
 
-          <!-- Información del producto -->
-          <div class="item-info">
-            <h4 class="product-name">{{ item.product?.name }}</h4>
-            <p class="product-category">{{ item.product?.category }}</p>
+          <div class="item-details">
+            <h3 class="product-name">{{ item.product?.name }}</h3>
+            <p class="product-category">{{ getCategoryName(item) }}</p>
 
-            <div class="variant-info">
-              <span class="color-indicator" [style.background-color]="item.variant?.colorCode"></span>
-              <span class="variant-text">{{ item.variant?.colorName }} / {{ item.variant?.sizeName }}</span>
+            <div class="variant-section">
+              <div class="variant-info">
+                <div class="color-indicator" [style.background-color]="item.variant?.colorCode || '#cccccc'"></div>
+                <span class="variant-text">
+                  {{ (item.variant?.colorName || 'N/A') + ' / ' + (item.variant?.sizeName || 'N/A') }}
+                </span>
+              </div>
+              <div class="stock-status" [class.low]="isStockLow(item)" [class.out]="isOutOfStock(item)">
+                {{ getStockMessage(item) }}
+              </div>
             </div>
 
-            <div class="unit-price">${{ item.unitPrice | number:'1.2-2' }}</div>
+            <div class="price-section">
+              <span class="unit-price">${{ item.unitPrice | number:'1.2-2' }}</span>
+              <span class="total-price">x{{ item.quantity }} = ${{ item.totalPrice | number:'1.2-2' }}</span>
+            </div>
           </div>
 
-          <!-- Controles -->
           <div class="item-controls">
-
-            <!-- Cantidad -->
             <div class="quantity-section">
               <span class="quantity-label">Cantidad</span>
-              <div class="quantity-selector">
+              <div class="quantity-controls">
                 <button class="qty-btn" [disabled]="updating || item.quantity <= 1"
                   (click)="updateQuantity(item, item.quantity - 1)">−</button>
-
-                <input class="qty-value" [(ngModel)]="item.quantity" [disabled]="updating"
-                  (change)="updateQuantity(item, item.quantity)" type="number" min="1"
-                  [max]="item.variant?.stock || 10">
-
+                <input type="number" [(ngModel)]="item.quantity" [disabled]="updating"
+                  (change)="updateQuantity(item, item.quantity)" min="1" [max]="item.variant?.stock || 10"
+                  class="qty-input">
                 <button class="qty-btn" [disabled]="updating || item.quantity >= (item.variant?.stock || 0)"
                   (click)="updateQuantity(item, item.quantity + 1)">+</button>
               </div>
             </div>
 
-            <!-- Total y eliminar -->
-            <div class="item-total-section">
-              <div class="total-price">${{ item.totalPrice | number:'1.2-2' }}</div>
-              <button class="remove-item" (click)="removeItem(item)" [disabled]="updating">
-                <span nz-icon nzType="close" nzTheme="outline"></span>
-              </button>
+            <div class="remove-section">
+              <div class="item-total">${{ item.totalPrice | number:'1.2-2' }}</div>
+              <button class="remove-btn" (click)="removeItem(item)" [disabled]="updating">×</button>
             </div>
           </div>
         </div>
-
       </div>
     </div>
+  </div>
 
-    <!-- Sidebar derecho - Resumen fijo -->
-    <div class="summary-right">
-      <div class="summary-card">
+  <!-- Sidebar negro - Lado derecho -->
+  <div *ngIf="!loading && cart && cart.items.length > 0" class="cart-sidebar">
+    <div class="sidebar-header">
+      <h2 class="sidebar-title">Resumen</h2>
+      <p class="sidebar-subtitle">Revisa tu pedido</p>
+    </div>
 
-        <!-- Título -->
-        <h4 class="summary-title">Resumen</h4>
+    <div class="order-summary">
+      <!-- Código de descuento -->
+      <div class="discount-section">
+        <h3 class="discount-title">Código de Descuento</h3>
+        <div class="discount-input-group">
+          <input type="text" placeholder="Código" [(ngModel)]="discountCode" [disabled]="updating"
+            class="discount-input">
+          <button class="discount-apply" (click)="applyDiscount()" [disabled]="updating || !discountCode.trim()">
+            Aplicar
+          </button>
+        </div>
+      </div>
 
-        <!-- Código de descuento -->
-        <div class="discount-section">
-          <h5>Código de Descuento</h5>
-          <div class="discount-input-group">
-            <input class="discount-input" placeholder="Código" [(ngModel)]="discountCode" [disabled]="updating">
-            <button class="discount-btn" (click)="applyDiscount()" [disabled]="updating || !discountCode.trim()">
-              Aplicar
-            </button>
-          </div>
+      <!-- Totales -->
+      <div class="order-totals">
+        <div class="total-row">
+          <span class="total-label">Subtotal</span>
+          <span class="total-value">${{ cart.subtotal | number:'1.2-2' }}</span>
+        </div>
+        <div class="total-row" *ngIf="cart.discount > 0">
+          <span class="total-label">Descuento</span>
+          <span class="total-value">-${{ cart.discount | number:'1.2-2' }}</span>
+        </div>
+        <div class="total-row">
+          <span class="total-label">IVA</span>
+          <span class="total-value">${{ cart.tax | number:'1.2-2' }}</span>
+        </div>
+        <div class="total-row">
+          <span class="total-label">Envío</span>
+          <span class="total-value">
+            <span *ngIf="cart.shipping > 0">${{ cart.shipping | number:'1.2-2' }}</span>
+            <span *ngIf="cart.shipping === 0">Gratis</span>
+          </span>
+        </div>
+        <div class="total-row final-total">
+          <span class="total-label">Total</span>
+          <span class="total-value">${{ cart.total | number:'1.2-2' }}</span>
+        </div>
+      </div>
+
+      <!-- Checkout -->
+      <div class="checkout-section">
+        <!-- No autenticado -->
+        <div *ngIf="!currentUser" class="auth-notice">
+          <p>Inicia sesión para continuar</p>
+          <button class="auth-button" (click)="redirectToLogin()">
+            Iniciar Sesión
+          </button>
         </div>
 
-        <!-- Totales -->
-        <div class="summary-totals">
-          <div class="summary-row">
-            <span class="summary-label">Subtotal</span>
-            <span class="summary-value">${{ cart.subtotal | number:'1.2-2' }}</span>
-          </div>
-
-          <div class="summary-row" *ngIf="cart.discount > 0">
-            <span class="summary-label">Descuento</span>
-            <span class="summary-value">-${{ cart.discount | number:'1.2-2' }}</span>
-          </div>
-
-          <div class="summary-row">
-            <span class="summary-label">IVA</span>
-            <span class="summary-value">${{ cart.tax | number:'1.2-2' }}</span>
-          </div>
-
-          <div class="summary-row">
-            <span class="summary-label">Envío</span>
-            <span class="summary-value">
-              <span *ngIf="cart.shipping > 0">${{ cart.shipping | number:'1.2-2' }}</span>
-              <span *ngIf="cart.shipping === 0">Gratis</span>
-            </span>
-          </div>
-
-          <div class="summary-row total-row">
-            <span class="summary-label">Total</span>
-            <span class="summary-value">${{ cart.total | number:'1.2-2' }}</span>
-          </div>
+        <!-- Usuario anónimo -->
+        <div *ngIf="currentUser?.isAnonymous" class="auth-notice">
+          <p>Completa tu registro</p>
+          <button class="auth-button" (click)="redirectToCompleteProfile()">
+            Completar Registro
+          </button>
         </div>
 
-        <!-- Checkout -->
-        <div class="checkout-section">
-
-          <!-- No autenticado -->
-          <div *ngIf="!currentUser" class="auth-notice">
-            <p>Inicia sesión para continuar</p>
-            <button class="auth-button" (click)="redirectToLogin()">
-              Iniciar Sesión
-            </button>
-          </div>
-
-          <!-- Usuario anónimo -->
-          <div *ngIf="currentUser?.isAnonymous" class="auth-notice">
-            <p>Completa tu registro</p>
-            <button class="auth-button" (click)="redirectToCompleteProfile()">
-              Completar Registro
-            </button>
-          </div>
-
-          <!-- Usuario registrado -->
+        <!-- Usuario registrado -->
+        <div class="checkout-actions">
+          <button class="mobile-clear" (click)="clearCart()" [disabled]="updating">
+            Limpiar
+          </button>
           <div *ngIf="currentUser && !currentUser.isAnonymous">
-            <button class="checkout-button" [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout"
+            <button class="checkout-btn" [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout"
               (click)="proceedToCheckout()">
-              <span *ngIf="!processingCheckout">Proceder al Pago</span>
+              <span *ngIf="!processingCheckout">Botón de pago</span>
               <span *ngIf="processingCheckout">Procesando...</span>
             </button>
           </div>
         </div>
-
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Acciones flotantes (móvil) -->
-  <div class="cart-actions" *ngIf="cart && cart.items.length > 0">
-    <button class="floating-action" (click)="clearCart()" [disabled]="updating">
-      Vaciar
+<!-- Botones móviles MUY accesibles -->
+<div *ngIf="cart && cart.items.length > 0" class="mobile-actions">
+  <div class="mobile-actions-grid">
+    <button class="mobile-clear" (click)="clearCart()" [disabled]="updating">
+      Limpiar
     </button>
-    <button class="floating-action" (click)="continueShopping()">
-      Continuar
+    <button class="mobile-checkout" (click)="proceedToCheckout()"
+      [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout">
+      Pagar ${{ cart.total | number:'1.2-2' }}
     </button>
   </div>
-
 </div>

@@ -2,9 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, firstValueFrom, map, tap, catchError, from, of, throwError, switchMap, forkJoin, take, finalize } from 'rxjs';
 import { Product, ProductVariant } from '../../../models/models';
 import { ProductService } from '../../../services/admin/product/product.service';
-import { ProductInventoryService, SaleItem } from '../../../services/admin/inventario/product-inventory.service';
 import { ErrorUtil } from '../../../utils/error-util';
-import { StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 import { UsersService } from '../../../services/users/users.service';
 import { deleteDoc, doc, Firestore, getDoc, setDoc } from '@angular/fire/firestore';
 import { User } from '@angular/fire/auth';
@@ -77,8 +75,6 @@ export class CartService {
 
   constructor(
     private productService: ProductService,
-    private inventoryService: ProductInventoryService,
-    private stockUpdateService: StockUpdateService,
     private usersService: UsersService
   ) {
     // ✅ CAMBIAR: Cargar storage DESPUÉS de suscribirse a usuario
@@ -93,6 +89,8 @@ export class CartService {
         this.loadCartFromStorage();
       }
     }, 100);
+
+    this.loadCartFromStorage();
   }
 
   // ✅ NUEVO: Manejar cambio de usuario
@@ -511,21 +509,22 @@ export class CartService {
   /**
    * Vacía completamente el carrito
    */
-  async clearCart(): Promise<void> {
-    console.log('🧹 CartService: Limpiando carrito completo');
-
-    // 1. Limpiar estado local
+  clearCart(): void {
     this.cartSubject.next({ ...this.initialCartState });
-
-    // 2. Limpiar localStorage (usuarios anónimos)
     localStorage.removeItem('cart');
 
-    // 3. ✅ NUEVO: Limpiar carrito del usuario autenticado
-    if (this.currentUserId) {
-      await this.clearUserCart();
-    }
+    this.productService.forceReloadAfterPayment().pipe(
+      take(1)
+    ).subscribe({
+      next: (products) => {
+        console.log(`✅ CartService: ${products.length} productos actualizados después de limpiar carrito`);
+      },
+      error: (error) => {
+        console.error('❌ CartService: Error actualizando productos:', error);
+      }
+    });
 
-    console.log('✅ CartService: Carrito limpiado (local y remoto)');
+    console.log('✅ CartService: Carrito limpiado');
   }
 
 

@@ -14,6 +14,7 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { UsersService } from '../../services/users/users.service';
+import { CategoryService } from '../../services/admin/category/category.service';
 import { User } from '@angular/fire/auth';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -53,16 +54,22 @@ export class CarritoComponent implements OnInit, OnDestroy {
 
   // ✅ CORRECCIÓN: Usar Subject para limpiar suscripciones
   private destroy$ = new Subject<void>();
+  private categoryNames: Map<string, string> = new Map();
+  private categoriesLoaded = false;
 
   constructor(
     private cartService: CartService,
     private router: Router,
     private modal: NzModalService,
     private message: NzMessageService,
-    private usersService: UsersService
+    private usersService: UsersService,
+    private categoryService: CategoryService
   ) { }
 
   ngOnInit(): void {
+
+    this.loadCategories();
+
     // ✅ CORRECCIÓN: Usar takeUntil para evitar memory leaks
     this.usersService.user$.pipe(
       takeUntil(this.destroy$)
@@ -70,6 +77,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
       this.currentUser = user;
       this.updateCheckoutStatus();
     });
+
 
     // ✅ CORRECCIÓN: Usar takeUntil para la suscripción del carrito
     this.cartService.cart$.pipe(
@@ -92,6 +100,42 @@ export class CarritoComponent implements OnInit, OnDestroy {
     // ✅ CORRECCIÓN: Limpiar todas las suscripciones
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private loadCategories(): void {
+    this.categoryService.getCategories().pipe(
+      take(1),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (categories) => {
+        // Crear mapa de ID -> Nombre para acceso rápido
+        this.categoryNames.clear();
+        categories.forEach(category => {
+          this.categoryNames.set(category.id, category.name);
+        });
+        this.categoriesLoaded = true;
+        console.log(`✅ ${categories.length} categorías cargadas en carrito`);
+      },
+      error: (error) => {
+        console.error('❌ Error cargando categorías:', error);
+        this.categoriesLoaded = true; // Continuar sin categorías
+      }
+    });
+  }
+
+  // ✅ NUEVO MÉTODO para obtener nombre de categoría
+  getCategoryName(item: CartItem): string {
+    if (!item.product?.category) {
+      return 'Sin categoría';
+    }
+
+    // Si aún no se han cargado las categorías, mostrar el ID temporalmente
+    if (!this.categoriesLoaded) {
+      return 'Cargando...';
+    }
+
+    // Buscar el nombre en el mapa o devolver el ID si no se encuentra
+    return this.categoryNames.get(item.product.category) || item.product.category;
   }
 
   private updateCheckoutStatus(): void {
@@ -295,16 +339,29 @@ export class CarritoComponent implements OnInit, OnDestroy {
 
   // ✅ NUEVO: Obtener mensaje de stock
   getStockMessage(item: CartItem): string {
-    if (!item.variant) return 'Sin información de stock';
+    if (!item.variant) return 'Sin información';
 
-    if (item.variant.stock === 0) {
-      return 'Sin stock';
-    } else if (item.variant.stock < item.quantity) {
-      return `Solo ${item.variant.stock} disponible${item.variant.stock === 1 ? '' : 's'}`;
-    } else if (item.variant.stock <= 5) {
-      return 'Últimas unidades';
-    }
+    const stock = item.variant.stock || 0;
+
+    if (stock === 0) return 'Sin stock';
+    if (stock < item.quantity) return `Solo ${stock} disponible`;
+    if (stock <= 5) return 'Últimas unidades';
+    if (stock <= 10) return 'Stock limitado';
+
     return 'En stock';
+  }
+
+  // ✅ AGREGAR MÉTODO NUEVO para validaciones
+  hasValidVariant(item: CartItem): boolean {
+    return !!(item.variant && item.variant.stock !== undefined);
+  }
+
+  isStockLow(item: CartItem): boolean {
+    return !!(item.variant && item.variant.stock > 0 && item.variant.stock <= 5);
+  }
+
+  isOutOfStock(item: CartItem): boolean {
+    return !item.variant || item.variant.stock === 0;
   }
 
   // Métodos auxiliares existentes
