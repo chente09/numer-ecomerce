@@ -506,13 +506,34 @@ export class CartService {
     }
   }
 
+  private getCurrentUser(): any {
+    return this.usersService.getCurrentUser();
+  }
+
   /**
    * Vacía completamente el carrito
    */
   clearCart(): void {
+    console.log('🧹 CartService: Limpiando carrito completo');
+
+    // ✅ LIMPIAR TODO INMEDIATAMENTE
     this.cartSubject.next({ ...this.initialCartState });
     localStorage.removeItem('cart');
 
+    // ✅ NUEVO: Marcar que el carrito fue limpiado intencionalmente
+    localStorage.setItem('cart_cleared_flag', Date.now().toString());
+
+    // ✅ LIMPIAR TAMBIÉN CARRITO REMOTO SI HAY USUARIO
+    const currentUser = this.getCurrentUser();
+    if (currentUser && !currentUser.isAnonymous) {
+      this.clearRemoteCart().subscribe({
+        next: () => console.log('✅ CartService: Carrito remoto limpiado'),
+        error: (error) => console.error('❌ Error limpiando carrito remoto:', error)
+      });
+    }
+
+    // ✅ FORZAR ACTUALIZACIÓN DE PRODUCTOS
+    console.log('🔄 CartService: Forzando actualización de productos...');
     this.productService.forceReloadAfterPayment().pipe(
       take(1)
     ).subscribe({
@@ -524,9 +545,39 @@ export class CartService {
       }
     });
 
-    console.log('✅ CartService: Carrito limpiado');
+    console.log('✅ CartService: Carrito limpiado completamente');
   }
 
+  private clearRemoteCart(): Observable<void> {
+    const user = this.getCurrentUser();
+
+    if (!user || user.isAnonymous) {
+      return of(void 0); // No hacer nada si no hay usuario autenticado
+    }
+
+    // ✅ IMPLEMENTACIÓN para Firestore (ajusta según tu estructura)
+    return from((async () => {
+      try {
+        // Opción 1: Si guardas el carrito como documento del usuario
+        const userCartRef = doc(this.firestore, `users/${user.uid}/cart`, 'current');
+        await deleteDoc(userCartRef);
+        console.log('🗑️ CartService: Carrito remoto eliminado de Firestore');
+
+        // Opción 2: Si guardas el carrito en el documento del usuario
+        // const userRef = doc(this.firestore, `users/${user.uid}`);
+        // await updateDoc(userRef, { cart: null });
+
+      } catch (error) {
+        console.error('❌ CartService: Error limpiando carrito remoto:', error);
+        throw error;
+      }
+    })()).pipe(
+      catchError(error => {
+        console.error('❌ CartService: Error en clearRemoteCart:', error);
+        return of(void 0); // No fallar la operación principal
+      })
+    );
+  }
 
   private async clearUserCart(): Promise<void> {
     if (!this.currentUserId) return;
@@ -668,6 +719,20 @@ export class CartService {
    */
   private loadCartFromStorage(): void {
     try {
+
+      const clearedFlag = localStorage.getItem('cart_cleared_flag');
+      if (clearedFlag) {
+        const clearedTime = parseInt(clearedFlag);
+        const timeDiff = Date.now() - clearedTime;
+
+        // Si fue limpiado hace menos de 5 minutos, no cargar desde storage
+        if (timeDiff < 5 * 60 * 1000) { // 5 minutos
+          console.log('🚫 CartService: Carrito fue limpiado recientemente, no cargando desde storage');
+          localStorage.removeItem('cart_cleared_flag'); // Limpiar flag
+          return;
+        }
+      }
+
       const storedCart = localStorage.getItem('cart');
 
       if (!storedCart) {
