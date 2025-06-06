@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { Category, CategoryService } from '../../services/admin/category/category.service';
 
 @Component({
   selector: 'app-footer',
@@ -17,17 +18,38 @@ import { NzInputModule } from 'ng-zorro-antd/input';
   templateUrl: './footer.component.html',
   styleUrl: './footer.component.css'
 })
-export class FooterComponent {
+export class FooterComponent implements OnInit {
+  categories: Category[] = [];
+  categoriesLoading = true;
 
+  constructor(
+      private categoryService: CategoryService
+    ) { }
+  
+    
   currentYear = new Date().getFullYear();
 
+  ngOnInit(): void {
+    this.loadCategories();
+  }
+
+  loadCategories(): void {
+    this.categoryService.getCategories().subscribe({
+      next: (data) => {
+        this.categoriesLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+        this.categoriesLoading = false;
+      }
+    });
+  }
+
   shopLinks = [
-    { label: 'Nuevas Llegadas', link: '/new-arrivals' },
-    { label: 'Más Vendidos', link: '/best-sellers' },
-    { label: 'Escalada', link: '/climbing' },
-    { label: 'Esquí', link: '/skiing' },
-    { label: 'Senderismo y Camping', link: '/hiking-camping' },
-    { label: 'Ropa', link: '/apparel' }
+    { label: 'Encuentranos', link: '/shop' },
+    { label: 'Distribuidores', link: '/shop' },
+    { label: 'Nuevas Llegadas', link: '/shop' },
+    { label: 'Más Vendidos', link: '/shop' },
   ];
   
   
@@ -44,7 +66,6 @@ export class FooterComponent {
     { label: 'Sostenibilidad', link: '/sustainability' },
     { label: 'Carreras', link: '/careers' },
     { label: 'Embajadores', link: '/ambassadors' },
-    { label: 'Encontrar un Distribuidor', link: '/dealers' }
   ];
   
   socialLinks = [
