@@ -70,7 +70,7 @@
 }
 
 /* =================================================================
-   PRODUCT IMAGE - TU DISEÑO ORIGINAL
+   PRODUCT IMAGE - ✅ CORREGIDO: SEPARACIÓN DE BADGES
    ================================================================= */
 
 .product-image-container {
@@ -79,6 +79,8 @@
     background-color: #f3f3f3;
     overflow: hidden;
     cursor: pointer;
+    /* ✅ CRÍTICO: Agregar separación de badges */
+    margin-top: 45px;
 }
 
 .product-image-section {
@@ -133,7 +135,7 @@
     /* Chrome/Safari/Opera */
 }
 
-/* 🔧 NUEVO: Indicadores de scroll - mantener tu estilo visual */
+/* ✅ CORREGIDO: Indicadores de scroll funcionales */
 .scroll-indicator {
     position: absolute;
     top: 50%;
@@ -147,10 +149,11 @@
     color: #666;
     font-size: 12px;
     font-weight: bold;
-    pointer-events: none;
+    pointer-events: auto; /* ✅ CORREGIDO: de none a auto */
     z-index: 2;
     opacity: 0;
     transition: opacity 0.3s ease;
+    cursor: pointer; /* ✅ AGREGAR */
 }
 
 .scroll-left {
@@ -163,8 +166,8 @@
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9));
 }
 
-/* Mostrar indicadores al hacer hover cuando hay muchos colores */
-.color-options.scrollable:hover .scroll-indicator {
+/* ✅ CORREGIDO: Clase correcta para mostrar indicadores */
+.color-options.has-scroll:hover .scroll-indicator {
     opacity: 1;
 }
 
@@ -326,16 +329,22 @@
 }
 
 /* =================================================================
-   BADGES - TU DISEÑO ORIGINAL
+   BADGES - ✅ CORREGIDO: SEPARACIÓN + ALTURA FIJA
    ================================================================= */
 
 .badges-container {
-    margin-bottom: 45px;
+    position: absolute;
+    top: 10px;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    pointer-events: none;
+    height: 45px; /* ✅ AGREGAR altura fija */
 }
 
 .new-badge {
     position: absolute;
-    top: 10px;
+    top: 0; /* ✅ CAMBIAR de top: 10px a top: 0 */
     right: 10px;
     background-color: #000;
     color: #fff;
@@ -348,7 +357,7 @@
 
 .discount-badge {
     position: absolute;
-    top: 10px;
+    top: 0; /* ✅ CAMBIAR de top: 10px a top: 0 */
     left: 10px;
     background-color: #ff4d4f;
     color: #fff;
@@ -518,7 +527,7 @@
 }
 
 /* =================================================================
-   RESPONSIVE DESIGN - TU DISEÑO ORIGINAL CON AJUSTES DE ANCHO
+   RESPONSIVE DESIGN - ✅ CORREGIDO: MEJORES RESPONSIVOS
    ================================================================= */
 
 @media (max-width: 768px) {
@@ -543,15 +552,21 @@
         width: 280px;
     }
 
+    /* ✅ AGREGAR separación para tablets */
+    .product-image-container {
+        margin-top: 40px;
+        height: 300px;
+    }
+
     .color-options {
         margin: 12px 0;
         padding: 0 12px;
     }
 
     .color-option {
-        width: 28px;
-        height: 28px;
-        min-width: 28px;
+        width: 36px; /* ✅ MEJORAR tamaño en tablets */
+        height: 50px;
+        min-width: 30px;
     }
 }
 
@@ -562,10 +577,16 @@
     }
 
     .product-card-section {
-        /* 🔧 AJUSTE: Ancho menor en móvil */
-        min-width: 260px;
-        max-width: 260px;
-        width: 260px;
+        /* ✅ CRÍTICO: Cambiar de 260px a 320px */
+        min-width: 320px;
+        max-width: 320px;
+        width: 320px;
+    }
+
+    /* ✅ AGREGAR separación crítica para móviles */
+    .product-image-container {
+        margin-top: 35px;
+        height: 280px; /* Reducir un poco la altura */
     }
 
     .product-name {
@@ -584,9 +605,9 @@
     }
 
     .color-option {
-        width: 24px;
-        height: 24px;
-        min-width: 24px;
+        width: 32px; /* ✅ MEJORAR: de 24px a 32px */
+        height: 42px; /* ✅ MEJORAR: de 24px a 42px */
+        min-width: 28px; /* ✅ MEJORAR: de 24px a 28px */
     }
 
     .active-color-info {
@@ -603,15 +624,21 @@
 
     .product-card-section {
         /* 🔧 AJUSTE: Ancho mínimo en móviles pequeños */
-        min-width: 240px;
-        max-width: 240px;
-        width: 240px;
+        min-width: 300px;
+        max-width: 300px;
+        width: 300px;
+    }
+
+    /* ✅ AGREGAR separación para móviles pequeños */
+    .product-image-container {
+        margin-top: 30px;
+        height: 240px;
     }
 
     .color-option {
-        width: 22px;
-        height: 22px;
-        min-width: 22px;
+        width: 28px; /* ✅ MEJORAR: de 22px a 28px */
+        height: 36px; /* ✅ MEJORAR: de 22px a 36px */
+        min-width: 24px; /* ✅ MEJORAR: de 22px a 24px */
     }
 }
 
