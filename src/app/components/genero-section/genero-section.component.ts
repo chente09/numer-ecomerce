@@ -32,14 +32,14 @@ interface ProductPair {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GeneroSectionComponent implements OnInit, OnDestroy {
-  
+
   private destroy$ = new Subject<void>();
-  
+
   productPairs: ProductPair[] = [
     {
       id: 'hombre',
       title: 'Hombre',
-      category: 'hombre',
+      category: 'man', // ✅ Coincide con Product.gender
       image: 'https://i.postimg.cc/fRSzrGFv/img.webp',
       alt: 'Colección para Hombre - Productos deportivos y casuales',
       fallbackImage: this.generateFallbackImage('Hombre', '#1890ff')
@@ -47,7 +47,7 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
     {
       id: 'mujer',
       title: 'Mujer',
-      category: 'mujer',
+      category: 'woman', // ✅ Coincide con Product.gender
       image: 'https://i.postimg.cc/k5wpF4cY/Imagen-de-Whats-App-2025-05-15-a-las-20-08-55-c0bbe9f9.jpg',
       alt: 'Colección para Mujer - Productos deportivos y casuales',
       fallbackImage: this.generateFallbackImage('Mujer', '#ff4d4f')
@@ -61,7 +61,7 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.detectViewport();
@@ -103,7 +103,9 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
    */
   navigateToCategory(category: string): void {
     if (category && typeof category === 'string') {
-      this.router.navigate(['/shop', category.toLowerCase()]);
+      this.router.navigate(['/shop'], {
+        queryParams: { gender: category }
+      });
     }
   }
 
@@ -111,7 +113,7 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
    * Precarga todas las imágenes de forma optimizada
    */
   private async preloadImages(): Promise<void> {
-    const preloadPromises = this.productPairs.map(product => 
+    const preloadPromises = this.productPairs.map(product =>
       this.preloadSingleImage(product)
     );
 
@@ -128,7 +130,7 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
   private preloadSingleImage(product: ProductPair): Promise<void> {
     return new Promise((resolve) => {
       const img = new Image();
-      
+
       img.onload = () => {
         this.imagesLoaded.add(product.id);
         this.cdr.markForCheck();
@@ -151,12 +153,12 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
    */
   handleImageError(event: Event, product: ProductPair): void {
     const imgElement = event.target as HTMLImageElement;
-    
+
     if (imgElement && !imgElement.classList.contains('fallback-applied')) {
       // Aplicar imagen de fallback personalizada
       imgElement.src = product.fallbackImage || this.getGenericFallback();
       imgElement.classList.add('fallback-applied', 'image-error');
-      
+
       console.warn(`🔄 Fallback aplicado para: ${product.title}`);
     }
   }

@@ -24,7 +24,7 @@
                 </nz-collapse-panel>
 
                 <!-- Color Filter -->
-                <nz-collapse-panel nzHeader="Color" [nzActive]="true">
+                <nz-collapse-panel nzHeader="Color" [nzActive]="false">
                     <div class="filter-section">
                         <div class="color-swatches">
                             <div *ngFor="let color of filterOptions.colors" class="color-swatch"
@@ -44,6 +44,19 @@
                                 {{ category.name }}
                             </label>
                         </nz-checkbox-group>
+                    </div>
+                </nz-collapse-panel>
+
+                <nz-collapse-panel nzHeader="Género" [nzActive]="false">
+                    <div class="filter-section">
+                        <nz-select formControlName="gender" nzPlaceHolder="Seleccionar género" style="width: 100%;"
+                            nzAllowClear>
+                            <nz-option nzValue="man" nzLabel="Hombre"></nz-option>
+                            <nz-option nzValue="woman" nzLabel="Mujer"></nz-option>
+                            <nz-option nzValue="boy" nzLabel="Niño"></nz-option>
+                            <nz-option nzValue="girl" nzLabel="Niña"></nz-option>
+                            <nz-option nzValue="unisex" nzLabel="Unisex"></nz-option>
+                        </nz-select>
                     </div>
                 </nz-collapse-panel>
 

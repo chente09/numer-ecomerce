@@ -1,4 +1,4 @@
-<!-- Featured Products Section - Versión Optimizada con Ancho Fijo y Scroll Mejorado -->
+<!-- productos-section.component.html -->
 <section class="featured-products-section">
     <div class="section-container">
         <!-- Título -->
@@ -32,101 +32,15 @@
             </ng-template>
         </div>
 
-        <!-- Products Grid con Ancho Fijo -->
+        <!-- ✅ REEMPLAZAR todo el products grid por esto: -->
         <div *ngIf="shouldShowProducts()" class="product-grid">
-            <div *ngFor="let product of featuredProducts; trackBy: trackByProductId" class="product-card-section">
-
-                <!-- Badges Container -->
-                <div class="badges-container">
-                    <span *ngIf="product.isNew" class="new-badge">NEW</span>
-                    <span *ngIf="hasDiscount(product)" class="discount-badge">
-                        -{{ getDiscountPercentage(product) }}%
-                    </span>
-                </div>
-
-                <!-- Imagen del producto con imagen dinámica -->
-                <div class="product-image-container" [routerLink]="['/products', product.id]" style="cursor: pointer;"
-                    [attr.aria-label]="'Ver detalles de ' + product.name">
-
-                    <img [src]="getDisplayImageUrl(product)"
-                        [alt]="product.name + (getActiveColorName(product) ? ' - Color: ' + getActiveColorName(product) : '')"
-                        class="product-image-section" [attr.data-original-src]="product.imageUrl"
-                        (error)="handleImageError($event)" loading="lazy">
-
-
-                </div>
-
-                <!-- Color Options con Scroll Optimizado y Indicadores Funcionales -->
-                <div class="color-options" *ngIf="hasColors(product)" [ngClass]="{
-                        'has-scroll': hasManyColors(product)}"
-                    [attr.aria-label]="'Colores disponibles: ' + getColorCount(product)">
-
-                    <!-- Indicador de scroll izquierdo FUNCIONAL -->
-                    <div *ngIf="hasManyColors(product)" class="scroll-indicator scroll-left"
-                        (click)="scrollColors(product.id, 'left')" [attr.aria-hidden]="true" [attr.tabindex]="-1"
-                        role="button" title="Scroll hacia la izquierda">
-                        ←
-                    </div>
-
-                    <!-- Contenedor de colores con scroll -->
-                    <!-- Contenedor de colores -->
-                    <div class="colors-container" #colorsContainer [attr.data-product-id]="product.id" role="radiogroup"
-                        [attr.aria-label]="'Seleccionar color para ' + product.name">
-
-                        <div *ngFor="let color of product.colors; let i = index" class="color-option"
-                            [ngClass]="{'active': isColorActive(product, i)}"
-                            [style.background-image]="color.imageUrl ? 'url(' + color.imageUrl + ')' : null"
-                            [style.background-size]="color.imageUrl ? 'cover' : null"
-                            [style.background-position]="color.imageUrl ? 'center' : null"
-                            [style.background-repeat]="color.imageUrl ? 'no-repeat' : null"
-                            (click)="selectColor(product, color, i)" [attr.title]="'Color: ' + color.name"
-                            [attr.aria-label]="'Seleccionar color ' + color.name"
-                            [attr.aria-checked]="isColorActive(product, i)" role="radio" tabindex="0"
-                            (keydown.enter)="selectColor(product, color, i)"
-                            (keydown.space)="$event.preventDefault(); selectColor(product, color, i)">
-                        </div>
-                    </div>
-
-                    <!-- Indicador de scroll derecho FUNCIONAL -->
-                    <div *ngIf="hasManyColors(product)" class="scroll-indicator scroll-right"
-                        (click)="scrollColors(product.id, 'right')" [attr.aria-hidden]="true" [attr.tabindex]="-1"
-                        role="button" title="Scroll hacia la derecha">
-                        →
-                    </div>
-                </div>
-
-                <!-- Información del producto en contenedor flexible -->
-                <div class="product-info">
-                    <!-- Nombre del producto -->
-                    <h3 class="product-name" [routerLink]="['/products', product.id]" style="cursor: pointer;"
-                        [title]="product.name">
-                        {{ product.name }}
-                    </h3>
-
-                    <!-- Precio con soporte mejorado para descuentos -->
-                    <div class="product-price">
-                        <span *ngIf="hasDiscount(product)" class="original-price">
-                            ${{ formatPrice(getOriginalPrice(product)!) }}
-                        </span>
-                        <span class="current-price" [ngClass]="{'discounted': hasDiscount(product)}">
-                            ${{ formatPrice(getCurrentPrice(product)) }}
-                        </span>
-                    </div>
-
-                    <!-- Información adicional del descuento -->
-                    <div *ngIf="hasDiscount(product)" class="discount-info">
-                        <small>¡Ahorra ${{ formatPrice((getOriginalPrice(product)! - getCurrentPrice(product)))
-                            }}!</small>
-                    </div>
-
-                    <!-- Rating -->
-                    <div class="product-rating">
-                        <nz-rate [ngModel]="product.rating || 5" nzDisabled [nzAllowHalf]="true" class="black-stars"
-                            [attr.aria-label]="getRatingAriaLabel(product.rating || 5)">
-                        </nz-rate>
-                    </div>
-                </div>
-            </div>
+            <app-product-card 
+                *ngFor="let product of featuredProducts; trackBy: trackByProductId"
+                [product]="product"
+                [showColorOptions]="true"
+                [cardSize]="'medium'"
+                (colorChanged)="onColorChanged($event)">
+            </app-product-card>
         </div>
 
         <!-- Ver todos los productos -->

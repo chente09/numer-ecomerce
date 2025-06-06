@@ -2,82 +2,61 @@
 <section class="trends-section">
     <div>
         <h2 class="section-title">Tendencias y Novedades</h2>
-        <div class="trend-tabs">
+
+        <!-- Loading State -->
+        <div *ngIf="loading" class="loading-container">
+            <nz-spin nzSize="large" nzTip="Cargando tendencias..."></nz-spin>
+        </div>
+
+        <!-- Error State -->
+        <div *ngIf="hasError && !loading" class="error-container">
+            <nz-empty nzNotFoundContent="Error al cargar tendencias" [nzNotFoundFooter]="retryTemplate">
+            </nz-empty>
+            <ng-template #retryTemplate>
+                <button nz-button nzType="primary" (click)="reloadProducts()">
+                    Reintentar
+                </button>
+            </ng-template>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="shouldShowEmpty()" class="empty-state">
+            <nz-empty nzNotFoundContent="No hay productos en tendencia disponibles">
+            </nz-empty>
+        </div>
+
+        <!-- Content -->
+        <div *ngIf="shouldShowContent()" class="trend-tabs">
             <nz-tabset>
+                <!-- Tab: Más Populares -->
                 <nz-tab nzTitle="Más Populares">
                     <div class="featured-products-container">
-                        <div *ngFor="let product of trendingProducts.mostPopular" nz-col [nzXs]="24" [nzSm]="12"
-                            [nzMd]="6">
-                            <div class="trend-product-card">
-                                <div class="product-image-container">
-                                    <img [src]="product.imageUrl" [alt]="product.name" class="product-image-section">
-                                    <div class="new-badge">POPULAR</div>
-                                </div>
-                                <!-- <div class="color-options">
-                                    <div *ngFor="let color of product.colors" class="color-option"
-                                        [ngClass]="{'active': product.imageUrl === color.imageUrl}"
-                                        (click)="selectColor(product, color)">
-                                        <img [src]="color.imageUrl" [alt]="color.name">
-                                    </div>
-                                </div> -->
-                                <h3 class="product-name" [routerLink]="['/products', product.id]"
-                                    style="cursor: pointer;">
-                                    {{ product.name }}
-                                </h3>
-                                <div class="product-price">${{ product.price.toFixed(2) }}</div>
-                                <div class="product-rating">
-                                    <nz-rate [ngModel]="product.name" nzDisabled [nzAllowHalf]="true" class="large">
-                                    </nz-rate>
-                                </div>
-                            </div>
-                        </div>
+                        <app-product-card
+                            *ngFor="let product of trendingProducts.mostPopular; trackBy: trackByProductId"
+                            [product]="product" [showColorOptions]="true" [cardSize]="'medium'"
+                            (colorChanged)="onColorChanged($event, 'popular')" class="product-card-wrapper">
+                        </app-product-card>
                     </div>
                 </nz-tab>
 
+                <!-- Tab: Nuevos Lanzamientos -->
                 <nz-tab nzTitle="Nuevos Lanzamientos">
                     <div class="featured-products-container">
-                        <div *ngFor="let product of trendingProducts.newArrivals" nz-col [nzXs]="24" [nzSm]="12"
-                            [nzMd]="6">
-                            <div class="trend-product-card">
-                                <div class="product-image-container">
-                                    <img [src]="product.imageUrl" [alt]="product.name" class="product-image-section">
-                                    <div class="new-badge">NUEVO</div>
-                                </div>
-                                <h3 class="product-name" [routerLink]="['/products', product.id]"
-                                    style="cursor: pointer;">
-                                    {{ product.name }}
-                                </h3>
-                                <div class="product-price">${{ product.price.toFixed(2) }}</div>
-                                <div class="product-rating">
-                                    <nz-rate [ngModel]="product.name" nzDisabled [nzAllowHalf]="true" class="large">
-                                    </nz-rate>
-                                </div>
-                            </div>
-                        </div>
+                        <app-product-card
+                            *ngFor="let product of trendingProducts.newArrivals; trackBy: trackByProductId"
+                            [product]="product" [showColorOptions]="true" [cardSize]="'medium'"
+                            (colorChanged)="onColorChanged($event, 'new')" class="product-card-wrapper">
+                        </app-product-card>
                     </div>
                 </nz-tab>
 
+                <!-- Tab: En Promoción -->
                 <nz-tab nzTitle="En Promoción">
                     <div class="featured-products-container">
-                        <div *ngFor="let product of trendingProducts.onSale" nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
-                            <div class="trend-product-card">
-                                <div class="product-image-container">
-                                    <img [src]="product.imageUrl" [alt]="product.name" class="product-image-section">
-                                    <div class="new-badge">-{{ product.discountPercentage }}%</div>
-                                </div>
-                                <div class="trend-product-details">
-                                    <h4 class="product-name">{{ product.name }}</h4>
-                                    <p class="product-price">
-                                        <span class="original-price">${{ product.originalPrice.toFixed(2) }}</span>
-                                        <span class="current-price">${{ product.price.toFixed(2) }}</span>
-                                    </p>
-                                    <div class="product-rating">
-                                        <nz-rate [ngModel]="product.name" nzDisabled [nzAllowHalf]="true" class="large">
-                                        </nz-rate>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <app-product-card *ngFor="let product of trendingProducts.onSale; trackBy: trackByProductId"
+                            [product]="product" [showColorOptions]="true" [cardSize]="'medium'"
+                            (colorChanged)="onColorChanged($event, 'sale')" class="product-card-wrapper">
+                        </app-product-card>
                     </div>
                 </nz-tab>
             </nz-tabset>

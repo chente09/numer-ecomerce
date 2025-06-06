@@ -123,8 +123,8 @@
             <!-- Colores existentes -->
             <div class="option-section">
                 <h3 class="option-title">Colores</h3>
-                <div class="color-options">
-                    <div *ngFor="let color of product.colors" class="color-option"
+                <div class="color-options-color">
+                    <div *ngFor="let color of product.colors" class="color-option-color"
                         [ngClass]="{'active': selectedColor?.name === color.name, 'out-of-stock': !hasStockForColor(color)}"
                         (click)="selectColor(color)">
                         <div class="color-thumbnail">

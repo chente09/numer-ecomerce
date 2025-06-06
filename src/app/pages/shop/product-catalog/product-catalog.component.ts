@@ -189,6 +189,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       categories: [[]],
       colors: [[]],
       sizes: [[]],
+      gender: [''],
       priceRange: [[0, 1000]],
       priceRanges: [[]],
       brands: [[]],
@@ -413,6 +414,18 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       console.log(`📊 Productos después de filtro categoría: ${filtered.length}`);
     }
 
+    // Filtro por género
+    if (filters.gender) {
+      filtered = filtered.filter(p => {
+        // Si el producto es unisex, siempre incluirlo
+        if (p.gender === 'unisex') {
+          return true;
+        }
+        // Si no es unisex, debe coincidir exactamente con el filtro
+        return p.gender === filters.gender;
+      });
+    }
+
     // ✅ FILTRO POR COLORES CORREGIDO (mantener como está)
     if (filters.colors?.length) {
       filtered = filtered.filter(p => {
@@ -510,7 +523,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  // ✅ NUEVO MÉTODO: Sincronizar un producto específico
   // ✅ VERSIÓN MEJORADA: Considerar también tallas y stock
   private syncProductColorWithFilters(product: ProductWithSelectedVariant, activeColors: string[]): void {
     if (!product.colors || product.colors.length === 0) {
@@ -639,6 +651,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     if (formValue.categories?.length) count += formValue.categories.length;
     if (formValue.colors?.length) count += formValue.colors.length;
     if (formValue.sizes?.length) count += formValue.sizes.length;
+    if (formValue.gender) count += 1;
     if (formValue.priceRanges?.length) count += formValue.priceRanges.length;
     if (formValue.inStock) count += 1;
     if (formValue.hasDiscount) count += 1;
@@ -874,6 +887,9 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       if (params['search']) {
         // 🔄 CAMBIAR: Usar searchControl
         this.searchControl.setValue(params['search']);
+      }
+      if (params['gender']) {
+        this.filterForm.patchValue({ gender: params['gender'] });
       }
     });
   }

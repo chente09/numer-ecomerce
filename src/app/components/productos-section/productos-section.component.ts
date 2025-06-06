@@ -5,11 +5,11 @@ import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { ProductService } from '../../services/admin/product/product.service';
-import { ProductPriceService } from '../../services/admin/price/product-price.service';
 import { Product, Color } from '../../models/models';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil, finalize, catchError, of, switchMap, take, map } from 'rxjs';
+import { Subject, takeUntil, map } from 'rxjs';
+import { ProductCardComponent } from '../product-card/product-card.component';
 
 interface ProductWithSelectedColor extends Product {
   selectedColorIndex?: number;
@@ -25,43 +25,39 @@ interface ProductWithSelectedColor extends Product {
     NzRateModule,
     NzEmptyModule,
     RouterLink,
-    FormsModule
+    FormsModule,
+    ProductCardComponent
   ],
   templateUrl: './productos-section.component.html',
   styleUrls: ['./productos-section.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewInit {
-  
-  // 🎨 Referencias a los contenedores de colores para manejo de scroll
-  @ViewChildren('colorsContainer') colorsContainers!: QueryList<ElementRef>;
-  
+export class ProductosSectionComponent implements OnInit, OnDestroy {
+
+
   private destroy$ = new Subject<void>();
-  
+
   // Estados de carga y datos
   productsLoading = false;
   hasError = false;
   allProducts: Product[] = [];
   featuredProducts: ProductWithSelectedColor[] = [];
-  
+
   // Configuración mejorada
   private readonly MAX_FEATURED_PRODUCTS = 8;
-  private readonly MAX_COLORS_VISIBLE = 4; // Umbral para activar scroll
-  private readonly SCROLL_AMOUNT = 120; // Cantidad de scroll en píxeles
   private readonly FALLBACK_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOGY4Ii8+PGcgZmlsbD0iIzk5OSI+PGNpcmNsZSBjeD0iMTIwIiBjeT0iMTAwIiByPSIyMCIvPjxwYXRoIGQ9Im05MCAx NjBoNjB2NDBINTB6Ii8+PC9nPjx0ZXh0IHg9IjUwJSIgeT0iODAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlByb2R1Y3RvPC90ZXh0Pjwvc3ZnPg==';
 
   constructor(
     private productService: ProductService,
-    private productPriceService: ProductPriceService,
     private message: NzMessageService,
     private router: Router,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadFeaturedProducts();
-    
-    // ✅ SAFETY NET: Si después de 10 segundos sigue cargando, forzar parada
+
+    // ✅ OPCIONAL: Safety net
     setTimeout(() => {
       if (this.productsLoading) {
         this.productsLoading = false;
@@ -71,10 +67,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
     }, 10000);
   }
 
-  ngAfterViewInit(): void {
-    // 🎨 Inicializar scroll de colores después de que la vista esté lista
-    this.initializeColorScrolls();
-  }
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -84,7 +76,7 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
   /**
    * 🚀 SOLUCIONADO: Forzar finalize después de recibir datos
    */
-  loadFeaturedProducts(): void {    
+  loadFeaturedProducts(): void {
     this.productsLoading = true;
     this.hasError = false;
     this.featuredProducts = [];
@@ -95,34 +87,34 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
         takeUntil(this.destroy$),
         map(products => {
           if (!products?.length) return [];
-          
+
           return products.map(product => {
             if (product.currentPrice !== undefined) {
               return product;
             }
-            
+
             if (product.originalPrice && product.originalPrice > product.price) {
               const discountPercentage = Math.round(
                 ((product.originalPrice - product.price) / product.originalPrice) * 100
               );
-              
+
               return {
                 ...product,
                 currentPrice: product.price,
                 discountPercentage: discountPercentage
               };
             }
-            
+
             if (product.discountPercentage && product.discountPercentage > 0) {
               const discountedPrice = product.price * (1 - (product.discountPercentage / 100));
-              
+
               return {
                 ...product,
                 originalPrice: product.price,
                 currentPrice: discountedPrice
               };
             }
-            
+
             return {
               ...product,
               currentPrice: product.price,
@@ -138,8 +130,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
           this.productsLoading = false;
           this.cdr.detectChanges();
 
-          // 🎨 Reinicializar scroll después de cargar productos
-          setTimeout(() => this.initializeColorScrolls(), 100);
         },
         error: (error) => {
           console.error('❌ ERROR ejecutado:', error);
@@ -156,9 +146,24 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
       });
   }
 
+  onColorChanged(event: { product: Product, color: Color, index: number }): void {
+    const { product, color, index } = event;
+
+    // Encontrar el producto en featuredProducts y actualizarlo
+    const productIndex = this.featuredProducts.findIndex(p => p.id === product.id);
+    if (productIndex !== -1) {
+      this.featuredProducts[productIndex].selectedColorIndex = index;
+      this.featuredProducts[productIndex].displayImageUrl = color.imageUrl || product.imageUrl;
+
+      console.log(`🎨 Color cambiado: ${product.name} → ${color.name}`);
+      this.cdr.detectChanges();
+    }
+  }
+
   /**
    * 🔄 MEJORADO: Procesa productos con mejor manejo de errores
    */
+
   private processFeaturedProducts(): void {
     if (!this.allProducts?.length) {
       this.featuredProducts = [];
@@ -173,19 +178,17 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
         return;
       }
 
+      // ✅ SOLO productos con etiquetas
       let candidateProducts = validProducts.filter(product => this.isFeaturedProduct(product));
 
-      if (candidateProducts.length < this.MAX_FEATURED_PRODUCTS) {
-        const additionalProducts = validProducts
-          .filter(product => !candidateProducts.some(fp => fp.id === product.id))
-          .slice(0, this.MAX_FEATURED_PRODUCTS - candidateProducts.length);
-        
-        candidateProducts = [...candidateProducts, ...additionalProducts];
-      }
+      // 🎲 BARAJEAR los productos antes de limitar
+      candidateProducts = this.shuffleArray(candidateProducts);
 
       this.featuredProducts = candidateProducts
         .slice(0, this.MAX_FEATURED_PRODUCTS)
         .map(product => this.initializeProductColorState(product));
+
+      console.log(`🎲 Productos destacados barajeados: ${this.featuredProducts.length}`);
 
     } catch (error) {
       console.error('❌ Error al procesar productos destacados:', error);
@@ -194,203 +197,31 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
     }
   }
 
+  /**
+ * 🎲 Baraja un array usando el algoritmo Fisher-Yates
+ */
+  private shuffleArray<T>(array: T[]): T[] {
+    const shuffled = [...array]; // Crear copia para no mutar el original
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled;
+  }
+
   // ==================== 🎨 GESTIÓN DE COLORES CON SCROLL ====================
 
   /**
    * 🎨 Inicializa el estado de color para un producto
    */
   private initializeProductColorState(product: Product): ProductWithSelectedColor {
-    const productWithColor: ProductWithSelectedColor = {
+    return {
       ...product,
       selectedColorIndex: 0,
-      displayImageUrl: product.imageUrl
+      displayImageUrl: product.colors?.[0]?.imageUrl || product.imageUrl
     };
-
-    if (this.hasColors(product) && product.colors[0]?.imageUrl) {
-      productWithColor.displayImageUrl = product.colors[0].imageUrl;
-    }
-
-    return productWithColor;
-  }
-
-  /**
-   * 🎨 Inicializa los scroll de colores para todos los productos
-   */
-  private initializeColorScrolls(): void {
-    if (!this.colorsContainers) return;
-
-    this.colorsContainers.forEach((containerRef, index) => {
-      const container = containerRef.nativeElement;
-      const colorOptions = container.closest('.color-options');
-      
-      if (container && colorOptions) {
-        this.setupColorScroll(container, colorOptions);
-      }
-    });
-  }
-
-  /**
-   * 🎨 Configura el scroll para un contenedor de colores específico
-   */
-  private setupColorScroll(container: HTMLElement, colorOptions: HTMLElement): void {
-    // Verificar si necesita scroll
-    const needsScroll = container.scrollWidth > container.clientWidth;
-    
-    if (needsScroll) {
-      colorOptions.classList.add('has-scroll');
-      this.updateScrollIndicators(colorOptions);
-      
-      // Agregar listener para actualizar indicadores durante scroll
-      container.addEventListener('scroll', () => {
-        this.updateScrollIndicators(colorOptions);
-      }, { passive: true });
-    } else {
-      colorOptions.classList.remove('has-scroll');
-    }
-  }
-
-  /**
-   * 🎨 Actualiza la visibilidad de los indicadores de scroll
-   */
-  private updateScrollIndicators(colorOptions: HTMLElement): void {
-    const container = colorOptions.querySelector('.colors-container') as HTMLElement;
-    const leftIndicator = colorOptions.querySelector('.scroll-left') as HTMLElement;
-    const rightIndicator = colorOptions.querySelector('.scroll-right') as HTMLElement;
-    
-    if (!container || !leftIndicator || !rightIndicator) return;
-    
-    const canScrollLeft = container.scrollLeft > 5; // Pequeño margen
-    const canScrollRight = container.scrollLeft < (container.scrollWidth - container.clientWidth - 5);
-    
-    leftIndicator.style.opacity = canScrollLeft ? '1' : '0.3';
-    rightIndicator.style.opacity = canScrollRight ? '1' : '0.3';
-    leftIndicator.style.pointerEvents = canScrollLeft ? 'auto' : 'none';
-    rightIndicator.style.pointerEvents = canScrollRight ? 'auto' : 'none';
-  }
-
-  /**
-   * 🎨 Hace scroll del contenedor de colores
-   */
-  scrollColors(productId: string, direction: 'left' | 'right'): void {
-    const colorOptions = document.querySelector(`[data-product-id="${productId}"]`)?.closest('.color-options') as HTMLElement;
-    if (!colorOptions) return;
-
-    const container = colorOptions.querySelector('.colors-container') as HTMLElement;
-    if (!container) return;
-
-    const scrollAmount = direction === 'left' ? -this.SCROLL_AMOUNT : this.SCROLL_AMOUNT;
-    
-    container.scrollBy({
-      left: scrollAmount,
-      behavior: 'smooth'
-    });
-
-    // Actualizar indicadores después del scroll
-    setTimeout(() => {
-      this.updateScrollIndicators(colorOptions);
-    }, 300);
-  }
-
-  /**
-   * 🎨 Selecciona un color y actualiza la imagen
-   */
-  selectColor(product: ProductWithSelectedColor, color: Color, colorIndex: number): void {
-    if (!product || !color || colorIndex < 0) {
-      return;
-    }
-
-    // Actualizar el índice del color seleccionado
-    product.selectedColorIndex = colorIndex;
-
-    // Actualizar la imagen mostrada
-    if (color.imageUrl) {
-      product.displayImageUrl = color.imageUrl;
-    } else {
-      product.displayImageUrl = product.imageUrl;
-    }
-
-    // Scroll automático para mantener el color seleccionado visible
-    setTimeout(() => {
-      this.scrollToSelectedColor(product.id, colorIndex);
-    }, 50);
-
-    this.cdr.detectChanges();
-  }
-
-  /**
-   * 🎨 Hace scroll automático para mostrar el color seleccionado
-   */
-  private scrollToSelectedColor(productId: string, colorIndex: number): void {
-    const colorOptions = document.querySelector(`[data-product-id="${productId}"]`)?.closest('.color-options') as HTMLElement;
-    if (!colorOptions) return;
-
-    const container = colorOptions.querySelector('.colors-container') as HTMLElement;
-    const colorElement = container?.children[colorIndex] as HTMLElement;
-    
-    if (!container || !colorElement) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const colorRect = colorElement.getBoundingClientRect();
-    
-    // Verificar si el color está fuera del área visible
-    const isOutOfView = colorRect.left < containerRect.left || colorRect.right > containerRect.right;
-    
-    if (isOutOfView) {
-      const scrollPosition = colorElement.offsetLeft - (container.clientWidth / 2) + (colorElement.clientWidth / 2);
-      
-      container.scrollTo({
-        left: Math.max(0, scrollPosition),
-        behavior: 'smooth'
-      });
-    }
-  }
-
-  /**
-   * ✅ Verifica si un color está activo/seleccionado
-   */
-  isColorActive(product: ProductWithSelectedColor, colorIndex: number): boolean {
-    return product?.selectedColorIndex === colorIndex;
-  }
-
-
-  /**
-   * 🔍 Verifica si el producto tiene colores
-   */
-  hasColors(product: Product): boolean {
-    return !!(product?.colors && Array.isArray(product.colors) && product.colors.length > 0);
-  }
-
-  /**
-   * 📏 Verifica si hay muchos colores para activar scroll
-   */
-  hasManyColors(product: Product): boolean {
-    return !!(product?.colors && product.colors.length > this.MAX_COLORS_VISIBLE);
-  }
-
-  /**
-   * 🎨 Obtiene información del color activo
-   */
-  getActiveColorName(product: ProductWithSelectedColor): string {
-    if (!this.hasColors(product) || product.selectedColorIndex === undefined) {
-      return '';
-    }
-
-    const activeColor = product.colors[product.selectedColorIndex];
-    return activeColor?.name || '';
-  }
-
-  /**
-   * 📊 Obtiene el número de colores disponibles
-   */
-  getColorCount(product: Product): number {
-    return product?.colors?.length || 0;
-  }
-
-  /**
-   * 🖼️ Obtiene la URL de imagen a mostrar
-   */
-  getDisplayImageUrl(product: ProductWithSelectedColor): string {
-    return product?.displayImageUrl || product?.imageUrl || this.FALLBACK_IMAGE;
   }
 
   // ==================== MÉTODOS DE VALIDACIÓN Y UTILIDADES ====================
@@ -418,17 +249,43 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
    * ⭐ ACTUALIZADO: Verifica si un producto es destacado según tu modelo
    */
   private isFeaturedProduct(product: Product): boolean {
-    const isFeatured = !!(
-      product?.isBestSeller || 
-      product?.isNew || 
-      (product?.discountPercentage && product.discountPercentage > 0) ||
-      product?.activePromotion ||
-      (product?.promotions && product.promotions.length > 0) ||
-      (product?.popularityScore && product.popularityScore > 0.8) ||
-      (product?.sales && product.sales > 100)
-    );
+    if (!product) return false;
 
-    return isFeatured;
+    // ✅ SOLO verificar las 3 etiquetas que se muestran en la UI
+    const hasNewBadge = product.isNew === true;
+    const hasBestSellerBadge = product.isBestSeller === true;
+    const hasDiscountBadge = this.hasRealDiscount(product);
+
+    // Solo productos con AL MENOS una etiqueta visible
+    return hasNewBadge || hasBestSellerBadge || hasDiscountBadge;
+  }
+
+  private hasRealDiscount(product: Product): boolean {
+    if (!product) return false;
+
+    // Verificar descuento por porcentaje
+    if (product.discountPercentage && product.discountPercentage > 0) {
+      return true;
+    }
+
+    // Verificar si currentPrice < originalPrice
+    if (product.currentPrice !== undefined && product.originalPrice &&
+      product.currentPrice < product.originalPrice) {
+      return true;
+    }
+
+    // Verificar si currentPrice < price (precio base)
+    if (product.currentPrice !== undefined && product.price &&
+      product.currentPrice < product.price) {
+      return true;
+    }
+
+    // Verificar promoción activa
+    if (product.activePromotion) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -454,7 +311,7 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
     }
 
     const imgElement = target as HTMLImageElement;
-    
+
     if (imgElement.classList?.contains('fallback-applied')) {
       console.warn('🖼️ Fallback ya aplicado, evitando bucle');
       return;
@@ -463,7 +320,7 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
     imgElement.src = this.FALLBACK_IMAGE;
     imgElement.classList?.add('fallback-applied');
     imgElement.alt = 'Imagen no disponible';
-    
+
     console.warn('🖼️ Imagen falló, aplicando fallback para:', imgElement.dataset['originalSrc'] || 'URL desconocida');
   }
 
@@ -475,7 +332,7 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
       console.warn('🧭 ID de producto inválido para navegación');
       return;
     }
-    
+
     this.router.navigate(['/products', productId]).catch(error => {
       console.error('🧭 Error al navegar al producto:', error);
       this.message.error('Error al navegar al producto');
@@ -507,8 +364,8 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
       return true;
     }
 
-    if (product.currentPrice !== undefined && product.originalPrice && 
-        product.currentPrice < product.originalPrice) {
+    if (product.currentPrice !== undefined && product.originalPrice &&
+      product.currentPrice < product.originalPrice) {
       return true;
     }
 
@@ -516,8 +373,8 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
       return true;
     }
 
-    if (product.currentPrice !== undefined && product.price && 
-        product.currentPrice < product.price) {
+    if (product.currentPrice !== undefined && product.price &&
+      product.currentPrice < product.price) {
       return true;
     }
 
@@ -534,13 +391,13 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
       return Math.round(product.discountPercentage);
     }
 
-    if (product.currentPrice !== undefined && product.originalPrice && 
-        product.currentPrice < product.originalPrice) {
+    if (product.currentPrice !== undefined && product.originalPrice &&
+      product.currentPrice < product.originalPrice) {
       return Math.round(((product.originalPrice - product.currentPrice) / product.originalPrice) * 100);
     }
 
-    if (product.currentPrice !== undefined && product.price && 
-        product.currentPrice < product.price) {
+    if (product.currentPrice !== undefined && product.price &&
+      product.currentPrice < product.price) {
       return Math.round(((product.price - product.currentPrice) / product.price) * 100);
     }
 
@@ -570,8 +427,8 @@ export class ProductosSectionComponent implements OnInit, OnDestroy, AfterViewIn
       return product.originalPrice;
     }
 
-    if (product.currentPrice !== undefined && product.price && 
-        product.currentPrice < product.price) {
+    if (product.currentPrice !== undefined && product.price &&
+      product.currentPrice < product.price) {
       return product.price;
     }
 

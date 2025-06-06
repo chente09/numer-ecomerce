@@ -16,7 +16,7 @@
                 (mouseleave)="hoveredCategorySlug = null" [nzBodyStyle]="{ padding: '0', margin: '0' }"
                 style="border: none; border-radius: 0; margin: 0; padding: 0; overflow: hidden;">
 
-                <a [routerLink]="['/shop', category.slug]" style="display: block; margin: 0; padding: 0;">
+                <a [routerLink]="['/shop']" [queryParams]="{category: category.id}" style="display: block; margin: 0; padding: 0;">
                     <div class="card-cover" [style.background-image]="'url(' + category.imageUrl + ')'"
                         style="margin: 0; padding: 0; border: none;">
                         <div class="card-overlay">

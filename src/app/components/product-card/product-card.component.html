@@ -2,6 +2,7 @@
     <!-- Badges -->
     <div class="badges-container">
         <span *ngIf="product.isNew" class="new-badge">NEW</span>
+        <span *ngIf="product.isBestSeller" class="new-badge">BESTSELLER</span>
         <span *ngIf="hasDiscount()" class="discount-badge">-{{ getDiscountPercentage() }}%</span>
     </div>
 
@@ -10,13 +11,37 @@
         <img [src]="getDisplayImageUrl()" [alt]="product.name" class="product-image-section" loading="lazy" />
     </div>
 
-    <!-- Color Options -->
-    <div class="color-options" *ngIf="hasColors()">
-        <div class="colors-container">
+    <!-- ✅ AGREGAR: Color Options con scroll (copiado de tu código) -->
+    <!-- Color Options con Indicadores Funcionales -->
+    <div class="color-options" *ngIf="hasColors() && showColorOptions" [ngClass]="{'has-scroll': hasManyColors()}"
+        [attr.aria-label]="'Colores disponibles: ' + getColorCount()">
+
+        <!-- ✅ INDICADORES FUNCIONALES (como en ProductosSectionComponent) -->
+        <div *ngIf="hasManyColors()" class="scroll-indicator scroll-left" (click)="scrollColors('left')"
+            [attr.aria-hidden]="true" [attr.tabindex]="-1" role="button" title="Scroll hacia la izquierda">
+            ←
+        </div>
+
+        <!-- Contenedor de colores -->
+        <div class="colors-container" #colorsContainer [attr.data-product-id]="product.id" role="radiogroup"
+            [attr.aria-label]="'Seleccionar color para ' + product.name">
+
             <div *ngFor="let color of product.colors; let i = index" class="color-option"
-                [ngClass]="{ active: isColorActive(i) }" [style.background-image]="
-          color.imageUrl ? 'url(' + color.imageUrl + ')' : null
-        " [style.background-size]="'cover'" (click)="selectColor(color, i)"></div>
+                [ngClass]="{'active': isColorActive(i)}"
+                [style.background-image]="color.imageUrl ? 'url(' + color.imageUrl + ')' : null"
+                [style.background-size]="color.imageUrl ? 'cover' : null"
+                [style.background-position]="color.imageUrl ? 'center' : null"
+                [style.background-repeat]="color.imageUrl ? 'no-repeat' : null" (click)="selectColor(color, i)"
+                [attr.title]="'Color: ' + color.name" [attr.aria-label]="'Seleccionar color ' + color.name"
+                [attr.aria-checked]="isColorActive(i)" role="radio" tabindex="0" (keydown.enter)="selectColor(color, i)"
+                (keydown.space)="$event.preventDefault(); selectColor(color, i)">
+            </div>
+        </div>
+
+        <!-- ✅ INDICADOR DERECHO FUNCIONAL -->
+        <div *ngIf="hasManyColors()" class="scroll-indicator scroll-right" (click)="scrollColors('right')"
+            [attr.aria-hidden]="true" [attr.tabindex]="-1" role="button" title="Scroll hacia la derecha">
+            →
         </div>
     </div>
 
