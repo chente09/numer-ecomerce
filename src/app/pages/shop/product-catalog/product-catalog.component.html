@@ -1,5 +1,5 @@
 <div class="catalog-container">
-    <!-- Desktop Sidebar Filters (mantener igual) -->
+    <!-- Desktop Sidebar Filters -->
     <aside class="filters-sidebar" [class.hidden]="!showDesktopFilters">
         <div class="filters-header">
             <h3>Filtros</h3>
@@ -8,7 +8,7 @@
             </button>
         </div>
 
-        <!-- Filter Form (mantener igual) -->
+        <!-- Filter Form -->
         <form [formGroup]="filterForm">
             <nz-collapse nzGhost [nzExpandIconPosition]="'end'">
 
@@ -24,7 +24,7 @@
                 </nz-collapse-panel>
 
                 <!-- Color Filter -->
-                <nz-collapse-panel nzHeader="Color" [nzActive]="false">
+                <nz-collapse-panel nzHeader="Color" [nzActive]="true">
                     <div class="filter-section">
                         <div class="color-swatches">
                             <div *ngFor="let color of filterOptions.colors" class="color-swatch"
@@ -44,19 +44,6 @@
                                 {{ category.name }}
                             </label>
                         </nz-checkbox-group>
-                    </div>
-                </nz-collapse-panel>
-
-                <nz-collapse-panel nzHeader="Género" [nzActive]="false">
-                    <div class="filter-section">
-                        <nz-select formControlName="gender" nzPlaceHolder="Seleccionar género" style="width: 100%;"
-                            nzAllowClear>
-                            <nz-option nzValue="man" nzLabel="Hombre"></nz-option>
-                            <nz-option nzValue="woman" nzLabel="Mujer"></nz-option>
-                            <nz-option nzValue="boy" nzLabel="Niño"></nz-option>
-                            <nz-option nzValue="girl" nzLabel="Niña"></nz-option>
-                            <nz-option nzValue="unisex" nzLabel="Unisex"></nz-option>
-                        </nz-select>
                     </div>
                 </nz-collapse-panel>
 
@@ -87,7 +74,7 @@
     <!-- Main Content Area -->
     <main class="catalog-main" [class.with-sidebar]="showDesktopFilters">
 
-        <!-- Header con título y búsqueda (mantener igual) -->
+        <!-- Header con título y búsqueda -->
         <div class="catalog-header">
             <h1 class="catalog-title">Catálogo de Productos</h1>
 
@@ -102,7 +89,7 @@
             </div>
         </div>
 
-        <!-- Mobile Filter Button & Sort (mantener igual) -->
+        <!-- Mobile Filter Button & Sort -->
         <div class="mobile-controls">
             <button nz-button nzType="default" (click)="toggleMobileFilters()" class="filter-toggle">
                 <span nz-icon nzType="filter"></span>
@@ -116,7 +103,7 @@
             </nz-select>
         </div>
 
-        <!-- Active Filters Summary (mantener igual) -->
+        <!-- Active Filters Summary -->
         <div class="active-filters" *ngIf="hasActiveFilters()">
             <span class="active-filters-label">Filtros activos:</span>
             <nz-tag *ngFor="let filter of getActiveFilterTags()" nzClosable="true"
@@ -142,22 +129,68 @@
             </nz-empty>
         </div>
 
-        <!-- 🔄 NUEVO: Products Grid con ProductCardComponent -->
+        <!-- Products Grid -->
         <div *ngIf="!loading && filteredProducts.length > 0" class="product-grid">
-            <div *ngFor="let product of getDisplayedProducts(); trackBy: trackByProductId" class="catalog-product-wrapper">
-                
-                <!-- ✅ ProductCardComponent Base -->
-                <app-product-card 
-                    [product]="product"
-                    [showColorOptions]="true"
-                    [cardSize]="'medium'"
-                    (colorChanged)="onColorChanged($event)"
-                    class="catalog-product-card">
-                </app-product-card>
+            <div *ngFor="let product of getDisplayedProducts(); trackBy: trackByProductId" class="product-card-section">
 
-                <!-- ✅ NUEVO: Overlay de Funcionalidades del Catálogo -->
-                <div class="catalog-overlay">
+                <!-- Badges -->
+                    <div class="badges-container">
+                        <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
+                        <span *ngIf="hasDiscount(product)" class="discount-badge">
+                            -{{ product.discountPercentage }}%
+                        </span>
+                    </div>
                     
+                <!-- Imagen del producto -->
+                <div class="product-image-container" (click)="viewProductDetails(product.id)"
+                    [attr.aria-label]="'Ver detalles de ' + product.name">
+
+                    <img [src]="getProductDisplayImage(product)"
+                        [alt]="product.name + (getActiveColorName(product) ? ' - Color: ' + getActiveColorName(product) : '')"
+                        class="product-image-section" (error)="handleImageError($event)" loading="lazy">
+
+                    
+                </div>
+
+                <!-- Color Options -->
+                <div class="color-options" *ngIf="hasColors(product)" [ngClass]="{'has-scroll': hasManyColors(product)}"
+                    [attr.aria-label]="'Colores disponibles: ' + product.colors.length">
+
+                    <!-- Scroll indicators -->
+                    <div *ngIf="hasManyColors(product)" class="scroll-indicator scroll-left"
+                        (click)="scrollColors(product.id, 'left')" [attr.aria-hidden]="true">
+                        ←
+                    </div>
+
+                    <!-- Colors container -->
+                    <div class="colors-container" [attr.data-product-id]="product.id">
+                        <div *ngFor="let color of product.colors; let i = index" class="color-option"
+                            [ngClass]="{'active': isColorActive(product, i)}"
+                            [style.background-image]="color.imageUrl ? 'url(' + color.imageUrl + ')' : null"
+                            [style.background-size]="color.imageUrl ? 'cover' : null"
+                            [style.background-position]="color.imageUrl ? 'center' : null"
+                            [style.background-repeat]="color.imageUrl ? 'no-repeat' : null"
+                            [style.background-color]="!color.imageUrl ? color.code : null"
+                            (click)="onColorSelect(product, color, i)" [attr.title]="'Color: ' + color.name"
+                            [attr.aria-label]="'Seleccionar color ' + color.name" tabindex="0"
+                            (keydown.enter)="onColorSelect(product, color, i)"
+                            (keydown.space)="$event.preventDefault(); onColorSelect(product, color, i)">
+                        </div>
+                    </div>
+
+                    <div *ngIf="hasManyColors(product)" class="scroll-indicator scroll-right"
+                        (click)="scrollColors(product.id, 'right')" [attr.aria-hidden]="true">
+                        →
+                    </div>
+                </div>
+
+                <!-- Product Info -->
+                <div class="product-info">
+                    <!-- Product Name -->
+                    <h3 class="product-name" (click)="viewProductDetails(product.id)" [title]="product.name">
+                        {{ product.name }}
+                    </h3>
+
                     <!-- Variant Info -->
                     <div *ngIf="product.selectedVariant" class="variant-info">
                         <small class="variant-details">
@@ -182,6 +215,23 @@
                         </span>
                     </div>
 
+                    <!-- Precio -->
+                    <div class="product-price">
+                        <span *ngIf="hasDiscount(product)" class="original-price">
+                            ${{ formatPrice(product.price) }}
+                        </span>
+                        <span class="current-price" [ngClass]="{'discounted': hasDiscount(product)}">
+                            ${{ formatPrice(product.currentPrice || product.price) }}
+                        </span>
+                    </div>
+
+                    <!-- Rating -->
+                    <div class="product-rating">
+                        <nz-rate [ngModel]="product.rating || 5" nzDisabled [nzAllowHalf]="true" class="black-stars"
+                            [attr.aria-label]="'Calificación: ' + (product.rating || 5) + ' de 5 estrellas'">
+                        </nz-rate>
+                    </div>
+
                     <!-- Variant Selector (Dropdown for mobile) -->
                     <div class="variant-selector"
                         *ngIf="hasVariants(product) && getAvailableVariants(product).length > 1">
@@ -196,7 +246,7 @@
 
                     <!-- Add to Cart Button -->
                     <button nz-button nzType="primary" nzBlock
-                        [disabled]="!product.selectedVariant || product.selectedVariant.stock <= 0"
+                        [disabled]="!product.selectedVariant || (product.selectedVariant.stock || 0) <= 0"
                         (click)="addToCart(product)" class="add-to-cart-btn">
                         <span nz-icon nzType="shopping-cart"></span>
                         {{ getAddToCartText(product) }}
@@ -205,7 +255,7 @@
             </div>
         </div>
 
-        <!-- Pagination (mantener igual) -->
+        <!-- Pagination -->
         <div *ngIf="!loading && total > pageSize" class="pagination-container">
             <nz-pagination [nzPageIndex]="currentPage" [nzTotal]="total" [nzPageSize]="pageSize"
                 [nzShowSizeChanger]="true" [nzPageSizeOptions]="[20, 40, 60, 100]" [nzShowQuickJumper]="true"
@@ -220,7 +270,7 @@
     </main>
 </div>
 
-<!-- Mobile Filters Drawer (mantener igual) -->
+<!-- Mobile Filters Drawer -->
 <nz-drawer [(nzVisible)]="showMobileFilters" nzPlacement="left" nzTitle="Filtros" [nzWidth]="320" [nzClosable]="true"
     (nzOnClose)="showMobileFilters = false">
     <ng-container *nzDrawerContent>
