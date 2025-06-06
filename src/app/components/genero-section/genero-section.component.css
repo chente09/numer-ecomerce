@@ -9,7 +9,7 @@
 .gender-section {
     position: relative;
     overflow: hidden;
-    background-color: #000000;
+    background-color: #000000; /* Fallback, se sobrescribe dinámicamente */
 }
 
 .section-title {
@@ -19,7 +19,50 @@
     margin-top: 10px;
     margin-bottom: 10px;
     text-transform: uppercase;
+    color: aliceblue; /* Fallback, se sobrescribe dinámicamente */
 }
+
+/* =================================================================
+   ESTILOS DINÁMICOS PARA ITEMS
+   ================================================================= */
+
+.product-panel {
+    /* Variables CSS para estilos dinámicos */
+    --item-bg-color: transparent;
+    --item-text-color: white;
+}
+
+.product-panel .panel-content {
+    color: var(--item-text-color, white);
+}
+
+.product-panel .product-title,
+.product-panel .product-subtitle {
+    color: inherit;
+}
+
+/* Overlay con color dinámico si se especifica */
+.product-panel .image-overlay {
+    background: linear-gradient(
+        135deg,
+        var(--item-bg-color, rgba(0,0,0,0.1)) 0%,
+        transparent 50%,
+        var(--item-bg-color, rgba(0,0,0,0.3)) 100%
+    );
+}
+
+/* =================================================================
+   MANEJO DE ERRORES DE IMAGEN
+   ================================================================= */
+
+.product-image.error-handled {
+    filter: grayscale(20%) brightness(0.9);
+    opacity: 0.8;
+}
+
+/* =================================================================
+   RESPONSIVE BREAKPOINTS
+   ================================================================= */
 
 @media (max-width: 768px) {
     .section-title {
@@ -27,27 +70,21 @@
     }   
 }
 
-/* Móviles grandes (376px - 480px) */
 @media (max-width: 480px) {
-
     .section-title {
         font-size: 22px;
         margin-bottom: 8px;
     }
 }
 
-/* Móviles pequeños (320px - 375px) */
 @media (max-width: 375px) {
-
     .section-title {
         font-size: 20px;
         margin-bottom: 6px;
     }
 }
 
-/* Ultra móviles (menos de 320px) */
 @media (max-width: 320px) {
-
     .section-title {
         font-size: 18px;
         line-height: 1.3;
@@ -56,7 +93,7 @@
 }
 
 /* =================================================================
-   ESTILOS COMPARTIDOS
+   ESTILOS COMPARTIDOS (MANTENIDOS DESDE TU CSS ORIGINAL)
    ================================================================= */
 
 .product-picture {
@@ -89,6 +126,12 @@
     width: 100%;
     height: 100%;
     transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(
+        135deg,
+        rgba(0,0,0,0.1) 0%,
+        transparent 50%,
+        rgba(0,0,0,0.3) 100%
+    );
 }
 
 .panel-content {
@@ -122,7 +165,6 @@
     letter-spacing: clamp(1px, 0.2vw, 3px);
     text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    color: white;
 }
 
 .product-subtitle {
@@ -137,7 +179,7 @@
 }
 
 /* =================================================================
-   VISTA DESKTOP - SIN CONDICIONES *ngIf
+   VISTA DESKTOP
    ================================================================= */
 
 .desktop-view {
@@ -209,14 +251,13 @@
     opacity: 0.8;
 }
 
-/* Focus States */
 .product-panel:focus {
     outline: 3px solid #000000;
     outline-offset: 2px;
 }
 
 /* =================================================================
-   VISTA MOBILE - SIN CONDICIONES *ngIf
+   VISTA MOBILE
    ================================================================= */
 
 .mobile-view {
@@ -255,7 +296,6 @@
     z-index: 1;
 }
 
-/* Hover Effects Mobile */
 .mobile-panel:hover .product-image {
     transform: scale(1.05);
     filter: brightness(1.1);
@@ -271,19 +311,6 @@
 }
 
 /* =================================================================
-   ESTADOS DE ERROR Y FALLBACK
-   ================================================================= */
-
-.image-error {
-    filter: grayscale(20%) brightness(0.9);
-    opacity: 0.8;
-}
-
-.fallback-applied {
-    background-color: #f5f5f5;
-}
-
-/* =================================================================
    ANIMACIONES
    ================================================================= */
 
@@ -292,14 +319,12 @@
         opacity: 0;
         transform: scale(1.02);
     }
-
     to {
         opacity: 1;
         transform: scale(1);
     }
 }
 
-/* Animación de entrada para la sección */
 .gender-section {
     animation: slideInUp 0.6s ease-out;
 }
@@ -309,7 +334,6 @@
         opacity: 0;
         transform: translateY(30px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -317,84 +341,69 @@
 }
 
 /* =================================================================
-   RESPONSIVE DESIGN - MEDIA QUERIES CORREGIDAS
+   RESPONSIVE DESIGN
    ================================================================= */
 
-/* Tablet Landscape */
 @media (max-width: 1024px) and (min-width: 769px) {
     .split-container {
         height: clamp(350px, 50vh, 450px);
     }
-
     .product-title {
         font-size: clamp(1.5rem, 4vw, 3rem);
     }
 }
 
-/* PUNTO CRÍTICO: 768px y hacia abajo = MOBILE */
 @media (max-width: 768px) {
     .desktop-view {
         display: none !important;
     }
-
     .mobile-view {
         display: block !important;
     }
-    
-    /* Asegurar que el contenedor móvil ocupe todo el espacio */
     .mobile-container-wrapper {
         width: 100% !important;
         margin: 0 !important;
     }
 }
 
-/* Mobile Medium */
 @media (max-width: 480px) {
     .mobile-container-wrapper {
         height: clamp(300px, 45vh, 400px);
     }
-
     .product-title {
         font-size: clamp(1.3rem, 4vw, 2rem);
         letter-spacing: 1px;
     }
-
     .panel-content {
         padding: clamp(12px, 3vw, 20px);
     }
 }
 
-/* Mobile Small */
 @media (max-width: 360px) {
     .mobile-container-wrapper {
         height: clamp(250px, 40vh, 350px);
     }
-
     .product-title {
         font-size: clamp(1.1rem, 3.5vw, 1.8rem);
     }
-
     .product-subtitle {
         font-size: clamp(0.75rem, 2vw, 0.875rem);
     }
 }
 
-/* FORZAR que desktop se vea SOLO en pantallas grandes */
 @media (min-width: 769px) {
     .desktop-view {
         display: block !important;
     }
-
     .mobile-view {
         display: none !important;
     }
 }
 
 /* =================================================================
-   MEJORAS DE RENDIMIENTO
+   OPTIMIZACIONES DE RENDIMIENTO
    ================================================================= */
 
-/* Optimización para GPU */
 .product-panel,
 .mobile-panel,
 .product-image {
@@ -402,7 +411,6 @@
     backface-visibility: hidden;
 }
 
-/* Reducir motion para usuarios que lo prefieren */
 @media (prefers-reduced-motion: reduce) {
     * {
         animation-duration: 0.01ms !important;
@@ -411,12 +419,7 @@
     }
 }
 
-/* =================================================================
-   MODO ALTO CONTRASTE
-   ================================================================= */
-
 @media (prefers-contrast: high) {
-
     .product-title {
         text-shadow: 3px 3px 6px rgba(0, 0, 0, 1);
     }

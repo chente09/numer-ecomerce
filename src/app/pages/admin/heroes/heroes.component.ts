@@ -23,6 +23,8 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 
 import { HeroService, HeroItem } from '../../../services/admin/hero/hero.service';
 import { Subject, takeUntil, combineLatest, tap } from 'rxjs';
+import { GenderSectionAdminComponent } from "../gender-section-admin/gender-section-admin.component";
+import { NzDividerModule } from 'ng-zorro-antd/divider';
 
 @Component({
   selector: 'app-heroes',
@@ -34,7 +36,7 @@ import { Subject, takeUntil, combineLatest, tap } from 'rxjs';
     NzModalModule,
     NzTableModule,
     NzFormModule,
-    NzInputModule,  
+    NzInputModule,
     NzCardModule,
     NzUploadModule,
     NzIconModule,
@@ -47,8 +49,10 @@ import { Subject, takeUntil, combineLatest, tap } from 'rxjs';
     NzInputNumberModule,
     NzPaginationModule,
     NzSpinModule,
-    NzTagModule
-  ],
+    NzTagModule,
+    GenderSectionAdminComponent,
+    NzDividerModule
+],
   templateUrl: './heroes.component.html',
   styleUrls: ['./heroes.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -1,0 +1,403 @@
+<div class="gender-admin-container">
+    <!-- Header con acciones principales -->
+    <nz-card>
+        <div class="admin-header">
+            <div class="header-content">
+                <h1>Administrar Sección de Géneros</h1>
+                <p class="description">Gestiona los elementos y configuración de la sección "Para Cada Aventurero"</p>
+            </div>
+            <div class="header-actions">
+                <button nz-button nzType="default" (click)="openConfigModal()" nz-tooltip="Configurar sección">
+                    <span nz-icon nzType="setting"></span>
+                    Configurar Sección
+                </button>
+                <button nz-button nzType="primary" (click)="openItemModal()">
+                    <span nz-icon nzType="plus"></span>
+                    Nuevo Item
+                </button>
+                <button nz-button nzType="default" (click)="forceResync()" nz-tooltip="Sincronizar datos">
+                    <span nz-icon nzType="sync"></span>
+                </button>
+            </div>
+        </div>
+    </nz-card>
+
+    <!-- Configuración actual -->
+    <nz-card class="config-preview" *ngIf="config">
+        <h3>Configuración Actual</h3>
+        <div class="config-display">
+            <div class="config-item">
+                <label>Título:</label>
+                <span >{{ config.sectionTitle }}</span>
+            </div>
+            <div class="config-item">
+                <label>Color de fondo:</label>
+                <div class="color-preview" [style.background-color]="config.backgroundColor"></div>
+                <span>{{ config.backgroundColor }}</span>
+            </div>
+            <div class="config-item">
+                <label>Estado:</label>
+                <nz-tag [nzColor]="config.isActive ? 'green' : 'default'">
+                    {{ config.isActive ? 'Activo' : 'Inactivo' }}
+                </nz-tag>
+            </div>
+        </div>
+    </nz-card>
+
+    <!-- Tabla de items -->
+    <nz-card>
+        <div class="table-header">
+            <h3>Items de Género ({{ items.length }})</h3>
+        </div>
+
+        <nz-spin [nzSpinning]="loading">
+            <nz-table #itemsTable [nzData]="items" [nzShowPagination]="false" [nzLoading]="loading" [nzSize]="'middle'" >
+                <thead>
+                    <tr>
+                        <th nzWidth="80px">Orden</th>
+                        <th nzWidth="120px">Imagen</th>
+                        <th>Título</th>
+                        <th nzWidth="100px">Categoría</th>
+                        <th nzWidth="100px">Estado</th>
+                        <th nzWidth="120px">Última Act.</th>
+                        <th nzWidth="150px">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr *ngFor="let item of itemsTable.data; trackBy: trackById" [class.active-row]="item.isActive">
+
+                        <!-- Orden -->
+                        <td class="order-cell">
+                            <div class="order-controls">
+                                <span class="order-number">{{ item.order }}</span>
+                                <div class="order-buttons">
+                                    <button nz-button nzType="text" nzSize="small" (click)="moveUp(item)"
+                                        [disabled]="items.indexOf(item) === 0" nz-tooltip="Mover arriba">
+                                        <span nz-icon nzType="up"></span>
+                                    </button>
+                                    <button nz-button nzType="text" nzSize="small" (click)="moveDown(item)"
+                                        [disabled]="items.indexOf(item) === items.length - 1" nz-tooltip="Mover abajo">
+                                        <span nz-icon nzType="down"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Imagen -->
+                        <td>
+                            <div class="image-preview">
+                                <img [src]="item.imageUrl" [alt]="item.alt" class="item-image"
+                                    (error)="handleImageError($event)">
+                                <div class="image-badges" *ngIf="item.mobileImageUrl">
+                                    <nz-badge nzText="📱" nzSize="small" nz-tooltip="Tiene imagen móvil"></nz-badge>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Título -->
+                        <td>
+                            <div class="item-info">
+                                <h4 class="item-title">{{ item.title }}</h4>
+                                <p class="item-subtitle" *ngIf="item.subtitle">{{ item.subtitle }}</p>
+                                <small class="item-alt">{{ item.alt }}</small>
+                            </div>
+                        </td>
+
+                        <!-- Categoría -->
+                        <td>
+                            <nz-tag [nzColor]="item.category === 'man' ? 'blue' : item.category === 'woman' ? 'magenta' : 'green'">
+                                {{ getCategoryLabel(item.category) }}
+                            </nz-tag>
+                        </td>
+
+                        <!-- Estado -->
+                        <td>
+                            <nz-tag [nzColor]="getStatusTag(item).color">
+                                {{ getStatusTag(item).text }}
+                            </nz-tag>
+                        </td>
+
+                        <!-- Fecha -->
+                        <td>
+                            <small>{{ formatDate(item.updatedAt) }}</small>
+                        </td>
+
+                        <!-- Acciones -->
+                        <td>
+                            <div class="action-buttons">
+                                <button nz-button nzType="default" nzSize="small" (click)="editItem(item)"
+                                    nz-tooltip="Editar item">
+                                    <span nz-icon nzType="edit"></span>
+                                </button>
+
+                                <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar este item?"
+                                    nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteItem(item.id)" nzSize="small"
+                                    nz-tooltip="Eliminar item">
+                                    <span nz-icon nzType="delete"></span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </nz-table>
+        </nz-spin>
+    </nz-card>
+</div>
+
+<!-- MODAL PARA ITEMS -->
+<nz-modal [(nzVisible)]="itemModalVisible" [nzTitle]="isEditMode ? 'Editar Item' : 'Nuevo Item'" [nzOkLoading]="saving"
+    (nzOnCancel)="closeItemModal()" (nzOnOk)="handleItemSubmit()" [nzWidth]="800">
+
+    <ng-container *nzModalContent>
+        <form [formGroup]="itemForm" nz-form [nzLayout]="'vertical'">
+            <div nz-row [nzGutter]="[16, 0]">
+
+                <!-- Columna izquierda -->
+                <div nz-col [nzXs]="24" [nzMd]="12">
+                    <nz-form-item>
+                        <nz-form-label nzRequired>Título</nz-form-label>
+                        <nz-form-control nzErrorTip="El título es obligatorio">
+                            <input nz-input formControlName="title" placeholder="Ej: Hombre, Mujer, Niños">
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-label nzRequired>Categoría</nz-form-label>
+                        <nz-form-control nzErrorTip="Debe seleccionar una categoría">
+                            <nz-select formControlName="category" nzPlaceHolder="Seleccionar categoría">
+                                <nz-option *ngFor="let option of categoryOptions" [nzLabel]="option.label"
+                                    [nzValue]="option.value">
+                                </nz-option>
+                            </nz-select>
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-label>Subtítulo</nz-form-label>
+                        <nz-form-control>
+                            <input nz-input formControlName="subtitle" placeholder="Ej: Explorar colección">
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-label>Texto alternativo (ALT)</nz-form-label>
+                        <nz-form-control>
+                            <textarea nz-input formControlName="alt"
+                                placeholder="Descripción para accesibilidad" 
+                                [nzAutosize]="{ minRows: 2, maxRows: 3 }">
+                            </textarea>
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <div nz-row [nzGutter]="16">
+                        <div nz-col [nzXs]="12">
+                            <nz-form-item>
+                                <nz-form-label>Orden</nz-form-label>
+                                <nz-form-control>
+                                    <nz-input-number formControlName="order" [nzMin]="1" [nzMax]="99"
+                                        style="width: 100%">
+                                    </nz-input-number>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzXs]="12">
+                            <nz-form-item>
+                                <nz-form-label>Activo</nz-form-label>
+                                <nz-form-control>
+                                    <nz-switch formControlName="isActive"></nz-switch>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                    </div>
+
+                    <div nz-row [nzGutter]="16">
+                        <div nz-col [nzXs]="24" [nzSm]="12">
+                            <nz-form-item>
+                                <nz-form-label>Color de fondo</nz-form-label>
+                                <nz-form-control>
+                                    <div class="color-input-wrapper">
+                                        <input 
+                                            type="color" 
+                                            [value]="itemForm.get('backgroundColor')?.value || '#000000'"
+                                            (input)="updateBackgroundColor($event)"
+                                            class="color-input">
+                                        <input 
+                                            nz-input 
+                                            formControlName="backgroundColor"
+                                            placeholder="#000000"
+                                            style="margin-left: 8px;">
+                                    </div>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                        <div nz-col [nzXs]="24" [nzSm]="12">
+                            <nz-form-item>
+                                <nz-form-label>Color de texto</nz-form-label>
+                                <nz-form-control>
+                                    <div class="color-input-wrapper">
+                                        <input 
+                                            type="color" 
+                                            [value]="itemForm.get('textColor')?.value || '#ffffff'"
+                                            (input)="updateTextColor($event)"
+                                            class="color-input">
+                                        <input 
+                                            nz-input 
+                                            formControlName="textColor"
+                                            placeholder="#ffffff"
+                                            style="margin-left: 8px;">
+                                    </div>
+                                </nz-form-control>
+                            </nz-form-item>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna derecha - Imágenes -->
+                <div nz-col [nzXs]="24" [nzMd]="12">
+                    <!-- Imagen Desktop -->
+                    <nz-form-item>
+                        <nz-form-label>Imagen Principal (Desktop)</nz-form-label>
+                        <nz-form-control>
+                            <nz-upload nzType="drag" [nzMultiple]="false" [nzShowUploadList]="true"
+                                [nzFileList]="desktopFileList" [nzBeforeUpload]="beforeUploadDesktop"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemoveDesktop"
+                                [nzAccept]="'.jpg,.jpeg,.png,.webp,.gif'"
+                                [nzSize]="26214400"
+                                nzListType="picture">
+                                <p class="ant-upload-drag-icon">
+                                    <span nz-icon nzType="inbox"></span>
+                                </p>
+                                <p class="ant-upload-text">Click o arrastra una imagen aquí</p>
+                                <p class="ant-upload-hint">
+                                    <strong>Tamaños soportados:</strong> 1KB - 25MB<br>
+                                    <strong>Formatos:</strong> JPG, PNG, WebP, GIF<br>
+                                    <strong>Recomendado:</strong> 1200x600px para mejor calidad<br>
+                                    <small style="color: #52c41a;">✨ Se optimizará automáticamente</small>
+                                </p>
+                            </nz-upload>
+                            <div class="error-message" *ngIf="desktopImageError">
+                                <span nz-icon nzType="exclamation-circle"></span>
+                                {{ desktopImageError }}
+                            </div>
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-divider nzText="Imagen Móvil (Opcional)"></nz-divider>
+
+                    <!-- Imagen Mobile -->
+                    <nz-form-item>
+                        <nz-form-label>Imagen para Móvil</nz-form-label>
+                        <nz-form-control>
+                            <nz-upload nzType="drag" [nzMultiple]="false" [nzShowUploadList]="true"
+                                [nzFileList]="mobileFileList" [nzBeforeUpload]="beforeUploadMobile"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemoveMobile"
+                                [nzAccept]="'.jpg,.jpeg,.png,.webp,.gif'"
+                                [nzSize]="15728640"
+                                nzListType="picture">
+                                <p class="ant-upload-drag-icon">
+                                    <span nz-icon nzType="mobile"></span>
+                                </p>
+                                <p class="ant-upload-text">Imagen optimizada para móvil</p>
+                                <p class="ant-upload-hint">
+                                    <strong>Tamaños soportados:</strong> 1KB - 15MB<br>
+                                    <strong>Formatos:</strong> JPG, PNG, WebP, GIF<br>
+                                    <strong>Recomendado:</strong> 768x500px para móviles<br>
+                                    Si no se proporciona, se usará la imagen principal<br>
+                                    <small style="color: #52c41a;">✨ Se optimizará automáticamente</small>
+                                </p>
+                            </nz-upload>
+                            <div class="error-message" *ngIf="mobileImageError">
+                                <span nz-icon nzType="exclamation-circle"></span>
+                                {{ mobileImageError }}
+                            </div>
+                        </nz-form-control>
+                    </nz-form-item>
+                </div>
+            </div>
+        </form>
+    </ng-container>
+</nz-modal>
+
+<!-- MODAL PARA CONFIGURACIÓN -->
+<nz-modal [(nzVisible)]="configModalVisible" nzTitle="Configurar Sección" [nzOkLoading]="saving"
+    (nzOnCancel)="closeConfigModal()" (nzOnOk)="saveConfig()" [nzWidth]="600">
+
+    <ng-container *nzModalContent>
+        <form [formGroup]="configForm" nz-form [nzLayout]="'vertical'">
+            <nz-form-item>
+                <nz-form-label nzRequired>Título de la Sección</nz-form-label>
+                <nz-form-control nzErrorTip="El título de la sección es obligatorio">
+                    <input nz-input formControlName="sectionTitle" placeholder="Ej: Para Cada Aventurero">
+                </nz-form-control>
+            </nz-form-item>
+
+            <div nz-row [nzGutter]="16">
+                <div nz-col [nzXs]="24" [nzSm]="12">
+                    <nz-form-item>
+                        <nz-form-label>Color del Título</nz-form-label>
+                        <nz-form-control>
+                            <div class="color-input-wrapper">
+                                <input 
+                                    type="color" 
+                                    [value]="configForm.get('titleColor')?.value || '#aliceblue'"
+                                    (input)="updateTitleColor($event)"
+                                    class="color-input">
+                                <input 
+                                    nz-input 
+                                    formControlName="titleColor"
+                                    placeholder="aliceblue"
+                                    style="margin-left: 8px;">
+                            </div>
+                        </nz-form-control>
+                    </nz-form-item>
+                </div>
+                <div nz-col [nzXs]="24" [nzSm]="12">
+                    <nz-form-item>
+                        <nz-form-label>Color de Fondo</nz-form-label>
+                        <nz-form-control>
+                            <div class="color-input-wrapper">
+                                <input 
+                                    type="color" 
+                                    [value]="configForm.get('backgroundColor')?.value || '#000000'"
+                                    (input)="updateConfigBackgroundColor($event)"
+                                    class="color-input">
+                                <input 
+                                    nz-input 
+                                    formControlName="backgroundColor"
+                                    placeholder="#000000"
+                                    style="margin-left: 8px;">
+                            </div>
+                        </nz-form-control>
+                    </nz-form-item>
+                </div>
+            </div>
+
+            <nz-form-item>
+                <nz-form-label>Sección Activa</nz-form-label>
+                <nz-form-control>
+                    <nz-switch formControlName="isActive"></nz-switch>
+                    <small style="margin-left: 8px; color: #666;">
+                        Cuando está inactiva, la sección no se muestra en el frontend
+                    </small>
+                </nz-form-control>
+            </nz-form-item>
+
+            <!-- Preview de la configuración -->
+            <nz-divider nzText="Vista Previa"></nz-divider>
+            <div class="config-preview-demo" 
+                [style.background-color]="configForm.get('backgroundColor')?.value || '#000000'"
+                [style.padding]="'20px'" 
+                [style.text-align]="'center'" 
+                [style.border-radius]="'8px'">
+                <h2 [style.color]="configForm.get('titleColor')?.value || 'aliceblue'" 
+                    [style.margin]="'0'" 
+                    [style.font-size]="'24px'"
+                    [style.font-weight]="'700'" 
+                    [style.text-transform]="'uppercase'">
+                    {{ configForm.get('sectionTitle')?.value || 'Para Cada Aventurero' }}
+                </h2>
+            </div>
+        </form>
+    </ng-container>
+</nz-modal>
