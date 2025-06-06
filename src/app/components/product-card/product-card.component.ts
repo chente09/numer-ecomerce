@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewChild, ElementRef, ViewEncapsulation, AfterViewInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NzRateModule } from 'ng-zorro-antd/rate';
 import { Color, Product } from '../../models/models';
@@ -24,10 +24,9 @@ interface ProductWithSelectedColor extends Product {
   ],
   templateUrl: './product-card.component.html',
   styleUrl: './product-card.component.css',
-  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProductCardComponent implements AfterViewInit{
+export class ProductCardComponent implements AfterViewInit {
   @ViewChild('colorsContainer') colorsContainer!: ElementRef;
 
   @Input() product!: ProductWithSelectedColor;
@@ -38,11 +37,11 @@ export class ProductCardComponent implements AfterViewInit{
 
   private readonly SCROLL_AMOUNT = 120;
 
-   selectColor(color: Color, index: number): void {
+  selectColor(color: Color, index: number): void {
     this.product.selectedColorIndex = index;
     this.product.displayImageUrl = color.imageUrl || this.product.imageUrl;
     this.colorChanged.emit({ product: this.product, color, index });
-    
+
     // Scroll automático y actualizar indicadores
     setTimeout(() => {
       this.scrollToSelectedColor(index);
@@ -64,11 +63,11 @@ export class ProductCardComponent implements AfterViewInit{
 
     // Verificar si necesita scroll
     const needsScroll = container.scrollWidth > container.clientWidth;
-    
+
     if (needsScroll) {
       colorOptions.classList.add('has-scroll');
       this.updateScrollIndicators();
-      
+
       // Agregar listener para actualizar indicadores durante scroll
       container.addEventListener('scroll', () => {
         this.updateScrollIndicators();
@@ -84,7 +83,7 @@ export class ProductCardComponent implements AfterViewInit{
     if (!container) return;
 
     const scrollAmount = direction === 'left' ? -this.SCROLL_AMOUNT : this.SCROLL_AMOUNT;
-    
+
     container.scrollBy({
       left: scrollAmount,
       behavior: 'smooth'
@@ -104,13 +103,13 @@ export class ProductCardComponent implements AfterViewInit{
 
     const containerRect = container.getBoundingClientRect();
     const colorRect = colorElement.getBoundingClientRect();
-    
+
     // Verificar si está fuera del área visible
     const isOutOfView = colorRect.left < containerRect.left || colorRect.right > containerRect.right;
-    
+
     if (isOutOfView) {
       const scrollPosition = colorElement.offsetLeft - (container.clientWidth / 2) + (colorElement.clientWidth / 2);
-      
+
       container.scrollTo({
         left: Math.max(0, scrollPosition),
         behavior: 'smooth'

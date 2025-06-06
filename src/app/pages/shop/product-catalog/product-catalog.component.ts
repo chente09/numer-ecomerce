@@ -24,7 +24,6 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSliderModule } from 'ng-zorro-antd/slider';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
@@ -36,6 +35,7 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { FormsModule } from '@angular/forms';
+import { ProductCardComponent } from "../../../components/product-card/product-card.component";
 
 interface ProductWithSelectedVariant extends Product {
   selectedVariant?: ProductVariant;
@@ -73,7 +73,6 @@ interface FilterTag {
     NzSliderModule,
     NzCheckboxModule,
     NzTagModule,
-    NzRateModule,
     NzSpinModule,
     NzEmptyModule,
     NzPaginationModule,
@@ -83,6 +82,7 @@ interface FilterTag {
     NzDividerModule,
     NzCollapseModule,
     RouterModule,
+    ProductCardComponent
   ],
   providers: [NzModalService],
   templateUrl: './product-catalog.component.html',
@@ -505,6 +505,19 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     return category ? category.name : `ID: ${categoryId}`;
   }
 
+  onColorChanged(event: { product: Product, color: Color, index: number }): void {
+    const { product, color, index } = event;
+
+    // Encontrar el producto en filteredProducts y actualizarlo
+    const productIndex = this.filteredProducts.findIndex(p => p.id === product.id);
+    if (productIndex !== -1) {
+      this.filteredProducts[productIndex].selectedColorIndex = index;
+      this.filteredProducts[productIndex].displayImageUrl = color.imageUrl || product.imageUrl;
+
+      console.log(`🎨 Color cambiado en catálogo: ${product.name} → ${color.name}`);
+      this.cdr.detectChanges();
+    }
+  }
 
   // ✅ NUEVO MÉTODO: Sincronizar productos con filtros activos
   private syncProductsWithActiveFilters(): void {

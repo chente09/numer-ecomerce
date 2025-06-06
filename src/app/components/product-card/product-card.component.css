@@ -1,6 +1,5 @@
 /* =================================================================
-   FEATURED PRODUCTS SECTION - MANTENER TU DISEÑO ORIGINAL
-   SOLO AGREGAR: ANCHO FIJO Y SCROLL DE COLORES
+   FEATURED PRODUCTS SECTION - DISEÑO RESPONSIVO OPTIMIZADO
    ================================================================= */
 
 .featured-products-section {
@@ -16,22 +15,21 @@
 
 .section-title {
     text-align: center;
-    font-size: 32px;
+    font-size: clamp(24px, 4vw, 32px);
     font-weight: 700;
-    margin-top: 10px;
-    margin-bottom: 10px;
+    margin: 10px 0;
     text-transform: uppercase;
 }
 
 /* =================================================================
-   PRODUCT GRID Y CARDS - TU DISEÑO ORIGINAL CON ANCHO FIJO
+   PRODUCT GRID - SISTEMA RESPONSIVO MEJORADO
    ================================================================= */
 
 .product-grid {
     display: flex;
     overflow-x: auto;
-    gap: 10px;
-    padding: 10px;
+    gap: clamp(12px, 2vw, 20px);
+    padding: clamp(8px, 2vw, 16px);
     scroll-snap-type: x mandatory;
     scrollbar-width: thin;
 }
@@ -49,15 +47,18 @@
     border-radius: 3px;
 }
 
+/* =================================================================
+   PRODUCT CARD - SISTEMA HÍBRIDO: CLAMP() + BREAKPOINTS
+   ================================================================= */
+
 .product-card-section {
     position: relative;
-    background-color: #f3f3f3 ;
+    background-color: #f3f3f3;
     border-radius: 0;
     overflow: hidden;
-    min-width: 300px;
-    max-width: 300px;
-    width: 300px;
-    /* 🔧 FIN NUEVO */
+    /* ✅ HÍBRIDO: Base fluida + breakpoints específicos */
+    min-width: 280px;
+    width: clamp(280px, 22vw, 320px);
     flex: 0 0 auto;
     scroll-snap-align: start;
     transition: box-shadow 0.3s ease, transform 0.3s ease;
@@ -70,15 +71,17 @@
 }
 
 /* =================================================================
-   PRODUCT IMAGE - TU DISEÑO ORIGINAL
+   PRODUCT IMAGE - ALTURA RESPONSIVA
    ================================================================= */
 
 .product-image-container {
     position: relative;
-    height: 320px;
+    height: clamp(250px, 25vw, 320px);
     background-color: #f3f3f3;
     overflow: hidden;
     cursor: pointer;
+    /* ✅ CRÍTICO: Margen superior para separar de badges */
+    margin-top: clamp(35px, 6vw, 45px);
 }
 
 .product-image-section {
@@ -96,98 +99,89 @@
 }
 
 /* =================================================================
-   🎨 COLOR OPTIONS - SOLO AGREGAR SCROLL MANTENIENDO TU ESTILO
+   COLOR OPTIONS - RESPONSIVO CON SCROLL
    ================================================================= */
 
 .color-options {
     position: relative;
-    margin: 15px 0;
-    padding: 0 15px;
-    min-height: 56px;
-    max-height: 56px;
+    margin: clamp(10px, 2vw, 15px) 0;
+    padding: 0 clamp(8px, 2vw, 15px);
+    min-height: clamp(48px, 8vw, 56px);
+    max-height: clamp(48px, 8vw, 56px);
     display: flex;
     align-items: center;
     overflow: hidden;
 }
 
-/* 🔧 NUEVO: Contenedor interno de colores con scroll */
 .colors-container {
     display: flex;
-    gap: 8px;
+    gap: clamp(6px, 1vw, 8px);
     align-items: center;
     flex: 1;
     overflow-x: auto;
-    /* 🔧 NUEVO: Scroll horizontal */
     scroll-behavior: smooth;
     padding: 4px 0;
-    min-height: 58px;
-    max-height: 58px;
+    min-height: clamp(50px, 8vw, 58px);
+    max-height: clamp(50px, 8vw, 58px);
     scrollbar-width: none;
-    /* Firefox */
     -ms-overflow-style: none;
-    /* IE/Edge */
 }
 
 .colors-container::-webkit-scrollbar {
     display: none;
-    /* Chrome/Safari/Opera */
 }
 
-/* 🔧 NUEVO: Indicadores de scroll - mantener tu estilo visual */
+/* Indicadores de scroll */
 .scroll-indicator {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    width: 20px;
-    height: 58px;
+    width: clamp(16px, 3vw, 20px);
+    height: clamp(50px, 8vw, 58px);
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
     color: #666;
-    font-size: 12px;
+    font-size: clamp(10px, 2vw, 12px);
     font-weight: bold;
-    pointer-events: none;
+    pointer-events: auto;
     z-index: 2;
     opacity: 0;
     transition: opacity 0.3s ease;
+    cursor: pointer;
 }
 
 .scroll-left {
-    left: 15px;
+    left: clamp(8px, 2vw, 15px);
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), transparent);
 }
 
 .scroll-right {
-    right: 15px;
+    right: clamp(8px, 2vw, 15px);
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9));
 }
 
-/* Mostrar indicadores al hacer hover cuando hay muchos colores */
-.color-options.scrollable:hover .scroll-indicator {
+.color-options.has-scroll:hover .scroll-indicator {
     opacity: 1;
 }
 
-/* TU DISEÑO ORIGINAL DE COLOR OPTION */
+/* Color options individuales */
 .color-option {
-    width: 42px;
-    height: 62px;
+    width: clamp(32px, 6vw, 42px);
+    height: clamp(40px, 8vw, 62px);
     border: none;
-    /* SIN BORDES como en el detalle */
     cursor: pointer;
     transition: transform 0.2s ease;
-    /* Mismo transition que el detalle */
     position: relative;
     flex-shrink: 0;
-    min-width: 32px;
+    min-width: clamp(28px, 5vw, 32px);
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: #888;
-    /* Color base como en el detalle */
     padding: 2px;
-    /* Mismo padding que .color-thumbnail */
     border: none !important;
     outline: none !important;
     box-shadow: none;
@@ -195,18 +189,12 @@
 
 .color-option:hover {
     transform: scale(1.1);
-    border-color: #999;
     z-index: 1;
 }
 
 .color-option.active {
     transform: translateY(-3px);
-    /* En lugar de scale */
-    border-color: #f5f5f5;
     background-color: #f5f5f5;
-    /* Fondo gris claro como en tu diseño */
-    border-width: 2px;
-    /* Mantener consistencia */
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -215,54 +203,13 @@
     outline-offset: 2px;
 }
 
-/* 🔧 NUEVO: Gradientes para indicar scroll disponible cuando hay muchos colores */
-.color-options.has-many-colors::before,
-.color-options.has-many-colors::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 20px;
-    pointer-events: none;
-    z-index: 1;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.color-options.has-many-colors::before {
-    left: 15px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), transparent);
-}
-
-.color-options.has-many-colors::after {
-    right: 15px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9));
-}
-
-.color-options.has-many-colors:hover::before,
-.color-options.has-many-colors:hover::after {
-    opacity: 1;
-}
-
 /* =================================================================
-   INFORMACIÓN DEL COLOR ACTIVO - TU DISEÑO ORIGINAL
-   ================================================================= */
-
-.active-color-info {
-    text-align: center;
-    margin: 5px 15px 0;
-    color: #666;
-    font-size: 12px;
-    min-height: 16px;
-}
-
-/* =================================================================
-   PRODUCTO INFO - TU DISEÑO ORIGINAL EXACTO
+   PRODUCT INFO - RESPONSIVO
    ================================================================= */
 
 .product-name {
-    margin: 6px 12px 6px;
-    font-size: 22px;
+    margin: clamp(4px, 1vw, 6px) clamp(8px, 2vw, 12px);
+    font-size: clamp(16px, 3vw, 22px);
     font-weight: 900;
     text-transform: uppercase;
     font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -284,9 +231,9 @@
 }
 
 .product-price {
-    margin: 5px 15px;
-    font-size: 15px;
-    letter-spacing: 2px;
+    margin: clamp(3px, 1vw, 5px) clamp(8px, 2vw, 15px);
+    font-size: clamp(13px, 2vw, 15px);
+    letter-spacing: clamp(1px, 0.3vw, 2px);
     font-weight: lighter;
     color: #000;
     display: flex;
@@ -298,7 +245,7 @@
 .original-price {
     text-decoration: line-through;
     color: #999;
-    font-size: 14px;
+    font-size: clamp(12px, 2vw, 14px);
 }
 
 .current-price {
@@ -325,67 +272,65 @@
     letter-spacing: 0.5px;
 }
 
+.product-rating {
+    margin: clamp(3px, 1vw, 5px) clamp(8px, 2vw, 15px);
+    color: black;
+    font-size: clamp(12px, 2vw, 14px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 /* =================================================================
-   BADGES - TU DISEÑO ORIGINAL
+   BADGES - ✅ CORREGIDO: SEPARACIÓN + RESPONSIVE
    ================================================================= */
 
 .badges-container {
-    margin-bottom: 45px;
+    position: absolute;
+    top: clamp(8px, 1vw, 10px);
+    left: 0;
+    right: 0;
+    z-index: 3;
+    pointer-events: none;
+    /* ✅ CRÍTICO: Altura para separar badges de la imagen */
+    height: clamp(35px, 6vw, 45px);
 }
 
 .new-badge {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 0;
+    right: clamp(8px, 1vw, 10px);
     background-color: #000;
     color: #fff;
-    font-size: 12px;
+    font-size: clamp(10px, 1.5vw, 12px);
     font-weight: bold;
-    padding: 4px 8px;
+    padding: clamp(3px, 0.5vw, 4px) clamp(6px, 1vw, 8px);
     transform: skewX(-10deg);
     z-index: 2;
 }
 
 .discount-badge {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 0;
+    left: clamp(8px, 1vw, 10px);
     background-color: #ff4d4f;
     color: #fff;
-    font-size: 12px;
+    font-size: clamp(10px, 1.5vw, 12px);
     font-weight: bold;
-    padding: 4px 8px;
+    padding: clamp(3px, 0.5vw, 4px) clamp(6px, 1vw, 8px);
     border-radius: 4px;
     z-index: 2;
     animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-    0% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.05);
-    }
-
-    100% {
-        transform: scale(1);
-    }
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
 
 /* =================================================================
-   RATING CON ESTRELLAS NEGRAS - TU DISEÑO ORIGINAL
+   RATING CON ESTRELLAS NEGRAS
    ================================================================= */
-
-.product-rating {
-    margin: 5px 15px;
-    color: black;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
 
 .black-stars,
 .black-stars :deep(.ant-rate-star),
@@ -395,7 +340,7 @@
 .product-rating :deep(.ant-rate-star-full),
 .product-rating :deep(.ant-rate-star-half) {
     color: #000 !important;
-    font-size: 16px;
+    font-size: clamp(14px, 2vw, 16px) !important;
 }
 
 .black-stars :deep(.ant-rate-star-zero),
@@ -423,22 +368,192 @@
 }
 
 /* =================================================================
-   ESTADOS DE CARGA Y ERROR - TU DISEÑO ORIGINAL
+   RESPONSIVE BREAKPOINTS - HÍBRIDO: CLAMP + ESPECÍFICOS
    ================================================================= */
 
-.loading-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 60px 20px;
-    min-height: 200px;
+/* ✅ Desktop grande */
+@media (min-width: 1200px) {
+    .product-card-section {
+        min-width: 300px;
+        width: 320px;
+    }
+    
+    .product-grid {
+        gap: 20px;
+        padding: 16px;
+    }
 }
 
+/* ✅ Tablets grandes */
+@media (max-width: 1199px) and (min-width: 1025px) {
+    .product-card-section {
+        min-width: 290px;
+        max-width: 310px;
+    }
+    
+    .product-grid {
+        gap: 18px;
+        padding: 14px;
+    }
+}
+
+/* ✅ Tablets */
+@media (max-width: 1024px) {
+    .product-card-section {
+        min-width: 290px;
+        max-width: 300px;
+    }
+    
+    .product-grid {
+        gap: 16px;
+    }
+}
+
+/* ✅ Tablets pequeñas */
+@media (max-width: 768px) {
+    .section-title {
+        font-size: 26px;
+        margin-bottom: 12px;
+    }
+
+    .featured-products-section {
+        padding: 24px 0;
+    }
+
+    .product-grid {
+        gap: 16px;
+        padding: 16px 0 16px 16px;
+        margin: 0 -16px;
+    }
+
+    .product-card-section {
+        min-width: 280px;
+        max-width: 280px;
+        width: 280px;
+    }
+    
+    /* ✅ CRÍTICO: Ajustar separación en tablets */
+    .product-image-container {
+        margin-top: 40px;
+    }
+
+    .color-options {
+        margin: 12px 0;
+        padding: 0 12px;
+    }
+
+    .color-option {
+        width: 36px;
+        height: 50px;
+        min-width: 30px;
+    }
+}
+
+/* ✅ Móviles grandes */
+@media (max-width: 480px) {
+    .section-title {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+
+    .product-card-section {
+        min-width: 320px;
+        max-width: 320px;
+        width: 320px;
+    }
+    
+    /* ✅ CRÍTICO: Separación reducida en móviles */
+    .product-image-container {
+        margin-top: 35px;
+    }
+
+    .product-grid {
+        gap: 12px;
+        padding: 10px 0 10px 10px;
+    }
+
+    .product-name {
+        font-size: 17px;
+        margin: 4px 10px;
+    }
+
+    .product-price,
+    .product-rating {
+        margin: 4px 10px;
+        font-size: 13px;
+    }
+
+    .color-options {
+        margin: 10px 0;
+        padding: 0 10px;
+        min-height: 44px;
+        max-height: 44px;
+    }
+
+    .color-option {
+        width: 32px;
+        height: 42px;
+        min-width: 28px;
+    }
+}
+
+/* ✅ Móviles pequeños */
+@media (max-width: 375px) {
+    .section-title {
+        font-size: 20px;
+        margin-bottom: 6px;
+    }
+
+    .product-card-section {
+        min-width: 240px;
+        max-width: 240px;
+        width: 240px;
+    }
+    
+    .badges-container {
+        margin-bottom: 30px;
+    }
+
+    .product-grid {
+        gap: 10px;
+        padding: 8px 0 8px 8px;
+    }
+
+    .product-name {
+        font-size: 16px;
+        margin: 3px 8px;
+    }
+
+    .product-price,
+    .product-rating {
+        margin: 3px 8px;
+        font-size: 12px;
+    }
+
+    .color-options {
+        margin: 8px 0;
+        padding: 0 8px;
+        min-height: 40px;
+        max-height: 40px;
+    }
+
+    .color-option {
+        width: 28px;
+        height: 36px;
+        min-width: 24px;
+    }
+}
+
+/* =================================================================
+   UTILIDADES Y ESTADOS
+   ================================================================= */
+
+.loading-container,
 .error-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 40px 20px;
+    padding: 60px 20px;
     min-height: 200px;
 }
 
@@ -457,10 +572,6 @@
 .browse-all-link:hover {
     color: #666;
 }
-
-/* =================================================================
-   SECTION FOOTER - TU DISEÑO ORIGINAL
-   ================================================================= */
 
 .section-footer {
     text-align: center;
@@ -518,109 +629,10 @@
 }
 
 /* =================================================================
-   RESPONSIVE DESIGN - TU DISEÑO ORIGINAL CON AJUSTES DE ANCHO
-   ================================================================= */
-
-@media (max-width: 768px) {
-    .section-title {
-        font-size: 26px;
-        margin-bottom: 12px;
-    }
-
-    .featured-products-section {
-        padding: 32px 0;
-    }
-
-    .product-grid {
-        padding: 16px 0 16px 16px;
-        margin: 0 -16px;
-    }
-
-    .product-card-section {
-        /* 🔧 AJUSTE: Ancho un poco menor en tablet */
-        min-width: 280px;
-        max-width: 280px;
-        width: 280px;
-    }
-
-    .color-options {
-        margin: 12px 0;
-        padding: 0 12px;
-    }
-
-    .color-option {
-        width: 28px;
-        height: 28px;
-        min-width: 28px;
-    }
-}
-
-@media (max-width: 480px) {
-    .section-title {
-        font-size: 22px;
-        margin-bottom: 8px;
-    }
-
-    .product-card-section {
-        /* 🔧 AJUSTE: Ancho menor en móvil */
-        min-width: 260px;
-        max-width: 260px;
-        width: 260px;
-    }
-
-    .product-name {
-        font-size: 18px;
-        margin: 4px 8px;
-    }
-
-    .product-price,
-    .product-rating {
-        margin: 4px 8px;
-    }
-
-    .color-options {
-        margin: 10px 0;
-        padding: 0 8px;
-    }
-
-    .color-option {
-        width: 24px;
-        height: 24px;
-        min-width: 24px;
-    }
-
-    .active-color-info {
-        margin: 3px 8px 0;
-        font-size: 11px;
-    }
-}
-
-@media (max-width: 375px) {
-    .section-title {
-        font-size: 20px;
-        margin-bottom: 6px;
-    }
-
-    .product-card-section {
-        /* 🔧 AJUSTE: Ancho mínimo en móviles pequeños */
-        min-width: 240px;
-        max-width: 240px;
-        width: 240px;
-    }
-
-    .color-option {
-        width: 22px;
-        height: 22px;
-        min-width: 22px;
-    }
-}
-
-/* =================================================================
-   MEJORAS DE ACCESIBILIDAD - TU DISEÑO ORIGINAL
+   ACCESIBILIDAD Y PREFERENCIAS
    ================================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-
     .product-card-section,
     .product-image-section,
     .view-all-btn,
@@ -630,10 +642,7 @@
         animation: none;
     }
 
-    .product-card-section:hover {
-        transform: none;
-    }
-
+    .product-card-section:hover,
     .color-option:hover {
         transform: none;
     }
@@ -645,11 +654,11 @@
     }
 
     .color-option {
-        border-width: 3px;
+        border: 2px solid #000 !important;
     }
 
     .color-option.active {
-        border-width: 4px;
+        border: 3px solid #000 !important;
     }
 
     .new-badge,
@@ -659,24 +668,19 @@
 }
 
 /* =================================================================
-   ESTADOS DE LOADING DE IMÁGENES - TU DISEÑO ORIGINAL
+   ANIMACIONES
    ================================================================= */
+
+.product-image-section {
+    animation: fadeIn 0.3s ease-in-out;
+}
 
 .product-image-section.fallback-applied {
     opacity: 0.8;
     filter: grayscale(20%);
 }
 
-.product-image-section {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
