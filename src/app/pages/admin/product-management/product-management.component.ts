@@ -252,32 +252,42 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   // ✅ MODIFICAR en ProductManagementComponent
+  // ✅ MEJORAR loadProducts con validaciones
   loadProducts(): void {
-
     this.loading = true;
     this.originalProductsBackup = [...this.products];
 
     const filterValues = this.filterForm.value;
+
+    // ✅ VALIDAR Y LIMPIAR FILTROS
     const filter = {
-      searchQuery: filterValues.searchQuery,
-      categories: filterValues.categories,
-      minPrice: filterValues.minPrice,
-      maxPrice: filterValues.maxPrice,
-      sortBy: filterValues.sortBy,
+      searchQuery: filterValues.searchQuery?.trim() || '',
+      categories: Array.isArray(filterValues.categories) ? filterValues.categories : [],
+      minPrice: typeof filterValues.minPrice === 'number' ? filterValues.minPrice : null,
+      maxPrice: typeof filterValues.maxPrice === 'number' ? filterValues.maxPrice : null,
+      sortBy: filterValues.sortBy || 'newest',
       page: this.pageIndex,
       limit: this.pageSize
     };
 
-    // 🚀 USAR forceReloadProducts para obtener datos frescos
+    console.log('🔍 [MANAGEMENT] Filtros aplicados:', filter);
+
+    // Resto del código igual...
     const products$ = filter.searchQuery
       ? this.productService.searchProducts(filter.searchQuery)
-      : this.productService.forceReloadProducts(); // 🆕 CAMBIO AQUÍ
+      : this.productService.forceReloadProducts();
 
     products$
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (products) => {
-          const filteredProducts = this.applyClientSideFilters(products, filter);
+          console.log(`📦 [MANAGEMENT] Productos recibidos: ${products.length}`);
+
+          const validProducts = this.validateFilterData(products);
+          const filteredProducts = this.applyClientSideFilters(validProducts, filter);
+
+          console.log(`📊 [MANAGEMENT] Productos después de filtros: ${filteredProducts.length}`);
+
           this.products = filteredProducts;
           this.total = this.products.length;
           this.loading = false;
@@ -304,6 +314,33 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.loadProducts();
   }
 
+  // ✅ AGREGAR método de validación
+  private validateFilterData(products: Product[]): Product[] {
+    return products.filter(product => {
+      // Validaciones básicas
+      if (!product || !product.id || !product.name) {
+        console.warn('⚠️ [MANAGEMENT] Producto inválido encontrado:', product);
+        return false;
+      }
+
+      // Asegurar arrays
+      if (!Array.isArray(product.colors)) {
+        product.colors = [];
+      }
+      if (!Array.isArray(product.sizes)) {
+        product.sizes = [];
+      }
+      if (!Array.isArray(product.variants)) {
+        product.variants = [];
+      }
+      if (!Array.isArray(product.categories)) {
+        product.categories = [];
+      }
+
+      return true;
+    });
+  }
+
   loadCategories(): void {
     this.categoryService.getCategories()
       .pipe(takeUntil(this.destroy$))
@@ -324,51 +361,96 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   // Filtrado en cliente
-  applyClientSideFilters(products: Product[], filter: any): Product[] {
-    let result = [...products];
+  // ✅ AGREGAR este método mejorado
+  private applyClientSideFilters(products: Product[], filter: any): Product[] {
+    let filtered = [...products];
 
+    // ✅ BÚSQUEDA POR TEXTO
+    if (filter.searchQuery && filter.searchQuery.trim()) {
+      const query = filter.searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.description?.toLowerCase().includes(query) ||
+        p.sku.toLowerCase().includes(query) ||
+        p.tags?.some(tag => tag.toLowerCase().includes(query))
+      );
+    }
+
+    // ✅ FILTRO DE CATEGORÍAS CORREGIDO (igual que el otro componente)
     if (filter.categories && filter.categories.length > 0) {
-      result = result.filter(p => filter.categories.includes(p.category));
+      console.log('🔍 [MANAGEMENT] Aplicando filtro de categorías:', filter.categories);
+
+      filtered = filtered.filter(p => {
+        // Verificar campo singular (legacy)
+        if (p.category && filter.categories.includes(p.category)) {
+          console.log(`✅ [MANAGEMENT] ${p.name} coincide con categoría singular: ${p.category}`);
+          return true;
+        }
+
+        // Verificar campo plural (múltiples categorías)
+        if (p.categories && p.categories.length > 0) {
+          const hasMatch = p.categories.some(productCategory =>
+            filter.categories.includes(productCategory)
+          );
+
+          if (hasMatch) {
+            const matchingCategories = p.categories.filter(cat => filter.categories.includes(cat));
+            console.log(`✅ [MANAGEMENT] ${p.name} coincide con categorías: ${matchingCategories.join(', ')}`);
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      console.log(`📊 [MANAGEMENT] Productos después de filtro categoría: ${filtered.length}`);
     }
 
-    if (filter.minPrice !== null) {
-      result = result.filter(p => (p.currentPrice || p.price) >= filter.minPrice);
+    // ✅ FILTRO DE PRECIO
+    if (filter.minPrice !== null && filter.minPrice !== undefined) {
+      filtered = filtered.filter(p => {
+        const price = p.currentPrice || p.price;
+        return price >= filter.minPrice;
+      });
     }
 
-    if (filter.maxPrice !== null) {
-      result = result.filter(p => (p.currentPrice || p.price) <= filter.maxPrice);
+    if (filter.maxPrice !== null && filter.maxPrice !== undefined) {
+      filtered = filtered.filter(p => {
+        const price = p.currentPrice || p.price;
+        return price <= filter.maxPrice;
+      });
     }
 
+    // ✅ ORDENAMIENTO
     if (filter.sortBy) {
-      switch (filter.sortBy) {
-        case 'newest':
-          result.sort((a, b) => (b.id || '').localeCompare(a.id || ''));
-          break;
-        case 'price_asc':
-          result.sort((a, b) => (a.currentPrice || a.price) - (b.currentPrice || b.price));
-          break;
-        case 'price_desc':
-          result.sort((a, b) => (b.currentPrice || b.price) - (a.currentPrice || a.price));
-          break;
-        case 'name_asc':
-          result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-          break;
-        case 'name_desc':
-          result.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
-          break;
-        case 'stock_asc':
-          result.sort((a, b) => (a.totalStock || 0) - (b.totalStock || 0));
-          break;
-        case 'stock_desc':
-          result.sort((a, b) => (b.totalStock || 0) - (a.totalStock || 0));
-          break;
-      }
+      filtered = this.sortProducts(filtered, filter.sortBy);
     }
 
-    const startIndex = (filter.page - 1) * filter.limit;
-    const endIndex = startIndex + filter.limit;
+    return filtered;
+  }
 
-    return result.slice(startIndex, endIndex);
+  // ✅ AGREGAR método de ordenamiento
+  private sortProducts(products: Product[], sortBy: string): Product[] {
+    return products.sort((a, b) => {
+      switch (sortBy) {
+        case 'price_asc':
+          return (a.currentPrice || a.price) - (b.currentPrice || b.price);
+        case 'price_desc':
+          return (b.currentPrice || b.price) - (a.currentPrice || a.price);
+        case 'name_asc':
+          return a.name.localeCompare(b.name);
+        case 'name_desc':
+          return b.name.localeCompare(a.name);
+        case 'newest':
+          return (b.id || '').localeCompare(a.id || '');
+        case 'rating':
+          return (b.rating || 0) - (a.rating || 0);
+        case 'bestseller':
+          return (b.sales || 0) - (a.sales || 0);
+        default:
+          return 0;
+      }
+    });
   }
 
   // 🚀 ==================== MANEJO OPTIMISTA DE EVENTOS DE FORMULARIO ====================

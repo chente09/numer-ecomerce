@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Subject, BehaviorSubject, combineLatest, debounceTime, distinctUntilChanged, takeUntil, finalize, catchError, of, switchMap, take } from 'rxjs';
+import { Subject, BehaviorSubject, combineLatest, debounceTime, distinctUntilChanged, takeUntil, finalize, catchError, of, switchMap, take, firstValueFrom } from 'rxjs';
 
 // Services
 import { ProductService } from '../../../services/admin/product/product.service';
@@ -50,21 +50,6 @@ interface FilterOptions {
   sizes: Size[];
   priceRange: { min: number; max: number };
   brands: string[];
-}
-
-interface ProductFilters {
-  searchQuery: string;
-  categories: string[];
-  colors: string[];
-  sizes: string[];
-  priceRange: [number, number];
-  priceRanges: string[];
-  brands: string[];
-  hasDiscount: boolean;
-  isNew: boolean;
-  isBestSeller: boolean;
-  sortBy: string;
-  inStock: boolean;
 }
 
 interface FilterTag {
@@ -242,12 +227,22 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ✅ MEJORAR loadFilterOptions con más logging
   private async loadFilterOptions(): Promise<void> {
     try {
       const [categories, colors, sizes] = await Promise.all([
-        this.categoryService.getCategories().pipe(take(1)).toPromise(),
-        this.colorService.getColors().pipe(take(1)).toPromise(),
-        this.sizeService.getSizes().pipe(take(1)).toPromise()
+        firstValueFrom(this.categoryService.getCategories()).catch(err => {
+          console.error('Error loading categories:', err);
+          return [];
+        }),
+        firstValueFrom(this.colorService.getColors()).catch(err => {
+          console.error('Error loading colors:', err);
+          return [];
+        }),
+        firstValueFrom(this.sizeService.getSizes()).catch(err => {
+          console.error('Error loading sizes:', err);
+          return [];
+        })
       ]);
 
       this.filterOptions = {
@@ -255,15 +250,45 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         colors: colors || [],
         sizes: sizes || [],
         priceRange: { min: 0, max: 1000 },
-        brands: [] // Se puede obtener de los productos
+        brands: []
       };
+
+      // ✅ AGREGAR LOGGING de categorías cargadas
+      console.log('📂 Categorías cargadas:', this.filterOptions.categories);
+      console.log('📊 Total categorías:', this.filterOptions.categories.length);
 
       this.cdr.detectChanges();
     } catch (error) {
-      console.error('Error loading filter options:', error);
+      console.error('Critical error loading filter options:', error);
+      this.message.error('Error al cargar opciones de filtro');
     }
   }
 
+  // ✅ VERIFICAR si usas ID o Name para categorías
+  private validateCategoryConsistency(): void {
+    console.group('🔍 Validando consistencia de categorías');
+
+    // Categorías disponibles
+    const availableCategories = this.filterOptions.categories;
+    console.log('Categorías disponibles:', availableCategories);
+
+    // Categorías únicas en productos
+    const productCategories = [...new Set(this.products.map(p => p.category).filter(Boolean))];
+    console.log('Categorías en productos:', productCategories);
+
+    // Verificar si coinciden
+    productCategories.forEach(prodCat => {
+      const exists = availableCategories.some(avCat =>
+        avCat.id === prodCat || avCat.name === prodCat
+      );
+
+      if (!exists) {
+        console.warn(`⚠️ Categoría de producto no encontrada en opciones: ${prodCat}`);
+      }
+    });
+
+    console.groupEnd();
+  }
   private loadProducts(): void {
     this.loading = true;
     this.cdr.detectChanges();
@@ -281,6 +306,10 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       next: (products) => {
         this.products = products.map(p => this.initializeProductVariantState(p));
         this.updatePriceRange();
+
+        // ✅ LLAMAR AQUÍ - Después de cargar productos y opciones de filtro
+        this.validateCategoryConsistency();
+
         this.applyFilters();
       },
       error: (error) => {
@@ -297,19 +326,22 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       displayImageUrl: product.imageUrl
     };
 
-    // Inicializar con primera imagen de color si existe
-    if (product.colors && product.colors.length > 0) {
-      const firstColor = product.colors[0];
-      if (firstColor.imageUrl) {
-        productWithVariant.displayImageUrl = firstColor.imageUrl;
+    // ✅ MEJORADO: Buscar primera variante con stock
+    if (product.variants?.length) {
+      const variantWithStock = product.variants.find(v => (v.stock || 0) > 0);
+      productWithVariant.selectedVariant = variantWithStock || product.variants[0];
+
+      // Si encontramos variante con stock, actualizar color e imagen
+      if (variantWithStock) {
+        const colorIndex = product.colors?.findIndex(c => c.name === variantWithStock.colorName);
+        if (colorIndex !== -1) {
+          productWithVariant.selectedColorIndex = colorIndex;
+        }
       }
     }
 
-    // Seleccionar primera variante disponible con stock
-    if (product.variants && product.variants.length > 0) {
-      const availableVariant = product.variants.find(v => v.stock > 0) || product.variants[0];
-      productWithVariant.selectedVariant = availableVariant;
-    }
+    // Inicializar imagen usando la nueva lógica
+    productWithVariant.displayImageUrl = this.getProductDisplayImage(productWithVariant);
 
     return productWithVariant;
   }
@@ -332,6 +364,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ✅ REEMPLAZAR el método applyFilters() - Buscar la sección de filtro de categorías
   private applyFilters(): void {
     const filters = this.filterForm.value;
     const searchQuery = this.searchControl.value || '';
@@ -349,23 +382,55 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       );
     }
 
-    // Filtro por categorías
+    // ✅ FILTRO DE CATEGORÍAS MEJORADO - Verificar ambos campos
     if (filters.categories?.length) {
-      filtered = filtered.filter(p => filters.categories.includes(p.category));
+      console.log('🔍 Aplicando filtro de categorías:', filters.categories);
+
+      filtered = filtered.filter(p => {
+        // Opción A: Verificar campo singular (legacy)
+        if (p.category && filters.categories.includes(p.category)) {
+          console.log(`✅ ${p.name} coincide con categoría singular: ${p.category}`);
+          return true;
+        }
+
+        // Opción B: Verificar campo plural (múltiples categorías)
+        if (p.categories && p.categories.length > 0) {
+          const hasMatch = p.categories.some(productCategory =>
+            filters.categories.includes(productCategory)
+          );
+
+          if (hasMatch) {
+            const matchingCategories = p.categories.filter(cat => filters.categories.includes(cat));
+            console.log(`✅ ${p.name} coincide con categorías: ${matchingCategories.join(', ')}`);
+            return true;
+          }
+        }
+
+        console.log(`❌ ${p.name} no coincide - categoria: "${p.category}", categorias: [${p.categories?.join(', ') || 'vacío'}]`);
+        return false;
+      });
+
+      console.log(`📊 Productos después de filtro categoría: ${filtered.length}`);
     }
 
-    // Filtro por colores
+    // ✅ FILTRO POR COLORES CORREGIDO (mantener como está)
     if (filters.colors?.length) {
-      filtered = filtered.filter(p =>
-        p.colors?.some(color => filters.colors.includes(color.name))
-      );
+      filtered = filtered.filter(p => {
+        if (!p.colors || p.colors.length === 0) return false;
+        return p.colors.some(productColor =>
+          filters.colors.includes(productColor.name)
+        );
+      });
     }
 
-    // Filtro por tallas
+    // ✅ FILTRO POR TALLAS CORREGIDO (mantener como está)
     if (filters.sizes?.length) {
-      filtered = filtered.filter(p =>
-        p.sizes?.some(size => filters.sizes.includes(size.name))
-      );
+      filtered = filtered.filter(p => {
+        if (!p.sizes || p.sizes.length === 0) return false;
+        return p.sizes.some(productSize =>
+          filters.sizes.includes(productSize.name)
+        );
+      });
     }
 
     // Filtro por rango de precio (slider)
@@ -377,16 +442,17 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       });
     }
 
-    // Filtro por rangos de precio predefinidos
+    // ✅ FILTRO POR RANGOS DE PRECIO MEJORADO (mantener como está)
     if (filters.priceRanges?.length) {
       filtered = filtered.filter(p => {
         const price = p.currentPrice || p.price;
-        return filters.priceRanges.some((range: { split: (arg0: string) => { (): any; new(): any; map: { (arg0: NumberConstructor): [any, any]; new(): any; }; }; }) => {
-          const [min, max] = range.split('-').map(Number);
-          if (max) {
-            return price >= min && price <= max;
+        return filters.priceRanges.some((range: string) => {
+          if (range.includes('+')) {
+            const min = parseInt(range.replace('+', ''));
+            return price >= min;
           } else {
-            return price >= min; // Para el rango "150+"
+            const [min, max] = range.split('-').map(Number);
+            return price >= min && price <= max;
           }
         });
       });
@@ -397,10 +463,10 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       filtered = filtered.filter(p => (p.discountPercentage || 0) > 0);
     }
     if (filters.isNew) {
-      filtered = filtered.filter(p => p.isNew);
+      filtered = filtered.filter(p => p.isNew === true);
     }
     if (filters.isBestSeller) {
-      filtered = filtered.filter(p => p.isBestSeller);
+      filtered = filtered.filter(p => p.isBestSeller === true);
     }
     if (filters.inStock) {
       filtered = filtered.filter(p => (p.totalStock || 0) > 0);
@@ -411,7 +477,106 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
     this.filteredProducts = filtered;
     this.total = filtered.length;
+    setTimeout(() => {
+      this.syncProductsWithActiveFilters();
+    }, 0);
     this.cdr.detectChanges();
+  }
+
+
+  // ✅ MÉTODO AUXILIAR: Obtener nombre de categoría por ID
+  getCategoryNameById(categoryId: string | undefined): string {
+    if (!categoryId) return 'Sin Categoría';
+
+    const category = this.filterOptions.categories.find(cat => cat.id === categoryId);
+    return category ? category.name : `ID: ${categoryId}`;
+  }
+
+
+  // ✅ NUEVO MÉTODO: Sincronizar productos con filtros activos
+  private syncProductsWithActiveFilters(): void {
+    const activeColors = this.filterForm.get('colors')?.value || [];
+
+    if (activeColors.length === 0) {
+      // Si no hay filtros de color activos, mantener selección actual
+      return;
+    }
+
+    // Para cada producto visible, intentar seleccionar un color que coincida con los filtros
+    this.filteredProducts.forEach(product => {
+      this.syncProductColorWithFilters(product, activeColors);
+    });
+
+    this.cdr.detectChanges();
+  }
+
+  // ✅ NUEVO MÉTODO: Sincronizar un producto específico
+  // ✅ VERSIÓN MEJORADA: Considerar también tallas y stock
+  private syncProductColorWithFilters(product: ProductWithSelectedVariant, activeColors: string[]): void {
+    if (!product.colors || product.colors.length === 0) {
+      return;
+    }
+
+    const activeSizes = this.filterForm.get('sizes')?.value || [];
+
+    // Buscar el mejor color que coincida con filtros y tenga stock
+    let bestMatch: { color: Color; index: number; variant?: ProductVariant } | null = null;
+
+    for (let i = 0; i < product.colors.length; i++) {
+      const color = product.colors[i];
+
+      // Verificar si el color coincide con el filtro
+      if (!activeColors.includes(color.name)) {
+        continue;
+      }
+
+      // Buscar variantes de este color
+      const colorVariants = product.variants?.filter(v => v.colorName === color.name) || [];
+
+      if (activeSizes.length > 0) {
+        // Si hay filtros de talla, buscar variante que coincida con color Y talla
+        const matchingVariant = colorVariants.find(v =>
+          activeSizes.includes(v.sizeName) && v.stock > 0
+        );
+
+        if (matchingVariant) {
+          bestMatch = { color, index: i, variant: matchingVariant };
+          break; // Coincidencia perfecta
+        }
+      } else {
+        // Si no hay filtros de talla, buscar cualquier variante con stock
+        const stockVariant = colorVariants.find(v => v.stock > 0);
+
+        if (stockVariant && !bestMatch) {
+          bestMatch = { color, index: i, variant: stockVariant };
+        }
+      }
+    }
+
+    // Aplicar la mejor coincidencia encontrada
+    if (bestMatch) {
+      this.onColorSelect(product, bestMatch.color, bestMatch.index);
+
+      if (bestMatch.variant) {
+        product.selectedVariant = bestMatch.variant;
+      }
+
+      console.log(`🎯 ${product.name} → ${bestMatch.color.name}${bestMatch.variant ? ` (${bestMatch.variant.sizeName})` : ''}`);
+    }
+  }
+
+  // ✅ MÉTODO PÚBLICO: Para activar sincronización manualmente
+  syncAllProductsWithFilters(): void {
+    console.log('🔄 Sincronizando todos los productos con filtros activos...');
+    this.syncProductsWithActiveFilters();
+  }
+
+  // ✅ MÉTODO PÚBLICO: Para sincronizar cuando cambian los filtros
+  onFilterColorChange(): void {
+    // Esperar un tick para que se actualicen los filtros
+    setTimeout(() => {
+      this.syncProductsWithActiveFilters();
+    }, 100);
   }
 
   private sortProducts(products: ProductWithSelectedVariant[], sortBy: string): ProductWithSelectedVariant[] {
@@ -455,6 +620,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
     this.filterForm.patchValue({ colors: currentColors });
     this.updateActiveFiltersCount();
+    this.onFilterColorChange();
   }
 
   isColorSelected(colorName: string): boolean {
@@ -622,17 +788,25 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   onColorSelect(product: ProductWithSelectedVariant, color: Color, colorIndex: number): void {
     product.selectedColorIndex = colorIndex;
 
-    // Actualizar imagen usando la lógica mejorada
-    if (color.imageUrl) {
-      product.displayImageUrl = color.imageUrl;
-    } else {
-      product.displayImageUrl = product.imageUrl;
-    }
+    // Buscar variante que coincida con el color y que tenga stock
+    const availableVariants = product.variants?.filter(v =>
+      v.colorName === color.name && v.stock > 0
+    ) || [];
 
-    // Buscar variante que coincida con el color seleccionado
-    const matchingVariant = product.variants?.find(v => v.colorName === color.name);
-    if (matchingVariant) {
-      product.selectedVariant = matchingVariant;
+    if (availableVariants.length > 0) {
+      // Seleccionar la primera variante disponible del color
+      product.selectedVariant = availableVariants[0];
+
+      // Actualizar imagen usando imagen de variante si existe
+      if (availableVariants[0].imageUrl) {
+        product.displayImageUrl = availableVariants[0].imageUrl;
+      } else if (color.imageUrl) {
+        product.displayImageUrl = color.imageUrl;
+      }
+    } else {
+      // Si no hay variantes con stock, mostrar imagen del color pero sin variante seleccionada
+      product.selectedVariant = undefined;
+      product.displayImageUrl = color.imageUrl || product.imageUrl;
     }
 
     this.cdr.detectChanges();
@@ -650,13 +824,15 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     }
 
     try {
-      const success = await this.cartService.addToCart(
-        product.id,
-        product.selectedVariant.id,
-        1,
-        product,
-        product.selectedVariant
-      ).pipe(take(1)).toPromise();
+      const success = await firstValueFrom(
+        this.cartService.addToCart(
+          product.id,
+          product.selectedVariant.id,
+          1,
+          product,
+          product.selectedVariant
+        )
+      );
 
       if (success) {
         this.message.success(`${product.name} agregado al carrito`);
@@ -689,18 +865,46 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   }
 
   private handleUrlParams(): void {
-  this.route.queryParams.pipe(
-    takeUntil(this.destroy$)
-  ).subscribe(params => {
-    if (params['category']) {
-      this.filterForm.patchValue({ categories: [params['category']] });
+    this.route.queryParams.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
+      if (params['category']) {
+        this.filterForm.patchValue({ categories: [params['category']] });
+      }
+      if (params['search']) {
+        // 🔄 CAMBIAR: Usar searchControl
+        this.searchControl.setValue(params['search']);
+      }
+    });
+  }
+
+  // ✅ AGREGAR método para manejar imágenes de variantes
+  getProductDisplayImage(product: ProductWithSelectedVariant): string {
+    // 1. Prioridad: Imagen de variante seleccionada
+    if (product.selectedVariant?.imageUrl) {
+      return product.selectedVariant.imageUrl;
     }
-    if (params['search']) {
-      // 🔄 CAMBIAR: Usar searchControl
-      this.searchControl.setValue(params['search']);
+
+    // 2. Fallback: Imagen del color activo
+    if (product.selectedColorIndex !== undefined && product.colors) {
+      const activeColor = product.colors[product.selectedColorIndex];
+      if (activeColor?.imageUrl) {
+        return activeColor.imageUrl;
+      }
     }
-  });
-}
+
+    // 3. Fallback: displayImageUrl calculada
+    if (product.displayImageUrl) {
+      return product.displayImageUrl;
+    }
+
+    // 4. Fallback final: imagen principal
+    return product.imageUrl || this.getDefaultImage();
+  }
+
+  private getDefaultImage(): string {
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOGY4Ii8+PC9nPjwvc3ZnPg==';
+  }
 
   // Color scroll methods
   hasManyColors(product: Product): boolean {
@@ -793,11 +997,11 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     if (!product.selectedVariant) {
       return 'Seleccionar variante';
     }
-    
+
     if (product.selectedVariant.stock <= 0) {
       return 'Sin stock';
     }
-    
+
     return 'Agregar al carrito';
   }
 }

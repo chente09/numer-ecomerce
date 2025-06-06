@@ -351,6 +351,10 @@ export class CartService {
     }
   }
 
+  getVariantById(variantId: string): Observable<ProductVariant | undefined> {
+    return this.productService.getVariantById(variantId);
+  }
+
   /**
    * 🚀 CORREGIDO: Procesa la adición de un producto al carrito (lógica interna)
    */

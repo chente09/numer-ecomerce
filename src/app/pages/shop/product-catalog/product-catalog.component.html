@@ -39,7 +39,8 @@
                 <nz-collapse-panel nzHeader="Categoría" [nzActive]="true">
                     <div class="filter-section">
                         <nz-checkbox-group formControlName="categories">
-                            <label nz-checkbox *ngFor="let category of filterOptions.categories" [nzValue]="category.id">
+                            <label nz-checkbox *ngFor="let category of filterOptions.categories"
+                                [nzValue]="category.id">
                                 {{ category.name }}
                             </label>
                         </nz-checkbox-group>
@@ -80,8 +81,7 @@
             <!-- Search Bar -->
             <div class="search-section">
                 <nz-input-group [nzSuffix]="suffixIconSearch" nzSize="large">
-                    <input type="text" nz-input placeholder="Buscar productos..."
-                        [formControl]="searchControl">
+                    <input type="text" nz-input placeholder="Buscar productos..." [formControl]="searchControl">
                 </nz-input-group>
                 <ng-template #suffixIconSearch>
                     <span nz-icon nzType="search"></span>
@@ -142,7 +142,7 @@
                 <div class="product-image-container" (click)="viewProductDetails(product.id)"
                     [attr.aria-label]="'Ver detalles de ' + product.name">
 
-                    <img [src]="product.displayImageUrl || product.imageUrl"
+                    <img [src]="getProductDisplayImage(product)"
                         [alt]="product.name + (getActiveColorName(product) ? ' - Color: ' + getActiveColorName(product) : '')"
                         class="product-image-section" (error)="handleImageError($event)" loading="lazy">
 
@@ -195,16 +195,27 @@
                     </h3>
 
                     <!-- Variant Info -->
+                    <!-- ✅ MEJORAR validaciones en el template -->
                     <div *ngIf="product.selectedVariant" class="variant-info">
                         <small class="variant-details">
-                            {{ product.selectedVariant.colorName }} - {{ product.selectedVariant.sizeName }}
+                            {{ product.selectedVariant.colorName || 'Color no especificado' }} -
+                            {{ product.selectedVariant.sizeName || 'Talla no especificada' }}
                         </small>
                         <span class="stock-badge" [ngClass]="{
-              'in-stock': product.selectedVariant.stock > 5,
-              'low-stock': product.selectedVariant.stock <= 5 && product.selectedVariant.stock > 0,
-              'out-of-stock': product.selectedVariant.stock <= 0
-            }">
-                            {{ getStockText(product.selectedVariant.stock) }}
+                                    'in-stock': (product.selectedVariant.stock || 0) > 5,
+                                    'low-stock': (product.selectedVariant.stock || 0) <= 5 && (product.selectedVariant.stock || 0) > 0,
+                                    'out-of-stock': (product.selectedVariant.stock || 0) <= 0}">
+                            {{ getStockText(product.selectedVariant.stock || 0) }}
+                        </span>
+                    </div>
+
+                    <!-- Fallback si no hay variante seleccionada -->
+                    <div *ngIf="!product.selectedVariant" class="variant-info">
+                        <small class="variant-details no-variant">
+                            Selecciona color y talla
+                        </small>
+                        <span class="stock-badge out-of-stock">
+                            Sin selección
                         </span>
                     </div>
 
@@ -307,7 +318,8 @@
                     <nz-collapse-panel nzHeader="Categoría" [nzActive]="true">
                         <div class="filter-section">
                             <nz-checkbox-group formControlName="categories">
-                                <label nz-checkbox *ngFor="let category of filterOptions.categories" [nzValue]="category.id">
+                                <label nz-checkbox *ngFor="let category of filterOptions.categories"
+                                    [nzValue]="category.id">
                                     {{ category.name }}
                                 </label>
                             </nz-checkbox-group>

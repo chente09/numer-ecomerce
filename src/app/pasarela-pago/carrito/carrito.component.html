@@ -43,7 +43,7 @@
           [class.updating-item]="updating">
 
           <div class="item-image">
-            <img [src]="item.product?.imageUrl" [alt]="item.product?.name" class="product-image"
+            <img [src]="getVariantImage(item)" [alt]="item.product?.name" class="product-image"
               (error)="handleImageError($event)" />
           </div>
 
@@ -52,11 +52,18 @@
             <p class="product-category">{{ getCategoryName(item) }}</p>
 
             <div class="variant-section">
-              <div class="variant-info">
-                <div class="color-indicator" [style.background-color]="item.variant?.colorCode || '#cccccc'"></div>
+              <div class="variant-info" *ngIf="item.variant">
+                <div class="color-indicator" [style.background-color]="item.variant.colorCode || '#e0e0e0'"
+                  [attr.aria-label]="'Color: ' + (item.variant.colorName || 'No especificado')">
+                </div>
                 <span class="variant-text">
-                  {{ (item.variant?.colorName || 'N/A') + ' / ' + (item.variant?.sizeName || 'N/A') }}
+                  {{ (item.variant.colorName || 'Color no especificado') + ' / ' + (item.variant.sizeName || 'Talla no especificada') }}
                 </span>
+              </div>
+              <!-- Fallback si no hay variant -->
+              <div class="variant-info" *ngIf="!item.variant">
+                <div class="color-indicator error"></div>
+                <span class="variant-text">Información no disponible</span>
               </div>
               <div class="stock-status" [class.low]="isStockLow(item)" [class.out]="isOutOfStock(item)">
                 {{ getStockMessage(item) }}

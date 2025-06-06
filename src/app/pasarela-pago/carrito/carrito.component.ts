@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CartService, CartItem, Cart } from '../services/cart/cart.service';
-import { Subject, takeUntil, firstValueFrom, take } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom, take, catchError, of, debounceTime } from 'rxjs';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -47,6 +47,8 @@ export class CarritoComponent implements OnInit, OnDestroy {
   updating = false;
   discountCode = '';
   processingCheckout = false;
+  errorMessage: string | null = null;
+  categoryLoadError = false;
 
   currentUser: User | null = null;
   canCheckout = false;
@@ -56,6 +58,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private categoryNames: Map<string, string> = new Map();
   private categoriesLoaded = false;
+  private updateQuantityDebounced = debounceTime(300);
 
   constructor(
     private cartService: CartService,
@@ -105,36 +108,41 @@ export class CarritoComponent implements OnInit, OnDestroy {
   private loadCategories(): void {
     this.categoryService.getCategories().pipe(
       take(1),
-      takeUntil(this.destroy$)
+      takeUntil(this.destroy$),
+      catchError(error => {
+        console.error('❌ Error cargando categorías:', error);
+        this.categoryLoadError = true;
+        return of([]); // Continuar con array vacío
+      })
     ).subscribe({
       next: (categories) => {
-        // Crear mapa de ID -> Nombre para acceso rápido
         this.categoryNames.clear();
         categories.forEach(category => {
           this.categoryNames.set(category.id, category.name);
         });
         this.categoriesLoaded = true;
-        console.log(`✅ ${categories.length} categorías cargadas en carrito`);
+        console.log(`✅ ${categories.length} categorías cargadas`);
       },
-      error: (error) => {
-        console.error('❌ Error cargando categorías:', error);
-        this.categoriesLoaded = true; // Continuar sin categorías
+      complete: () => {
+        this.categoriesLoaded = true;
       }
     });
   }
 
   // ✅ NUEVO MÉTODO para obtener nombre de categoría
   getCategoryName(item: CartItem): string {
-    if (!item.product?.category) {
+    if (!item?.product?.category) {
       return 'Sin categoría';
     }
 
-    // Si aún no se han cargado las categorías, mostrar el ID temporalmente
     if (!this.categoriesLoaded) {
       return 'Cargando...';
     }
 
-    // Buscar el nombre en el mapa o devolver el ID si no se encuentra
+    if (this.categoryLoadError) {
+      return item.product.category; // Fallback al ID
+    }
+
     return this.categoryNames.get(item.product.category) || item.product.category;
   }
 
@@ -158,28 +166,75 @@ export class CarritoComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.updating = true;
-    try {
-      console.log(`🔄 Actualizando cantidad: ${item.product?.name} a ${quantity}`);
+    // ✅ GUARDAR cantidad anterior para reversión
+    const previousQuantity = item.quantity;
 
-      // ✅ CORRECCIÓN: Convertir Observable a Promise correctamente
+    // ✅ Validación mejorada de stock
+    if (item.variant) {
+      const availableStock = item.variant.stock || 0;
+      if (quantity > availableStock) {
+        this.message.warning(`Solo hay ${availableStock} unidades disponibles`);
+        return; // No continuar si excede stock
+      }
+    }
+
+    this.updating = true;
+
+    try {
+      console.log(`🔄 Actualizando cantidad: ${item.product?.name} de ${previousQuantity} a ${quantity}`);
+
+      // ✅ Actualizar optimistamente la UI
+      item.quantity = quantity;
+
       const success = await firstValueFrom(
         this.cartService.updateItemQuantity(item.variantId, quantity)
       );
 
       if (!success) {
+        // ✅ REVERTIR correctamente a la cantidad anterior
+        item.quantity = previousQuantity;
         this.message.warning('No hay suficiente stock disponible para la cantidad solicitada.');
-        // Revertir cantidad en la UI
-        item.quantity = item.quantity; // Mantener cantidad anterior
       } else {
         this.message.success('Cantidad actualizada correctamente');
       }
     } catch (error) {
+      // ✅ REVERTIR en caso de error
+      item.quantity = previousQuantity;
       console.error('❌ Error al actualizar cantidad:', error);
       this.message.error('Error al actualizar la cantidad del producto.');
     } finally {
       this.updating = false;
     }
+  }
+
+  // Agregar este método al componente
+  getVariantImage(item: CartItem): string {
+    // 1. Prioridad: Imagen específica de la variante
+    if (item.variant?.imageUrl && item.variant.imageUrl.trim()) {
+      return item.variant.imageUrl;
+    }
+
+    // 2. Fallback: Buscar imagen del color en el producto
+    if (item.product?.colors && item.variant?.colorName) {
+      const colorMatch = item.product.colors.find(
+        color => color.name === item.variant?.colorName
+      );
+      if (colorMatch?.imageUrl) {
+        return colorMatch.imageUrl;
+      }
+    }
+
+    // 3. Fallback final: Imagen principal del producto
+    if (item.product?.imageUrl) {
+      return item.product.imageUrl;
+    }
+
+    // 4. Imagen por defecto si no hay ninguna
+    return this.getDefaultImage();
+  }
+
+  private getDefaultImage(): string {
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOGY4Ii8+PGcgZmlsbD0iIzk5OSI+PGNpcmNsZSBjeD0iNTAiIGN5PSI0MCIgcj0iMTAiLz48cGF0aCBkPSJtMzAgNzBoNDB2MTBIMzB6Ii8+PC9nPjwvc3ZnPg==';
   }
 
   // ✅ CORRECCIÓN: Usar firstValueFrom para removeItem
@@ -301,7 +356,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
       for (const item of this.cart.items) {
         // Verificar stock en tiempo real
         const currentVariant = await firstValueFrom(
-          this.cartService['productService'].getVariantById(item.variantId).pipe(take(1))
+          this.cartService.getVariantById(item.variantId).pipe(take(1))
         );
 
         if (!currentVariant || currentVariant.stock < item.quantity) {
