@@ -1,0 +1,533 @@
+/* =================================================================
+   SECCIÓN PRINCIPAL DE MODELOS - SCROLL HORIZONTAL
+   ================================================================= */
+
+.models-section {
+    padding: 20px 0;
+    background-color: #000;
+    min-height: 400px;
+}
+
+.section-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* =================================================================
+   HEADER DE LA SECCIÓN
+   ================================================================= */
+
+.section-header {
+    text-align: center;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 700;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    color: #ffffff;
+}
+
+.section-subtitle {
+    font-size: 18px;
+    color: #cccccc;
+    margin: 0;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+}
+
+/* =================================================================
+   SCROLL HORIZONTAL - CONTENEDOR PRINCIPAL
+   ================================================================= */
+
+.models-scroll-wrapper {
+    position: relative;
+    margin-bottom: 60px;
+    padding: 0 60px; /* Espacio para botones */
+}
+
+.models-scroll-container {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding: 20px 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x mandatory;
+}
+
+.models-scroll-container::-webkit-scrollbar {
+    display: none;
+}
+
+/* =================================================================
+   CARD DE MODELO - DISEÑO OPTIMIZADO PARA SCROLL
+   ================================================================= */
+
+.model-card {
+    flex: 0 0 280px; /* ✅ Ancho fijo para scroll consistente */
+    min-height: 320px;
+    background-color: #ffffff;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    cursor: pointer;
+    border: none;
+    border-radius: 0;
+    scroll-snap-align: start;
+    position: relative;
+}
+
+.model-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+    z-index: 1;
+}
+
+/* =================================================================
+   IMAGEN DEL MODELO - PROTAGONISTA
+   ================================================================= */
+
+.model-image-container {
+    position: relative;
+    height: 340px;
+    background-color: #f8f9fa;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.model-image {
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    filter: contrast(1.02) saturate(1.05);
+}
+
+.model-card:hover .model-image {
+    transform: scale(1.08);
+    filter: contrast(1.08) saturate(1.15);
+}
+
+/* Efecto de brillo en hover */
+.model-image-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.6s ease;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.model-card:hover .model-image-container::before {
+    left: 100%;
+}
+
+/* =================================================================
+   INFORMACIÓN DEL MODELO
+   ================================================================= */
+
+.model-info {
+    padding: 10px 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    background-color: #ffffff;
+}
+
+.model-name {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.2;
+    letter-spacing: 1px;
+    color: #000000;
+    transition: all 0.3s ease;
+}
+
+.model-card:hover .model-name {
+    color: #666;
+    transform: translateY(-2px);
+    letter-spacing: 1.5px;
+}
+
+/* =================================================================
+   BOTONES DE SCROLL - DISEÑO MODERNO
+   ================================================================= */
+
+.scroll-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 25px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.353);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.scroll-btn.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.scroll-btn:hover {
+    background: #ffffff;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+    border-color: #000;
+}
+
+.scroll-btn:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.scroll-left {
+    left: 10px;
+}
+
+.scroll-right {
+    right: 10px;
+}
+
+/* Mostrar botones al hover del contenedor */
+.models-scroll-wrapper:hover .scroll-btn.visible {
+    opacity: 1;
+}
+
+/* Iconos de los botones */
+.scroll-btn span {
+    font-size: 16px;
+    color: #000;
+    transition: color 0.3s ease;
+}
+
+.scroll-btn:hover span {
+    color: #333;
+}
+
+/* =================================================================
+   ESTADOS DE CARGA
+   ================================================================= */
+
+.loading-container {
+    padding: 40px 0;
+}
+
+.loading-scroll {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding: 20px 60px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.loading-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.loading-card {
+    flex: 0 0 280px;
+    background: #ffffff;
+    padding: 20px;
+    min-height: 320px;
+    border: 1px solid #f0f0f0;
+}
+
+.error-container,
+.empty-state {
+    padding: 80px 20px;
+    text-align: center;
+}
+
+/* =================================================================
+   FOOTER DE LA SECCIÓN
+   ================================================================= */
+
+.section-footer {
+    text-align: center;
+    margin-top: clamp(16px, 5vw, 24px);
+}
+
+.view-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px);
+    background-color: black;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: clamp(14px, 2vw, 16px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    position: relative;
+    overflow: hidden;
+    border: none !important;
+}
+
+.view-all-btn:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+}
+
+.view-all-btn:hover:before,
+.view-all-btn:focus:before {
+    left: 0;
+}
+
+.view-all-btn:hover,
+.view-all-btn:focus {
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.view-all-btn svg {
+    transition: transform 0.3s ease;
+}
+
+.view-all-btn:hover svg {
+    transform: translateX(4px);
+}
+
+/* =================================================================
+   RESPONSIVE DESIGN
+   ================================================================= */
+
+@media (max-width: 1200px) {
+    .models-scroll-wrapper {
+        padding: 0 50px;
+    }
+    
+    .model-card {
+        flex: 0 0 260px;
+    }
+    
+    .model-image-container {
+        height: 220px;
+    }
+}
+
+@media (max-width: 768px) {
+    .models-section {
+        padding: 60px 0;
+    }
+
+    .section-container {
+        padding: 0 16px;
+    }
+
+    .section-title {
+        font-size: 36px;
+        margin-bottom: 12px;
+    }
+
+    .section-subtitle {
+        font-size: 16px;
+    }
+
+    .section-header {
+        margin-bottom: 40px;
+    }
+
+    .models-scroll-wrapper {
+        padding: 0 20px;
+    }
+
+    .model-card {
+        flex: 0 0 240px;
+        min-height: 300px;
+    }
+
+    .model-image-container {
+        height: 200px;
+    }
+
+    .model-name {
+        font-size: 16px;
+    }
+
+    .model-info {
+        padding: 16px 12px;
+    }
+
+    .scroll-btn {
+        width: 40px;
+        height: 40px;
+        opacity: 0.8; /* Más visible en móvil */
+    }
+
+    .scroll-btn.visible {
+        opacity: 0.8;
+    }
+
+    .view-all-btn {
+        padding: 14px 28px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .section-title {
+        font-size: 28px;
+    }
+
+    .models-scroll-wrapper {
+        padding: 0 10px;
+    }
+
+    .model-card {
+        flex: 0 0 220px;
+        min-height: 280px;
+    }
+
+    .model-image-container {
+        height: 180px;
+    }
+
+    .model-name {
+        font-size: 14px;
+        letter-spacing: 0.5px;
+    }
+
+    .model-info {
+        padding: 12px 8px;
+    }
+
+    .scroll-btn {
+        width: 35px;
+        height: 35px;
+    }
+
+    .scroll-left {
+        left: 5px;
+    }
+
+    .scroll-right {
+        right: 5px;
+    }
+}
+
+/* =================================================================
+   ANIMACIONES ESPECÍFICAS PARA SCROLL
+   ================================================================= */
+
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.model-card {
+    animation: slideInFromRight 0.6s ease-out;
+}
+
+.model-card:nth-child(1) { animation-delay: 0.1s; }
+.model-card:nth-child(2) { animation-delay: 0.15s; }
+.model-card:nth-child(3) { animation-delay: 0.2s; }
+.model-card:nth-child(4) { animation-delay: 0.25s; }
+.model-card:nth-child(5) { animation-delay: 0.3s; }
+
+/* =================================================================
+   MEJORAS DE ACCESIBILIDAD
+   ================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    .models-scroll-container {
+        scroll-behavior: auto;
+    }
+    
+    .model-card,
+    .model-image,
+    .scroll-btn {
+        transition: none;
+        animation: none;
+    }
+    
+    .model-card:hover {
+        transform: none;
+    }
+}
+
+/* =================================================================
+   INDICADORES VISUALES
+   ================================================================= */
+
+/* Indicador de que hay más contenido a la derecha */
+.models-scroll-wrapper::after {
+    content: '';
+    position: absolute;
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 60px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 5;
+}
+
+.models-scroll-wrapper.can-scroll-right::after {
+    opacity: 1;
+}
+
+/* Indicador de que hay más contenido a la izquierda */
+.models-scroll-wrapper::before {
+    content: '';
+    position: absolute;
+    left: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 60px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 5;
+}
+
+.models-scroll-wrapper.can-scroll-left::before {
+    opacity: 1;
+}

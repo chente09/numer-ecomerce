@@ -1557,18 +1557,205 @@ export class ProductService {
     }
   }
 
-  /**
-   * Método de compatibilidad con la implementación anterior (DEPRECATED)
-   * @deprecated Usar invalidateProductCacheWithStrategy en su lugar
-   */
-  private invalidateProductCache(productId?: string): void {
-    console.warn('⚠️ Método invalidateProductCache está deprecado, usar invalidateProductCacheWithStrategy');
+  // Agregar estos métodos a tu ProductService existente
 
-    this.invalidateProductCacheWithStrategy({
-      productId,
-      affectsAll: !productId,
-      patterns: ['featured', 'bestselling', 'new', 'discounted']
+  /**
+   * 🆕 OBTIENE PRODUCTOS ÚNICOS POR MODELO
+   * Retorna un producto representativo de cada modelo disponible
+   */
+  getUniqueModels(): Observable<Product[]> {
+    const cacheKey = `${this.productsCacheKey}_unique_models`;
+
+    return this.cacheService.getCached<Product[]>(cacheKey, () => {
+      console.log('🎯 ProductService: Calculando modelos únicos...');
+
+      return this.getProducts().pipe(
+        take(1),
+        map(products => {
+          console.log(`📦 ProductService: Procesando ${products.length} productos para extraer modelos únicos`);
+
+          // Crear mapa de modelos únicos
+          const modelsMap = new Map<string, Product>();
+
+          products.forEach(product => {
+            const modelKey = product.model || product.name; // Fallback al name si no tiene model
+
+            if (!modelsMap.has(modelKey)) {
+              modelsMap.set(modelKey, product);
+            } else {
+              // Si ya existe, mantener el que tenga mejor puntuación/popularidad
+              const existing = modelsMap.get(modelKey)!;
+              if ((product.popularityScore || 0) > (existing.popularityScore || 0)) {
+                modelsMap.set(modelKey, product);
+              }
+            }
+          });
+
+          const uniqueModels = Array.from(modelsMap.values());
+
+          // Ordenar por popularidad y stock
+          uniqueModels.sort((a, b) => {
+            // Priorizar productos con stock
+            if (a.totalStock > 0 && b.totalStock === 0) return -1;
+            if (a.totalStock === 0 && b.totalStock > 0) return 1;
+
+            // Luego por popularidad
+            return (b.popularityScore || 0) - (a.popularityScore || 0);
+          });
+
+          console.log(`✅ ProductService: ${uniqueModels.length} modelos únicos encontrados`);
+
+          return uniqueModels;
+        }),
+        catchError(error => {
+          console.error('❌ ProductService: Error obteniendo modelos únicos:', error);
+          return of([]);
+        })
+      );
     });
+  }
+
+  /**
+   * 🆕 OBTIENE MODELOS POR CATEGORÍA
+   */
+  getUniqueModelsByCategory(categoryId: string): Observable<Product[]> {
+    if (!categoryId) {
+      return of([]);
+    }
+
+    const cacheKey = `${this.productsCacheKey}_models_category_${categoryId}`;
+
+    return this.cacheService.getCached<Product[]>(cacheKey, () => {
+      console.log(`🎯 ProductService: Obteniendo modelos únicos para categoría: ${categoryId}`);
+
+      return this.getProductsByCategory(categoryId).pipe(
+        take(1),
+        map(products => {
+          const modelsMap = new Map<string, Product>();
+
+          products.forEach(product => {
+            const modelKey = product.model || product.name;
+
+            if (!modelsMap.has(modelKey)) {
+              modelsMap.set(modelKey, product);
+            } else {
+              const existing = modelsMap.get(modelKey)!;
+              if ((product.popularityScore || 0) > (existing.popularityScore || 0)) {
+                modelsMap.set(modelKey, product);
+              }
+            }
+          });
+
+          const uniqueModels = Array.from(modelsMap.values())
+            .filter(product => product.totalStock > 0) // Solo con stock
+            .sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0));
+
+          console.log(`✅ ProductService: ${uniqueModels.length} modelos únicos en categoría ${categoryId}`);
+
+          return uniqueModels;
+        }),
+        catchError(error => {
+          console.error(`❌ ProductService: Error obteniendo modelos por categoría ${categoryId}:`, error);
+          return of([]);
+        })
+      );
+    });
+  }
+
+  /**
+   * 🆕 OBTIENE PRODUCTOS DEL MISMO MODELO
+   */
+  getProductsByModel(model: string): Observable<Product[]> {
+    if (!model) {
+      return of([]);
+    }
+
+    const cacheKey = `${this.productsCacheKey}_model_${model}`;
+
+    return this.cacheService.getCached<Product[]>(cacheKey, () => {
+      console.log(`🎯 ProductService: Obteniendo productos del modelo: ${model}`);
+
+      return this.getProducts().pipe(
+        take(1),
+        map(products => {
+          const modelProducts = products.filter(product =>
+            (product.model === model) ||
+            (product.name === model && !product.model) // Fallback
+          );
+
+          console.log(`✅ ProductService: ${modelProducts.length} productos encontrados para modelo ${model}`);
+
+          return modelProducts;
+        }),
+        catchError(error => {
+          console.error(`❌ ProductService: Error obteniendo productos del modelo ${model}:`, error);
+          return of([]);
+        })
+      );
+    });
+  }
+
+  /**
+   * 🆕 OBTIENE ESTADÍSTICAS DE MODELOS
+   */
+  getModelsStats(): Observable<{
+    totalModels: number;
+    modelsByCategory: { [category: string]: number };
+    topModels: { model: string; productCount: number; totalStock: number }[];
+  }> {
+    return this.getProducts().pipe(
+      take(1),
+      map(products => {
+        const modelsMap = new Map<string, Product[]>();
+        const categoryStats: { [category: string]: Set<string> } = {};
+
+        // Agrupar productos por modelo
+        products.forEach(product => {
+          const modelKey = product.model || product.name;
+
+          if (!modelsMap.has(modelKey)) {
+            modelsMap.set(modelKey, []);
+          }
+          modelsMap.get(modelKey)!.push(product);
+
+          // Estadísticas por categoría
+          if (!categoryStats[product.category]) {
+            categoryStats[product.category] = new Set();
+          }
+          categoryStats[product.category].add(modelKey);
+        });
+
+        // Calcular top modelos
+        const topModels = Array.from(modelsMap.entries())
+          .map(([model, products]) => ({
+            model,
+            productCount: products.length,
+            totalStock: products.reduce((sum, p) => sum + p.totalStock, 0)
+          }))
+          .sort((a, b) => b.totalStock - a.totalStock)
+          .slice(0, 10);
+
+        // Convertir Set a number para modelsByCategory
+        const modelsByCategory: { [category: string]: number } = {};
+        Object.entries(categoryStats).forEach(([category, modelsSet]) => {
+          modelsByCategory[category] = modelsSet.size;
+        });
+
+        return {
+          totalModels: modelsMap.size,
+          modelsByCategory,
+          topModels
+        };
+      }),
+      catchError(error => {
+        console.error('❌ ProductService: Error calculando estadísticas de modelos:', error);
+        return of({
+          totalModels: 0,
+          modelsByCategory: {},
+          topModels: []
+        });
+      })
+    );
   }
 
   /**

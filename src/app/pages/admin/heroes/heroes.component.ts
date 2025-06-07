@@ -25,6 +25,7 @@ import { HeroService, HeroItem } from '../../../services/admin/hero/hero.service
 import { Subject, takeUntil, combineLatest, tap } from 'rxjs';
 import { GenderSectionAdminComponent } from "../gender-section-admin/gender-section-admin.component";
 import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { HeroProductsAdminComponent } from "../hero-products-admin/hero-products-admin.component";
 
 @Component({
   selector: 'app-heroes',
@@ -51,7 +52,8 @@ import { NzDividerModule } from 'ng-zorro-antd/divider';
     NzSpinModule,
     NzTagModule,
     GenderSectionAdminComponent,
-    NzDividerModule
+    NzDividerModule,
+    HeroProductsAdminComponent
 ],
   templateUrl: './heroes.component.html',
   styleUrls: ['./heroes.component.css'],

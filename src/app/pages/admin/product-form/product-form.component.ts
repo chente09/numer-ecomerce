@@ -218,6 +218,23 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
   private setupFormListeners(): void {
     this.listenToStockChanges();
     this.createVariantsMatrix();
+
+    // 🆕 NUEVO: Listener para auto-generar model
+    this.productForm.get('name')?.valueChanges.subscribe(nameValue => {
+      const modelValue = this.productForm.get('model')?.value;
+
+      // Solo auto-generar si model está vacío y no estamos en modo edición
+      if (nameValue && !modelValue && !this.isEditMode) {
+        const cleanModel = nameValue
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9\s]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        this.productForm.get('model')?.setValue(cleanModel);
+      }
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -237,6 +254,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
   initProductForm(): void {
     this.productForm = this.fb.group({
       name: ['', [Validators.required]],
+      model: ['', [Validators.required]],
       price: [0, [Validators.required, Validators.min(0)]],
       categories: [[], [Validators.required]],
       description: [''],
@@ -681,6 +699,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
 
     const patchData = {
       name: this.product.name || '',
+      model: this.product.model || this.product.name || '',
       price: this.product.price || 0,
       categories:
         this.product.categories ||
@@ -895,6 +914,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
 
     this.productForm.patchValue({
       price: 0,
+      model: '',
       isNew: true,
       isBestSeller: false,
       technologies: [],
@@ -904,6 +924,25 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
 
     this.resetImages();
   }
+
+  generateModelFromName(): void {
+    const nameValue = this.productForm.get('name')?.value;
+    const modelValue = this.productForm.get('model')?.value;
+
+    // Solo auto-generar si el campo model está vacío
+    if (nameValue && !modelValue) {
+      // Limpiar el nombre para crear un model más limpio
+      const cleanModel = nameValue
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9\s]/g, '') // Remover caracteres especiales
+        .replace(/\s+/g, ' ') // Normalizar espacios
+        .trim();
+
+      this.productForm.get('model')?.setValue(cleanModel);
+    }
+  }
+
 
   resetImages(): void {
     this.mainImageUrl = undefined;
@@ -1071,6 +1110,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       // Crear objeto de producto
       const productData: Omit<Product, 'id'> = {
         name: formData.name,
+        model: formData.model || formData.name,
         price: formData.price,
         categories: formData.categories || [],
         category:

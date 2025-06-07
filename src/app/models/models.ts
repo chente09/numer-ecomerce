@@ -70,6 +70,7 @@ export interface AdditionalImageItem {
 export interface Product {
     id: string;
     name: string;
+    model: string;
     price: number;
     gender?: 'man' | 'woman' | 'boy' | 'girl' | 'unisex';
     originalPrice?: number;
@@ -108,6 +109,7 @@ export interface Product {
 
 export interface ProductCreate {
     name: string;
+    model: string;
     price: number;
     category: string;
     description?: string;

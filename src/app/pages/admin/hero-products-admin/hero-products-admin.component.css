@@ -1,0 +1,852 @@
+/* Información del hero item */
+.hero-info {/* Contenedor principal */
+.hero-products-container {
+    width: 100%;
+    padding: 0 0 24px;
+}
+
+/* Card de encabezado */
+.header-card {
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.card-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Grid de estadísticas */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.config-status {
+    padding: 16px 0;
+}
+
+.config-status h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Tabla responsive */
+.table-responsive {
+    overflow-x: auto;
+    margin-bottom: 16px;
+}
+
+/* Highlight para filas seleccionadas */
+.highlight-row {
+    background-color: #f0f7ff !important;
+}
+
+/* Avatar de imágenes con manejo de fallback */
+:host ::ng-deep .ant-avatar {
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+:host ::ng-deep .ant-avatar>img {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+}
+
+:host ::ng-deep .error-image {
+    opacity: 0.6;
+}
+
+/* Información del hero item */
+.hero-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hero-meta small {
+    color: #666;
+    font-size: 12px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Información del producto en la tabla */
+.product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.product-price {
+    font-size: 12px;
+    color: #52c41a;
+    font-weight: 500;
+}
+
+/* Switch con label */
+.switch-label {
+    margin-left: 8px;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Upload de imagen mejorado */
+.upload-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+:host ::ng-deep .ant-upload-select-picture-card {
+    width: 120px;
+    height: 80px;
+    border-radius: 6px;
+}
+
+:host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item {
+    width: 120px;
+    height: 80px;
+    border-radius: 6px;
+}
+
+:host ::ng-deep .ant-upload-select-picture-card i {
+    font-size: 24px;
+    color: #999;
+}
+
+:host ::ng-deep .ant-upload-select-picture-card .ant-upload-text {
+    margin-top: 6px;
+    color: #666;
+    font-size: 12px;
+}
+
+/* Select de productos mejorado */
+:host ::ng-deep .ant-select {
+    width: 100%;
+}
+
+:host ::ng-deep .ant-select-selection-item {
+    display: flex;
+    align-items: center;
+}
+
+/* Formulario mejorado */
+.form-row {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+}
+
+.form-item-half {
+    flex: 1;
+}
+
+/* Input number en formulario */
+:host ::ng-deep .ant-input-number {
+    width: 100%;
+}
+
+/* Detalles del hero mejorados */
+.hero-details {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-image {
+    text-align: center;
+    background: #f5f5f5;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.detail-image img {
+    max-width: 100%;
+    max-height: 120px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.detail-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    color: #262626;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row strong {
+    font-weight: 500;
+    color: #595959;
+    font-size: 13px;
+    min-width: 80px;
+}
+
+.detail-row span, .detail-row small {
+    flex: 1;
+    text-align: right;
+    font-size: 13px;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-top: 16px;
+}
+
+/* Estadísticas personalizadas */
+.config-status {
+    padding: 16px 0;
+    text-align: center;
+}
+
+.config-status h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Tags mejorados */
+:host ::ng-deep .ant-tag {
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* Avatares con badges */
+:host ::ng-deep .ant-badge {
+    display: inline-block;
+}
+
+:host ::ng-deep .ant-badge-dot {
+    box-shadow: 0 0 0 1px #fff;
+}
+
+/* Loading states mejorados */
+:host ::ng-deep .ant-btn-loading {
+    pointer-events: none;
+}
+
+/* Popconfirm personalizado */
+:host ::ng-deep .ant-popover-placement-bottom .ant-popover-arrow {
+    border-bottom-color: #fff;
+}
+
+/* Error message */
+.error-message {
+    color: #ff4d4f;
+    margin-top: 8px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.error-message::before {
+    content: "⚠️";
+    font-size: 14px;
+}
+
+/* Form help text mejorado */
+.form-help-text {
+    color: #8c8c8c;
+    font-size: 12px;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+/* Required mark */
+.required-mark {
+    color: #ff4d4f;
+    margin-left: 4px;
+}
+
+/* Responsive improvements */
+@media (max-width: 1200px) {
+    .hide-lg {
+        display: none;
+    }
+}
+
+@media (max-width: 991px) {
+    .hide-md {
+        display: none;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+    
+    /* Ajustar tabla en tablet */
+    .hero-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 767px) {
+    .hide-sm {
+        display: none;
+    }
+
+    :host ::ng-deep .ant-table {
+        font-size: 13px;
+    }
+
+    :host ::ng-deep .ant-table th {
+        white-space: nowrap;
+        padding: 8px 6px;
+    }
+
+    :host ::ng-deep .ant-table td {
+        padding: 8px 6px;
+    }
+    
+    /* Botones más compactos en móvil */
+    .action-buttons {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 4px;
+        min-width: 100px;
+    }
+    
+    :host ::ng-deep .action-buttons .ant-btn {
+        padding: 0 6px;
+        height: 28px;
+        font-size: 12px;
+    }
+    
+    /* Grid de estadísticas en móvil */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    /* Formulario responsivo */
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    /* Upload más pequeño en móvil */
+    :host ::ng-deep .ant-upload-select-picture-card,
+    :host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item {
+        width: 100px;
+        height: 70px;
+    }
+    
+    /* Hero info más compacto */
+    .hero-info {
+        gap: 2px;
+    }
+    
+    .hero-meta small {
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 575px) {
+    .button-text {
+        display: none;
+    }
+
+    :host ::ng-deep .ant-card-head-title {
+        font-size: 16px;
+    }
+
+    :host ::ng-deep .ant-pagination {
+        font-size: 12px;
+    }
+    
+    /* Estadísticas en columna única */
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Acciones del header más compactas */
+    .card-actions {
+        gap: 4px;
+    }
+    
+    .card-actions button {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    
+    /* Modal más compacto */
+    :host ::ng-deep .ant-modal-body {
+        padding: 16px 12px;
+    }
+    
+    /* Detalles más compactos */
+    .detail-row {
+        padding: 4px 0;
+        font-size: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .detail-row strong {
+        min-width: auto;
+    }
+    
+    .detail-row span,
+    .detail-row small {
+        text-align: left;
+        width: 100%;
+    }
+    
+    .detail-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .detail-actions button {
+        width: 100%;
+    }
+    
+    /* Upload en modal más pequeño */
+    :host ::ng-deep .ant-upload-select-picture-card,
+    :host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item {
+        width: 80px;
+        height: 60px;
+    }
+}
+
+/* Estados de hover mejorados */
+.stat-card {
+    cursor: default;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Tabla con hover mejorado */
+:host ::ng-deep .ant-table-tbody > tr:hover > td {
+    background: #fafafa;
+}
+
+:host ::ng-deep .ant-table-thead > tr > th {
+    background: #fafafa;
+    font-weight: 500;
+    color: #262626;
+}
+
+/* Switch mejorado */
+:host ::ng-deep .ant-switch-checked {
+    background-color: #52c41a;
+}
+
+/* Select con búsqueda mejorado */
+:host ::ng-deep .ant-select-selector {
+    border-radius: 6px;
+}
+
+:host ::ng-deep .ant-select-selection-search-input {
+    height: auto !important;
+}
+
+/* Animaciones suaves */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Empty state mejorado */
+:host ::ng-deep .ant-empty {
+    margin: 32px 0;
+}
+
+:host ::ng-deep .ant-empty-footer {
+    margin-top: 16px;
+}
+
+/* Tooltips */
+:host ::ng-deep .ant-tooltip {
+    font-size: 12px;
+}
+
+/* Botones de acción */
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    min-width: 120px;
+}
+
+/* Estilos del formulario de configuración */
+.form-row {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+}
+
+.form-item-half {
+    flex: 1;
+}
+
+/* Estilos para ayuda de texto en formularios */
+.form-help-text {
+    color: #8c8c8c;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Centrar contenido en ciertas columnas */
+.text-center {
+    text-align: center;
+}
+
+/* Modal de detalles para móvil */
+.hero-details {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-image {
+    text-align: center;
+}
+
+.detail-image img {
+    max-width: 100%;
+    max-height: 150px;
+    object-fit: contain;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+}
+
+.detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.detail-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    color: #262626;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row strong {
+    font-weight: 500;
+    color: #595959;
+    font-size: 13px;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-top: 16px;
+}
+
+/* Estilos para badges y estados */
+:host ::ng-deep .ant-badge {
+    display: inline-block;
+}
+
+:host ::ng-deep .ant-badge-dot {
+    box-shadow: 0 0 0 1px #fff;
+}
+
+/* Mejoras en los dividers del modal */
+:host ::ng-deep .ant-divider-horizontal.ant-divider-with-text-left {
+    margin: 16px 0 12px 0;
+}
+
+:host ::ng-deep .ant-divider-inner-text {
+    font-weight: 500;
+    color: #262626;
+}
+
+/* Input numbers en el modal */
+:host ::ng-deep .ant-input-number {
+    width: 100%;
+}
+
+/* Switches */
+:host ::ng-deep .ant-switch {
+    margin: 0;
+}
+
+/* Media queries para responsividad */
+@media (max-width: 1200px) {
+    .hide-lg {
+        display: none;
+    }
+}
+
+@media (max-width: 991px) {
+    .hide-md {
+        display: none;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+}
+
+@media (max-width: 767px) {
+    .hide-sm {
+        display: none;
+    }
+
+    :host ::ng-deep .ant-table {
+        font-size: 13px;
+    }
+
+    :host ::ng-deep .ant-table th {
+        white-space: nowrap;
+        padding: 8px 6px;
+    }
+
+    :host ::ng-deep .ant-table td {
+        padding: 8px 6px;
+    }
+    
+    /* Mejorar la disposición de los botones en dispositivos móviles */
+    .action-buttons {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 4px;
+        min-width: 100px;
+    }
+    
+    /* Hacer los botones más pequeños en móvil */
+    :host ::ng-deep .action-buttons .ant-btn {
+        padding: 0 6px;
+        height: 28px;
+        font-size: 12px;
+    }
+    
+    /* Ajustar grid de estadísticas en móvil */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    /* Ajustar formulario en móvil */
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+
+@media (max-width: 575px) {
+    .button-text {
+        display: none;
+    }
+
+    :host ::ng-deep .ant-card-head-title {
+        font-size: 16px;
+    }
+
+    :host ::ng-deep .ant-pagination {
+        font-size: 12px;
+    }
+    
+    /* Estadísticas en columna única para pantallas muy pequeñas */
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Ajustar acciones del card header */
+    .card-actions {
+        gap: 4px;
+    }
+    
+    .card-actions button {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    
+    /* Añadir espacio en el elemento modal en móvil */
+    :host ::ng-deep .ant-modal-body {
+        padding: 16px 12px;
+    }
+    
+    /* Hacer más compactos los detalles en móvil */
+    .detail-row {
+        padding: 6px 0;
+        font-size: 12px;
+    }
+    
+    .detail-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .detail-actions button {
+        width: 100%;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Mejora en los mensajes de nz-empty */
+:host ::ng-deep .ant-empty {
+    margin: 32px 0;
+}
+
+:host ::ng-deep .ant-empty-footer {
+    margin-top: 16px;
+}
+
+/* Hover effects para las tarjetas de estadísticas */
+.stat-card {
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mejoras en los tags */
+:host ::ng-deep .ant-tag {
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+/* Loading states */
+:host ::ng-deep .ant-btn-loading {
+    pointer-events: none;
+}
+
+/* Mejoras en la tabla */
+:host ::ng-deep .ant-table-tbody > tr:hover > td {
+    background: #fafafa;
+}
+
+:host ::ng-deep .ant-table-thead > tr > th {
+    background: #fafafa;
+    font-weight: 500;
+    color: #262626;
+}
+
+/* Switch personalizado */
+:host ::ng-deep .ant-switch-checked {
+    background-color: #52c41a;
+}
+
+/* Progress bars si los necesitas */
+:host ::ng-deep .ant-progress-line {
+    font-size: 12px;
+}
+
+/* Badges mejorados */
+:host ::ng-deep .ant-badge-status-dot {
+    width: 8px;
+    height: 8px;
+}
+
+/* Tooltips */
+:host ::ng-deep .ant-tooltip {
+    font-size: 12px;
+}
+
+/* Dividers en el modal */
+:host ::ng-deep .ant-divider {
+    margin: 16px 0 12px 0;
+}
+
+/* Input groups si los usas */
+:host ::ng-deep .ant-input-group-addon {
+    background: #fafafa;
+    border-color: #d9d9d9;
+    border-radius: 4px;
+    font-size: 12px;
+}
+}

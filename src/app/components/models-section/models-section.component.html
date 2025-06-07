@@ -1,0 +1,94 @@
+<!-- src/app/components/models-section/models-section.component.html -->
+<div class="models-section">
+    <div class="section-container">
+        <!-- Header de la sección -->
+        <div class="section-header">
+            <h2 class="section-title">{{ sectionTitle }}</h2>
+            <p class="section-subtitle" *ngIf="sectionSubtitle">{{ sectionSubtitle }}</p>
+        </div>
+
+        <!-- Estados de carga y error -->
+        <div *ngIf="loading" class="loading-container">
+            <div class="loading-scroll">
+                <div *ngFor="let i of [1,2,3,4,5]" class="loading-card">
+                    <nz-skeleton [nzActive]="true" [nzAvatar]="{ size: 'large', shape: 'square' }"
+                        [nzParagraph]="{ rows: 2 }"></nz-skeleton>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="error && !loading" class="error-container">
+            <nz-empty nzNotFoundImage="https://gw.alipayobjects.com/zos/antfincdn/ZHrcdLPrvN/empty.svg"
+                [nzNotFoundContent]="errorTemplate">
+                <ng-template #errorTemplate>
+                    <span>{{ error }}</span>
+                </ng-template>
+                <ng-template #footer>
+                    <button nz-button nzType="primary" (click)="refreshModels()">
+                        <span nz-icon nzType="reload"></span>
+                        Reintentar
+                    </button>
+                </ng-template>
+            </nz-empty>
+        </div>
+
+        <!-- Scroll horizontal de modelos -->
+        <div *ngIf="!loading && !error && models.length > 0" class="models-scroll-wrapper">
+            <!-- Botones de navegación -->
+            <button class="scroll-btn scroll-left" 
+                    (click)="scrollModels('left')" 
+                    [class.visible]="canScrollLeftState"
+                    [attr.aria-label]="'Scroll hacia la izquierda'">
+                <span nz-icon nzType="left"></span>
+            </button>
+            
+            <button class="scroll-btn scroll-right" 
+                    (click)="scrollModels('right')" 
+                    [class.visible]="canScrollRightState"
+                    [attr.aria-label]="'Scroll hacia la derecha'">
+                <span nz-icon nzType="right"></span>
+            </button>
+
+            <!-- Container con scroll -->
+            <div class="models-scroll-container">
+                <div *ngFor="let model of models; trackBy: trackByModelId" 
+                     class="model-card"
+                     (click)="navigateToModel(model)">
+                    
+                    <!-- Imagen del modelo -->
+                    <div class="model-image-container">
+                        <img [src]="getDisplayImageUrl(model)" 
+                             [alt]="model.name" 
+                             class="model-image" 
+                             loading="lazy" />
+                    </div>
+                    
+                    <!-- Información del modelo -->
+                    <div class="model-info">
+                        <h3 class="model-name">{{ model.model || model.name }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado vacío -->
+        <div *ngIf="!loading && !error && models.length === 0" class="empty-state">
+            <nz-empty nzNotFoundImage="simple" nzNotFoundContent="No hay modelos disponibles en este momento">
+                <ng-template #footer>
+                    <button nz-button nzType="primary" (click)="navigateToShop()">
+                        <span nz-icon nzType="shopping"></span>
+                        Explorar Productos
+                    </button>
+                </ng-template>
+            </nz-empty>
+        </div>
+
+        <!-- Footer de la sección -->
+        <div *ngIf="!loading && models.length > 0" class="section-footer">
+            <button class="view-all-btn" (click)="navigateToShop()">
+                Ver Todos los Productos
+                <span nz-icon nzType="arrow-right"></span>
+            </button>
+        </div>
+    </div>
+</div>

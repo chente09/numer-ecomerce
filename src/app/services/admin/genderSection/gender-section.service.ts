@@ -75,14 +75,14 @@ const GENDER_MOBILE_CONFIG: ImageConfig = {
 export class GenderSectionService {
   private itemsCollectionName = 'genderSectionItems';
   private configCollectionName = 'genderSectionConfig';
-  
+
   // 🚀 STREAMS REACTIVOS CON CACHE
   private itemsCache$ = new BehaviorSubject<GenderSectionItem[]>([]);
   private configCache$ = new BehaviorSubject<GenderSectionConfig | null>(null);
   private loadingSubject$ = new BehaviorSubject<boolean>(false);
   private errorSubject$ = new BehaviorSubject<string | null>(null);
   private isInitialized = false;
-  
+
   // 📦 ELEMENTOS POR DEFECTO
   private readonly DEFAULT_ITEMS: GenderSectionItem[] = [
     {
@@ -130,7 +130,7 @@ export class GenderSectionService {
   // 🔥 INICIALIZACIÓN ÚNICA Y OPTIMIZADA
   private async initializeOnce(): Promise<void> {
     if (this.isInitialized) return;
-    
+
     this.isInitialized = true;
     this.loadingSubject$.next(true);
 
@@ -163,7 +163,7 @@ export class GenderSectionService {
         await this.loadDefaultItems();
         this.itemsCache$.next(this.DEFAULT_ITEMS);
       } else {
-        const items = snapshot.docs.map(doc => 
+        const items = snapshot.docs.map(doc =>
           this.convertFirestoreData(doc.data(), doc.id)
         );
         this.itemsCache$.next(items);
@@ -199,9 +199,9 @@ export class GenderSectionService {
     const itemsRef = collection(this.firestore, this.itemsCollectionName);
     const itemsQuery = query(itemsRef, orderBy('order', 'asc'));
 
-    onSnapshot(itemsQuery, 
+    onSnapshot(itemsQuery,
       (snapshot) => {
-        const items = snapshot.docs.map(doc => 
+        const items = snapshot.docs.map(doc =>
           this.convertFirestoreData(doc.data(), doc.id)
         );
         this.itemsCache$.next(items);
@@ -296,7 +296,7 @@ export class GenderSectionService {
       // Guardar en Firestore (sin esperar para UI responsiva)
       const docRef = doc(collection(this.firestore, this.itemsCollectionName), itemId);
       await setDoc(docRef, newItem);
-      
+
       console.log('✅ Item creado:', itemId);
       return itemId;
 
@@ -322,21 +322,42 @@ export class GenderSectionService {
       this.loadingSubject$.next(true);
       this.errorSubject$.next(null);
 
+      // 🔍 OBTENER ITEM ACTUAL PARA LIMPIAR IMÁGENES ANTERIORES
+      const currentItems = this.itemsCache$.value;
+      const currentItem = currentItems.find(item => item.id === id);
+
+      if (!currentItem) {
+        throw new Error(`Item con ID ${id} no encontrado`);
+      }
+
       const updateData: Partial<GenderSectionItem> = {
         ...itemData,
         updatedAt: new Date()
       };
 
+      // 🗑️ URLs DE IMÁGENES ANTERIORES PARA ELIMINAR
+      const imagesToDelete: string[] = [];
+
       // Subir nuevas imágenes en paralelo si existen
       const uploadPromises: Promise<string | undefined>[] = [];
 
       if (desktopImage) {
+        // 🗑️ Marcar imagen anterior para eliminación
+        if (currentItem.imageUrl && this.isFirebaseStorageUrl(currentItem.imageUrl)) {
+          imagesToDelete.push(currentItem.imageUrl);
+        }
+
         uploadPromises.push(this.uploadImageOptimized(desktopImage, 'desktop', id));
       } else {
         uploadPromises.push(Promise.resolve(undefined));
       }
 
       if (mobileImage) {
+        // 🗑️ Marcar imagen móvil anterior para eliminación
+        if (currentItem.mobileImageUrl && this.isFirebaseStorageUrl(currentItem.mobileImageUrl)) {
+          imagesToDelete.push(currentItem.mobileImageUrl);
+        }
+
         uploadPromises.push(this.uploadImageOptimized(mobileImage, 'mobile', id));
       } else {
         uploadPromises.push(Promise.resolve(undefined));
@@ -348,8 +369,7 @@ export class GenderSectionService {
       if (newMobileUrl) updateData.mobileImageUrl = newMobileUrl;
 
       // Actualización optimista
-      const currentItems = this.itemsCache$.value;
-      const updatedItems = currentItems.map(item => 
+      const updatedItems = currentItems.map(item =>
         item.id === id ? { ...item, ...updateData } : item
       );
       this.itemsCache$.next(updatedItems);
@@ -357,6 +377,13 @@ export class GenderSectionService {
       // Actualizar en Firestore
       const docRef = doc(this.firestore, this.itemsCollectionName, id);
       await updateDoc(docRef, updateData);
+
+      // 🗑️ ELIMINAR IMÁGENES ANTERIORES EN BACKGROUND (no bloquear UI)
+      if (imagesToDelete.length > 0) {
+        this.deleteImagesFromStorage(imagesToDelete).catch(error =>
+          console.warn('⚠️ Error eliminando imágenes anteriores:', error)
+        );
+      }
 
       console.log('✅ Item actualizado:', id);
 
@@ -370,6 +397,45 @@ export class GenderSectionService {
       this.loadingSubject$.next(false);
     }
   }
+
+  // 🆕 NUEVO: Verifica si una URL es de Firebase Storage
+  private isFirebaseStorageUrl(url: string): boolean {
+    return url.includes('firebasestorage.googleapis.com') ||
+      url.includes('firebase') ||
+      url.includes('appspot.com');
+  }
+
+  // 🆕 NUEVO: Extrae el path de Firebase Storage desde la URL
+  private extractFirebaseStoragePath(url: string): string | null {
+    try {
+      if (!url) return null;
+
+      // Patrón para URLs de Firebase Storage
+      if (url.includes('firebasestorage.googleapis.com')) {
+        const urlObj = new URL(url);
+        const pathMatch = urlObj.pathname.match(/\/o\/(.+?)(\?|$)/);
+
+        if (pathMatch && pathMatch[1]) {
+          return decodeURIComponent(pathMatch[1]);
+        }
+      }
+
+      // Patrón alternativo para URLs de storage
+      if (url.includes('/v0/b/') && url.includes('/o/')) {
+        const match = url.match(/\/o\/([^?]+)/);
+        if (match && match[1]) {
+          return decodeURIComponent(match[1]);
+        }
+      }
+
+      return null;
+
+    } catch (error) {
+      console.error('❌ Error extrayendo path de URL:', error);
+      return null;
+    }
+  }
+
 
   // 🗑️ ELIMINAR ITEM OPTIMIZADO
   async deleteItem(id: string): Promise<void> {
@@ -389,11 +455,11 @@ export class GenderSectionService {
 
       // Eliminar imágenes en background (no bloquear UI)
       if (itemToDelete) {
-        this.deleteItemImages(itemToDelete).catch(error => 
+        this.deleteItemImages(itemToDelete).catch(error =>
           console.warn('⚠️ Error eliminando imágenes:', error)
         );
       }
-      
+
       console.log('✅ Item eliminado:', id);
 
     } catch (error: any) {
@@ -443,27 +509,27 @@ export class GenderSectionService {
   async updateItemsOrder(orderedIds: string[]): Promise<void> {
     try {
       this.loadingSubject$.next(true);
-      
+
       // Actualización optimista inmediata
       const currentItems = this.itemsCache$.value;
       const reorderedItems = orderedIds.map((id, index) => {
         const item = currentItems.find(item => item.id === id);
         return item ? { ...item, order: index + 1 } : null;
       }).filter(Boolean) as GenderSectionItem[];
-      
+
       this.itemsCache$.next(reorderedItems);
 
       // Actualizar en Firestore en background
       const batch = writeBatch(this.firestore);
-      
+
       orderedIds.forEach((id, index) => {
         const docRef = doc(this.firestore, this.itemsCollectionName, id);
-        batch.update(docRef, { 
+        batch.update(docRef, {
           order: index + 1,
           updatedAt: new Date()
         });
       });
-      
+
       await batch.commit();
       console.log('✅ Orden actualizado');
 
@@ -482,21 +548,21 @@ export class GenderSectionService {
   private async uploadImageOptimized(file: File, type: 'desktop' | 'mobile', itemId: string): Promise<string> {
     try {
       const config = type === 'desktop' ? GENDER_DESKTOP_CONFIG : GENDER_MOBILE_CONFIG;
-      
+
       // Optimización más agresiva para velocidad
       const optimizedFile = await this.optimizeImageFast(file, config);
-      
+
       const fileName = `gender-sections/${itemId}/${type}-${Date.now()}.${config.format}`;
       const storageRef = ref(this.storage, fileName);
-      
+
       // Upload con metadata optimizada
       const snapshot = await uploadBytes(storageRef, optimizedFile, {
         cacheControl: 'public,max-age=31536000', // Cache 1 año
         contentType: `image/${config.format}`
       });
-      
+
       const downloadURL = await getDownloadURL(snapshot.ref);
-      
+
       console.log(`✅ Imagen ${type} subida (${(optimizedFile.size / 1024).toFixed(1)}KB):`, downloadURL);
       return downloadURL;
 
@@ -508,60 +574,82 @@ export class GenderSectionService {
 
   // 🚀 OPTIMIZACIÓN DE IMAGEN MÁS RÁPIDA
   private async optimizeImageFast(file: File, config: ImageConfig): Promise<File> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d', { alpha: false })!; // Sin alpha para mejor compresión
+      const ctx = canvas.getContext('2d', { alpha: false });
       const img = new Image();
+      let objectUrl: string | null = null;
 
-      img.onload = () => {
-        const { width, height } = this.calculateDimensionsOptimized(
-          img.width, 
-          img.height, 
-          config.maxWidth, 
-          config.maxHeight
-        );
-
-        canvas.width = width;
-        canvas.height = height;
-
-        // Optimizaciones de rendering
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        
-        // Fondo blanco para JPEGs sin alpha
-        if (config.format === 'jpeg') {
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, width, height);
+      // ✅ Cleanup function
+      const cleanup = () => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
         }
-
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const optimizedFile = new File([blob], file.name, {
-                type: `image/${config.format}`,
-                lastModified: Date.now()
-              });
-              resolve(optimizedFile);
-            } else {
-              resolve(file);
-            }
-          },
-          `image/${config.format}`,
-          config.quality
-        );
       };
 
-      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          const { width, height } = this.calculateDimensionsOptimized(
+            img.width, img.height, config.maxWidth, config.maxHeight
+          );
+
+          canvas.width = width;
+          canvas.height = height;
+
+          if (!ctx) {
+            cleanup();
+            reject(new Error('No se pudo obtener contexto del canvas'));
+            return;
+          }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+
+          if (config.format === 'jpeg') {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              cleanup();
+              if (blob) {
+                const optimizedFile = new File([blob], file.name, {
+                  type: `image/${config.format}`,
+                  lastModified: Date.now()
+                });
+                resolve(optimizedFile);
+              } else {
+                reject(new Error('Error al generar blob optimizado'));
+              }
+            },
+            `image/${config.format}`,
+            config.quality
+          );
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      };
+
+      img.onerror = () => {
+        cleanup();
+        reject(new Error('Error al cargar imagen para optimización'));
+      };
+
+      // ✅ Crear URL y asignar
+      objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
     });
   }
 
   // 📐 CÁLCULO DE DIMENSIONES OPTIMIZADO
   private calculateDimensionsOptimized(
-    originalWidth: number, 
-    originalHeight: number, 
-    maxWidth: number, 
+    originalWidth: number,
+    originalHeight: number,
+    maxWidth: number,
     maxHeight: number
   ): { width: number; height: number } {
     // Si la imagen ya es pequeña, no redimensionar
@@ -584,13 +672,13 @@ export class GenderSectionService {
 
   private convertFirestoreData(data: any, id: string): any {
     const result = { ...data, id };
-    
+
     Object.keys(result).forEach(key => {
       if (result[key]?.toDate) {
         result[key] = result[key].toDate();
       }
     });
-    
+
     return result;
   }
 
@@ -599,40 +687,82 @@ export class GenderSectionService {
     this.configCache$.next(this.DEFAULT_CONFIG);
   }
 
+  // 🔧 CORREGIDO: deleteItemImages mejorado
   private async deleteItemImages(item: GenderSectionItem): Promise<void> {
-    const deletePromises: Promise<void>[] = [];
+    const urlsToDelete: string[] = [];
 
-    if (item.imageUrl?.includes('firebase')) {
-      deletePromises.push(this.deleteImageFromUrl(item.imageUrl));
+    // Recopilar URLs de Firebase Storage solamente
+    if (item.imageUrl && this.isFirebaseStorageUrl(item.imageUrl)) {
+      urlsToDelete.push(item.imageUrl);
     }
 
-    if (item.mobileImageUrl?.includes('firebase')) {
-      deletePromises.push(this.deleteImageFromUrl(item.mobileImageUrl));
+    if (item.mobileImageUrl && this.isFirebaseStorageUrl(item.mobileImageUrl)) {
+      urlsToDelete.push(item.mobileImageUrl);
     }
 
-    await Promise.allSettled(deletePromises);
+    if (urlsToDelete.length > 0) {
+      await this.deleteImagesFromStorage(urlsToDelete);
+    } else {
+      console.log(`ℹ️ No hay imágenes de Firebase para eliminar en item: ${item.title}`);
+    }
   }
 
   private async deleteImageFromUrl(url: string): Promise<void> {
     try {
-      const imageRef = ref(this.storage, url);
+      if (!url || !this.isFirebaseStorageUrl(url)) {
+        console.log(`ℹ️ Saltando eliminación de URL externa: ${url}`);
+        return;
+      }
+
+      const path = this.extractFirebaseStoragePath(url);
+      if (!path) {
+        console.warn(`⚠️ No se pudo extraer path de: ${url}`);
+        return;
+      }
+
+      const imageRef = ref(this.storage, path);
       await deleteObject(imageRef);
-    } catch (error) {
-      console.warn('⚠️ Error eliminando imagen:', error);
+      console.log(`✅ Imagen eliminada: ${path}`);
+
+    } catch (error: any) {
+      // No es crítico si la imagen no existe
+      if (error?.code === 'storage/object-not-found') {
+        console.log(`ℹ️ Imagen ya no existe: ${url}`);
+      } else {
+        console.warn('⚠️ Error eliminando imagen:', error);
+      }
     }
+  }
+
+  // 🆕 NUEVO: Elimina múltiples imágenes de manera eficiente
+  private async deleteImagesFromStorage(urls: string[]): Promise<void> {
+    if (!urls || urls.length === 0) return;
+
+    console.log(`🗑️ Eliminando ${urls.length} imágenes del storage...`);
+
+    const deletePromises = urls.map(url => this.deleteImageFromUrl(url));
+    const results = await Promise.allSettled(deletePromises);
+
+    // Contar resultados
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+
+    console.log(`✅ Eliminación completada: ${successful} exitosas, ${failed} fallidas`);
   }
 
   private async loadDefaultItems(): Promise<void> {
     try {
       const batch = writeBatch(this.firestore);
-      
+
       this.DEFAULT_ITEMS.forEach((item) => {
-        const docRef = doc(collection(this.firestore, this.itemsCollectionName));
-        batch.set(docRef, { ...item, id: docRef.id });
+        // ✅ USAR EL ID FIJO DEL ITEM POR DEFECTO
+        const docRef = doc(this.firestore, this.itemsCollectionName, item.id);
+        const { id, ...itemData } = item; // Remover el ID del objeto
+        batch.set(docRef, itemData);
       });
-      
+
       await batch.commit();
-      console.log('✅ Items por defecto cargados');
+      console.log('✅ Items por defecto cargados con IDs correctos');
     } catch (error) {
       console.error('❌ Error cargando items por defecto:', error);
     }

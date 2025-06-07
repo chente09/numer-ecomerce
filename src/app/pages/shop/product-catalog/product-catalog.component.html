@@ -151,6 +151,7 @@
                 <!-- Badges -->
                     <div class="badges-container">
                         <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
+                        <span *ngIf="product.isBestSeller" class="new-badge">BESTSELLER</span>
                         <span *ngIf="hasDiscount(product)" class="discount-badge">
                             -{{ product.discountPercentage }}%
                         </span>
@@ -203,7 +204,7 @@
                 <div class="product-info">
                     <!-- Product Name -->
                     <h3 class="product-name" (click)="viewProductDetails(product.id)" [title]="product.name">
-                        {{ product.name }}
+                        {{ product.model }}
                     </h3>
 
                     <!-- Variant Info -->

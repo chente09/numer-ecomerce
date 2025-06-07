@@ -1,4 +1,3 @@
-
 <div class="product-form-container">
     <form [formGroup]="productForm" (ngSubmit)="submitForm()" nz-form nzLayout="vertical">
         <nz-tabset nzType="card">
@@ -11,6 +10,18 @@
                             <nz-form-label nzRequired>Nombre del Producto</nz-form-label>
                             <nz-form-control nzErrorTip="Por favor ingrese el nombre del producto">
                                 <input nz-input formControlName="name" placeholder="Ej. Camisa Verde">
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Modelo -->
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Modelo</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingrese el nombre del modelo">
+                                <input nz-input formControlName="model" placeholder="Ej. AGUACERO, SENDERO, EXTRALÍGERO"
+                                    (blur)="generateModelFromName()" />
+                                <div class="form-help-text">
+                                    Nombre del modelo del producto (se usa para agrupar variantes)
+                                </div>
                             </nz-form-control>
                         </nz-form-item>
 
@@ -113,7 +124,7 @@
                                     <div class="feature-input">
                                         <input nz-input [(ngModel)]="newFeature" [ngModelOptions]="{standalone: true}"
                                             placeholder="Ej. Con capucha, Impermeable, Manga larga">
-                                        <div class="add-feature-button"  (click)="addFeature()">
+                                        <div class="add-feature-button" (click)="addFeature()">
                                             <span nz-icon nzType="plus"></span>
                                         </div>
                                     </div>

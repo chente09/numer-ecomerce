@@ -11,6 +11,7 @@ import { NewsletterComponent } from "../../components/newsletter/newsletter.comp
 import { InstagramComponent } from "../../components/instagram/instagram.component";
 import { IconosLargeSectionComponent } from "../../components/iconos-large-section/iconos-large-section.component";
 import { PromocionesSectionComponent } from "../../components/promociones-section/promociones-section.component";
+import { ModelsSectionComponent } from "../../components/models-section/models-section.component";
 
 
 
@@ -30,6 +31,7 @@ import { PromocionesSectionComponent } from "../../components/promociones-sectio
     NewsletterComponent,
     InstagramComponent,
     IconosLargeSectionComponent,
+    ModelsSectionComponent
 ],
   standalone: true,
   templateUrl: './welcome.component.html',

@@ -1,0 +1,318 @@
+<div class="hero-products-container">
+    <!-- 🎯 HEADER SIMPLIFICADO -->
+    <nz-card nzTitle="Administrar Hero Items" class="mb-4 header-card">
+        <div class="card-actions">
+            <button nz-button nzType="primary" (click)="openCreateModal()">
+                <span nz-icon nzType="plus"></span>
+                Nuevo Hero
+            </button>
+            <button nz-button (click)="updateOrder()" [disabled]="heroItems.length === 0">
+                <span nz-icon nzType="sort-ascending"></span>
+                Actualizar Orden
+            </button>
+            <button nz-button (click)="refreshData()" [nzLoading]="isInitialLoading">
+                <span nz-icon nzType="reload"></span>
+                Refrescar
+            </button>
+        </div>
+    </nz-card>
+
+    <!-- 🎯 ESTADÍSTICAS -->
+    <div class="stats-grid">
+        <nz-card class="stat-card">
+            <nz-statistic nzTitle="Total Hero Items" [nzValue]="getStats().total" nzPrefix="📸">
+            </nz-statistic>
+        </nz-card>
+
+        <nz-card class="stat-card">
+            <nz-statistic nzTitle="Activos" [nzValue]="getStats().active" nzPrefix="✅">
+            </nz-statistic>
+        </nz-card>
+
+        <nz-card class="stat-card">
+            <nz-statistic nzTitle="Inactivos" [nzValue]="getStats().inactive" nzPrefix="❌">
+            </nz-statistic>
+        </nz-card>
+
+        <nz-card class="stat-card">
+            <div class="config-status">
+                <h4>Productos Disponibles</h4>
+                <nz-tag nzColor="blue">{{ availableProducts.length }}</nz-tag>
+            </div>
+        </nz-card>
+    </div>
+
+    <!-- 🎯 LOADING INICIAL -->
+    <div *ngIf="isInitialLoading" class="loading-container">
+        <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 8 }"></nz-skeleton>
+    </div>
+
+    <!-- 🎯 EMPTY STATE -->
+    <nz-empty *ngIf="!isInitialLoading && heroItems.length === 0" nzNotFoundContent="No hay hero items disponibles"
+        [nzNotFoundFooter]="emptyButton">
+    </nz-empty>
+
+    <ng-template #emptyButton>
+        <button nz-button nzType="primary" (click)="openCreateModal()">
+            Crear primer hero item
+        </button>
+    </ng-template>
+
+    <!-- 🎯 TABLA OPTIMIZADA -->
+    <div class="table-responsive" *ngIf="!isInitialLoading && heroItems.length > 0">
+        <nz-table #heroTable [nzData]="heroItems" [nzBordered]="true" [nzShowPagination]="true" [nzPageSize]="10">
+
+            <thead>
+                <tr>
+                    <th nzWidth="80px">Imagen</th>
+                    <th>Hero Item</th>
+                    <th nzWidth="150px" class="hide-sm">Producto</th>
+                    <th nzWidth="80px" class="hide-md">Orden</th>
+                    <th nzWidth="100px" class="hide-sm">Estado</th>
+                    <th nzWidth="140px" class="hide-md">Última Act.</th>
+                    <th nzWidth="140px">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr *ngFor="let hero of heroTable.data">
+                    <td>
+                        <nz-badge [nzDot]="hero.isActive" nzStatus="success">
+                            <nz-avatar [nzSrc]="hero.customImageUrl" nzShape="square" nzSize="large"
+                                [nzAlt]="hero.title" (error)="handleImageError($event)">
+                            </nz-avatar>
+                        </nz-badge>
+                    </td>
+
+                    <td>
+                        <div class="hero-info">
+                            <strong>{{ hero.title }}</strong>
+                            <div class="hero-meta">
+                                <small *ngIf="hero.subtitle">{{ hero.subtitle }}</small>
+                                <nz-tag nzSize="small" nzColor="blue">{{ hero.ctaText }}</nz-tag>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td class="hide-sm">
+                        <div class="product-info">
+                            <strong>{{ getProductName(hero.productId) }}</strong>
+                            <div class="product-price">
+                                ${{ getProductPrice(hero.productId) | number:'1.2-2' }}
+                            </div>
+                        </div>
+                    </td>
+
+                    <td class="hide-md text-center">
+                        <nz-tag nzColor="blue">{{ hero.order }}</nz-tag>
+                    </td>
+
+                    <td class="hide-sm text-center">
+                        <nz-switch [ngModel]="hero.isActive" (ngModelChange)="toggleActive(hero)" nzSize="small">
+                        </nz-switch>
+                    </td>
+
+                    <td class="hide-md">
+                        <small>{{ formatDate(hero.updatedAt) }}</small>
+                    </td>
+
+                    <td>
+                        <div class="action-buttons">
+                            <button nz-button nzSize="small" (click)="openEditModal(hero)" nz-tooltip
+                                nzTooltipTitle="Editar">
+                                <span nz-icon nzType="edit"></span>
+                            </button>
+
+                            <button nz-button nzSize="small" (click)="showDetails(hero)" nz-tooltip
+                                nzTooltipTitle="Ver detalles" class="show-sm">
+                                <span nz-icon nzType="eye"></span>
+                            </button>
+
+                            <button nz-button nzSize="small" nzDanger [nzLoading]="isDeleting.has(hero.id)"
+                                nz-popconfirm nzPopconfirmTitle="¿Eliminar este hero item?"
+                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteItem(hero.id)" nz-tooltip
+                                nzTooltipTitle="Eliminar">
+                                <span nz-icon nzType="delete"></span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+    </div>
+
+    <!-- 🎯 MODAL CREAR/EDITAR OPTIMIZADO -->
+    <nz-modal [(nzVisible)]="isModalVisible" [nzTitle]="isEditMode ? 'Editar Hero Item' : 'Nuevo Hero Item'"
+        [nzFooter]="modalFooter" (nzOnCancel)="closeModal()" [nzWidth]="modalWidth" nzCentered nzMaskClosable="false">
+
+        <ng-container *nzModalContent>
+            <form [formGroup]="heroForm" nz-form nzLayout="vertical">
+
+                <!-- ✅ SELECCIÓN DE PRODUCTO SIMPLIFICADA -->
+                <nz-form-item>
+                    <nz-form-label nzRequired>Producto</nz-form-label>
+                    <nz-form-control [nzErrorTip]="getFieldError('productId')">
+                        <nz-select formControlName="productId" nzPlaceHolder="Selecciona un producto" nzShowSearch
+                            nzAllowClear (ngModelChange)="onProductChange($event)">
+
+                            <nz-option *ngFor="let product of availableProducts" [nzValue]="product.id"
+                                [nzLabel]="product.name" [nzDisabled]="isProductAlreadyUsed(product.id)">
+                                <span>{{ product.name }} - ${{ product.price | number:'1.2-2' }}</span>
+                                <span *ngIf="isProductAlreadyUsed(product.id)" class="text-gray"> (Ya usado)</span>
+                            </nz-option>
+                        </nz-select>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <!-- ✅ INFORMACIÓN BÁSICA -->
+                <nz-form-item>
+                    <nz-form-label nzRequired>Título</nz-form-label>
+                    <nz-form-control [nzErrorTip]="getFieldError('title')">
+                        <input nz-input formControlName="title" placeholder="Ej. Nueva Colección Aventura" />
+                    </nz-form-control>
+                </nz-form-item>
+
+                <nz-form-item>
+                    <nz-form-label>Subtítulo</nz-form-label>
+                    <nz-form-control>
+                        <textarea nz-input formControlName="subtitle" placeholder="Descripción adicional (opcional)"
+                            [nzAutosize]="{ minRows: 2, maxRows: 4 }">
+            </textarea>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <!-- ✅ CONFIGURACIÓN EN FILA -->
+                <div class="form-row">
+                    <nz-form-item class="form-item-half">
+                        <nz-form-label nzRequired>Texto del Botón</nz-form-label>
+                        <nz-form-control [nzErrorTip]="getFieldError('ctaText')">
+                            <input nz-input formControlName="ctaText" placeholder="Ver Producto" />
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item class="form-item-half">
+                        <nz-form-label nzRequired>Orden</nz-form-label>
+                        <nz-form-control [nzErrorTip]="getFieldError('order')">
+                            <nz-input-number formControlName="order" [nzMin]="1" [nzStep]="1" nzPlaceHolder="1">
+                            </nz-input-number>
+                        </nz-form-control>
+                    </nz-form-item>
+                </div>
+
+                <nz-form-item>
+                    <nz-form-label>Estado</nz-form-label>
+                    <nz-form-control>
+                        <nz-switch formControlName="isActive"></nz-switch>
+                        <span class="switch-label">
+                            {{ heroForm.get('isActive')?.value ? 'Activo' : 'Inactivo' }}
+                        </span>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <!-- ✅ UPLOAD SIMPLIFICADO -->
+                <nz-form-item>
+                    <nz-form-label>
+                        Imagen Hero
+                        <span *ngIf="!isEditMode" class="required-mark">*</span>
+                    </nz-form-label>
+                    <nz-form-control>
+                        <div class="upload-container">
+                            <nz-upload [nzFileList]="fileList" [nzBeforeUpload]="beforeUpload"
+                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                [nzRemove]="removeFile" nzListType="picture-card">
+
+                                <div *ngIf="fileList.length < 1">
+                                    <span nz-icon nzType="plus"></span>
+                                    <div class="ant-upload-text">Subir Imagen</div>
+                                </div>
+                            </nz-upload>
+                        </div>
+
+                        <div class="form-help-text">
+                            • Tamaño recomendado: 600x400px<br>
+                            • Formato: JPG, PNG o WEBP<br>
+                            • Peso máximo: 3MB
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+            </form>
+        </ng-container>
+    </nz-modal>
+
+    <!-- ✅ FOOTER DEL MODAL OPTIMIZADO -->
+    <ng-template #modalFooter>
+        <button nz-button (click)="closeModal()" [disabled]="isSaving">
+            Cancelar
+        </button>
+        <button nz-button nzType="primary" [nzLoading]="isSaving" [disabled]="!canSubmit()" (click)="submitForm()">
+            {{ isEditMode ? 'Actualizar' : 'Crear' }}
+        </button>
+    </ng-template>
+
+    <!-- 🎯 MODAL DE DETALLES MÓVIL -->
+    <nz-modal [(nzVisible)]="showDetailsModal" nzTitle="Detalles del Hero Item" (nzOnCancel)="showDetailsModal = false"
+        [nzFooter]="null" [nzWidth]="320" nzCentered>
+
+        <ng-container *nzModalContent>
+            <div *ngIf="selectedItem" class="hero-details">
+                <div class="detail-image">
+                    <img [src]="selectedItem.customImageUrl" [alt]="selectedItem.title"
+                        (error)="handleImageError($event)">
+                </div>
+
+                <div class="detail-content">
+                    <h3>{{ selectedItem.title }}</h3>
+
+                    <div class="detail-row" *ngIf="selectedItem.subtitle">
+                        <strong>Subtítulo:</strong>
+                        <span>{{ selectedItem.subtitle }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <strong>Producto:</strong>
+                        <span>{{ getProductName(selectedItem.productId) }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <strong>Precio:</strong>
+                        <span>${{ getProductPrice(selectedItem.productId) | number:'1.2-2' }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <strong>Botón:</strong>
+                        <nz-tag nzColor="blue">{{ selectedItem.ctaText }}</nz-tag>
+                    </div>
+
+                    <div class="detail-row">
+                        <strong>Orden:</strong>
+                        <span>{{ selectedItem.order }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <strong>Estado:</strong>
+                        <nz-tag [nzColor]="selectedItem.isActive ? 'green' : 'red'">
+                            {{ selectedItem.isActive ? 'Activo' : 'Inactivo' }}
+                        </nz-tag>
+                    </div>
+
+                    <div class="detail-row">
+                        <strong>Última actualización:</strong>
+                        <small>{{ formatDate(selectedItem.updatedAt) }}</small>
+                    </div>
+                </div>
+
+                <div class="detail-actions">
+                    <button nz-button (click)="openEditModal(selectedItem); showDetailsModal = false">
+                        <span nz-icon nzType="edit"></span> Editar
+                    </button>
+
+                    <button nz-button nzDanger [nzLoading]="isDeleting.has(selectedItem.id)" nz-popconfirm
+                        nzPopconfirmTitle="¿Eliminar este hero item?" nzPopconfirmPlacement="top"
+                        (nzOnConfirm)="deleteItem(selectedItem.id); showDetailsModal = false">
+                        <span nz-icon nzType="delete"></span> Eliminar
+                    </button>
+                </div>
+            </div>
+        </ng-container>
+    </nz-modal>
+</div>
