@@ -87,8 +87,8 @@ export class GenderSectionAdminComponent implements OnInit, OnDestroy {
 
   // Opciones
   categoryOptions = [
-    { label: 'Hombre', value: 'man' },
-    { label: 'Mujer', value: 'woman' },
+    { label: 'Hombre', value: 'hombre' },
+    { label: 'Mujer', value: 'mujer' },
     { label: 'Unisex', value: 'unisex' }
   ];
 

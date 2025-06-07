@@ -1,38 +1,22 @@
 <!-- Solo mostrar si la sección está activa y hay items -->
 <section class="gender-section" *ngIf="isVisible" [style.background-color]="backgroundColor">
-    
     <!-- Título dinámico desde configuración -->
     <h2 class="section-title" [style.color]="titleColor">
         {{ sectionTitle }}
     </h2>
-    
+
     <!-- Vista Desktop - Mostrar cuando pantalla > 600px -->
     <div class="desktop-view" *ngIf="isDesktop">
         <div class="split-container">
-            <article 
-                *ngFor="let item of items; let i = index; trackBy: trackByItemId"
-                class="product-panel" 
-                [class.left-panel]="i === 0" 
-                [class.right-panel]="i === 1"
-                [style]="getItemStyles(item)"
-                [attr.aria-label]="'Explorar ' + item.title" 
-                (click)="navigateToCategory(item.category)"
-                (keydown.enter)="navigateToCategory(item.category)"
-                (keydown.space)="navigateToCategory(item.category)" 
-                tabindex="0" 
-                role="button">
-
+            <article *ngFor="let item of items; let i = index; trackBy: trackByItemId" class="product-panel"
+                [class.left-panel]="i === 0" [class.right-panel]="i === 1" [style]="getItemStyles(item)"
+                [attr.aria-label]="'Explorar ' + item.title" [attr.data-category]="item.category"
+                (click)="onItemClick(item)" tabindex="0" role="button">
                 <!-- Imagen optimizada -->
                 <picture class="product-picture">
-                    <img 
-                        [src]="getImageUrl(item)" 
-                        [alt]="item.alt || item.title" 
-                        class="product-image"
-                        [class.loaded]="isImageLoaded(item.id)" 
-                        loading="eager" 
-                        decoding="async"
-                        (load)="onImageLoad(item.id)" 
-                        (error)="onImageError($event)">
+                    <img [src]="getImageUrl(item)" [alt]="item.alt || item.title" class="product-image"
+                        [class.loaded]="isImageLoaded(item.id)" loading="eager" decoding="async"
+                        (load)="onImageLoad(item.id)" (error)="onImageError($event)" />
                 </picture>
 
                 <!-- Overlay gradiente -->
@@ -53,30 +37,14 @@
     <!-- Vista Mobile - Mostrar cuando pantalla <= 600px -->
     <div class="mobile-view" *ngIf="!isDesktop">
         <div class="mobile-container-wrapper">
-            <article 
-                *ngFor="let item of items; let i = index; trackBy: trackByItemId" 
-                class="mobile-panel"
-                [class.top-panel]="i === 0" 
-                [class.bottom-panel]="i === 1"
-                [style]="getItemStyles(item)"
-                [attr.aria-label]="'Explorar ' + item.title" 
-                (click)="navigateToCategory(item.category)"
-                (keydown.enter)="navigateToCategory(item.category)"
-                (keydown.space)="navigateToCategory(item.category)" 
-                tabindex="0" 
-                role="button">
-
+            <article *ngFor="let item of items; let i = index; trackBy: trackByItemId" class="mobile-panel"
+                [class.top-panel]="i === 0" [class.bottom-panel]="i === 1" [style]="getItemStyles(item)"
+                [attr.aria-label]="'Explorar ' + item.title" (click)="onItemClick(item)" tabindex="0" role="button">
                 <!-- Imagen optimizada -->
                 <picture class="product-picture">
-                    <img 
-                        [src]="getImageUrl(item)" 
-                        [alt]="item.alt || item.title" 
-                        class="product-image"
-                        [class.loaded]="isImageLoaded(item.id)" 
-                        loading="eager" 
-                        decoding="async"
-                        (load)="onImageLoad(item.id)" 
-                        (error)="onImageError($event)">
+                    <img [src]="getImageUrl(item)" [alt]="item.alt || item.title" class="product-image"
+                        [class.loaded]="isImageLoaded(item.id)" loading="eager" decoding="async"
+                        (load)="onImageLoad(item.id)" (error)="onImageError($event)" />
                 </picture>
 
                 <!-- Overlay gradiente -->

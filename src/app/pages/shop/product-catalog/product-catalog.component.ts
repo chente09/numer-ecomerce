@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil, finalize, switchMap, take, firstValueFrom } from 'rxjs';
+import { Subject, BehaviorSubject, combineLatest, debounceTime, distinctUntilChanged, takeUntil, finalize, catchError, of, switchMap, take, firstValueFrom } from 'rxjs';
 
 // Services
 import { ProductService } from '../../../services/admin/product/product.service';
@@ -115,13 +115,14 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   showMobileFilters = false;
   showDesktopFilters = true;
   viewMode: 'grid' | 'list' = 'grid';
-  gridCols = 4;
+  gridCols = 4; // Para desktop
   activeFiltersCount = 0;
 
   // Pagination
   currentPage = 1;
   pageSize = 20;
   total = 0;
+
 
   // Sort options
   sortOptions = [
@@ -143,6 +144,16 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     { label: '$150+', value: '150+' }
   ];
 
+  // Responsive grid settings
+  gridResponsive = {
+    xs: 1,  // 1 columna en móviles
+    sm: 2,  // 2 columnas en tablets pequeñas
+    md: 3,  // 3 columnas en tablets
+    lg: 4,  // 4 columnas en desktop
+    xl: 5,  // 5 columnas en pantallas grandes
+    xxl: 6  // 6 columnas en pantallas muy grandes
+  };
+
   constructor(
     private fb: FormBuilder,
     private productService: ProductService,
@@ -160,18 +171,40 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     this.initFilterForm();
   }
 
-  ngOnInit(): void {
-    this.loadFilterOptions();
-    this.setupFilterSubscriptions();
-    this.loadProducts();
-    this.handleUrlParams();
-    this.updateActiveFiltersCount();
+  async ngOnInit(): Promise<void> {
+    console.log('🚀 Iniciando carga del catálogo...');
 
-    // Debug después de 3 segundos
-    setTimeout(() => {
-      this.validateColorDataConsistency();
-      this.debugColorSystem();
-    }, 3000);
+    try {
+      // Configurar suscripciones
+      this.setupFilterSubscriptions();
+
+      // 🔑 CRÍTICO: Cargar opciones de filtro Y ESPERAR
+      console.log('📋 Cargando opciones de filtro...');
+      await this.loadFilterOptions();
+      console.log('✅ Opciones de filtro listas:', {
+        categories: this.filterOptions.categories.length,
+        colors: this.filterOptions.colors.length,
+        sizes: this.filterOptions.sizes.length
+      });
+
+      // 🔑 CRÍTICO: Cargar productos DESPUÉS
+      console.log('📦 Cargando productos...');
+      await this.loadProductsAsync();
+      console.log('✅ Productos listos');
+
+      // Manejar URL params
+      this.handleUrlParams();
+      this.updateActiveFiltersCount();
+      this.cdr.detectChanges();
+
+      console.log('🎯 Inicialización completada');
+
+    } catch (error) {
+      console.error('❌ Error en inicialización:', error);
+      this.message.error('Error al cargar el catálogo');
+      this.loading = false;
+      this.cdr.detectChanges();
+    }
   }
 
   ngOnDestroy(): void {
@@ -184,6 +217,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       categories: [[]],
       colors: [[]],
       sizes: [[]],
+      gender: [''],
       priceRange: [[0, 1000]],
       priceRanges: [[]],
       brands: [[]],
@@ -195,7 +229,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   }
 
   private setupFilterSubscriptions(): void {
-    // Búsqueda usando searchControl
+    // 🔄 CAMBIAR: Búsqueda usando searchControl
     this.searchControl.valueChanges.pipe(
       debounceTime(500),
       distinctUntilChanged(),
@@ -204,7 +238,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       this.applyFilters();
     });
 
-    // Ordenamiento usando sortControl
+    // 🔄 CAMBIAR: Ordenamiento usando sortControl
     this.sortControl.valueChanges.pipe(
       takeUntil(this.destroy$)
     ).subscribe(sortBy => {
@@ -222,6 +256,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ✅ MEJORAR loadFilterOptions con más logging
   private async loadFilterOptions(): Promise<void> {
     try {
       const [categories, colors, sizes] = await Promise.all([
@@ -247,10 +282,9 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         brands: []
       };
 
-      console.log('✅ Opciones de filtro cargadas:');
-      console.log('📂 Categorías:', this.filterOptions.categories.length);
-      console.log('🎨 Colores:', this.filterOptions.colors.length);
-      console.log('📏 Tallas:', this.filterOptions.sizes.length);
+      // ✅ AGREGAR LOGGING de categorías cargadas
+      console.log('📂 Categorías cargadas:', this.filterOptions.categories);
+      console.log('📊 Total categorías:', this.filterOptions.categories.length);
 
       this.cdr.detectChanges();
     } catch (error) {
@@ -259,15 +293,19 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ✅ VERIFICAR si usas ID o Name para categorías
   private validateCategoryConsistency(): void {
     console.group('🔍 Validando consistencia de categorías');
 
+    // Categorías disponibles
     const availableCategories = this.filterOptions.categories;
     console.log('Categorías disponibles:', availableCategories);
 
+    // Categorías únicas en productos
     const productCategories = [...new Set(this.products.map(p => p.category).filter(Boolean))];
     console.log('Categorías en productos:', productCategories);
 
+    // Verificar si coinciden
     productCategories.forEach(prodCat => {
       const exists = availableCategories.some(avCat =>
         avCat.id === prodCat || avCat.name === prodCat
@@ -280,32 +318,36 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
     console.groupEnd();
   }
-
-  private loadProducts(): void {
+  private async loadProductsAsync(): Promise<void> {
     this.loading = true;
     this.cdr.detectChanges();
 
-    this.productService.getProducts().pipe(
-      take(1),
-      switchMap(products =>
-        this.productPriceService.calculateDiscountedPrices(products).pipe(take(1))
-      ),
-      finalize(() => {
-        this.loading = false;
-        this.cdr.detectChanges();
-      })
-    ).subscribe({
-      next: (products) => {
-        this.products = products.map(p => this.initializeProductVariantState(p));
-        this.updatePriceRange();
-        this.validateCategoryConsistency();
-        this.applyFilters();
-      },
-      error: (error) => {
-        console.error('Error loading products:', error);
-        this.message.error('Error al cargar productos');
-      }
-    });
+    try {
+      // Obtener productos
+      const products = await firstValueFrom(this.productService.getProducts());
+      console.log(`📦 ${products.length} productos obtenidos`);
+
+      // Calcular precios
+      const productsWithPrices = await firstValueFrom(
+        this.productPriceService.calculateDiscountedPrices(products)
+      );
+
+      // Procesar productos
+      this.products = productsWithPrices.map(p => this.initializeProductVariantState(p));
+      this.updatePriceRange();
+      this.validateCategoryConsistency();
+
+      // 🔑 CRÍTICO: Aplicar filtros al final
+      this.applyFilters();
+
+    } catch (error) {
+      console.error('❌ Error cargando productos:', error);
+      this.message.error('Error al cargar productos');
+      throw error;
+    } finally {
+      this.loading = false;
+      this.cdr.detectChanges();
+    }
   }
 
   private initializeProductVariantState(product: Product): ProductWithSelectedVariant {
@@ -315,7 +357,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       displayImageUrl: product.imageUrl
     };
 
-    // Buscar primera variante con stock
+    // ✅ MEJORADO: Buscar primera variante con stock
     if (product.variants?.length) {
       const variantWithStock = product.variants.find(v => (v.stock || 0) > 0);
       productWithVariant.selectedVariant = variantWithStock || product.variants[0];
@@ -353,16 +395,32 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ✅ REEMPLAZAR el método applyFilters() - Buscar la sección de filtro de categorías
   private applyFilters(): void {
-    if (!this.products?.length || !this.filterOptions.categories?.length) {
-      console.warn('⚠️ Datos no listos para filtrar');
+    console.log('🔍 Aplicando filtros...');
+
+    // 🔑 VALIDACIÓN CRÍTICA
+    if (!this.products?.length) {
+      console.warn('⚠️ No hay productos - saltando filtros');
+      this.filteredProducts = [];
+      this.total = 0;
+      this.cdr.detectChanges();
       return;
     }
 
+    if (!this.filterOptions.categories?.length) {
+      console.warn('⚠️ filterOptions.categories vacío - aplicando filtros básicos');
+      this.applyBasicFiltersOnly();
+      return;
+    }
+
+    // Tu lógica de filtros actual...
     const filters = this.filterForm.value;
     const searchQuery = this.searchControl.value || '';
     const sortBy = this.sortControl.value || 'relevance';
     let filtered = [...this.products];
+
+    console.log(`📊 Filtrando ${filtered.length} productos`);
 
     // Búsqueda por texto
     if (searchQuery.trim()) {
@@ -373,40 +431,39 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         p.tags?.some(tag => tag.toLowerCase().includes(query)) ||
         p.sku.toLowerCase().includes(query)
       );
+      console.log(`🔍 Después de búsqueda: ${filtered.length}`);
     }
 
     // Filtro de categorías
     if (filters.categories?.length) {
-      console.log('🔍 Aplicando filtro de categorías:', filters.categories);
-
       filtered = filtered.filter(p => {
-        // Verificar campo singular (legacy)
-        if (p.category && filters.categories.includes(p.category)) {
-          console.log(`✅ ${p.name} coincide con categoría singular: ${p.category}`);
-          return true;
-        }
-
-        // Verificar campo plural (múltiples categorías)
+        if (p.category && filters.categories.includes(p.category)) return true;
         if (p.categories && p.categories.length > 0) {
-          const hasMatch = p.categories.some(productCategory =>
+          return p.categories.some(productCategory =>
             filters.categories.includes(productCategory)
           );
-
-          if (hasMatch) {
-            const matchingCategories = p.categories.filter(cat => filters.categories.includes(cat));
-            console.log(`✅ ${p.name} coincide con categorías: ${matchingCategories.join(', ')}`);
-            return true;
-          }
         }
-
-        console.log(`❌ ${p.name} no coincide - categoria: "${p.category}", categorias: [${p.categories?.join(', ') || 'vacío'}]`);
         return false;
       });
-
-      console.log(`📊 Productos después de filtro categoría: ${filtered.length}`);
+      console.log(`📂 Después de categorías: ${filtered.length}`);
     }
 
-    // Filtro por colores
+    // Filtro por género
+    if (filters.gender) {
+      filtered = filtered.filter(p => {
+        // Unisex siempre se incluye
+        if (p.gender === 'unisex') return true;
+
+        // Normalizar ambos valores para comparación
+        const productGender = this.normalizeGender(p.gender);
+        const filterGender = this.normalizeGender(filters.gender);
+
+        return productGender === filterGender;
+      });
+      console.log(`👤 Después de género (${filters.gender}): ${filtered.length}`);
+    }
+
+    // Resto de tus filtros...
     if (filters.colors?.length) {
       filtered = filtered.filter(p => {
         if (!p.colors || p.colors.length === 0) return false;
@@ -414,9 +471,9 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
           filters.colors.includes(productColor.name)
         );
       });
+      console.log(`🎨 Después de colores: ${filtered.length}`);
     }
 
-    // Filtro por tallas
     if (filters.sizes?.length) {
       filtered = filtered.filter(p => {
         if (!p.sizes || p.sizes.length === 0) return false;
@@ -424,18 +481,18 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
           filters.sizes.includes(productSize.name)
         );
       });
+      console.log(`📏 Después de tallas: ${filtered.length}`);
     }
 
-    // Filtro por rango de precio (slider)
     if (filters.priceRange) {
       const [minPrice, maxPrice] = filters.priceRange;
       filtered = filtered.filter(p => {
         const price = p.currentPrice || p.price;
         return price >= minPrice && price <= maxPrice;
       });
+      console.log(`💰 Después de precio: ${filtered.length}`);
     }
 
-    // Filtro por rangos de precio predefinidos
     if (filters.priceRanges?.length) {
       filtered = filtered.filter(p => {
         const price = p.currentPrice || p.price;
@@ -449,6 +506,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
           }
         });
       });
+      console.log(`💵 Después de rangos precio: ${filtered.length}`);
     }
 
     // Filtros booleanos
@@ -465,24 +523,141 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       filtered = filtered.filter(p => (p.totalStock || 0) > 0);
     }
 
-    // Aplicar ordenamiento
+    // Ordenar
+    filtered = this.sortProducts(filtered, sortBy);
+
+    // Actualizar
+    this.filteredProducts = filtered;
+    this.total = filtered.length;
+
+    console.log(`✅ Filtros aplicados: ${this.total} productos finales`);
+
+    setTimeout(() => {
+      this.syncProductsWithActiveFilters();
+      this.cdr.detectChanges();
+    }, 0);
+
+    this.cdr.detectChanges();
+  }
+
+  private normalizeGender(gender: string | undefined): string {
+    if (!gender) return '';
+
+    const normalized = gender.toLowerCase();
+
+    // Normalizar variaciones de "hombre"
+    if (['hombre', 'men', 'male', 'man', 'masculino'].includes(normalized)) {
+      return 'hombre';
+    }
+
+    // Normalizar variaciones de "mujer"
+    if (['mujer', 'women', 'female', 'woman', 'femenino'].includes(normalized)) {
+      return 'mujer';
+    }
+
+    // Unisex
+    if (['unisex', 'todos', 'all'].includes(normalized)) {
+      return 'unisex';
+    }
+
+    return normalized;
+  }
+
+  private applyBasicFiltersOnly(): void {
+    console.log('🔧 Aplicando solo filtros básicos...');
+
+    const filters = this.filterForm.value;
+    const searchQuery = this.searchControl.value || '';
+    const sortBy = this.sortControl.value || 'relevance';
+    let filtered = [...this.products];
+
+    // Solo filtros que no dependen de filterOptions
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.description?.toLowerCase().includes(query) ||
+        p.tags?.some(tag => tag.toLowerCase().includes(query)) ||
+        p.sku.toLowerCase().includes(query)
+      );
+    }
+
+    if (filters.gender) {
+      filtered = filtered.filter(p => {
+        if (p.gender === 'unisex') return true;
+        return p.gender === filters.gender;
+      });
+    }
+
+    if (filters.priceRange) {
+      const [minPrice, maxPrice] = filters.priceRange;
+      filtered = filtered.filter(p => {
+        const price = p.currentPrice || p.price;
+        return price >= minPrice && price <= maxPrice;
+      });
+    }
+
+    if (filters.hasDiscount) {
+      filtered = filtered.filter(p => (p.discountPercentage || 0) > 0);
+    }
+    if (filters.isNew) {
+      filtered = filtered.filter(p => p.isNew === true);
+    }
+    if (filters.isBestSeller) {
+      filtered = filtered.filter(p => p.isBestSeller === true);
+    }
+    if (filters.inStock) {
+      filtered = filtered.filter(p => (p.totalStock || 0) > 0);
+    }
+
     filtered = this.sortProducts(filtered, sortBy);
 
     this.filteredProducts = filtered;
     this.total = filtered.length;
+
+    console.log(`✅ Filtros básicos aplicados: ${this.total} productos`);
+
     setTimeout(() => {
       this.syncProductsWithActiveFilters();
+      this.cdr.detectChanges();
     }, 0);
+
     this.cdr.detectChanges();
   }
 
+
+  // ✅ MÉTODO AUXILIAR: Obtener nombre de categoría por ID
+  getCategoryNameById(categoryId: string | undefined): string {
+    if (!categoryId) return 'Sin Categoría';
+
+    const category = this.filterOptions.categories.find(cat => cat.id === categoryId);
+    return category ? category.name : `ID: ${categoryId}`;
+  }
+
+  onColorChanged(event: { product: Product, color: Color, index: number }): void {
+    const { product, color, index } = event;
+
+    // Encontrar el producto en filteredProducts y actualizarlo
+    const productIndex = this.filteredProducts.findIndex(p => p.id === product.id);
+    if (productIndex !== -1) {
+      this.filteredProducts[productIndex].selectedColorIndex = index;
+      this.filteredProducts[productIndex].displayImageUrl = color.imageUrl || product.imageUrl;
+
+      console.log(`🎨 Color cambiado en catálogo: ${product.name} → ${color.name}`);
+      this.cdr.detectChanges();
+    }
+  }
+
+  // ✅ NUEVO MÉTODO: Sincronizar productos con filtros activos
   private syncProductsWithActiveFilters(): void {
     const activeColors = this.filterForm.get('colors')?.value || [];
 
     if (activeColors.length === 0) {
+      // Si no hay filtros de color activos, mantener selección actual
       return;
     }
 
+    // Para cada producto visible, intentar seleccionar un color que coincida con los filtros
     this.filteredProducts.forEach(product => {
       this.syncProductColorWithFilters(product, activeColors);
     });
@@ -490,38 +665,40 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  // ✅ VERSIÓN MEJORADA: Considerar también tallas y stock
   private syncProductColorWithFilters(product: ProductWithSelectedVariant, activeColors: string[]): void {
     if (!product.colors || product.colors.length === 0) {
       return;
     }
 
-    console.log(`🔍 Sincronizando ${product.name} con colores:`, activeColors);
-
     const activeSizes = this.filterForm.get('sizes')?.value || [];
+
+    // Buscar el mejor color que coincida con filtros y tenga stock
     let bestMatch: { color: Color; index: number; variant?: ProductVariant } | null = null;
 
     for (let i = 0; i < product.colors.length; i++) {
       const color = product.colors[i];
-      const colorName = typeof color === 'string' ? color : color.name;
 
-      console.log(`🎨 Verificando color: ${colorName} contra filtros:`, activeColors);
-
-      if (!activeColors.includes(colorName)) {
+      // Verificar si el color coincide con el filtro
+      if (!activeColors.includes(color.name)) {
         continue;
       }
 
-      const colorVariants = product.variants?.filter(v => v.colorName === colorName) || [];
+      // Buscar variantes de este color
+      const colorVariants = product.variants?.filter(v => v.colorName === color.name) || [];
 
       if (activeSizes.length > 0) {
+        // Si hay filtros de talla, buscar variante que coincida con color Y talla
         const matchingVariant = colorVariants.find(v =>
           activeSizes.includes(v.sizeName) && v.stock > 0
         );
 
         if (matchingVariant) {
           bestMatch = { color, index: i, variant: matchingVariant };
-          break;
+          break; // Coincidencia perfecta
         }
       } else {
+        // Si no hay filtros de talla, buscar cualquier variante con stock
         const stockVariant = colorVariants.find(v => v.stock > 0);
 
         if (stockVariant && !bestMatch) {
@@ -530,80 +707,30 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       }
     }
 
+    // Aplicar la mejor coincidencia encontrada
     if (bestMatch) {
-      console.log(`🎯 Aplicando color: ${bestMatch.color.name} a ${product.name}`);
       this.onColorSelect(product, bestMatch.color, bestMatch.index);
 
       if (bestMatch.variant) {
         product.selectedVariant = bestMatch.variant;
       }
-    } else {
-      console.log(`❌ No se encontró coincidencia de color para ${product.name}`);
+
+      console.log(`🎯 ${product.name} → ${bestMatch.color.name}${bestMatch.variant ? ` (${bestMatch.variant.sizeName})` : ''}`);
     }
   }
 
-  validateColorDataConsistency(): void {
-    console.group('🔧 VALIDANDO CONSISTENCIA DE COLORES');
-
-    if (this.filterOptions.colors?.length) {
-      const sampleFilterColor = this.filterOptions.colors[0];
-      console.log('📋 Estructura de filterOptions.colors[0]:', {
-        name: sampleFilterColor.name,
-        code: sampleFilterColor.code,
-        id: sampleFilterColor.id
-      });
-    }
-
-    if (this.products?.length) {
-      const productWithColors = this.products.find(p => p.colors?.length > 0);
-      if (productWithColors) {
-        const sampleProductColor = productWithColors.colors[0];
-        console.log('📋 Estructura de product.colors[0]:', {
-          name: sampleProductColor.name,
-          code: sampleProductColor.code,
-          imageUrl: sampleProductColor.imageUrl
-        });
-
-        const filterColorNames = this.filterOptions.colors.map(c => c.name);
-        const productColorNames = productWithColors.colors.map(c => c.name);
-
-        console.log('🔍 Coincidencias de nombres:', {
-          filterColors: filterColorNames,
-          productColors: productColorNames,
-          intersection: filterColorNames.filter(fc => productColorNames.includes(fc))
-        });
-      }
-    }
-
-    console.groupEnd();
+  // ✅ MÉTODO PÚBLICO: Para activar sincronización manualmente
+  syncAllProductsWithFilters(): void {
+    console.log('🔄 Sincronizando todos los productos con filtros activos...');
+    this.syncProductsWithActiveFilters();
   }
 
-  debugColorSystem(): void {
-    console.group('🎨 DEBUG SISTEMA DE COLORES');
-
-    console.log('🌈 Colores disponibles:', this.filterOptions.colors);
-
-    if (this.products?.length) {
-      const productColors = new Set();
-      this.products.forEach(p => {
-        p.colors?.forEach(color => {
-          if (typeof color === 'string') {
-            productColors.add(color);
-          } else {
-            productColors.add(color.name);
-          }
-        });
-      });
-      console.log('🎭 Colores únicos en productos:', Array.from(productColors));
-    }
-
-    console.log('🎛️ Filtros de color activos:', this.filterForm.get('colors')?.value);
-
-    if (this.products?.[0]?.colors) {
-      console.log('📋 Estructura de colores del primer producto:', this.products[0].colors);
-    }
-
-    console.groupEnd();
+  // ✅ MÉTODO PÚBLICO: Para sincronizar cuando cambian los filtros
+  onFilterColorChange(): void {
+    // Esperar un tick para que se actualicen los filtros
+    setTimeout(() => {
+      this.syncProductsWithActiveFilters();
+    }, 100);
   }
 
   private sortProducts(products: ProductWithSelectedVariant[], sortBy: string): ProductWithSelectedVariant[] {
@@ -645,39 +772,14 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       currentColors.push(colorName);
     }
 
-    console.log('🎨 Colores actualizados:', currentColors);
-
     this.filterForm.patchValue({ colors: currentColors });
     this.updateActiveFiltersCount();
-
-    setTimeout(() => {
-      this.onFilterColorChange();
-    }, 100);
+    this.onFilterColorChange();
   }
 
   isColorSelected(colorName: string): boolean {
     const selectedColors = this.filterForm.get('colors')?.value || [];
-    const isSelected = selectedColors.includes(colorName);
-
-    console.log(`🔍 Color ${colorName} selected:`, isSelected, 'Lista:', selectedColors);
-
-    return isSelected;
-  }
-
-  onFilterColorChange(): void {
-    console.log('🔄 Sincronizando colores con filtros...');
-
-    const activeColors = this.filterForm.get('colors')?.value || [];
-    console.log('🎨 Colores activos para sincronizar:', activeColors);
-
-    if (activeColors.length === 0) {
-      console.log('📝 No hay filtros de color activos');
-      return;
-    }
-
-    setTimeout(() => {
-      this.syncProductsWithActiveFilters();
-    }, 100);
+    return selectedColors.includes(colorName);
   }
 
   hasActiveFilters(): boolean {
@@ -691,6 +793,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     if (formValue.categories?.length) count += formValue.categories.length;
     if (formValue.colors?.length) count += formValue.colors.length;
     if (formValue.sizes?.length) count += formValue.sizes.length;
+    if (formValue.gender) count += 1;
     if (formValue.priceRanges?.length) count += formValue.priceRanges.length;
     if (formValue.inStock) count += 1;
     if (formValue.hasDiscount) count += 1;
@@ -789,10 +892,12 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   }
 
   clearAllFilters(): void {
+    // 🔄 CAMBIAR: Limpiar controles individuales
     this.searchControl.setValue('', { emitEvent: false });
     this.sortControl.setValue('relevance', { emitEvent: false });
 
     this.filterForm.reset({
+      // searchQuery: '', // ❌ REMOVER
       categories: [],
       colors: [],
       sizes: [],
@@ -802,16 +907,24 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       hasDiscount: false,
       isNew: false,
       isBestSeller: false,
+      // sortBy: 'relevance', // ❌ REMOVER
       inStock: false
     });
 
     this.updateActiveFiltersCount();
   }
 
+  // Método unificado para limpiar filtros (mantiene compatibilidad)
+  clearFilters(): void {
+    this.clearAllFilters();
+  }
+
+
   onVariantSelect(product: ProductWithSelectedVariant, variant: ProductVariant): void {
     product.selectedVariant = variant;
     product.displayImageUrl = variant.imageUrl || product.imageUrl;
 
+    // Actualizar índice de color si aplica
     const colorIndex = product.colors?.findIndex(c => c.name === variant.colorName);
     if (colorIndex !== -1) {
       product.selectedColorIndex = colorIndex;
@@ -830,19 +943,23 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   onColorSelect(product: ProductWithSelectedVariant, color: Color, colorIndex: number): void {
     product.selectedColorIndex = colorIndex;
 
+    // Buscar variante que coincida con el color y que tenga stock
     const availableVariants = product.variants?.filter(v =>
       v.colorName === color.name && v.stock > 0
     ) || [];
 
     if (availableVariants.length > 0) {
+      // Seleccionar la primera variante disponible del color
       product.selectedVariant = availableVariants[0];
 
+      // Actualizar imagen usando imagen de variante si existe
       if (availableVariants[0].imageUrl) {
         product.displayImageUrl = availableVariants[0].imageUrl;
       } else if (color.imageUrl) {
         product.displayImageUrl = color.imageUrl;
       }
     } else {
+      // Si no hay variantes con stock, mostrar imagen del color pero sin variante seleccionada
       product.selectedVariant = undefined;
       product.displayImageUrl = color.imageUrl || product.imageUrl;
     }
@@ -891,8 +1008,14 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     this.showMobileFilters = !this.showMobileFilters;
   }
 
+  changeViewMode(mode: 'grid' | 'list'): void {
+    this.viewMode = mode;
+    this.cdr.detectChanges();
+  }
+
   onPageChange(page: number): void {
     this.currentPage = page;
+    // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -904,16 +1027,23 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         this.filterForm.patchValue({ categories: [params['category']] });
       }
       if (params['search']) {
+        // 🔄 CAMBIAR: Usar searchControl
         this.searchControl.setValue(params['search']);
+      }
+      if (params['gender']) {
+        this.filterForm.patchValue({ gender: params['gender'] });
       }
     });
   }
 
+  // ✅ AGREGAR método para manejar imágenes de variantes
   getProductDisplayImage(product: ProductWithSelectedVariant): string {
+    // 1. Prioridad: Imagen de variante seleccionada
     if (product.selectedVariant?.imageUrl) {
       return product.selectedVariant.imageUrl;
     }
 
+    // 2. Fallback: Imagen del color activo
     if (product.selectedColorIndex !== undefined && product.colors) {
       const activeColor = product.colors[product.selectedColorIndex];
       if (activeColor?.imageUrl) {
@@ -921,10 +1051,12 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       }
     }
 
+    // 3. Fallback: displayImageUrl calculada
     if (product.displayImageUrl) {
       return product.displayImageUrl;
     }
 
+    // 4. Fallback final: imagen principal
     return product.imageUrl || this.getDefaultImage();
   }
 
@@ -932,7 +1064,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOGY4Ii8+PC9nPjwvc3ZnPg==';
   }
 
-  // Utility methods
+  // Color scroll methods
   hasManyColors(product: Product): boolean {
     return !!(product?.colors && product.colors.length > 4);
   }
@@ -952,6 +1084,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Utility methods
   hasDiscount(product: Product): boolean {
     return (product.discountPercentage || 0) > 0;
   }
@@ -999,10 +1132,11 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   handleImageError(event: Event): void {
     const target = event.target as HTMLImageElement;
     if (target) {
-      target.src = this.getDefaultImage();
+      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOGY4Ii8+PGcgZmlsbD0iIzk5OSI+PGNpcmNsZSBjeD0iMTIwIiBjeT0iMTAwIiByPSIyMCIvPjxwYXRoIGQ9Im05MCAx NjBoNjB2NDBINTB6Ii8+PC9nPjx0ZXh0IHg9IjUwJSIgeT0iODAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlByb2R1Y3RvPC90ZXh0Pjwvc3ZnPg==';
     }
   }
 
+  // Utility method for safe type casting in templates
   $any(value: any): any {
     return value;
   }
@@ -1022,7 +1156,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       return 'Seleccionar variante';
     }
 
-    if ((product.selectedVariant.stock || 0) <= 0) {
+    if (product.selectedVariant.stock <= 0) {
       return 'Sin stock';
     }
 

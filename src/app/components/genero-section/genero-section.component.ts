@@ -5,28 +5,24 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
-import { GenderSectionService,  GenderSectionItem, GenderSectionConfig } from '../../services/admin/genderSection/gender-section.service';
+import { GenderSectionService, GenderSectionItem, GenderSectionConfig } from '../../services/admin/genderSection/gender-section.service';
 
 @Component({
   selector: 'app-genero-section',
   standalone: true,
-  imports: [
-    CommonModule,
-    NzIconModule
-  ],
+  imports: [CommonModule, NzIconModule],
   templateUrl: './genero-section.component.html',
   styleUrls: ['./genero-section.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GeneroSectionComponent implements OnInit, OnDestroy {
-
   // Datos del servicio
   config: GenderSectionConfig | null = null;
   items: GenderSectionItem[] = [];
-  
+
   // Estado simple
   imagesLoaded = new Set<string>();
-  isDesktop = window.innerWidth > 600;
+  isDesktop = window.innerWidth > 768;
 
   private readonly destroy$ = new Subject<void>();
 
@@ -34,11 +30,17 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
     private readonly router: Router,
     private readonly cdr: ChangeDetectorRef,
     private readonly genderService: GenderSectionService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.loadSectionData();
     this.setupResizeListener();
+    
+    setTimeout(() => {
+      if (this.items.length > 0) {
+        this.validateItemConfiguration();
+      }
+    }, 2000);
   }
 
   ngOnDestroy(): void {
@@ -48,7 +50,6 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
 
   // 📡 CARGAR DATOS DEL SERVICIO
   private loadSectionData(): void {
-    // Cargar configuración
     this.genderService.getConfig().pipe(
       takeUntil(this.destroy$)
     ).subscribe({
@@ -61,16 +62,13 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Cargar items activos y ordenados
     this.genderService.getItems().pipe(
       takeUntil(this.destroy$)
     ).subscribe({
       next: (items) => {
-        // Filtrar solo items activos y ordenar
         this.items = items
           ?.filter(item => item.isActive)
           ?.sort((a, b) => (a.order || 0) - (b.order || 0)) || [];
-        
         this.cdr.markForCheck();
       },
       error: (error) => {
@@ -82,7 +80,7 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
   // 🖥️ DETECTAR CAMBIOS DE VIEWPORT
   private setupResizeListener(): void {
     const resizeHandler = () => {
-      const newIsDesktop = window.innerWidth > 600;
+      const newIsDesktop = window.innerWidth > 768;
       if (newIsDesktop !== this.isDesktop) {
         this.isDesktop = newIsDesktop;
         this.cdr.markForCheck();
@@ -90,23 +88,47 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
     };
 
     window.addEventListener('resize', resizeHandler, { passive: true });
-    
-    // Cleanup en destroy
+
     this.destroy$.subscribe(() => {
       window.removeEventListener('resize', resizeHandler);
     });
   }
 
-  // 🔄 NAVEGACIÓN
-  navigateToCategory(category: string): void {
-    if (category) {
-      this.router.navigate(['/shop'], {
-        queryParams: { gender: category }
-      });
+  // 🎯 NAVEGACIÓN SIMPLIFICADA - SOLO GÉNERO
+  onItemClick(item: GenderSectionItem): void {
+    console.log('🖱️ Click en género:', item.title);
+
+    if (!item.category) {
+      console.error('❌ Item sin categoría definida');
+      return;
     }
+
+    // 🎯 SOLO enviar 'hombre' o 'mujer'
+    let genderParam: string;
+    const category = item.category.toLowerCase();
+    
+    if (category.includes('mujer') || category.includes('women') || category.includes('female')) {
+      genderParam = 'mujer';
+    } else if (category.includes('hombre') || category.includes('men') || category.includes('male')) {
+      genderParam = 'hombre';
+    } else {
+      console.warn('⚠️ Categoría no reconocida como género:', item.category);
+      return;
+    }
+
+    console.log('👤 Navegando con género:', genderParam);
+
+    // 🚀 Navegación simple
+    this.router.navigate(['/shop'], {
+      queryParams: { gender: genderParam }
+    }).then(() => {
+      console.log('✅ Navegación completada:', genderParam);
+    }).catch(error => {
+      console.error('❌ Error en navegación:', error);
+    });
   }
 
-  // 🖼️ MANEJO DE IMÁGENES SIMPLIFICADO
+  // 🖼️ MANEJO DE IMÁGENES
   onImageLoad(itemId: string): void {
     this.imagesLoaded.add(itemId);
     this.cdr.markForCheck();
@@ -121,7 +143,25 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🎨 IMAGEN DE FALLBACK SIMPLE
+  validateItemConfiguration(): void {
+    console.group('✅ Validando configuración de items');
+    this.items.forEach((item, index) => {
+      console.log(`Item ${index + 1}:`, {
+        id: item.id,
+        title: item.title,
+        category: item.category,
+        isActive: item.isActive,
+        hasImage: !!item.imageUrl,
+        hasMobileImage: !!item.mobileImageUrl
+      });
+
+      if (!item.category) {
+        console.warn(`⚠️ Item "${item.title}" no tiene categoría definida`);
+      }
+    });
+    console.groupEnd();
+  }
+
   private createFallbackImage(): string {
     return `data:image/svg+xml;base64,${btoa(`
       <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
@@ -160,34 +200,28 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
     return this.config?.isActive !== false && this.items.length > 0;
   }
 
-  // 📱 OBTENER IMAGEN APROPIADA SEGÚN DISPOSITIVO
   getImageUrl(item: GenderSectionItem): string {
-    // Usar imagen móvil si existe y estamos en móvil
     if (!this.isDesktop && item.mobileImageUrl) {
       return item.mobileImageUrl;
     }
-    
-    // Sino, usar imagen principal
     return item.imageUrl || '';
   }
 
-  // 🎨 OBTENER ESTILOS DEL ITEM
   getItemStyles(item: GenderSectionItem): { [key: string]: string } {
     const styles: { [key: string]: string } = {};
-    
+
     if (item.backgroundColor) {
       styles['--item-bg-color'] = item.backgroundColor;
     }
-    
+
     if (item.textColor) {
       styles['--item-text-color'] = item.textColor;
       styles['color'] = item.textColor;
     }
-    
+
     return styles;
   }
 
-  // 📋 OBTENER SUBTÍTULO
   getSubtitle(item: GenderSectionItem): string {
     return item.subtitle || 'Explorar colección';
   }
