@@ -1,6 +1,6 @@
 /* ===== CONTAINER PRINCIPAL ===== */
 .gender-admin-container {
-    min-height: 100vh;
+    min-height: auto    ;
 }
 
 /* ===== HEADER ===== */

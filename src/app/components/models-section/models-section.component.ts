@@ -1,3 +1,4 @@
+// models-section.component.ts
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, AfterViewInit } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
@@ -6,10 +7,21 @@ import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { Subject, takeUntil, finalize, take } from 'rxjs';
+import { NzBadgeModule } from 'ng-zorro-antd/badge';
+import { Subject, takeUntil, finalize, take, combineLatest } from 'rxjs';
+import { map } from 'rxjs/operators';
 
+import { ModelImageService, ModelImage } from '../../services/admin/modelImage/model-image.service';
 import { ProductService } from '../../services/admin/product/product.service';
 import { Product } from '../../models/models';
+
+// 🎯 INTERFAZ PARA MODELO CON PRODUCTOS
+interface ModelWithProducts extends ModelImage {
+  products: Product[];
+  productCount: number;
+  availableStock: number;
+  hasStock: boolean;
+}
 
 @Component({
   selector: 'app-models-section',
@@ -20,20 +32,21 @@ import { Product } from '../../models/models';
     NzSkeletonModule,
     NzEmptyModule,
     NzIconModule,
-    NzButtonModule
+    NzButtonModule,
+    NzBadgeModule
   ],
   templateUrl: './models-section.component.html',
   styleUrl: './models-section.component.css'
 })
 export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit {
-  // 🎯 Estado del componente
-  models: Product[] = [];
+  // 🎯 Estado del componente - REFACTORIZADO
+  models: ModelWithProducts[] = [];
   loading = false;
   error: string | null = null;
   private destroy$ = new Subject<void>();
 
   // 📊 Configuración
-  maxModelsToShow = 12; // ✅ Más modelos para scroll horizontal
+  maxModelsToShow = 12;
   sectionTitle = 'Explora Nuestros Modelos';
   sectionSubtitle = 'Cada modelo único con sus propias características';
 
@@ -42,6 +55,7 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
   canScrollRightState = false;
 
   constructor(
+    private modelImageService: ModelImageService, // 🆕 AGREGAR
     private productService: ProductService,
     private router: Router,
     private message: NzMessageService,
@@ -49,11 +63,10 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
   ) { }
 
   ngOnInit(): void {
-    this.loadUniqueModels();
+    this.loadModelsWithProducts(); // 🔄 CAMBIAR
   }
 
   ngAfterViewInit(): void {
-    // Configurar listeners para actualizar estado de botones
     setTimeout(() => {
       this.setupScrollListeners();
       this.updateScrollButtons();
@@ -65,45 +78,100 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
     this.destroy$.complete();
   }
 
-  // 🚀 CARGAR MODELOS ÚNICOS
-  private loadUniqueModels(): void {
+  // 🚀 CARGAR MODELOS CON PRODUCTOS ASOCIADOS
+  private loadModelsWithProducts(): void {
     this.loading = true;
     this.error = null;
 
-    console.log('🎯 ModelsSectionComponent: Cargando modelos únicos...');
+    console.log('🎯 ModelsSectionComponent: Cargando modelos con productos...');
 
-    this.productService.getUniqueModels()
-      .pipe(
-        take(1),
-        finalize(() => {
-          this.loading = false;
-          this.cdr.detectChanges();
-          // Actualizar botones después de cargar
-          setTimeout(() => this.updateScrollButtons(), 200);
-        }),
-        takeUntil(this.destroy$)
-      )
-      .subscribe({
-        next: (models) => {
-          console.log(`📦 ModelsSectionComponent: ${models.length} modelos únicos recibidos`);
-          this.models = models.slice(0, this.maxModelsToShow);
-          console.log(`✅ ModelsSectionComponent: ${this.models.length} modelos listos para mostrar`);
-        },
-        error: (error) => {
-          console.error('❌ ModelsSectionComponent: Error cargando modelos:', error);
-          this.error = 'Error al cargar los modelos. Intente nuevamente.';
-          this.models = [];
-        }
+    // 🔄 COMBINAR MODELOS E IMÁGENES CON PRODUCTOS
+    combineLatest([
+      this.modelImageService.getActiveModelImages(),
+      this.productService.getProducts()
+    ]).pipe(
+      take(1),
+      map(([modelImages, products]) => {
+        return this.processModelsWithProducts(modelImages, products);
+      }),
+      finalize(() => {
+        this.loading = false;
+        this.cdr.detectChanges();
+        setTimeout(() => this.updateScrollButtons(), 200);
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (modelsWithProducts) => {
+        console.log(`📦 ModelsSectionComponent: ${modelsWithProducts.length} modelos con productos procesados`);
+        this.models = modelsWithProducts.slice(0, this.maxModelsToShow);
+        console.log(`✅ ModelsSectionComponent: ${this.models.length} modelos listos para mostrar`);
+      },
+      error: (error) => {
+        console.error('❌ ModelsSectionComponent: Error cargando modelos:', error);
+        this.error = 'Error al cargar los modelos. Intente nuevamente.';
+        this.models = [];
+      }
+    });
+  }
+
+  // 🔄 PROCESAR MODELOS CON SUS PRODUCTOS
+  private processModelsWithProducts(modelImages: ModelImage[], products: Product[]): ModelWithProducts[] {
+    console.log(`🔄 Procesando ${modelImages.length} modelos con ${products.length} productos`);
+
+    const modelsWithProducts = modelImages.map(modelImage => {
+      // 🔍 BUSCAR PRODUCTOS QUE COINCIDAN CON EL MODELO
+      const matchingProducts = products.filter(product => 
+        this.matchesModel(product, modelImage.modelName)
+      );
+
+      // 📊 CALCULAR ESTADÍSTICAS
+      const availableStock = matchingProducts.reduce((total, product) => 
+        total + (product.totalStock || 0), 0
+      );
+
+      const modelWithProducts: ModelWithProducts = {
+        ...modelImage,
+        products: matchingProducts,
+        productCount: matchingProducts.length,
+        availableStock,
+        hasStock: availableStock > 0
+      };
+
+      console.log(`📋 Modelo "${modelImage.modelName}": ${matchingProducts.length} productos, ${availableStock} stock total`);
+
+      return modelWithProducts;
+    });
+
+    // 🎯 FILTRAR SOLO MODELOS CON PRODUCTOS Y ORDENAR
+    return modelsWithProducts
+      .filter(model => model.productCount > 0) // Solo modelos con productos
+      .sort((a, b) => {
+        // Priorizar modelos con stock disponible
+        if (a.hasStock && !b.hasStock) return -1;
+        if (!a.hasStock && b.hasStock) return 1;
+        // Luego por cantidad de productos
+        return b.productCount - a.productCount;
       });
   }
 
-  // 📱 SCROLL HORIZONTAL
+  // 🔍 VERIFICAR SI PRODUCTO COINCIDE CON MODELO
+  private matchesModel(product: Product, modelName: string): boolean {
+    const normalizedModelName = modelName.toLowerCase().trim();
+    
+    return (
+      (!!product.model && product.model.toLowerCase().trim() === normalizedModelName) ||
+      (!!product.collection && product.collection.toLowerCase().trim() === normalizedModelName) ||
+      (!!product.name && product.name.toLowerCase().includes(normalizedModelName))
+    );
+  }
+
+  // 📱 SCROLL HORIZONTAL - SIN CAMBIOS
   scrollModels(direction: 'left' | 'right'): void {
     const container = document.querySelector('.models-scroll-container') as HTMLElement;
     if (!container) return;
 
-    const cardWidth = 300; // Ancho de card + gap
-    const scrollAmount = cardWidth * 2; // Scroll de 2 cards a la vez
+    const cardWidth = 300;
+    const scrollAmount = cardWidth * 2;
     
     const newScrollLeft = direction === 'left'
       ? container.scrollLeft - scrollAmount
@@ -114,11 +182,9 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
       behavior: 'smooth'
     });
 
-    // Actualizar botones después del scroll
     setTimeout(() => this.updateScrollButtons(), 300);
   }
 
-  // 🎛️ CONTROL DE BOTONES DE SCROLL
   private setupScrollListeners(): void {
     const container = document.querySelector('.models-scroll-container') as HTMLElement;
     if (!container) return;
@@ -127,7 +193,6 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
       this.updateScrollButtons();
     });
 
-    // Listener para redimensionamiento
     window.addEventListener('resize', () => {
       this.updateScrollButtons();
     });
@@ -143,15 +208,27 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
     this.cdr.detectChanges();
   }
 
-  // 🖼️ GESTIÓN DE IMÁGENES
-  getDisplayImageUrl(model: Product): string {
+  // 🖼️ GESTIÓN DE IMÁGENES - REFACTORIZADO
+  getDisplayImageUrl(model: ModelWithProducts): string {
+    // 📱 RESPONSIVE: Usar imagen móvil en dispositivos pequeños
+    if (window.innerWidth < 768 && model.mobileImageUrl) {
+      return model.mobileImageUrl;
+    }
     return model.imageUrl || '';
   }
 
-  // 🧭 NAVEGACIÓN
-  navigateToModel(model: Product): void {
-    console.log(`🧭 Navegando al modelo: ${model.model || model.name}`);
-    this.router.navigate(['/products', model.id]);
+  // 🧭 NAVEGACIÓN - REFACTORIZADO
+  navigateToModel(model: ModelWithProducts): void {
+    console.log(`🧭 Navegando al modelo: ${model.modelName}`);
+    
+    // 🎯 NAVEGAR AL CATÁLOGO FILTRADO POR MODELO
+    this.router.navigate(['/shop'], { 
+      queryParams: { 
+        model: model.modelName,
+        // 🆕 PARÁMETROS ADICIONALES PARA MEJOR UX
+        source: 'models-section'
+      }
+    });
   }
 
   navigateToShop(): void {
@@ -159,29 +236,48 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
     this.router.navigate(['/shop']);
   }
 
-  // 🔄 MÉTODOS DE UTILIDAD
-  trackByModelId(index: number, model: Product): string {
+  // 🔄 MÉTODOS DE UTILIDAD - REFACTORIZADOS
+  trackByModelId(index: number, model: ModelWithProducts): string {
     return model.id;
   }
 
   refreshModels(): void {
     console.log('🔄 ModelsSectionComponent: Recargando modelos...');
-    this.loadUniqueModels();
+    this.loadModelsWithProducts(); // 🔄 CAMBIAR
   }
 
-  // 📊 MÉTODOS PARA DEBUG
-  getAvailableModels(): Product[] {
-    return this.models.filter(model => model.totalStock > 0);
+  // 📊 MÉTODOS PARA DEBUG - REFACTORIZADOS
+  getAvailableModels(): ModelWithProducts[] {
+    return this.models.filter(model => model.hasStock);
   }
 
   getUniqueCategories(): string[] {
     const categories = new Set<string>();
     this.models.forEach(model => {
-      if (model.category) {
-        categories.add(model.category);
-      }
+      model.products.forEach(product => {
+        if (product.category) {
+          categories.add(product.category);
+        }
+      });
     });
     return Array.from(categories);
+  }
+
+  // 🆕 MÉTODOS ADICIONALES PARA MEJOR UX
+  getModelDescription(model: ModelWithProducts): string {
+    return model.description || `${model.productCount} productos disponibles`;
+  }
+
+  getStockBadgeText(model: ModelWithProducts): string {
+    if (!model.hasStock) return 'Sin stock';
+    if (model.availableStock < 10) return 'Pocas unidades';
+    return `${model.availableStock} disponibles`;
+  }
+
+  getStockBadgeStatus(model: ModelWithProducts): string {
+    if (!model.hasStock) return 'default';
+    if (model.availableStock < 10) return 'warning';
+    return 'success';
   }
 
   debugModels(): void {
@@ -197,7 +293,7 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
     if (this.models.length > 0) {
       console.log('🎯 Modelos cargados:');
       this.models.forEach((model, index) => {
-        console.log(`  ${index + 1}. ${model.name} (Modelo: ${model.model || 'N/A'}) - Stock: ${model.totalStock}`);
+        console.log(`  ${index + 1}. ${model.modelName} - ${model.productCount} productos - Stock: ${model.availableStock}`);
       });
     }
 

@@ -1,5 +1,5 @@
 import { ApplicationConfig, provideZoneChangeDetection, importProvidersFrom } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 
 import { routes } from './app.routes';
 import { icons } from './icons-provider';
@@ -28,7 +28,12 @@ export function initializeFirebaseFactory(firebaseInitService: FirebaseInitServi
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }), 
-    provideRouter(routes), 
+    provideRouter(routes, 
+      withInMemoryScrolling({
+        scrollPositionRestoration: 'top', // 🔧 ESTO FUERZA SCROLL AL TOP
+        anchorScrolling: 'enabled'
+      })
+    ),
     provideNzIcons(icons), 
     provideNzI18n(en_US), 
     importProvidersFrom(FormsModule), 

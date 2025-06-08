@@ -70,7 +70,7 @@
    ================================================================= */
 
 .model-card {
-    flex: 0 0 280px; /* ✅ Ancho fijo para scroll consistente */
+    flex: 0 0 350px; /* ✅ Ancho fijo para scroll consistente */
     min-height: 320px;
     background-color: #ffffff;
     overflow: hidden;
@@ -94,8 +94,7 @@
 
 .model-image-container {
     position: relative;
-    height: 340px;
-    background-color: #f8f9fa;
+    height: 400px;
     overflow: hidden;
     margin: 0;
     padding: 0;
@@ -104,10 +103,11 @@
 .model-image {
     width: 100%;
     height: 100%;
-    padding: 20px;
+    padding: 20px; 
     object-fit: cover;
     transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     filter: contrast(1.02) saturate(1.05);
+    
 }
 
 .model-card:hover .model-image {
@@ -123,7 +123,7 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(45, 44, 44, 0.4), transparent);
     transition: left 0.6s ease;
     z-index: 1;
     pointer-events: none;
@@ -334,13 +334,18 @@
     }
     
     .model-card {
-        flex: 0 0 260px;
+        flex: 0 0 350px; 
     }
     
     .model-image-container {
-        height: 220px;
+        height: 380px;
     }
+
+    .model-image {
+        padding: 20px;
+    }       
 }
+
 
 @media (max-width: 768px) {
     .models-section {
@@ -369,13 +374,17 @@
     }
 
     .model-card {
-        flex: 0 0 240px;
+        flex: 0 0 320px; 
         min-height: 300px;
     }
 
     .model-image-container {
-        height: 200px;
+        height: 340px;
     }
+
+    .model-image {
+        padding: 16px;
+    } 
 
     .model-name {
         font-size: 16px;
@@ -411,12 +420,16 @@
     }
 
     .model-card {
-        flex: 0 0 220px;
+        flex: 0 0 300px;
         min-height: 280px;
     }
 
     .model-image-container {
-        height: 180px;
+        height: 320px;
+    }
+
+    .model-image {
+        padding: 12px;
     }
 
     .model-name {

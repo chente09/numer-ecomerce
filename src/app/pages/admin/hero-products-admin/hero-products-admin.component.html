@@ -1,138 +1,113 @@
-<div class="hero-products-container">
-    <!-- 🎯 HEADER SIMPLIFICADO -->
-    <nz-card nzTitle="Administrar Hero Items" class="mb-4 header-card">
+<div class="hero-products-admin-container">
+    <!-- 📋 ENCABEZADO DE LA SECCIÓN -->
+    <nz-card nzTitle="Administrar Imágenes de Modelos" class="mb-4 header-card">
         <div class="card-actions">
-            <button nz-button nzType="primary" (click)="openCreateModal()">
+            <button nz-button nzType="primary" (click)="openModal()">
                 <span nz-icon nzType="plus"></span>
-                Nuevo Hero
+                <span class="button-text">Nuevo Modelo</span>
             </button>
-            <button nz-button (click)="updateOrder()" [disabled]="heroItems.length === 0">
-                <span nz-icon nzType="sort-ascending"></span>
-                Actualizar Orden
-            </button>
-            <button nz-button (click)="refreshData()" [nzLoading]="isInitialLoading">
-                <span nz-icon nzType="reload"></span>
-                Refrescar
-            </button>
+
+            <!-- 📊 ESTADÍSTICAS MEJORADAS -->
+            <div class="stats-container">
+                <nz-tag nzColor="blue">Total: {{ getStats().total }}</nz-tag>
+                <nz-tag nzColor="green">Con imagen: {{ getStats().withImage }}</nz-tag>
+                <nz-tag nzColor="orange">Sin imagen: {{ getStats().withoutImage }}</nz-tag>
+                <nz-tag nzColor="purple">Cobertura: {{ getStats().coverage }}%</nz-tag>
+            </div>
         </div>
     </nz-card>
 
-    <!-- 🎯 ESTADÍSTICAS -->
-    <div class="stats-grid">
-        <nz-card class="stat-card">
-            <nz-statistic nzTitle="Total Hero Items" [nzValue]="getStats().total" nzPrefix="📸">
-            </nz-statistic>
-        </nz-card>
-
-        <nz-card class="stat-card">
-            <nz-statistic nzTitle="Activos" [nzValue]="getStats().active" nzPrefix="✅">
-            </nz-statistic>
-        </nz-card>
-
-        <nz-card class="stat-card">
-            <nz-statistic nzTitle="Inactivos" [nzValue]="getStats().inactive" nzPrefix="❌">
-            </nz-statistic>
-        </nz-card>
-
-        <nz-card class="stat-card">
-            <div class="config-status">
-                <h4>Productos Disponibles</h4>
-                <nz-tag nzColor="blue">{{ availableProducts.length }}</nz-tag>
-            </div>
-        </nz-card>
-    </div>
-
-    <!-- 🎯 LOADING INICIAL -->
-    <div *ngIf="isInitialLoading" class="loading-container">
-        <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 8 }"></nz-skeleton>
-    </div>
-
-    <!-- 🎯 EMPTY STATE -->
-    <nz-empty *ngIf="!isInitialLoading && heroItems.length === 0" nzNotFoundContent="No hay hero items disponibles"
+    <!-- 🗂️ ESTADO VACÍO -->
+    <nz-empty *ngIf="modelImages?.length === 0 && !loading" nzNotFoundContent="No hay modelos disponibles"
         [nzNotFoundFooter]="emptyButton">
     </nz-empty>
-
     <ng-template #emptyButton>
-        <button nz-button nzType="primary" (click)="openCreateModal()">
-            Crear primer hero item
+        <button nz-button nzType="primary" (click)="openModal()">
+            <span nz-icon nzType="plus"></span>
+            Crear primer modelo
         </button>
     </ng-template>
 
-    <!-- 🎯 TABLA OPTIMIZADA -->
-    <div class="table-responsive" *ngIf="!isInitialLoading && heroItems.length > 0">
-        <nz-table #heroTable [nzData]="heroItems" [nzBordered]="true" [nzShowPagination]="true" [nzPageSize]="10">
-
+    <!-- 📊 TABLA DE MODELOS -->
+    <div class="table-responsive" *ngIf="modelImages && modelImages.length > 0">
+        <nz-table #tabla [nzData]="modelImages" [nzBordered]="true" [nzLoading]="loading" [nzShowPagination]="true"
+            [nzPageSize]="8" [nzShowSizeChanger]="true" [nzPageSizeOptions]="[5, 8, 15, 20]">
             <thead>
                 <tr>
-                    <th nzWidth="80px">Imagen</th>
-                    <th>Hero Item</th>
-                    <th nzWidth="150px" class="hide-sm">Producto</th>
-                    <th nzWidth="80px" class="hide-md">Orden</th>
-                    <th nzWidth="100px" class="hide-sm">Estado</th>
-                    <th nzWidth="140px" class="hide-md">Última Act.</th>
-                    <th nzWidth="140px">Acciones</th>
+                    <th nzWidth="120px">Imagen</th>
+                    <th nzWidth="auto">Modelo</th>
+                    <th nzWidth="auto" class="hide-sm">Descripción</th>
+                    <th nzWidth="auto" class="hide-md">Móvil</th>
+                    <th nzWidth="80px">Estado</th>
+                    <th nzWidth="auto">Acciones</th>
                 </tr>
             </thead>
-
             <tbody>
-                <tr *ngFor="let hero of heroTable.data">
+                <tr *ngFor="let model of tabla.data; trackBy: trackByModelId"
+                    [class.highlight-row]="selectedModel?.id === model.id">
+
+                    <!-- 🖼️ IMAGEN PRINCIPAL -->
                     <td>
-                        <nz-badge [nzDot]="hero.isActive" nzStatus="success">
-                            <nz-avatar [nzSrc]="hero.customImageUrl" nzShape="square" nzSize="large"
-                                [nzAlt]="hero.title" (error)="handleImageError($event)">
-                            </nz-avatar>
-                        </nz-badge>
+                        <div class="image-preview-container">
+                            <img [src]="model.imageUrl" [alt]="model.modelName" class="model-preview-image"
+                                (error)="handleImageError($event)" loading="lazy" />
+                        </div>
                     </td>
 
+                    <!-- 📝 INFORMACIÓN DEL MODELO -->
                     <td>
-                        <div class="hero-info">
-                            <strong>{{ hero.title }}</strong>
-                            <div class="hero-meta">
-                                <small *ngIf="hero.subtitle">{{ hero.subtitle }}</small>
-                                <nz-tag nzSize="small" nzColor="blue">{{ hero.ctaText }}</nz-tag>
+                        <div class="model-info">
+                            <strong class="model-name">{{ model.modelName }}</strong>
+                            <div class="model-meta">
+                                <span class="order-badge">Orden: {{ model.order }}</span>
+                                
                             </div>
                         </div>
                     </td>
 
+                    <!-- 📄 DESCRIPCIÓN -->
                     <td class="hide-sm">
-                        <div class="product-info">
-                            <strong>{{ getProductName(hero.productId) }}</strong>
-                            <div class="product-price">
-                                ${{ getProductPrice(hero.productId) | number:'1.2-2' }}
-                            </div>
+                        <span class="description-text" nz-tooltip [nzTooltipTitle]="model.description">
+                            {{ model.description || 'Sin descripción' }}
+                        </span>
+                    </td>
+
+                    <!-- 📱 IMAGEN MÓVIL -->
+                    <td class="hide-md">
+                        <div class="mobile-indicator">
+                            <span *ngIf="model.mobileImageUrl" nz-icon nzType="mobile" nzTheme="fill" class="has-mobile"
+                                nz-tooltip nzTooltipTitle="Tiene imagen móvil"></span>
+                            <span *ngIf="!model.mobileImageUrl" nz-icon nzType="mobile" class="no-mobile" nz-tooltip
+                                nzTooltipTitle="Sin imagen móvil"></span>
                         </div>
                     </td>
 
-                    <td class="hide-md text-center">
-                        <nz-tag nzColor="blue">{{ hero.order }}</nz-tag>
-                    </td>
-
-                    <td class="hide-sm text-center">
-                        <nz-switch [ngModel]="hero.isActive" (ngModelChange)="toggleActive(hero)" nzSize="small">
+                    <!-- 🔄 ESTADO ACTIVO/INACTIVO -->
+                    <td>
+                        <nz-switch [ngModel]="model.isActive" (ngModelChange)="toggleModelActive(model)"
+                            [nzSize]="'small'">
                         </nz-switch>
                     </td>
 
-                    <td class="hide-md">
-                        <small>{{ formatDate(hero.updatedAt) }}</small>
-                    </td>
-
+                    <!-- ⚙️ ACCIONES -->
                     <td>
                         <div class="action-buttons">
-                            <button nz-button nzSize="small" (click)="openEditModal(hero)" nz-tooltip
+                            <button nz-button nzSize="small" (click)="editModel(model)" nz-tooltip
                                 nzTooltipTitle="Editar">
                                 <span nz-icon nzType="edit"></span>
                             </button>
 
-                            <button nz-button nzSize="small" (click)="showDetails(hero)" nz-tooltip
-                                nzTooltipTitle="Ver detalles" class="show-sm">
-                                <span nz-icon nzType="eye"></span>
+                            <button nz-button nz-popconfirm
+                                nzPopconfirmTitle="¿Seguro que quieres eliminar este modelo?"
+                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteModel(model.id, model.modelName)"
+                                nzSize="small" nzDanger nz-tooltip nzTooltipTitle="Eliminar">
+                                <span nz-icon nzType="delete"></span>
                             </button>
 
-                            <button nz-button nzSize="small" nzDanger [nzLoading]="isDeleting.has(hero.id)"
-                                nz-popconfirm nzPopconfirmTitle="¿Eliminar este hero item?"
-                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteItem(hero.id)" nz-tooltip
-                                nzTooltipTitle="Eliminar">
-                                <span nz-icon nzType="delete"></span>
+                            <!-- 👁️ VER DETALLES (MÓVIL) -->
+                            <button nz-button nzSize="small" (click)="showDetails(model)" class="show-sm" nz-tooltip
+                                nzTooltipTitle="Ver detalles">
+                                <span nz-icon nzType="eye"></span>
                             </button>
                         </div>
                     </td>
@@ -141,178 +116,211 @@
         </nz-table>
     </div>
 
-    <!-- 🎯 MODAL CREAR/EDITAR OPTIMIZADO -->
-    <nz-modal [(nzVisible)]="isModalVisible" [nzTitle]="isEditMode ? 'Editar Hero Item' : 'Nuevo Hero Item'"
-        [nzFooter]="modalFooter" (nzOnCancel)="closeModal()" [nzWidth]="modalWidth" nzCentered nzMaskClosable="false">
-
+    <!-- 🔧 MODAL PARA CREAR/EDITAR -->
+    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Modelo' : 'Nuevo Modelo'"
+        [nzOkLoading]="saving" (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="modalWidth" nzCentered
+        [nzOkText]="isEditMode ? 'Actualizar' : 'Crear'">
         <ng-container *nzModalContent>
-            <form [formGroup]="heroForm" nz-form nzLayout="vertical">
+            <form [formGroup]="modelForm" nz-form nzLayout="vertical">
 
-                <!-- ✅ SELECCIÓN DE PRODUCTO SIMPLIFICADA -->
+                <!-- 📝 SELECTOR DE MODELO -->
                 <nz-form-item>
-                    <nz-form-label nzRequired>Producto</nz-form-label>
-                    <nz-form-control [nzErrorTip]="getFieldError('productId')">
-                        <nz-select formControlName="productId" nzPlaceHolder="Selecciona un producto" nzShowSearch
-                            nzAllowClear (ngModelChange)="onProductChange($event)">
+                    <nz-form-label nzRequired>Seleccionar Modelo</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor selecciona un modelo">
+                        <nz-select formControlName="modelName" nzPlaceHolder="Selecciona un modelo de producto..."
+                            nzShowSearch nzAllowClear>
 
-                            <nz-option *ngFor="let product of availableProducts" [nzValue]="product.id"
-                                [nzLabel]="product.name" [nzDisabled]="isProductAlreadyUsed(product.id)">
-                                <span>{{ product.name }} - ${{ product.price | number:'1.2-2' }}</span>
-                                <span *ngIf="isProductAlreadyUsed(product.id)" class="text-gray"> (Ya usado)</span>
-                            </nz-option>
+                            <!-- 🎯 MODELOS SIN IMAGEN (PRIORITARIOS) -->
+                            <nz-option-group *ngIf="getModelsWithoutImage().length > 0"
+                                nzLabel="📋 Modelos sin imagen asignada">
+                                <nz-option *ngFor="let model of getModelsWithoutImage()" [nzValue]="model"
+                                    [nzLabel]="model">
+                                    <span>{{ model }}
+                                        <nz-tag nzSize="small" nzColor="orange">
+                                            {{ getProductsForModel(model).length }} productos
+                                        </nz-tag>
+                                    </span>
+                                </nz-option>
+                            </nz-option-group>
+
+                            <!-- 🖼️ MODELOS CON IMAGEN (PARA EDITAR) -->
+                            <nz-option-group *ngIf="isEditMode && modelImages.length > 0"
+                                nzLabel="🖼️ Modelos con imagen existente">
+                                <nz-option *ngFor="let modelImg of modelImages" [nzValue]="modelImg.modelName"
+                                    [nzLabel]="modelImg.modelName">
+                                    <span>{{ modelImg.modelName }}
+                                        <nz-tag nzSize="small" nzColor="blue">
+                                            {{ getProductsForModel(modelImg.modelName).length }} productos
+                                        </nz-tag>
+                                        <nz-tag nzSize="small" [nzColor]="modelImg.isActive ? 'green' : 'red'">
+                                            {{ modelImg.isActive ? 'Activo' : 'Inactivo' }}
+                                        </nz-tag>
+                                    </span>
+                                </nz-option>
+                            </nz-option-group>
+
+                            <!-- 📦 TODOS LOS MODELOS (FALLBACK) -->
+                            <nz-option-group *ngIf="availableModels.length > 0"
+                                nzLabel="📦 Todos los modelos disponibles">
+                                <nz-option *ngFor="let model of availableModels" [nzValue]="model" [nzLabel]="model">
+                                    <span>{{ model }}
+                                        <nz-tag nzSize="small" nzColor="default">
+                                            {{ getProductsForModel(model).length }} productos
+                                        </nz-tag>
+                                    </span>
+                                </nz-option>
+                            </nz-option-group>
                         </nz-select>
+                        <div class="form-help-text">
+                            Selecciona un modelo de tu catálogo de productos para asignarle una imagen personalizada.
+                        </div>
                     </nz-form-control>
                 </nz-form-item>
 
-                <!-- ✅ INFORMACIÓN BÁSICA -->
+                <!-- 📄 DESCRIPCIÓN -->
                 <nz-form-item>
-                    <nz-form-label nzRequired>Título</nz-form-label>
-                    <nz-form-control [nzErrorTip]="getFieldError('title')">
-                        <input nz-input formControlName="title" placeholder="Ej. Nueva Colección Aventura" />
-                    </nz-form-control>
-                </nz-form-item>
-
-                <nz-form-item>
-                    <nz-form-label>Subtítulo</nz-form-label>
+                    <nz-form-label>Descripción</nz-form-label>
                     <nz-form-control>
-                        <textarea nz-input formControlName="subtitle" placeholder="Descripción adicional (opcional)"
-                            [nzAutosize]="{ minRows: 2, maxRows: 4 }">
-            </textarea>
+                        <textarea nz-input formControlName="description"
+                            placeholder="Descripción opcional del modelo..." [nzAutosize]="{ minRows: 2, maxRows: 4 }"
+                            maxlength="200"></textarea>
+                        <div class="form-help-text">Opcional. Máximo 200 caracteres.</div>
                     </nz-form-control>
                 </nz-form-item>
 
-                <!-- ✅ CONFIGURACIÓN EN FILA -->
-                <div class="form-row">
-                    <nz-form-item class="form-item-half">
-                        <nz-form-label nzRequired>Texto del Botón</nz-form-label>
-                        <nz-form-control [nzErrorTip]="getFieldError('ctaText')">
-                            <input nz-input formControlName="ctaText" placeholder="Ver Producto" />
-                        </nz-form-control>
-                    </nz-form-item>
-
-                    <nz-form-item class="form-item-half">
-                        <nz-form-label nzRequired>Orden</nz-form-label>
-                        <nz-form-control [nzErrorTip]="getFieldError('order')">
-                            <nz-input-number formControlName="order" [nzMin]="1" [nzStep]="1" nzPlaceHolder="1">
-                            </nz-input-number>
-                        </nz-form-control>
-                    </nz-form-item>
-                </div>
-
+                <!-- 🖼️ IMAGEN PRINCIPAL (DESKTOP) -->
                 <nz-form-item>
-                    <nz-form-label>Estado</nz-form-label>
-                    <nz-form-control>
-                        <nz-switch formControlName="isActive"></nz-switch>
-                        <span class="switch-label">
-                            {{ heroForm.get('isActive')?.value ? 'Activo' : 'Inactivo' }}
-                        </span>
-                    </nz-form-control>
-                </nz-form-item>
-
-                <!-- ✅ UPLOAD SIMPLIFICADO -->
-                <nz-form-item>
-                    <nz-form-label>
-                        Imagen Hero
-                        <span *ngIf="!isEditMode" class="required-mark">*</span>
+                    <nz-form-label nzRequired>
+                        Imagen Principal
+                        <span *ngIf="isEditMode" class="optional-text">(opcional para editar)</span>
                     </nz-form-label>
                     <nz-form-control>
                         <div class="upload-container">
-                            <nz-upload [nzFileList]="fileList" [nzBeforeUpload]="beforeUpload"
+                            <nz-upload [nzFileList]="desktopFileList" [nzBeforeUpload]="beforeUploadDesktop"
                                 [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
-                                [nzRemove]="removeFile" nzListType="picture-card">
-
-                                <div *ngIf="fileList.length < 1">
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemoveDesktop" nzListType="picture-card"
+                                [nzAccept]="'image/*'">
+                                <div *ngIf="desktopFileList.length < 1">
                                     <span nz-icon nzType="plus"></span>
-                                    <div class="ant-upload-text">Subir Imagen</div>
+                                    <div class="ant-upload-text">Principal</div>
                                 </div>
                             </nz-upload>
                         </div>
-
+                        <div *ngIf="desktopImageError" class="error-message">
+                            {{ desktopImageError }}
+                        </div>
                         <div class="form-help-text">
-                            • Tamaño recomendado: 600x400px<br>
-                            • Formato: JPG, PNG o WEBP<br>
-                            • Peso máximo: 3MB
+                            Recomendado: 1200x800px. Formatos: JPG, PNG, WebP. Máximo 8MB.
                         </div>
                     </nz-form-control>
                 </nz-form-item>
+
+                <!-- 📱 IMAGEN MÓVIL (OPCIONAL) -->
+                <nz-form-item>
+                    <nz-form-label>Imagen Móvil (Opcional)</nz-form-label>
+                    <nz-form-control>
+                        <div class="upload-container">
+                            <nz-upload [nzFileList]="mobileFileList" [nzBeforeUpload]="beforeUploadMobile"
+                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemoveMobile" nzListType="picture-card"
+                                [nzAccept]="'image/*'">
+                                <div *ngIf="mobileFileList.length < 1">
+                                    <span nz-icon nzType="mobile"></span>
+                                    <div class="ant-upload-text">Móvil</div>
+                                </div>
+                            </nz-upload>
+                        </div>
+                        <div *ngIf="mobileImageError" class="error-message">
+                            {{ mobileImageError }}
+                        </div>
+                        <div class="form-help-text">
+                            Opcional. Recomendado: 768x600px. Si no se sube, se usará la imagen principal.
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
             </form>
         </ng-container>
     </nz-modal>
 
-    <!-- ✅ FOOTER DEL MODAL OPTIMIZADO -->
-    <ng-template #modalFooter>
-        <button nz-button (click)="closeModal()" [disabled]="isSaving">
-            Cancelar
-        </button>
-        <button nz-button nzType="primary" [nzLoading]="isSaving" [disabled]="!canSubmit()" (click)="submitForm()">
-            {{ isEditMode ? 'Actualizar' : 'Crear' }}
-        </button>
-    </ng-template>
-
-    <!-- 🎯 MODAL DE DETALLES MÓVIL -->
-    <nz-modal [(nzVisible)]="showDetailsModal" nzTitle="Detalles del Hero Item" (nzOnCancel)="showDetailsModal = false"
-        [nzFooter]="null" [nzWidth]="320" nzCentered>
-
+    <!-- 👁️ MODAL DE DETALLES PARA MÓVIL -->
+    <nz-modal [(nzVisible)]="detailsModalVisible" nzTitle="Detalles del Modelo"
+        (nzOnCancel)="detailsModalVisible = false" [nzFooter]="null" [nzWidth]="400" nzCentered>
         <ng-container *nzModalContent>
-            <div *ngIf="selectedItem" class="hero-details">
-                <div class="detail-image">
-                    <img [src]="selectedItem.customImageUrl" [alt]="selectedItem.title"
-                        (error)="handleImageError($event)">
+            <div *ngIf="selectedModel" class="model-details">
+
+                <!-- 🖼️ IMÁGENES -->
+                <div class="detail-images">
+                    <div class="detail-image-item">
+                        <h4>Imagen Principal</h4>
+                        <img [src]="selectedModel.imageUrl" [alt]="selectedModel.modelName" class="detail-image"
+                            (error)="handleImageError($event)" />
+                    </div>
+
+                    <div *ngIf="selectedModel.mobileImageUrl" class="detail-image-item">
+                        <h4>Imagen Móvil</h4>
+                        <img [src]="selectedModel.mobileImageUrl" [alt]="selectedModel.modelName + ' - Móvil'"
+                            class="detail-image" (error)="handleImageError($event)" />
+                    </div>
                 </div>
 
+                <!-- 📝 INFORMACIÓN -->
                 <div class="detail-content">
-                    <h3>{{ selectedItem.title }}</h3>
+                    <h3>{{ selectedModel.modelName }}</h3>
 
-                    <div class="detail-row" *ngIf="selectedItem.subtitle">
-                        <strong>Subtítulo:</strong>
-                        <span>{{ selectedItem.subtitle }}</span>
+                    <div class="detail-field">
+                        <strong>Descripción:</strong>
+                        <p>{{ selectedModel.description || 'Sin descripción' }}</p>
                     </div>
 
-                    <div class="detail-row">
-                        <strong>Producto:</strong>
-                        <span>{{ getProductName(selectedItem.productId) }}</span>
-                    </div>
-
-                    <div class="detail-row">
-                        <strong>Precio:</strong>
-                        <span>${{ getProductPrice(selectedItem.productId) | number:'1.2-2' }}</span>
-                    </div>
-
-                    <div class="detail-row">
-                        <strong>Botón:</strong>
-                        <nz-tag nzColor="blue">{{ selectedItem.ctaText }}</nz-tag>
-                    </div>
-
-                    <div class="detail-row">
-                        <strong>Orden:</strong>
-                        <span>{{ selectedItem.order }}</span>
-                    </div>
-
-                    <div class="detail-row">
+                    <div class="detail-field">
                         <strong>Estado:</strong>
-                        <nz-tag [nzColor]="selectedItem.isActive ? 'green' : 'red'">
-                            {{ selectedItem.isActive ? 'Activo' : 'Inactivo' }}
+                        <nz-tag [nzColor]="selectedModel.isActive ? 'green' : 'red'">
+                            {{ selectedModel.isActive ? 'Activo' : 'Inactivo' }}
                         </nz-tag>
                     </div>
 
-                    <div class="detail-row">
-                        <strong>Última actualización:</strong>
-                        <small>{{ formatDate(selectedItem.updatedAt) }}</small>
+                    <div class="detail-field">
+                        <strong>Orden:</strong>
+                        <span>{{ selectedModel.order }}</span>
+                    </div>
+
+                    <div class="detail-field">
+                        <strong>Productos asociados:</strong>
+                        <div class="products-list">
+                            <nz-tag *ngFor="let product of getProductsForModel(selectedModel.modelName)" nzColor="blue"
+                                class="product-tag">
+                                {{ product.name }}
+                                <span class="product-stock">(Stock: {{ product.totalStock }})</span>
+                            </nz-tag>
+                            <span *ngIf="getProductsForModel(selectedModel.modelName).length === 0" class="no-products">
+                                No hay productos asociados
+                            </span>
+                        </div>
                     </div>
                 </div>
 
+                <!-- ⚙️ ACCIONES RÁPIDAS -->
                 <div class="detail-actions">
-                    <button nz-button (click)="openEditModal(selectedItem); showDetailsModal = false">
+                    <button nz-button (click)="editModel(selectedModel); detailsModalVisible = false">
                         <span nz-icon nzType="edit"></span> Editar
                     </button>
 
-                    <button nz-button nzDanger [nzLoading]="isDeleting.has(selectedItem.id)" nz-popconfirm
-                        nzPopconfirmTitle="¿Eliminar este hero item?" nzPopconfirmPlacement="top"
-                        (nzOnConfirm)="deleteItem(selectedItem.id); showDetailsModal = false">
+                    <button nz-button [nzType]="selectedModel.isActive ? 'default' : 'primary'"
+                        (click)="toggleModelActive(selectedModel)">
+                        <span nz-icon [nzType]="selectedModel.isActive ? 'pause' : 'play'"></span>
+                        {{ selectedModel.isActive ? 'Desactivar' : 'Activar' }}
+                    </button>
+
+                    <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar este modelo?"
+                        nzPopconfirmPlacement="top"
+                        (nzOnConfirm)="deleteModel(selectedModel.id, selectedModel.modelName); detailsModalVisible = false"
+                        nzDanger>
                         <span nz-icon nzType="delete"></span> Eliminar
                     </button>
                 </div>
             </div>
         </ng-container>
     </nz-modal>
+
 </div>

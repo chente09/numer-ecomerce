@@ -1,12 +1,12 @@
 import { Component } from '@angular/core';
-import {  NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NavBarComponent } from "./components/nav-bar/nav-bar.component";
 import { FooterComponent } from "./components/footer/footer.component";
 import { WppComponent } from "./components/wpp/wpp.component";
-import { filter, take } from 'rxjs';
+import { filter } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ScrollService } from './services/scroll/scroll.service';
 
@@ -14,12 +14,12 @@ import { ScrollService } from './services/scroll/scroll.service';
   selector: 'app-root',
   imports: [
     CommonModule,
-    RouterOutlet, 
-    NzIconModule, 
-    NzLayoutModule, 
-    NzMenuModule, 
-    NavBarComponent, 
-    FooterComponent, 
+    RouterOutlet,
+    NzIconModule,
+    NzLayoutModule,
+    NzMenuModule,
+    NavBarComponent,
+    FooterComponent,
     WppComponent
   ],
   templateUrl: './app.component.html',
@@ -31,17 +31,15 @@ export class AppComponent {
   constructor(
     private router: Router,
     private scrollService: ScrollService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     // Escucha cambios en la navegación para ocultar el layout en rutas específicas
     this.router.events
-      .pipe(filter((event) => event instanceof NavigationEnd), take(1))
+      .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe((event: NavigationEnd) => {
-        // Oculta el layout si la ruta actual es '/cpanel' o '/formularios' o alguna de sus subrutas
-        this.showLayout = !(
-          event.url.startsWith('/admin') 
-        );
+        // Oculta el layout si la ruta actual es '/admin' o sus subrutas
+        this.showLayout = !event.url.startsWith('/admin');
       });
   }
 }

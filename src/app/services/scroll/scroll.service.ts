@@ -6,25 +6,33 @@ import { filter } from 'rxjs';
   providedIn: 'root'
 })
 export class ScrollService {
-
-  private navbarHeight = 80; // Ajusta según la altura de tu navbar
+  private navbarHeight = 80;
   
   constructor(private router: Router) {
-    // Suscribirse a eventos de navegación
+    // 🔧 QUITAR take(1) para que se aplique a TODAS las navegaciones
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
-    ).subscribe(() => {
-      // Desplazarse al inicio después de cada navegación
-      window.scrollTo(0, 0);
+    ).subscribe((event: NavigationEnd) => {
+      // 🔧 AGREGAR setTimeout para asegurar que el componente esté renderizado
+      setTimeout(() => {
+        this.scrollToTop();
+      }, 100); // Pequeño delay para asegurar renderizado
     });
   }
   
-  // Método para configurar la altura del navbar
+  // 🆕 MÉTODO ESPECÍFICO PARA SCROLL AL TOP
+  scrollToTop(): void {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth'
+    });
+  }
+  
   setNavbarHeight(height: number): void {
     this.navbarHeight = height;
   }
   
-  // Método para hacer scroll a un elemento por ElementRef
   scrollToElement(element: ElementRef | HTMLElement): void {
     const targetElement = element instanceof ElementRef ? element.nativeElement : element;
     
@@ -39,7 +47,6 @@ export class ScrollService {
     }
   }
   
-  // Método para hacer scroll por ID
   scrollToElementById(id: string): void {
     const element = document.getElementById(id);
     if (element) {

@@ -35,37 +35,31 @@
         <!-- Scroll horizontal de modelos -->
         <div *ngIf="!loading && !error && models.length > 0" class="models-scroll-wrapper">
             <!-- Botones de navegación -->
-            <button class="scroll-btn scroll-left" 
-                    (click)="scrollModels('left')" 
-                    [class.visible]="canScrollLeftState"
-                    [attr.aria-label]="'Scroll hacia la izquierda'">
+            <button class="scroll-btn scroll-left" (click)="scrollModels('left')" [class.visible]="canScrollLeftState"
+                [attr.aria-label]="'Scroll hacia la izquierda'">
                 <span nz-icon nzType="left"></span>
             </button>
-            
-            <button class="scroll-btn scroll-right" 
-                    (click)="scrollModels('right')" 
-                    [class.visible]="canScrollRightState"
-                    [attr.aria-label]="'Scroll hacia la derecha'">
+
+            <button class="scroll-btn scroll-right" (click)="scrollModels('right')"
+                [class.visible]="canScrollRightState" [attr.aria-label]="'Scroll hacia la derecha'">
                 <span nz-icon nzType="right"></span>
             </button>
 
             <!-- Container con scroll -->
             <div class="models-scroll-container">
-                <div *ngFor="let model of models; trackBy: trackByModelId" 
-                     class="model-card"
-                     (click)="navigateToModel(model)">
-                    
+                <div *ngFor="let model of models; trackBy: trackByModelId" class="model-card"
+                    (click)="navigateToModel(model)">
+
                     <!-- Imagen del modelo -->
                     <div class="model-image-container">
-                        <img [src]="getDisplayImageUrl(model)" 
-                             [alt]="model.name" 
-                             class="model-image" 
-                             loading="lazy" />
+                        <!-- 🔄 ÚNICO CAMBIO: usar modelName en lugar de name -->
+                        <img [src]="getDisplayImageUrl(model)" [alt]="model.modelName" class="model-image" loading="lazy" />
                     </div>
-                    
+
                     <!-- Información del modelo -->
                     <div class="model-info">
-                        <h3 class="model-name">{{ model.model || model.name }}</h3>
+                        <!-- 🔄 ÚNICO CAMBIO: usar modelName directamente -->
+                        <h3 class="model-name">{{ model.modelName }}</h3>
                     </div>
                 </div>
             </div>

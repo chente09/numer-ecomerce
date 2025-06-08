@@ -17,17 +17,16 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
-import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
-import { NzTagModule } from 'ng-zorro-antd/tag';
-import { NzDividerModule } from 'ng-zorro-antd/divider';
-import { NzStatisticModule } from 'ng-zorro-antd/statistic';
-import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { Subject, forkJoin } from 'rxjs';
-import { takeUntil, finalize } from 'rxjs/operators';
+import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { Subject, takeUntil, finalize, take, forkJoin, map } from 'rxjs';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 
-import { HeroProductsService, CustomHeroItem, ProductBasicInfo } from '../../../services/admin/heroProducts/hero-products.service';
+import { ModelImageService, ModelImage } from '../../../services/admin/modelImage/model-image.service';
+import { ProductService } from '../../../services/admin/product/product.service';
+import { Product } from '../../../models/models';
 
 @Component({
   selector: 'app-hero-products-admin',
@@ -50,59 +49,64 @@ import { HeroProductsService, CustomHeroItem, ProductBasicInfo } from '../../../
     NzEmptyModule,
     NzSkeletonModule,
     NzSwitchModule,
-    NzInputNumberModule,
     NzTagModule,
+    NzSelectModule,
     NzDividerModule,
-    NzStatisticModule,
-    NzBadgeModule,
-    NzSelectModule
+    NzBadgeModule
   ],
   templateUrl: './hero-products-admin.component.html',
-  styleUrls: ['./hero-products-admin.component.css']
+  styleUrl: './hero-products-admin.component.css'
 })
 export class HeroProductsAdminComponent implements OnInit, OnDestroy {
-  // 🎯 ESTADOS PRINCIPALES SIMPLIFICADOS
-  heroItems: CustomHeroItem[] = [];
-  availableProducts: ProductBasicInfo[] = [];
-  
-  // 🎯 LOADING STATES ESPECÍFICOS
-  isInitialLoading = true;  // Solo para carga inicial
-  isSaving = false;         // Solo para guardar/actualizar
-  isDeleting: Set<string> = new Set(); // Para múltiples eliminaciones
-  
-  // 🎯 MODAL STATES
-  isModalVisible = false;
+  // 📊 ESTADO PRINCIPAL
+  modelImages: ModelImage[] = [];
+  availableModels: string[] = []; // 🆕 Modelos disponibles de productos
+  productsMap: Map<string, Product[]> = new Map(); // 🆕 Productos por modelo
+  loading = false;
+  saving = false;
+  modalVisible = false;
   isEditMode = false;
   editingId: string | null = null;
-  
-  // 🎯 FORM Y UPLOAD
-  heroForm!: FormGroup;
-  uploadFile: File | null = null;
-  fileList: NzUploadFile[] = [];
-  
-  // 🎯 UI HELPERS
-  fallbackImageUrl!: SafeUrl; // ✅ Definite assignment assertion
-  modalWidth = 600;
-  selectedItem: CustomHeroItem | null = null;
-  showDetailsModal = false;
-  
+  modelForm!: FormGroup;
+
+  // 📱 MANEJO DE ARCHIVOS
+  desktopFileList: NzUploadFile[] = [];
+  mobileFileList: NzUploadFile[] = [];
+  desktopImageFile: File | null = null;
+  mobileImageFile: File | null = null;
+
+  // 🎨 UI y RESPONSIVE
+  modalWidth = 720;
+  detailsModalVisible = false;
+  selectedModel: ModelImage | null = null;
+  fallbackImageUrl: SafeUrl;
+
+  // 🔧 VALIDACIÓN Y ERRORES
+  desktopImageError: string | null = null;
+  mobileImageError: string | null = null;
+
+  // 🗑️ CONTROL DE SUSCRIPCIONES
   private destroy$ = new Subject<void>();
 
   constructor(
-    private heroProductsService: HeroProductsService,
+    private modelImageService: ModelImageService,
+    private productService: ProductService, // 🆕 Agregar ProductService
     private message: NzMessageService,
     private modalService: NzModalService,
     private sanitizer: DomSanitizer,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef
   ) {
-    this.initializeFallbackImage();
-    this.initializeForm();
+    // 🖼️ IMAGEN DE FALLBACK
+    const fallbackSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmaWxsPSIjOTk5OTk5Ij5TaW4gaW1hZ2VuPC90ZXh0Pjwvc3ZnPg==';
+    this.fallbackImageUrl = this.sanitizer.bypassSecurityTrustUrl(fallbackSvg);
+
+    this.createForm();
   }
 
   ngOnInit(): void {
     this.loadInitialData();
-    this.updateModalWidth();
+    this.setModalWidth();
   }
 
   ngOnDestroy(): void {
@@ -110,329 +114,492 @@ export class HeroProductsAdminComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // 🎯 INICIALIZACIÓN SIMPLIFICADA
-  private initializeFallbackImage(): void {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
-      <rect width="100" height="100" fill="#f5f5f5"/>
-      <text x="50%" y="50%" font-size="12" text-anchor="middle" 
-            alignment-baseline="middle" fill="#999">Sin imagen</text>
-    </svg>`;
-    this.fallbackImageUrl = this.sanitizer.bypassSecurityTrustUrl(
-      'data:image/svg+xml;base64,' + btoa(svg)
-    );
-  }
+  // ==================== FORMULARIO Y VALIDACIÓN ====================
 
-  private initializeForm(): void {
-    this.heroForm = this.fb.group({
-      productId: ['', Validators.required],
-      title: ['', Validators.required],
-      subtitle: [''],
-      ctaText: ['Ver Producto', Validators.required],
-      isActive: [true],
-      order: [1, [Validators.required, Validators.min(1)]]
+  createForm(): void {
+    this.modelForm = this.fb.group({
+      modelName: ['', [Validators.required, Validators.minLength(2)]],
+      description: ['', [Validators.maxLength(200)]]
     });
   }
 
-  // 🎯 CARGA DE DATOS OPTIMIZADA
-  private loadInitialData(): void {
-    this.isInitialLoading = true;
-    
-    // ✅ MEJORADO: Usar forkJoin más simple
-    forkJoin({
-      heroItems: this.heroProductsService.getHeroItems(),
-      products: this.heroProductsService.getAvailableProducts()
-    }).pipe(
+  // ==================== CARGA DE DATOS ====================
+
+  // 🆕 CARGAR DATOS INICIALES (MODELOS + PRODUCTOS)
+  loadInitialData(): void {
+  this.loading = true;
+
+  // 🔄 CARGAR PRODUCTOS PRIMERO (como en productos-section)
+  this.productService.getProducts()
+    .pipe(
       takeUntil(this.destroy$),
-      finalize(() => {
-        this.isInitialLoading = false;
-        this.cdr.markForCheck();
+      map(products => {
+        return products;
       })
-    ).subscribe({
-      next: ({ heroItems, products }) => {
-        this.heroItems = heroItems || [];
-        this.availableProducts = products || [];
+    )
+    .subscribe({
+      next: (products) => {
+        this.processProductModels(products || []);
+        
+        // 🔄 CARGAR MODEL IMAGES DESPUÉS (en paralelo, sin bloquear)
+        this.loadModelImagesAsync();
+        
+        this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('Error cargando datos:', error);
-        this.message.error('Error al cargar los datos');
+        console.error('❌ [LOAD-INITIAL-DATA] Error cargando productos:', error);
+        this.message.error('Error al cargar datos. Intente nuevamente.');
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      complete: () => {
       }
     });
-  }
+}
 
-  // 🎯 REFRESH SIMPLE SIN LOADING GLOBAL
-  refreshData(): void {
-    this.loadInitialData();
-  }
-
-  // 🎯 MODAL MANAGEMENT SIMPLIFICADO
-  openCreateModal(): void {
-    this.resetModal();
-    this.isModalVisible = true;
-    this.heroForm.patchValue({
-      ctaText: 'Ver Producto',
-      isActive: true,
-      order: this.getNextOrder(),
-      subtitle: ''
+private loadModelImagesAsync(): void {
+  
+  this.modelImageService.getModelImages()
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (modelImages) => {
+        this.modelImages = modelImages || [];
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('❌ [LOAD-MODEL-IMAGES] Error:', error);
+        this.modelImages = [];
+        this.cdr.detectChanges();
+      }
     });
-  }
+}
 
-  openEditModal(item: CustomHeroItem): void {
-    this.resetModal();
-    this.isEditMode = true;
-    this.editingId = item.id;
-    this.isModalVisible = true;
-    
-    this.heroForm.patchValue({
-      productId: item.productId,
-      title: item.title,
-      subtitle: item.subtitle || '',
-      ctaText: item.ctaText,
-      isActive: item.isActive,
-      order: item.order
+  // 🆕 PROCESAR MODELOS DE PRODUCTOS
+  private processProductModels(products: Product[]): void {
+
+    const modelsSet = new Set<string>();
+    const productsMap = new Map<string, Product[]>();
+
+    products.forEach(product => {
+      // 🔧 USAR MÚLTIPLES FUENTES PARA MODEL
+      let modelName = '';
+
+      // Prioridad 1: Campo model explícito
+      if (product.model && product.model.trim()) {
+        modelName = product.model.trim();
+      }
+      // Prioridad 2: Colección
+      else if (product.collection && product.collection.trim()) {
+        modelName = product.collection.trim();
+      }
+      // Prioridad 3: Nombre del producto
+      else if (product.name && product.name.trim()) {
+        modelName = product.name.trim();
+      }
+
+      if (modelName) {
+        modelsSet.add(modelName);
+
+        if (!productsMap.has(modelName)) {
+          productsMap.set(modelName, []);
+        }
+        productsMap.get(modelName)!.push(product);
+      } 
     });
 
-    // Mostrar imagen actual si existe
-    if (item.customImageUrl) {
-      this.fileList = [{
-        uid: '-1',
-        name: 'current-image.jpg',
-        status: 'done',
-        url: item.customImageUrl
-      }];
-    }
+    this.availableModels = Array.from(modelsSet).sort();
+    this.productsMap = productsMap;
+  }
+
+  loadModelImages(): void {
+    this.modelImageService.getModelImages()
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.cdr.detectChanges())
+      )
+      .subscribe({
+        next: (models) => {
+          this.modelImages = models || [];
+          console.log(`📦 Modelos cargados: ${this.modelImages.length}`);
+        },
+        error: (error) => {
+          console.error('❌ Error cargando modelos:', error);
+          this.message.error('Error al cargar modelos. Intente nuevamente.');
+        }
+      });
+  }
+
+  // ==================== MODAL Y FORMULARIO ====================
+
+  openModal(): void {
+    this.modalVisible = true;
+    this.modelForm.reset();
+    this.resetFiles();
+    this.isEditMode = false;
+    this.editingId = null;
+    this.setModalWidth();
+    this.cdr.detectChanges();
   }
 
   closeModal(): void {
-    this.isModalVisible = false;
-    this.resetModal();
+    this.modalVisible = false;
+    this.modelForm.reset();
+    this.resetFiles();
+    this.cdr.detectChanges();
   }
 
-  private resetModal(): void {
-    this.isEditMode = false;
-    this.editingId = null;
-    this.isSaving = false;
-    this.uploadFile = null;
-    this.fileList = [];
-    this.heroForm.reset();
+  resetFiles(): void {
+    this.desktopFileList = [];
+    this.mobileFileList = [];
+    this.desktopImageFile = null;
+    this.mobileImageFile = null;
+    this.desktopImageError = null;
+    this.mobileImageError = null;
   }
 
-  // 🎯 UPLOAD SIMPLIFICADO
-  beforeUpload = (file: NzUploadFile): boolean => {
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const maxSize = 3 * 1024 * 1024; // 3MB
+  // ==================== MANEJO DE IMÁGENES ====================
 
-    if (!validTypes.includes(file.type!)) {
-      this.message.error('Solo se permiten archivos JPG, PNG o WEBP');
+  beforeUploadDesktop = (file: NzUploadFile): boolean => {
+    this.desktopImageError = null;
+    const validation = this.validateImageFile(file);
+
+    if (!validation.isValid) {
+      this.desktopImageError = validation.error || 'Archivo inválido';
       return false;
     }
 
-    if (file.size! > maxSize) {
-      this.message.error('El archivo debe ser menor a 3MB');
-      return false;
-    }
-
-    this.uploadFile = file as any;
-    this.createFilePreview(file as any);
-    return false; // Prevenir upload automático
+    this.createImagePreview(file, 'desktop');
+    return false; // Evitar upload automático
   };
 
-  private createFilePreview(file: File): void {
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.fileList = [{
-        uid: file.name,
-        name: file.name,
-        status: 'done',
-        url: reader.result as string
-      }];
-      this.cdr.markForCheck();
-    };
-    reader.readAsDataURL(file);
+  beforeUploadMobile = (file: NzUploadFile): boolean => {
+    this.mobileImageError = null;
+    const validation = this.validateImageFile(file);
+
+    if (!validation.isValid) {
+      this.mobileImageError = validation.error || 'Archivo inválido';
+      return false;
+    }
+
+    this.createImagePreview(file, 'mobile');
+    return false; // Evitar upload automático
+  };
+
+  validateImageFile(file: NzUploadFile): { isValid: boolean; error?: string } {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const maxSize = 8 * 1024 * 1024; // 8MB
+    const minSize = 50 * 1024; // 50KB
+
+    if (!file.type || !allowedTypes.includes(file.type)) {
+      return {
+        isValid: false,
+        error: 'Solo se permiten archivos JPG, PNG y WebP.'
+      };
+    }
+
+    const actualFile = (file.originFileObj as File) || (file as any);
+    if (!actualFile || typeof actualFile.size !== 'number') {
+      return {
+        isValid: false,
+        error: 'El archivo es inválido o está corrupto.'
+      };
+    }
+
+    if (actualFile.size < minSize) {
+      return {
+        isValid: false,
+        error: 'La imagen debe pesar al menos 50KB para buena calidad.'
+      };
+    }
+
+    if (actualFile.size > maxSize) {
+      return {
+        isValid: false,
+        error: 'La imagen debe pesar menos de 8MB.'
+      };
+    }
+
+    return { isValid: true };
   }
 
-  removeFile = (): boolean => {
-    this.uploadFile = null;
-    this.fileList = [];
+  createImagePreview(file: NzUploadFile, type: 'desktop' | 'mobile'): void {
+    try {
+      const actualFile = (file.originFileObj as File) || (file as any);
+      const objectUrl = URL.createObjectURL(actualFile);
+
+      const fileItem: NzUploadFile = {
+        uid: `${Date.now()}-${file.name}`,
+        name: file.name || 'imagen.jpg',
+        status: 'done',
+        url: objectUrl
+      };
+
+      if (type === 'desktop') {
+        this.desktopFileList = [fileItem];
+        this.desktopImageFile = actualFile;
+      } else {
+        this.mobileFileList = [fileItem];
+        this.mobileImageFile = actualFile;
+      }
+
+      this.cdr.detectChanges();
+    } catch (error) {
+      const errorMsg = 'No se pudo cargar la vista previa.';
+      if (type === 'desktop') {
+        this.desktopImageError = errorMsg;
+      } else {
+        this.mobileImageError = errorMsg;
+      }
+    }
+  }
+
+  handlePreview = (file: NzUploadFile): void => {
+    const imgUrl = file.url || file.thumbUrl;
+    if (imgUrl) {
+      this.modalService.create({
+        nzContent: `<img src="${imgUrl}" style="width: 100%; max-height: 80vh;" alt="Vista previa" />`,
+        nzFooter: null,
+        nzWidth: 'auto',
+        nzCentered: true,
+        nzBodyStyle: { padding: '0' }
+      });
+    }
+  };
+
+  handleRemoveDesktop = (): boolean => {
+    this.desktopFileList = [];
+    this.desktopImageFile = null;
+    this.desktopImageError = null;
+    this.cdr.detectChanges();
     return true;
   };
 
-  // 🎯 SUBMIT OPTIMIZADO
-  async submitForm(): Promise<void> {
-    if (!this.heroForm.valid) {
-      this.markFormGroupTouched();
+  handleRemoveMobile = (): boolean => {
+    this.mobileFileList = [];
+    this.mobileImageFile = null;
+    this.mobileImageError = null;
+    this.cdr.detectChanges();
+    return true;
+  };
+
+  // ==================== CRUD OPERATIONS ====================
+
+  handleSubmit(): void {
+    // Validar formulario
+    Object.keys(this.modelForm.controls).forEach(key => {
+      this.modelForm.get(key)?.markAsDirty();
+      this.modelForm.get(key)?.updateValueAndValidity();
+    });
+
+    if (!this.modelForm.valid) {
+      this.message.warning('Por favor complete todos los campos obligatorios.');
       return;
     }
 
-    if (!this.uploadFile && !this.isEditMode) {
-      this.message.error('Debe seleccionar una imagen');
+    // Validar imagen desktop (obligatoria para crear)
+    if (!this.desktopImageFile && !this.isEditMode) {
+      this.desktopImageError = 'La imagen principal es obligatoria.';
       return;
     }
 
-    this.isSaving = true;
-    
-    try {
-      const formData = this.heroForm.value;
+    // Verificar duplicados
+    const modelName = this.modelForm.get('modelName')?.value?.trim();
+    if (this.isDuplicateModelName(modelName)) {
+      this.message.warning('Ya existe un modelo con este nombre.');
+      return;
+    }
 
-      if (this.isEditMode && this.editingId) {
-        await this.heroProductsService.updateHeroItem(
-          this.editingId,
-          formData,
-          this.uploadFile || undefined
-        );
-        this.message.success('Hero item actualizado');
-      } else {
-        await this.heroProductsService.createHeroItem(formData, this.uploadFile!);
-        this.message.success('Hero item creado');
-      }
+    this.saving = true;
+    this.cdr.detectChanges();
 
-      this.closeModal();
-      this.refreshData();
+    const formData = this.modelForm.value;
 
-    } catch (error: any) {
-      console.error('Error:', error);
-      this.message.error(error.message || 'Error al procesar');
-    } finally {
-      this.isSaving = false;
-      this.cdr.markForCheck();
+    if (this.isEditMode && this.editingId) {
+      this.updateModel(formData);
+    } else {
+      this.createModel(formData);
     }
   }
 
-  private markFormGroupTouched(): void {
-    Object.keys(this.heroForm.controls).forEach(key => {
-      this.heroForm.get(key)?.markAsTouched();
+  async createModel(formData: any): Promise<void> {
+    try {
+      await this.modelImageService.createModelImage(
+        formData.modelName.trim(),
+        formData.description?.trim() || '',
+        this.desktopImageFile!,
+        this.mobileImageFile || undefined
+      );
+
+      this.message.success('Modelo creado correctamente.');
+      this.modalVisible = false;
+
+    } catch (error: any) {
+      console.error('❌ Error creando modelo:', error);
+      this.message.error(error.message || 'Error al crear modelo.');
+    } finally {
+      this.saving = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async updateModel(formData: any): Promise<void> {
+    try {
+      await this.modelImageService.updateModelImage(
+        this.editingId!,
+        formData.modelName?.trim(),
+        formData.description?.trim(),
+        this.desktopImageFile || undefined,
+        this.mobileImageFile || undefined
+      );
+
+      this.message.success('Modelo actualizado correctamente.');
+      this.modalVisible = false;
+
+    } catch (error: any) {
+      console.error('❌ Error actualizando modelo:', error);
+      this.message.error(error.message || 'Error al actualizar modelo.');
+    } finally {
+      this.saving = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  editModel(model: ModelImage): void {
+    this.modelForm.setValue({
+      modelName: model.modelName || '',
+      description: model.description || ''
     });
+
+    this.editingId = model.id;
+    this.isEditMode = true;
+
+    // Mostrar imágenes actuales
+    if (model.imageUrl) {
+      this.desktopFileList = [{
+        uid: '-1-desktop',
+        name: 'desktop.webp',
+        status: 'done',
+        url: model.imageUrl
+      }];
+    }
+
+    if (model.mobileImageUrl) {
+      this.mobileFileList = [{
+        uid: '-1-mobile',
+        name: 'mobile.webp',
+        status: 'done',
+        url: model.mobileImageUrl
+      }];
+    }
+
+    this.modalVisible = true;
+    this.setModalWidth();
+    this.cdr.detectChanges();
   }
 
-  // 🎯 ACTIONS OPTIMIZADAS
-  async deleteItem(id: string): Promise<void> {
-    this.isDeleting.add(id);
-    
+  deleteModel(id: string, modelName: string): void {
+    this.modelImageService.deleteModelImage(id)
+      .then(() => {
+        this.message.success(`Modelo "${modelName}" eliminado correctamente.`);
+      })
+      .catch((error) => {
+        console.error('❌ Error eliminando modelo:', error);
+        this.message.error(error.message || 'Error al eliminar modelo.');
+      });
+  }
+
+  async toggleModelActive(model: ModelImage): Promise<void> {
     try {
-      await this.heroProductsService.deleteHeroItem(id);
-      this.message.success('Hero item eliminado');
-      this.refreshData();
+      await this.modelImageService.toggleModelActive(model.id, !model.isActive);
+      const action = model.isActive ? 'desactivado' : 'activado';
+      this.message.success(`Modelo "${model.modelName}" ${action}.`);
     } catch (error: any) {
-      console.error('Error:', error);
-      this.message.error('Error al eliminar');
-    } finally {
-      this.isDeleting.delete(id);
-      this.cdr.markForCheck();
+      console.error('❌ Error cambiando estado:', error);
+      this.message.error(error.message || 'Error al cambiar estado.');
     }
   }
 
-  async toggleActive(item: CustomHeroItem): Promise<void> {
-    try {
-      const newState = !item.isActive;
-      await this.heroProductsService.toggleHeroItem(item.id, newState);
-      
-      // Update local state immediately
-      item.isActive = newState;
-      this.message.success(`Hero item ${newState ? 'activado' : 'desactivado'}`);
-      
-    } catch (error: any) {
-      console.error('Error:', error);
-      this.message.error('Error al cambiar estado');
-      // Revert local change on error
-      item.isActive = !item.isActive;
-    } finally {
-      this.cdr.markForCheck();
-    }
+  // ==================== UTILIDADES ====================
+
+  // 🆕 OBTENER MODELOS SIN IMAGEN ASIGNADA
+  getModelsWithoutImage(): string[] {
+    const modelsWithImage = new Set(this.modelImages.map(img => img.modelName));
+    return this.availableModels.filter(model => !modelsWithImage.has(model));
   }
 
-  async updateOrder(): Promise<void> {
-    try {
-      const orderedIds = this.heroItems
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
-        .map(item => item.id);
-
-      await this.heroProductsService.updateItemsOrder(orderedIds);
-      this.message.success('Orden actualizado');
-    } catch (error: any) {
-      console.error('Error:', error);
-      this.message.error('Error al actualizar orden');
-    }
+  // 🆕 OBTENER PRODUCTOS ASOCIADOS A UN MODELO
+  getProductsForModel(modelName: string): Product[] {
+    return this.productsMap.get(modelName) || [];
   }
 
-  // 🎯 HELPERS SIMPLIFICADOS
-  @HostListener('window:resize')
-  updateModalWidth(): void {
-    this.modalWidth = window.innerWidth < 576 ? window.innerWidth - 32 : 600;
+  // 🆕 VERIFICAR SI MODELO TIENE PRODUCTOS
+  hasProducts(modelName: string): boolean {
+    const products = this.getProductsForModel(modelName);
+    return products.length > 0;
   }
 
-  getNextOrder(): number {
-    return Math.max(...this.heroItems.map(item => item.order || 0), 0) + 1;
+  // 🆕 OBTENER ESTADÍSTICAS DE MODELOS
+  getModelStats() {
+    const modelsWithImage = this.modelImages.length;
+    const modelsWithoutImage = this.getModelsWithoutImage().length;
+    const totalAvailableModels = this.availableModels.length;
+
+    return {
+      total: totalAvailableModels,
+      withImage: modelsWithImage,
+      withoutImage: modelsWithoutImage,
+      coverage: totalAvailableModels > 0 ? Math.round((modelsWithImage / totalAvailableModels) * 100) : 0
+    };
   }
 
-  getProductName(productId: string): string {
-    return this.availableProducts.find(p => p.id === productId)?.name || 'Producto no encontrado';
-  }
+  isDuplicateModelName(modelName: string): boolean {
+    if (!modelName) return false;
 
-  getProductPrice(productId: string): number {
-    return this.availableProducts.find(p => p.id === productId)?.price || 0;
-  }
-
-  hasHeroItem(productId: string): boolean {
-    return this.heroItems.some(item => item.productId === productId);
-  }
-
-  onProductChange(productId: string): void {
-    if (!this.isEditMode) {
-      const product = this.availableProducts.find(p => p.id === productId);
-      if (product && !this.heroForm.get('title')?.value) {
-        this.heroForm.patchValue({ title: product.name });
-      }
-    }
-  }
-
-  getStats() {
-    const total = this.heroItems.length;
-    const active = this.heroItems.filter(item => item.isActive).length;
-    return { total, active, inactive: total - active };
-  }
-
-  formatDate(date: Date): string {
-    return new Date(date).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return this.modelImages.some(model =>
+      model.modelName.toLowerCase() === modelName.toLowerCase() &&
+      model.id !== this.editingId
+    );
   }
 
   handleImageError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    if (img && !img.src.includes('data:image')) {
-      img.src = this.fallbackImageUrl as string;
+    const imgElement = event.target as HTMLImageElement;
+    if (imgElement && !imgElement.src.includes('data:image')) {
+      imgElement.src = this.fallbackImageUrl as string;
+      imgElement.classList.add('error-image');
     }
   }
 
-  showDetails(item: CustomHeroItem): void {
-    this.selectedItem = item;
-    this.showDetailsModal = true;
+  showDetails(model: ModelImage): void {
+    this.selectedModel = model;
+    this.detailsModalVisible = true;
+    this.cdr.detectChanges();
   }
 
-  // 🎯 VALIDATION HELPERS
-  isFieldInvalid(fieldName: string): boolean {
-    const field = this.heroForm.get(fieldName);
-    return !!(field?.invalid && field?.touched);
+  getImageDisplayUrl(imageUrl?: string): string {
+    return imageUrl || (this.fallbackImageUrl as string);
   }
 
-  getFieldError(fieldName: string): string {
-    const field = this.heroForm.get(fieldName);
-    if (field?.errors && field?.touched) {
-      if (field.errors['required']) return `${fieldName} es requerido`;
-      if (field.errors['min']) return `Valor mínimo: ${field.errors['min'].min}`;
+  // ==================== RESPONSIVE ====================
+
+  @HostListener('window:resize')
+  setModalWidth(): void {
+    if (window.innerWidth < 576) {
+      this.modalWidth = window.innerWidth - 32;
+    } else if (window.innerWidth < 768) {
+      this.modalWidth = window.innerWidth - 64;
+    } else {
+      this.modalWidth = 720;
     }
-    return '';
   }
 
-  isProductAlreadyUsed(productId: string): boolean {
-    return !this.isEditMode && this.hasHeroItem(productId);
+  // ==================== ESTADÍSTICAS ====================
+
+  getStats() {
+    return this.getModelStats(); // 🆕 Usar estadísticas mejoradas
   }
 
-  canSubmit(): boolean {
-    const hasImage = this.uploadFile || this.isEditMode;
-    return this.heroForm.valid && hasImage && !this.isSaving;
+  trackByModelId(index: number, model: ModelImage): string {
+    return model.id;
   }
 }
