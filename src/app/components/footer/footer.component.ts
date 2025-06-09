@@ -46,8 +46,8 @@ export class FooterComponent implements OnInit {
   }
 
   shopLinks = [
-    { label: 'Encuentranos', link: '/shop' },
-    { label: 'Distribuidores', link: '/shop' },
+    { label: 'Encuentranos', link: '/ubicaciones' },
+    { label: 'Distribuidores', link: '/ubicaciones' },
     { label: 'Nuevas Llegadas', link: '/shop' },
     { label: 'Más Vendidos', link: '/shop' },
   ];

@@ -20,7 +20,7 @@ export class IconosLargeSectionComponent {
       icon: 'team',
       title: 'Embajadores',
       description: 'Conoce a nuestros embajadores',
-      link: '/herencia'
+      link: '/ubicaciones'
     },
     {
       icon: 'trophy',
@@ -32,13 +32,13 @@ export class IconosLargeSectionComponent {
       icon: 'shop',
       title: 'Encuéntranos',
       description: 'Visítanos en nuestras tiendas',
-      link: '/historias'
+      link: '/ubicaciones'
     },
     {
       icon: 'bulb',
       title: 'OBJETIVO',
-      description: 'La búsqueda de la perfección',
-      link: '/objetivo'
+      description: 'Acompañarte en cada aventura',
+      link: '/nosotros'
     }
   ];
 

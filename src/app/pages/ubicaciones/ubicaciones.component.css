@@ -1,0 +1,641 @@
+/* ==================== CONTENEDOR PRINCIPAL ==================== */
+.ubicaciones-container {
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+}
+
+/* ==================== HEADER ==================== */
+.hero-section {
+    padding: 180px 0 60px;
+    background-color: #000000;
+    background-image: url('https://i.postimg.cc/k59SjrbJ/Logo-Numer-blanco.png');
+    background-repeat: no-repeat;
+    background-size: 240px 240px;
+    background-position: top 30px center;
+    color: #ffffff;
+    text-align: center;
+    position: relative;
+    min-height: 40vh;
+}
+
+.title {
+    font-size: 42px;
+    font-weight: 700;
+    margin-top: 8%;
+    margin-bottom: 1px;
+    letter-spacing: 0.5px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    letter-spacing: 2px;
+    color: aliceblue;
+}
+
+.subtitle {
+    font-size: clamp(20px, 3vw, 24px);
+    max-width: 90%;
+    margin: 0 auto;
+    padding-top: 20px;
+    line-height: 1.5;
+    opacity: 0.9;
+}
+
+.subtitle:hover,
+.title:hover {
+    background: linear-gradient(90deg,
+            #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+    background-size: 300% 300%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+@media (max-width: 992px) {
+    .hero-section {
+        background-size: 200px 200px;
+        padding-top: 160px;
+    }
+
+    .subtitle {
+        padding-top: 30px;
+    }
+}
+
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        background-size: 190px 190px;
+        background-position: top 20px center;
+        padding: 200px 0 40px;
+        min-height: auto;
+    }
+
+    .subtitle {
+        padding-top: 20px;
+        max-width: 95%;
+    }
+
+    nz-card {
+        margin-bottom: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .title {
+        font-size: 32px;
+    }
+
+    h3 {
+        font-size: 18px;
+    }
+}
+
+.content-section {
+    padding: 40px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+}
+/* ==================== SECCIÓN TIENDA ==================== */
+.store-section {
+    margin-bottom: 48px;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.store-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background-color: white;
+    margin-bottom: 24px;
+}
+
+.store-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.store-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.store-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #000000;
+    margin: 0;
+}
+
+.store-details {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+}
+
+.detail-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.detail-icon {
+    color: #000000;
+    font-size: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.detail-content {
+    flex: 1;
+}
+
+.detail-content strong {
+    color: #000000;
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.detail-content p {
+    margin: 0;
+    color: #333;
+    line-height: 1.4;
+}
+
+/* ==================== SERVICIOS ==================== */
+.services-section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.services-section h4 {
+    color: #000000;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.services-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.service-tag {
+    border-radius: 4px;
+    padding: 4px 12px;
+    border: none;
+    background: #f0f0f0;
+    color: #000000;
+    font-size: 12px;
+}
+
+/* ==================== ACCIONES DE TIENDA ==================== */
+.store-actions h4 {
+    color: #000000;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.action-btn {
+    border-radius: 4px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background-color: #000000;
+    color: white;
+    border: none;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: #333333;
+}
+
+.whatsapp {
+    background: #25D366;
+    border-color: #25D366;
+    color: white;
+}
+
+.whatsapp:hover {
+    background: #128C7E;
+    border-color: #128C7E;
+}
+
+/* ==================== MAPA ==================== */
+.map-placeholder {
+    background: #f9f9f9;
+    border-radius: 8px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+    margin-top: 16px;
+}
+
+.map-placeholder:hover {
+    border-color: #000000;
+    background: #f0f0f0;
+}
+
+.map-content {
+    text-align: center;
+    color: #666;
+}
+
+.map-icon {
+    font-size: 32px;
+    color: #000000;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.map-content p {
+    margin: 8px 0 4px 0;
+    font-weight: 500;
+    color: #000000;
+}
+
+/* ==================== SECCIÓN DISTRIBUIDORES ==================== */
+.distributors-section {
+    margin: 48px 0;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 32px;
+    gap: 24px;
+}
+
+.header-text h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #000000;
+    margin: 0 0 8px 0;
+}
+
+.header-text p {
+    color: #666;
+    margin: 0;
+    font-size: 1rem;
+}
+
+.become-distributor-btn {
+    border-radius: 4px;
+    height: 40px;
+    white-space: nowrap;
+    font-weight: 500;
+    background-color: #000000;
+    color: white;
+    border: none;
+}
+
+.become-distributor-btn:hover {
+    background-color: #333333;
+}
+
+/* ==================== GRID DE DISTRIBUIDORES ==================== */
+.distributors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.distributor-card {
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    animation: fadeInUp 0.6s ease;
+    animation-delay: calc(var(--index, 0) * 0.1s);
+}
+
+.distributor-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.distributor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding: 20px 20px 0;
+}
+
+.distributor-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #000000;
+    margin: 0;
+    flex: 1;
+}
+
+.type-tag {
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    background: #f0f0f0;
+    color: #000000;
+}
+
+.distributor-info {
+    margin-bottom: 20px;
+    padding: 0 20px;
+}
+
+.distributor-info p {
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #333;
+    font-size: 14px;
+}
+
+.distributor-info span[nz-icon] {
+    color: #000000;
+    width: 16px;
+}
+
+.products-section h5 {
+    color: #000000;
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 20px;
+}
+
+.products-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 20px 20px;
+}
+
+.product-tag {
+    font-size: 11px;
+    border-radius: 4px;
+    border: none;
+    background: #f0f0f0;
+    color: #000000;
+}
+
+/* ==================== ACCIONES DEL CARD ==================== */
+:host ::ng-deep .ant-card-actions {
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    padding: 12px 0;
+}
+
+.action-icon {
+    font-size: 16px;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.action-icon:hover {
+    color: #000000;
+    transform: scale(1.1);
+}
+
+/* ==================== ESTADO VACÍO ==================== */
+.empty-state {
+    text-align: center;
+    padding: 64px 24px;
+    background: white;
+    border-radius: 8px;
+    border: 1px dashed #f0f0f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.empty-icon {
+    font-size: 64px;
+    color: #d9d9d9;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    color: #000000;
+    margin: 16px 0 8px 0;
+    font-weight: 600;
+}
+
+.empty-state p {
+    color: #666;
+    margin-bottom: 24px;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 32px;
+    }
+
+    .page-subtitle {
+        font-size: 18px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .distributors-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .action-buttons {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .page-title {
+        font-size: 28px;
+    }
+
+    .page-subtitle {
+        font-size: 16px;
+    }
+
+    .header-text h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* ==================== ANIMACIONES ==================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+/* Contenedor del mapa */
+.map-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 24px;
+}
+
+.map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.map-header h4,
+.map-header h5 {
+    margin: 0;
+    color: #001529;
+    font-weight: 600;
+}
+
+.open-maps-btn {
+    color: #1890ff;
+    font-size: 12px;
+}
+
+.map-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Iframe container */
+.map-iframe-container {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Overlay para la opción 1 */
+.map-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+    color: white;
+    padding: 20px 16px 16px;
+    pointer-events: none;
+}
+
+.map-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.location-icon {
+    font-size: 20px;
+    color: #ff4d4f;
+}
+
+.address-info strong {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.address-info p {
+    margin: 0;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+/* Placeholder mejorado para opción 2 */
+.map-placeholder {
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px dashed #d9d9d9;
+}
+
+.map-placeholder:hover {
+    border-color: #1890ff;
+    background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+}
+
+.load-map-btn {
+    margin-top: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .map-header {
+        padding: 12px;
+    }
+
+    .map-header h4,
+    .map-header h5 {
+        font-size: 14px;
+    }
+
+    .map-iframe-container iframe {
+        height: 200px;
+    }
+}

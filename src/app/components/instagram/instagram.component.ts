@@ -471,7 +471,7 @@ export class InstagramComponent implements OnInit, OnDestroy {
   }
 
   async sharePost(): Promise<void> {
-    const shareUrl = 'https://https://numer-ecomerce.netlify.app/?utm_source=instagram&utm_medium=social';
+    const shareUrl = 'https://numer-ecomerce.netlify.app/?utm_source=instagram&utm_medium=social';
 
     try {
       await navigator.clipboard.writeText(shareUrl);

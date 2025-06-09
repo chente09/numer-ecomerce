@@ -17,10 +17,12 @@ import { ReviewManagementComponent } from './pages/admin/review-management/revie
 import { PerfilComponent } from './pages/user/perfil/perfil.component';
 import { CompletarPerfilComponent } from './pages/user/completar-perfil/completar-perfil.component';
 import { ClientesComponent } from './pages/admin/clientes/clientes.component';
+import { UbicacionesComponent } from './pages/ubicaciones/ubicaciones.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
 import { adminGuardGuard } from './guards/admin-guard.guard';
+
 
 export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: '/welcome' },
@@ -34,6 +36,7 @@ export const routes: Routes = [
     { path: 'shop', component: ProductCatalogComponent },
     { path: 'cuidado-producto', component: CuidadoProductoComponent },
     { path: 'review-form', component: ReviewFormComponent },
+    { path: 'ubicaciones', component: UbicacionesComponent },
     
 
     // Rutas protegidas que requieren autenticación pero no perfil completo

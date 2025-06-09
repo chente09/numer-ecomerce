@@ -1,0 +1,429 @@
+<div class="ubicaciones-container">
+
+    <div class="hero-section">
+        <h1 class="title">Nuestras Ubicaciones</h1>
+        <p class="subtitle">
+            Encuentra nuestra tienda física y distribuidores autorizados cerca de ti
+        </p>
+    </div>
+    <div class="content-section">
+        <!-- ✅ SECCIÓN TIENDA FÍSICA -->
+        <section class="store-section">
+            <nz-card nzTitle="Tienda Principal" class="store-card">
+                <div nz-row [nzGutter]="[24, 24]">
+                    <!-- Información de la tienda -->
+                    <div nz-col [nzXs]="24" [nzMd]="12">
+                        <div class="store-info">
+                            <div class="store-header">
+                                <h3 class="store-name">{{ tiendaFisica.nombre }}</h3>
+                                <nz-tag nzColor="green" *ngIf="tiendaFisica.activa">
+                                    <span nz-icon nzType="check-circle"></span>
+                                    Abierto
+                                </nz-tag>
+                            </div>
+
+                            <div class="store-details">
+                                <div class="detail-item">
+                                    <span nz-icon nzType="environment" class="detail-icon"></span>
+                                    <div class="detail-content">
+                                        <strong>Dirección:</strong>
+                                        <p>{{ tiendaFisica.direccion }}</p>
+                                        <p>{{ tiendaFisica.ciudad }}, {{ tiendaFisica.provincia }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="detail-item">
+                                    <span nz-icon nzType="phone" class="detail-icon"></span>
+                                    <div class="detail-content">
+                                        <strong>Teléfono:</strong>
+                                        <p>{{ tiendaFisica.telefono }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="detail-item">
+                                    <span nz-icon nzType="mail" class="detail-icon"></span>
+                                    <div class="detail-content">
+                                        <strong>Email:</strong>
+                                        <p>{{ tiendaFisica.email }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="detail-item">
+                                    <span nz-icon nzType="clock-circle" class="detail-icon"></span>
+                                    <div class="detail-content">
+                                        <strong>Horarios:</strong>
+                                        <pre class="horarios">{{ tiendaFisica.horarios }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Servicios -->
+                            <div class="services-section">
+                                <h4>Nuestros Servicios</h4>
+                                <div class="services-grid">
+                                    <nz-tag *ngFor="let servicio of tiendaFisica.servicios" nzColor="blue"
+                                        class="service-tag">
+                                        {{ servicio }}
+                                    </nz-tag>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Acciones rápidas -->
+                    <div nz-col [nzXs]="24" [nzMd]="12">
+                        <div class="store-actions">
+                            <h4>Contáctanos</h4>
+
+                            <div class="action-buttons">
+                                <button nz-button nzType="primary" nzSize="large" (click)="openGoogleMaps()"
+                                    class="action-btn">
+                                    <span nz-icon nzType="environment"></span>
+                                    Ver en Google Maps
+                                </button>
+
+                                <button nz-button nzType="default" nzSize="large" (click)="openWhatsApp()"
+                                    class="action-btn whatsapp">
+                                    <span nz-icon nzType="whats-app"></span>
+                                    WhatsApp
+                                </button>
+
+                                <button nz-button nzType="default" nzSize="large" (click)="callPhone()"
+                                    class="action-btn">
+                                    <span nz-icon nzType="phone"></span>
+                                    Llamar
+                                </button>
+
+                                <button nz-button nzType="default" nzSize="large" (click)="sendEmail()"
+                                    class="action-btn">
+                                    <span nz-icon nzType="mail"></span>
+                                    Email
+                                </button>
+                            </div>
+
+                            <!-- Mapa placeholder -->
+                            <div class="map-container">
+                                <div class="map-header">
+                                    <h4>Nuestra Ubicación</h4>
+                                    <button nz-button nzType="link" (click)="openGoogleMaps()" class="open-maps-btn">
+                                        <span nz-icon nzType="external-link"></span>
+                                        Abrir en Google Maps
+                                    </button>
+                                </div>
+
+                                <div class="map-iframe-container">
+                                    <iframe
+                                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3989.783153583237!2d-78.5150283!3d-0.24056229999999998!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91d5995446fcae21%3A0x47a22f95b06c9a6d!2sNumer!5e0!3m2!1ses-419!2sec!4v1749447543191!5m2!1ses-419!2sec"
+                                        width="100%" height="250" style="border:0; border-radius: 8px;"
+                                        allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                                        title="Ubicación de NUMER">
+                                    </iframe>
+
+                                    <!-- Overlay con información -->
+                                    <div class="map-overlay">
+                                        <div class="map-info">
+                                            <span nz-icon nzType="environment" class="location-icon"></span>
+                                            <div class="address-info">
+                                                <strong>{{ tiendaFisica.nombre }}</strong>
+                                                <p>{{ tiendaFisica.direccion }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </nz-card>
+        </section>
+
+        <nz-divider nzText="Distribuidores Autorizados"></nz-divider>
+
+        <!-- ✅ SECCIÓN DISTRIBUIDORES -->
+        <section class="distributors-section">
+            <div class="section-header">
+                <div class="header-text">
+                    <h2>Distribuidores Autorizados</h2>
+                    <p>Encuentra productos NUMER en estas tiendas de confianza</p>
+                </div>
+
+                <button nz-button nzType="primary" (click)="openDistributorModal()" class="become-distributor-btn">
+                    <span nz-icon nzType="plus"></span>
+                    ¿Quieres ser distribuidor?
+                </button>
+            </div>
+
+            <!-- Lista de distribuidores -->
+            <div class="distributors-grid" *ngIf="distribuidores.length > 0">
+                <nz-card *ngFor="let distribuidor of distribuidores; trackBy: trackByDistributor"
+                    class="distributor-card" [nzActions]="[contactAction, websiteAction]">
+
+                    <div class="distributor-content">
+                        <div class="distributor-header">
+                            <h3 class="distributor-name">{{ distribuidor.nombreComercial }}</h3>
+                            <nz-tag [nzColor]="getDistributorTagColor(distribuidor.tipo)" class="type-tag">
+                                {{ getTipoNegocioLabel(distribuidor.tipo) }}
+                            </nz-tag>
+                        </div>
+
+                        <!-- ✅ CORREGIDO: nombre de clase consistente -->
+                        <div class="distributor-info">
+                            <p class="contact-person">
+                                <span nz-icon nzType="user"></span>
+                                <strong>{{ distribuidor.nombreContacto }}</strong>
+                            </p>
+
+                            <p class="location">
+                                <span nz-icon nzType="environment"></span>
+                                {{ distribuidor.ciudad }}, {{ distribuidor.provincia }}
+                            </p>
+
+                            <p class="phone">
+                                <span nz-icon nzType="phone"></span>
+                                {{ distribuidor.telefono }}
+                            </p>
+                        </div>
+
+                        <div class="products-section">
+                            <h5>Productos autorizados:</h5>
+                            <div class="products-tags">
+                                <nz-tag
+                                    *ngFor="let producto of distribuidor.productosAutorizados; trackBy: trackByProduct"
+                                    nzColor="blue" class="product-tag">
+                                    {{ producto }}
+                                </nz-tag>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Acciones del card -->
+                    <ng-template #contactAction>
+                        <span nz-icon nzType="mail" (click)="contactDistributor(distribuidor)" nz-tooltip="Contactar"
+                            class="action-icon">
+                        </span>
+                    </ng-template>
+
+                    <ng-template #websiteAction>
+                        <span nz-icon nzType="global" (click)="visitWebsite(distribuidor.sitioWeb!)"
+                            nz-tooltip="Visitar sitio web" *ngIf="distribuidor.sitioWeb"
+                            class="website-action action-icon">
+                        </span>
+                        <span nz-icon nzType="info-circle" nz-tooltip="Sin sitio web disponible"
+                            *ngIf="!distribuidor.sitioWeb" class="no-website action-icon">
+                        </span>
+                    </ng-template>
+                </nz-card>
+            </div>
+
+            <!-- Estado vacío -->
+            <div class="empty-state" *ngIf="distribuidores.length === 0">
+                <span nz-icon nzType="shop" class="empty-icon"></span>
+                <h3>No hay distribuidores disponibles</h3>
+                <p>Estamos expandiendo nuestra red. ¡Sé el primero!</p>
+                <button nz-button nzType="primary" (click)="openDistributorModal()">
+                    Ser Distribuidor
+                </button>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- ✅ MODAL SOLICITUD DISTRIBUIDOR -->
+<nz-modal [(nzVisible)]="modalVisible" nzTitle="Solicitud para ser Distribuidor Autorizado" [nzFooter]="modalFooter"
+    nzWidth="800px" (nzOnCancel)="closeModal()" nzCentered>
+
+    <ng-container *nzModalContent>
+        <div class="distributor-form-container">
+            <div class="form-intro">
+                <h4>¡Únete a nuestra red de distribuidores!</h4>
+                <p>Completa el formulario y nos pondremos en contacto contigo pronto.</p>
+            </div>
+
+            <form [formGroup]="solicitudForm" nz-form nzLayout="vertical">
+                <div nz-row [nzGutter]="16">
+                    <!-- Información del negocio -->
+                    <div nz-col [nzSpan]="24">
+                        <h5 class="section-title">Información del Negocio</h5>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre Comercial</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('nombreComercial')">
+                                <input nz-input formControlName="nombreComercial" placeholder="Ej. Aventura Sport"
+                                    [class.error]="isFieldInvalid('nombreComercial')">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Tipo de Negocio</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('tipoNegocio')">
+                                <nz-select formControlName="tipoNegocio" nzPlaceHolder="Selecciona el tipo"
+                                    [class.error]="isFieldInvalid('tipoNegocio')">
+                                    <nz-option *ngFor="let tipo of tiposNegocio" [nzValue]="tipo.value"
+                                        [nzLabel]="tipo.label">
+                                    </nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Información de contacto -->
+                    <div nz-col [nzSpan]="24">
+                        <h5 class="section-title">Información de Contacto</h5>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre del Contacto</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('nombreContacto')">
+                                <input nz-input formControlName="nombreContacto" placeholder="Tu nombre completo"
+                                    [class.error]="isFieldInvalid('nombreContacto')">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Email</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('email')">
+                                <input nz-input formControlName="email" placeholder="contacto@tutienda.com"
+                                    [class.error]="isFieldInvalid('email')">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Teléfono</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('telefono')">
+                                <input nz-input formControlName="telefono" placeholder="+593 9 1234 5678"
+                                    [class.error]="isFieldInvalid('telefono')">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>RUC / Cédula</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('rlc')">
+                                <input nz-input formControlName="rlc" placeholder="1234567890001"
+                                    [class.error]="isFieldInvalid('rlc')">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Ubicación -->
+                    <div nz-col [nzSpan]="24">
+                        <h5 class="section-title">Ubicación</h5>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Ciudad</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('ciudad')">
+                                <input nz-input formControlName="ciudad" placeholder="Ej. Quito"
+                                    [class.error]="isFieldInvalid('ciudad')">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Provincia</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('provincia')">
+                                <nz-select formControlName="provincia" nzPlaceHolder="Selecciona la provincia"
+                                    nzShowSearch [class.error]="isFieldInvalid('provincia')">
+                                    <nz-option *ngFor="let provincia of provincias" [nzValue]="provincia"
+                                        [nzLabel]="provincia">
+                                    </nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Información comercial -->
+                    <div nz-col [nzSpan]="24">
+                        <h5 class="section-title">Información Comercial</h5>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Sitio Web</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="sitioWeb"
+                                    placeholder="https://tutienda.com (opcional)">
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Volumen Estimado</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('volumenEstimado')">
+                                <nz-select formControlName="volumenEstimado"
+                                    nzPlaceHolder="Selecciona el volumen mensual"
+                                    [class.error]="isFieldInvalid('volumenEstimado')">
+                                    <nz-option *ngFor="let volumen of volumenesEstimados" [nzValue]="volumen"
+                                        [nzLabel]="volumen">
+                                    </nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="24">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Experiencia en el Sector</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('experiencia')">
+                                <!-- ✅ CORREGIDO: usar rows en lugar de [nzRows] -->
+                                <textarea nz-input formControlName="experiencia"
+                                    placeholder="Describe tu experiencia vendiendo productos deportivos, outdoor o similares..."
+                                    rows="3" [class.error]="isFieldInvalid('experiencia')">
+                </textarea>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="24">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Motivación</nz-form-label>
+                            <nz-form-control [nzErrorTip]="getFieldError('motivacion')">
+                                <!-- ✅ CORREGIDO: usar rows en lugar de [nzRows] -->
+                                <textarea nz-input formControlName="motivacion"
+                                    placeholder="¿Por qué quieres ser distribuidor de NUMER? ¿Cómo planeas promocionar nuestros productos?"
+                                    rows="4" [class.error]="isFieldInvalid('motivacion')">
+                </textarea>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+            </form>
+
+            <div class="form-note">
+                <span nz-icon nzType="info-circle"></span>
+                <small>
+                    <strong>Nota:</strong> Revisaremos tu solicitud en un plazo de 5-7 días hábiles.
+                    Te contactaremos para coordinar una reunión y discutir los términos de distribución.
+                </small>
+            </div>
+        </div>
+    </ng-container>
+
+    <!-- Footer del modal -->
+    <ng-template #modalFooter>
+        <div class="modal-footer">
+            <button nz-button nzType="default" (click)="closeModal()">
+                Cancelar
+            </button>
+            <button nz-button nzType="primary" [nzLoading]="submitting" [disabled]="!solicitudForm.valid"
+                (click)="submitSolicitud()">
+                <span *ngIf="!submitting">Enviar Solicitud</span>
+                <span *ngIf="submitting">Enviando...</span>
+            </button>
+        </div>
+    </ng-template>
+</nz-modal>
