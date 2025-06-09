@@ -253,46 +253,44 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
 
   loadProduct(productId: string): void {
     this.productsLoading = true;
-    console.log('🔄 Cargando producto:', productId);
 
-    this.cacheService.invalidate(`products_${productId}`);
-    this.cacheService.invalidate(`product_variants_product_${productId}`);
-
-    const productObservable = this.productService.getProductByIdNoCache(productId).pipe(take(1));
-    const variantsObservable = this.inventoryService.getVariantsByProductId(productId).pipe(take(1));
-
-    forkJoin({ product: productObservable, variants: variantsObservable })
+    // ✅ OPCIÓN 1: Usar producto completo (recomendado)
+    this.productService.getCompleteProduct(productId)
       .pipe(
-        map(({ product, variants }) => {
-          if (!product) return null;
-
-          const realTotalStock = variants.reduce((sum, v) => sum + v.stock, 0);
-
-          return {
-            ...product,
-            variants: variants,
-            totalStock: realTotalStock,
-          } as ExtendedProduct;
-        }),
+        take(1),
         finalize(() => this.productsLoading = false)
       )
       .subscribe({
         next: (product) => {
-          if (!product) return;
+          if (!product) {
+            this.handleProductNotFound();
+            return;
+          }
 
-          this.product = product;
+          this.product = product as ExtendedProduct;
           this.currentImageUrl = product.imageUrl;
           this.continueProductSetup(product, productId);
           this.loadRelatedProducts(product);
         },
         error: (error) => {
-          console.error('❌ Error:', error);
-          this.modalService.error({
-            nzTitle: 'Error',
-            nzContent: 'No se pudo cargar el producto, mi loco.'
-          });
+          console.error('❌ Error cargando producto:', error);
+          this.handleProductError();
         }
       });
+  }
+
+  private handleProductNotFound(): void {
+    this.modalService.error({
+      nzTitle: 'Producto no encontrado',
+      nzContent: 'El producto que buscas no existe o no está disponible.'
+    });
+  }
+
+  private handleProductError(): void {
+    this.modalService.error({
+      nzTitle: 'Error',
+      nzContent: 'No se pudo cargar el producto. Por favor, intenta nuevamente.'
+    });
   }
 
   // 🆕 NUEVOS MÉTODOS para las funcionalidades de aventura
@@ -405,20 +403,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     this.loadProduct(productId);
   }
 
-  incrementProductViews(productId: string): void {
-    this.inventoryService.incrementProductViews(productId)
-      .pipe(take(1))
-      .subscribe({
-        next: () => {
-          if (this.product) {
-            this.product.views = (this.product.views || 0) + 1;
-          }
-        },
-        error: () => {
-          // Error manejado silenciosamente
-        }
-      });
-  }
 
   loadCategoryInfo(categoryId: string): void {
     this.categoryService.getCategoryById(categoryId)
@@ -737,7 +721,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   private continueProductSetup(product: ExtendedProduct, productId: string): void {
     this.loadCategoryInfo(product.category);
     this.checkIfInWishlist();
-    this.trackProductView();
+    this.trackProductView(); // Solo analytics locales
 
     if (product.colors?.length > 0) {
       this.selectColor(product.colors[0]);
@@ -747,7 +731,8 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
       this.selectSize(product.sizes[0]);
     }
 
-    this.incrementProductViews(productId);
+    // ✅ Vista ya se incrementó automáticamente en getProductById()
+    console.log('✅ Producto configurado, vista ya registrada automáticamente');
   }
 
   onRelatedProductColorChange(event: { product: Product, color: Color, index: number }): void {

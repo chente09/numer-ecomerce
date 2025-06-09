@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import {
-  Firestore, collection, collectionData, doc, getDoc, where, query,
-  updateDoc, deleteDoc, setDoc, getDocs,
-  writeBatch
+  Firestore, collection, collectionData, doc, getDoc, where, query, deleteDoc, getDocs,
+  writeBatch, runTransaction,
+  increment
 } from '@angular/fire/firestore';
 import { Observable, from, of, forkJoin, throwError, firstValueFrom } from 'rxjs';
 import { map, catchError, switchMap, tap, take, shareReplay, finalize } from 'rxjs/operators';
@@ -38,6 +38,7 @@ export class ProductService {
   private firestore = inject(Firestore);
   private productsCollection = 'products';
   private readonly productsCacheKey = 'products';
+  private viewedInSession = new Set<string>();
 
   constructor(
     private inventoryService: ProductInventoryService,
@@ -47,6 +48,26 @@ export class ProductService {
     private cacheService: CacheService,
     private auth: Auth
   ) {
+    this.initializeAuth();
+  }
+
+  private async initializeAuth(): Promise<void> {
+    try {
+      // Escuchar cambios de autenticación
+      this.auth.onAuthStateChanged((user) => {
+        if (user) {
+          console.log('✅ Usuario autenticado:', user.isAnonymous ? 'Anónimo' : user.uid);
+        } else {
+          console.log('👤 Sin usuario autenticado');
+          // Auto-autenticar como anónimo
+          signInAnonymously(this.auth).catch(error => {
+            console.warn('⚠️ No se pudo autenticar automáticamente:', error);
+          });
+        }
+      });
+    } catch (error) {
+      console.warn('⚠️ Error en inicialización de auth:', error);
+    }
   }
 
   // -------------------- MÉTODOS DE CONSULTA --------------------
@@ -274,7 +295,6 @@ export class ProductService {
     const cacheKey = `${this.productsCacheKey}_${productId}`;
 
     return this.cacheService.getCached<Product | null>(cacheKey, () => {
-
       return from((async () => {
         try {
           const productDoc = doc(this.firestore, this.productsCollection, productId);
@@ -289,14 +309,18 @@ export class ProductService {
             ...productSnap.data()
           } as Product;
 
-
-          // Enriquecer con stock en tiempo real
+          // Enriquecer con stock
           const enrichedProduct = await firstValueFrom(
             this.enrichSingleProductWithRealTimeStock(product).pipe(take(1))
           );
 
-          // Registrar vista en segundo plano (sin esperar)
-          this.incrementProductView(productId);
+          // ✅ SOLUCIÓN 4: AWAIT la vista correctamente
+          try {
+            await this.incrementProductView(productId);
+          } catch (viewError) {
+            console.warn('Vista no registrada:', viewError);
+            // No fallar toda la carga por un error de vista
+          }
 
           return enrichedProduct;
         } catch (error) {
@@ -1346,28 +1370,114 @@ export class ProductService {
    */
   private async incrementProductView(productId: string): Promise<void> {
     try {
-      // Si no está autenticado, autenticar anónimamente
+      // Control de tiempo para evitar spam
+      const now = Date.now();
+      const lastViewKey = `view_${productId}`;
+      const lastViewTime = localStorage.getItem(lastViewKey);
+
+      if (lastViewTime && (now - parseInt(lastViewTime)) < 30000) {
+        console.log(`ℹ️ Vista reciente de ${productId}, omitiendo`);
+        return;
+      }
+
+      console.log(`🔍 Intentando registrar vista para ${productId}...`);
+
+      // ✅ SOLUCIÓN 1: Usar runTransaction correctamente
+      await runTransaction(this.firestore, async (transaction) => {
+        const productRef = doc(this.firestore, this.productsCollection, productId);
+        const productSnap = await transaction.get(productRef);
+
+        if (!productSnap.exists()) {
+          console.warn(`❌ Producto ${productId} no existe`);
+          throw new Error(`Producto ${productId} no encontrado`);
+        }
+
+        const currentViews = productSnap.data()?.['views'] || 0;
+        const newViews = currentViews + 1;
+
+        // ✅ USAR increment() para operaciones atómicas
+        transaction.update(productRef, {
+          views: increment(1),
+          lastViewDate: new Date(),
+          updatedAt: new Date()
+        });
+
+        console.log(`✅ Vista registrada: ${currentViews} → ${newViews}`);
+      });
+
+      // ✅ SOLUCIÓN 2: Guardar timestamp DESPUÉS de éxito
+      localStorage.setItem(lastViewKey, now.toString());
+
+      // ✅ SOLUCIÓN 3: Invalidar caché de forma inteligente
+      setTimeout(() => {
+        this.cacheService.invalidateProductCache(productId);
+      }, 100); // Pequeño delay para asegurar consistencia
+
+    } catch (error: any) {
+      console.error(`❌ Error registrando vista:`, error);
+
+      // ✅ MANEJO ESPECÍFICO DE ERRORES
+      if (error.code === 'permission-denied') {
+        console.warn('🔐 Sin permisos para registrar vista, intentando autenticación...');
+        await this.ensureAuthenticationAndRetry(productId);
+      } else if (error.code === 'unavailable') {
+        console.warn('🌐 Firestore temporalmente no disponible');
+        this.trackProductViewLocally(productId);
+      } else {
+        // Fallback a registro local
+        this.trackProductViewLocally(productId);
+      }
+    }
+  }
+
+  private async ensureAuthenticationAndRetry(productId: string): Promise<void> {
+    try {
+      // Verificar si ya hay usuario
       if (!this.auth.currentUser) {
+        console.log('🔐 Autenticando usuario anónimo...');
         await signInAnonymously(this.auth);
       }
 
-      // Ahora sí incrementar las vistas
-      this.inventoryService.incrementProductViews(productId).pipe(
-        take(1),
-        catchError(error => {
-          console.warn(`Error incrementando vistas para ${productId}:`, error.message);
-          return of(void 0);
-        })
-      ).subscribe({
-        next: () => console.log(`📊 Vista incrementada: ${productId}`),
-        error: () => { } // Error ya manejado en catchError
-      });
-
-    } catch (error) {
-      console.warn('No se pudo autenticar anónimamente:', error);
-      // Vista se pierde, pero la app sigue funcionando
+      // Reintentar una sola vez
+      await this.incrementProductViewDirect(productId);
+    } catch (retryError) {
+      console.error('❌ Fallo en reintento:', retryError);
+      this.trackProductViewLocally(productId);
     }
   }
+
+  private async incrementProductViewDirect(productId: string): Promise<void> {
+    await runTransaction(this.firestore, async (transaction) => {
+      const productRef = doc(this.firestore, this.productsCollection, productId);
+      const productSnap = await transaction.get(productRef);
+
+      if (!productSnap.exists()) {
+        throw new Error(`Producto ${productId} no encontrado`);
+      }
+
+      transaction.update(productRef, {
+        views: increment(1),
+        lastViewDate: new Date(),
+        updatedAt: new Date()
+      });
+    });
+  }
+
+  private trackProductViewLocally(productId: string): void {
+    try {
+      const viewsKey = 'product_views_local';
+      const views = JSON.parse(localStorage.getItem(viewsKey) || '{}');
+
+      views[productId] = (views[productId] || 0) + 1;
+      views[`${productId}_lastView`] = new Date().toISOString();
+
+      localStorage.setItem(viewsKey, JSON.stringify(views));
+      console.log(`📱 Vista local registrada: ${views[productId]}`);
+    } catch (error) {
+      console.error('❌ Error en registro local:', error);
+    }
+  }
+
 
   // -------------------- MÉTODOS DE INFORMES --------------------
 
@@ -1494,7 +1604,7 @@ export class ProductService {
 
       // Eliminar imágenes (esto elimina todo el directorio del producto)
       await this.imageService.deleteProductImages(productId, []);
-      
+
     } catch (error) {
       console.error(`❌ Error durante limpieza de producto fallido ${productId}:`, error);
     }

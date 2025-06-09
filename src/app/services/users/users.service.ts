@@ -47,9 +47,9 @@ export class UsersService {
 
   constructor(private auth: Auth) {
     this.user$ = authState(this.auth);
-    // Suscribirse a cambios de usuario para guardar información
     this.user$.subscribe(user => {
-      if (user) {
+      // ✅ SOLUCIÓN: Solo guardar usuarios reales (no anónimos)
+      if (user && !user.isAnonymous) {
         this.saveUserData(user);
       }
     });
@@ -58,26 +58,27 @@ export class UsersService {
   // Método para guardar datos del usuario en Firestore
   private async saveUserData(user: User): Promise<void> {
     try {
-      // ✅ USAR: this.firestore
-      const userRef = doc(this.firestore, 'users', user.uid);
+      // ✅ VERIFICACIÓN ADICIONAL: Asegurar que no es anónimo
+      if (user.isAnonymous) {
+        return;
+      }
 
-      // Verificar si el usuario ya existe
+      const userRef = doc(this.firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
       if (!userSnap.exists()) {
-        // Crear un nuevo registro si no existe
         await setDoc(userRef, {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
           emailVerified: user.emailVerified,
-          createdAt: serverTimestamp(), // ✅ USAR serverTimestamp
+          isAnonymous: false, // ✅ Marcar explícitamente como no anónimo
+          createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
-          roles: ['customer'] // Rol por defecto
+          roles: ['customer']
         });
       } else {
-        // Actualizar solo el último login
         await setDoc(userRef, {
           lastLogin: serverTimestamp()
         }, { merge: true });
@@ -148,10 +149,13 @@ export class UsersService {
   // Gestión de roles y permisos
   async getUserRoles(): Promise<string[]> {
     const user = this.auth.currentUser;
-    if (!user) return [];
+
+    // ✅ MEJORA: Validar que no sea anónimo
+    if (!user || user.isAnonymous) {
+      return [];
+    }
 
     try {
-      // ✅ USAR: this.firestore
       const userDoc = await getDoc(doc(this.firestore, 'users', user.uid));
       return userDoc.exists() ? userDoc.data()?.['roles'] || [] : [];
     } catch (error) {
@@ -202,12 +206,15 @@ export class UsersService {
   // ✅ CORRECCIÓN: Método para registrar actividad usando user_activity_logs
   async logUserActivity(action: string, resource: string, details?: any): Promise<void> {
     const user = this.auth.currentUser;
-    if (!user) return;
+
+    // ✅ MEJORA: No registrar actividad de usuarios anónimos
+    if (!user || user.isAnonymous) {
+      return;
+    }
 
     try {
-      // ✅ USAR: this.firestore y user_activity_logs
       const logData = {
-        userId: user.uid, // ✅ IMPORTANTE: Para que coincida con tus reglas
+        userId: user.uid,
         email: user.email,
         action,
         resource,
@@ -218,7 +225,6 @@ export class UsersService {
       const logCollection = collection(this.firestore, 'user_activity_logs');
       await addDoc(logCollection, logData);
     } catch (error) {
-      // ✅ Solo warning, no interrumpir flujo
       console.warn('Error registrando actividad:', error);
     }
   }
@@ -253,17 +259,18 @@ export class UsersService {
   // ✅ CORRECCIÓN: Obtener datos completos del perfil con conversión de timestamps
   async getUserProfile(): Promise<any> {
     const user = this.auth.currentUser;
-    if (!user) return null;
+
+    // ✅ MEJORA: Validar que no sea anónimo
+    if (!user || user.isAnonymous) {
+      return null;
+    }
 
     try {
-      // ✅ USAR: this.firestore
       const userRef = doc(this.firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
         const data = userSnap.data();
-
-        // ✅ CORRECCIÓN: Convertir timestamps automáticamente
         return this.convertFirebaseTimestamps(data);
       }
       return null;
