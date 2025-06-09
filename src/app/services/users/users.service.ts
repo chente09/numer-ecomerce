@@ -15,7 +15,7 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail
 } from '@angular/fire/auth';
-import { Firestore } from '@angular/fire/firestore';
+import { Firestore, query, where } from '@angular/fire/firestore';
 import {
   addDoc,
   collection,
@@ -485,6 +485,113 @@ export class UsersService {
       console.log('✅ Dirección eliminada exitosamente');
     } catch (error) {
       console.error('❌ Error eliminando dirección:', error);
+      throw error;
+    }
+  }
+  /**
+   * 📧 NEWSLETTER: Guardar suscripción al newsletter
+   */
+  async saveNewsletterSubscription(subscriptionData: {
+    email: string;
+    subscribedAt: Date;
+    source: string;
+    isActive: boolean;
+    userId?: string | null;
+  }): Promise<void> {
+    try {
+      const subscriptionsRef = collection(this.firestore, 'newsletter_subscriptions');
+
+      // Verificar si ya existe una suscripción con este email
+      const existingQuery = query(
+        subscriptionsRef,
+        where('email', '==', subscriptionData.email)
+      );
+      const existingSnap = await getDocs(existingQuery);
+
+      if (!existingSnap.empty) {
+        // Actualizar suscripción existente
+        const docRef = existingSnap.docs[0].ref;
+        await setDoc(docRef, {
+          ...subscriptionData,
+          updatedAt: serverTimestamp(),
+          resubscribedAt: serverTimestamp(),
+          resubscribeCount: (existingSnap.docs[0].data()['resubscribeCount'] || 0) + 1
+        }, { merge: true });
+
+        console.log('✅ Suscripción al newsletter actualizada');
+      } else {
+        // Crear nueva suscripción
+        await addDoc(subscriptionsRef, {
+          ...subscriptionData,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          resubscribeCount: 0
+        });
+
+        console.log('✅ Nueva suscripción al newsletter creada');
+      }
+
+      // Registrar actividad del usuario (si está logueado)
+      if (subscriptionData.userId) {
+        await this.logUserActivity('newsletter_subscription', 'newsletter', {
+          email: subscriptionData.email,
+          source: subscriptionData.source
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Error guardando suscripción al newsletter:', error);
+      throw new Error(`Error al suscribirse al newsletter: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
+  }
+
+  /**
+   * 📧 NEWSLETTER: Verificar si un email ya está suscrito
+   */
+  async isEmailSubscribedToNewsletter(email: string): Promise<boolean> {
+    try {
+      const subscriptionsRef = collection(this.firestore, 'newsletter_subscriptions');
+      const q = query(
+        subscriptionsRef,
+        where('email', '==', email.toLowerCase().trim()),
+        where('isActive', '==', true)
+      );
+
+      const snapshot = await getDocs(q);
+      return !snapshot.empty;
+    } catch (error) {
+      console.error('Error verificando suscripción:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 📧 NEWSLETTER: Desuscribirse del newsletter
+   */
+  async unsubscribeFromNewsletter(email: string): Promise<void> {
+    try {
+      const subscriptionsRef = collection(this.firestore, 'newsletter_subscriptions');
+      const q = query(subscriptionsRef, where('email', '==', email.toLowerCase().trim()));
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const docRef = snapshot.docs[0].ref;
+        await setDoc(docRef, {
+          isActive: false,
+          unsubscribedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // Registrar actividad si hay usuario logueado
+        const user = this.getCurrentUser();
+        if (user) {
+          await this.logUserActivity('newsletter_unsubscription', 'newsletter', { email });
+        }
+
+        console.log('✅ Usuario desuscrito del newsletter');
+      }
+    } catch (error) {
+      console.error('❌ Error al desuscribirse del newsletter:', error);
       throw error;
     }
   }

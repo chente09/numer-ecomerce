@@ -56,19 +56,15 @@ export class ProductService {
    */
   // ✅ CORREGIDO en ProductService
   getProducts(): Observable<Product[]> {
-    console.log('🔄 ProductService: Solicitando productos desde caché...');
 
     return this.cacheService.getCached<Product[]>(this.productsCacheKey, () => {
-      console.log('🔄 ProductService: Creando observable de productos (CACHE MISS)');
 
       const productsRef = collection(this.firestore, this.productsCollection);
       return collectionData(productsRef, { idField: 'id' }).pipe(
         map(data => {
-          console.log(`📦 ProductService: Productos recibidos de Firestore: ${data.length}`);
           return data as Product[];
         }),
         switchMap(products => {
-          console.log('🔄 ProductService: Enriqueciendo productos con stock...');
           return this.enrichProductsWithRealTimeStock(products);
         }),
         catchError(error => {
@@ -77,7 +73,6 @@ export class ProductService {
         }),
         shareReplay({ bufferSize: 1, refCount: true }),
         finalize(() => {
-          console.log('🏁 ProductService: getProducts completado');
         })
       );
     });
@@ -255,13 +250,6 @@ export class ProductService {
           const actualValue = product[key as keyof Product];
 
           const matches = expectedValue === actualValue;
-
-          if (!matches) {
-            console.log(`🔍 [PRODUCT SERVICE] Diferencia en ${key}:`, {
-              expected: expectedValue,
-              actual: actualValue
-            });
-          }
 
           return matches;
         });
@@ -500,13 +488,11 @@ export class ProductService {
 
               // ✅ VERIFICACIÓN CRÍTICA: Asegurar que son objetos
               if (!variants || !Array.isArray(variants)) {
-                console.error('❌ ProductService: Variantes inválidas recibidas');
                 return product; // Devolver producto sin variantes si fallan
               }
 
               // ✅ VERIFICAR QUE EL PRIMER ELEMENTO SEA UN OBJETO VÁLIDO
               if (variants.length > 0 && typeof variants[0] === 'string') {
-                console.error('❌ ProductService: Variantes son strings, no objetos válidos');
                 return product; // Devolver producto original sin sobreescribir
               }
 
@@ -718,14 +704,11 @@ export class ProductService {
     const cacheKey = `${this.productsCacheKey}_related_${product.id}_${limit}`;
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
-      console.log(`🔍 ProductService: Calculando productos relacionados para ${product.name}`);
 
       // 🆕 USAR forceReloadProducts en lugar de getProducts()
       return this.forceReloadProducts().pipe(
         take(1),
         map(allProducts => {
-          console.log(`📦 ProductService: Analizando ${allProducts.length} productos para encontrar relacionados`);
-
           const scored = allProducts
             .filter(p => p.id !== product.id && p.totalStock > 0)
             .map(p => ({
@@ -736,17 +719,6 @@ export class ProductService {
             .sort((a, b) => b.score - a.score)
             .slice(0, limit)
             .map(item => item.product);
-
-          console.log(`✅ ProductService: Encontrados ${scored.length} productos relacionados`);
-
-          // 🆕 DEBUGGING: Mostrar qué productos se encontraron
-          if (scored.length === 0) {
-            console.warn(`⚠️ ProductService: No se encontraron productos relacionados para ${product.name} (categoría: ${product.category})`);
-          } else {
-            console.log('🎯 ProductService: Productos relacionados:',
-              scored.map(p => ({ name: p.name, category: p.category, id: p.id }))
-            );
-          }
 
           return scored;
         }),
@@ -823,10 +795,6 @@ export class ProductService {
       reasons.push(`producto ${compareProduct.isNew ? 'nuevo' : 'bestseller'} (+1)`);
     }
 
-    // 🔍 Log para debugging (solo cuando hay score > 0)
-    if (score > 0) {
-      console.log(`📊 ProductService: ${compareProduct.name} - Score: ${score} (${reasons.join(', ')})`);
-    }
 
     return score;
   }
@@ -890,13 +858,11 @@ export class ProductService {
 
       // 1. Subir imagen principal
       const imageUrl = await this.imageService.uploadProductImage(productId, mainImage);
-      console.log('✅ Imagen principal subida:', imageUrl);
 
       // 2. Subir imágenes adicionales si existen
       let additionalImageUrls: string[] = [];
       if (additionalImages && additionalImages.length > 0) {
         additionalImageUrls = await this.imageService.uploadAdditionalImages(productId, additionalImages);
-        console.log('✅ Imágenes adicionales subidas:', additionalImageUrls.length);
       }
 
       // 3. Procesar imágenes de colores y tallas
@@ -908,11 +874,6 @@ export class ProductService {
           colorImages,
           sizeImages
         );
-
-      console.log('✅ Colores actualizados:', updatedColors.map(c => ({
-        name: c.name,
-        imageUrl: c.imageUrl
-      })));
 
       // 4. Crear datos base del producto
       const productBaseData = {
@@ -1068,7 +1029,6 @@ export class ProductService {
       updateData.totalStock = calculatedTotalStock;
 
       // ✅ NUEVO: Sincronizar variantes cuando cambian colores/tallas
-      console.log('🔄 Sincronizando stock de variantes con colorStocks...');
       await this.syncVariantsWithColorStocks(productId, updateData.colors, updateData.sizes);
     }
 
@@ -1094,7 +1054,6 @@ export class ProductService {
       const correctStock = colorStock?.quantity || 0;
 
       if (variant.stock !== correctStock) {
-        console.log(`🔄 Sincronizando ${variant.colorName}-${variant.sizeName}: ${variant.stock} → ${correctStock}`);
 
         const variantRef = doc(this.firestore, 'productVariants', variant.id);
         batch.update(variantRef, {
@@ -1114,7 +1073,6 @@ export class ProductService {
     });
 
     await batch.commit();
-    console.log('✅ Sincronización de stock completada');
   }
 
   /**
@@ -1256,13 +1214,6 @@ export class ProductService {
 
       await batch.commit();
 
-      console.log(`✅ Actualización completa - Stock total: ${totalStock}`);
-      console.log(`📊 Sizes actualizados:`, updatedSizes.map(s => ({
-        name: s.name,
-        stock: s.stock,
-        colorStocks: s.colorStocks?.length
-      })));
-
       return totalStock;
     } catch (error) {
       console.error(`💥 Error al actualizar variantes del producto ${productId}:`, error);
@@ -1306,8 +1257,6 @@ export class ProductService {
           imageUrls.push(variant.imageUrl);
         }
       });
-
-      console.log(`🗑️ Eliminando ${imageUrls.length} imágenes, ${variants.length} variantes`);
 
       // 4. Eliminar variantes
       await this.variantService.deleteProductVariants(productId);
@@ -1400,7 +1349,6 @@ export class ProductService {
       // Si no está autenticado, autenticar anónimamente
       if (!this.auth.currentUser) {
         await signInAnonymously(this.auth);
-        console.log('👤 Usuario anónimo creado para analytics');
       }
 
       // Ahora sí incrementar las vistas
@@ -1532,7 +1480,6 @@ export class ProductService {
    */
   private async cleanupFailedProduct(productId: string): Promise<void> {
     try {
-      console.log(`🧹 Iniciando limpieza para producto fallido ${productId}`);
 
       // Intentar eliminar documento del producto si existe
       const productDoc = doc(this.firestore, this.productsCollection, productId);
@@ -1540,18 +1487,14 @@ export class ProductService {
 
       if (productSnap.exists()) {
         await deleteDoc(productDoc);
-        console.log(`✅ Documento de producto eliminado: ${productId}`);
       }
 
       // Eliminar variantes si existen
       await this.variantService.deleteProductVariants(productId);
-      console.log(`✅ Variantes eliminadas para producto: ${productId}`);
 
       // Eliminar imágenes (esto elimina todo el directorio del producto)
       await this.imageService.deleteProductImages(productId, []);
-      console.log(`✅ Imágenes eliminadas para producto: ${productId}`);
-
-      console.log(`🎉 Limpieza exitosa para producto fallido ${productId}`);
+      
     } catch (error) {
       console.error(`❌ Error durante limpieza de producto fallido ${productId}:`, error);
     }
@@ -1567,12 +1510,10 @@ export class ProductService {
     const cacheKey = `${this.productsCacheKey}_unique_models`;
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
-      console.log('🎯 ProductService: Calculando modelos únicos...');
 
       return this.getProducts().pipe(
         take(1),
         map(products => {
-          console.log(`📦 ProductService: Procesando ${products.length} productos para extraer modelos únicos`);
 
           // Crear mapa de modelos únicos
           const modelsMap = new Map<string, Product>();
@@ -1603,8 +1544,6 @@ export class ProductService {
             return (b.popularityScore || 0) - (a.popularityScore || 0);
           });
 
-          console.log(`✅ ProductService: ${uniqueModels.length} modelos únicos encontrados`);
-
           return uniqueModels;
         }),
         catchError(error => {
@@ -1626,7 +1565,6 @@ export class ProductService {
     const cacheKey = `${this.productsCacheKey}_models_category_${categoryId}`;
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
-      console.log(`🎯 ProductService: Obteniendo modelos únicos para categoría: ${categoryId}`);
 
       return this.getProductsByCategory(categoryId).pipe(
         take(1),
@@ -1650,7 +1588,6 @@ export class ProductService {
             .filter(product => product.totalStock > 0) // Solo con stock
             .sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0));
 
-          console.log(`✅ ProductService: ${uniqueModels.length} modelos únicos en categoría ${categoryId}`);
 
           return uniqueModels;
         }),
@@ -1673,7 +1610,6 @@ export class ProductService {
     const cacheKey = `${this.productsCacheKey}_model_${model}`;
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
-      console.log(`🎯 ProductService: Obteniendo productos del modelo: ${model}`);
 
       return this.getProducts().pipe(
         take(1),
@@ -1682,8 +1618,6 @@ export class ProductService {
             (product.model === model) ||
             (product.name === model && !product.model) // Fallback
           );
-
-          console.log(`✅ ProductService: ${modelProducts.length} productos encontrados para modelo ${model}`);
 
           return modelProducts;
         }),
@@ -1767,8 +1701,6 @@ export class ProductService {
       take(1)
     ).subscribe({
       next: (products) => {
-        console.log(`📊 Total de productos: ${products.length}`);
-
         if (products.length > 0) {
           const summary = products.slice(0, 10).map(product => ({
             id: product.id,
@@ -1792,7 +1724,6 @@ export class ProductService {
             precioPromedio: Math.round(products.reduce((sum, p) => sum + p.price, 0) / products.length)
           };
 
-          console.log('📈 Estadísticas:', stats);
         } else {
           console.log('🤷‍♂️ No hay productos disponibles');
         }
@@ -1812,7 +1743,6 @@ export class ProductService {
  * 🆕 MÉTODO: Forzar recarga después de transacción exitosa
  */
   forceReloadAfterPayment(): Observable<Product[]> {
-    console.log('🔄 ProductService: Forzando recarga después de pago exitoso...');
 
     // Limpiar TODO el caché relacionado con productos
     this.cacheService.clearCache();
@@ -1827,7 +1757,6 @@ export class ProductService {
       }),
       switchMap(products => this.enrichProductsWithRealTimeStock(products)),
       tap(enrichedProducts => {
-        console.log(`✅ ProductService: ${enrichedProducts.length} productos enriquecidos y listos`);
 
         // Actualizar el caché con los nuevos datos
         this.cacheService.getCached(this.productsCacheKey, () => of(enrichedProducts));

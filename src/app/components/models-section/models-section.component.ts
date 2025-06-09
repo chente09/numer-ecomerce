@@ -83,8 +83,6 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
     this.loading = true;
     this.error = null;
 
-    console.log('🎯 ModelsSectionComponent: Cargando modelos con productos...');
-
     // 🔄 COMBINAR MODELOS E IMÁGENES CON PRODUCTOS
     combineLatest([
       this.modelImageService.getActiveModelImages(),
@@ -102,9 +100,7 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
       takeUntil(this.destroy$)
     ).subscribe({
       next: (modelsWithProducts) => {
-        console.log(`📦 ModelsSectionComponent: ${modelsWithProducts.length} modelos con productos procesados`);
         this.models = modelsWithProducts.slice(0, this.maxModelsToShow);
-        console.log(`✅ ModelsSectionComponent: ${this.models.length} modelos listos para mostrar`);
       },
       error: (error) => {
         console.error('❌ ModelsSectionComponent: Error cargando modelos:', error);
@@ -116,7 +112,6 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
 
   // 🔄 PROCESAR MODELOS CON SUS PRODUCTOS
   private processModelsWithProducts(modelImages: ModelImage[], products: Product[]): ModelWithProducts[] {
-    console.log(`🔄 Procesando ${modelImages.length} modelos con ${products.length} productos`);
 
     const modelsWithProducts = modelImages.map(modelImage => {
       // 🔍 BUSCAR PRODUCTOS QUE COINCIDAN CON EL MODELO
@@ -137,7 +132,6 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
         hasStock: availableStock > 0
       };
 
-      console.log(`📋 Modelo "${modelImage.modelName}": ${matchingProducts.length} productos, ${availableStock} stock total`);
 
       return modelWithProducts;
     });
@@ -219,7 +213,6 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
 
   // 🧭 NAVEGACIÓN - REFACTORIZADO
   navigateToModel(model: ModelWithProducts): void {
-    console.log(`🧭 Navegando al modelo: ${model.modelName}`);
     
     // 🎯 NAVEGAR AL CATÁLOGO FILTRADO POR MODELO
     this.router.navigate(['/shop'], { 
@@ -232,7 +225,6 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
   }
 
   navigateToShop(): void {
-    console.log('🛍️ Navegando a la tienda completa');
     this.router.navigate(['/shop']);
   }
 
@@ -242,7 +234,6 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
   }
 
   refreshModels(): void {
-    console.log('🔄 ModelsSectionComponent: Recargando modelos...');
     this.loadModelsWithProducts(); // 🔄 CAMBIAR
   }
 

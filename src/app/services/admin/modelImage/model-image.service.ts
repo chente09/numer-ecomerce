@@ -281,7 +281,6 @@ export class ModelImageService {
       if (imagePath) {
         const imageRef = ref(this.storage, imagePath);
         await deleteObject(imageRef);
-        console.log(`🗑️ Imagen eliminada de Storage: ${imagePath}`);
       }
     } catch (error: any) {
       if (error.code !== 'storage/object-not-found') {
@@ -325,8 +324,6 @@ export class ModelImageService {
         return from([]);
       })
     ).subscribe(models => {
-      console.log(`📦 Modelos cargados: ${models.length}`);
-      console.log('🔍 Modelos detalle:', models);
       this.modelImagesSubject.next(models as ModelImage[]);
     });
   }
@@ -357,7 +354,6 @@ export class ModelImageService {
 
       const downloadURL = await getDownloadURL(snapshot.ref);
 
-      console.log(`✅ Imagen ${type} subida: ${(optimizedFile.size / 1024).toFixed(1)}KB`);
       return downloadURL;
 
     } catch (error) {
@@ -489,7 +485,6 @@ export class ModelImageService {
     console.group('🔍 [MODEL IMAGE SERVICE DEBUG]');
 
     const models = this.modelImagesSubject.value;
-    console.log('📊 Total modelos:', models.length);
 
     if (models.length > 0) {
       console.table(models.map(model => ({

@@ -132,13 +132,6 @@ export class HeroSectionComponent implements OnInit {
     // 🎯 SUSCRIPCIÓN PRINCIPAL SIMPLIFICADA
     this.heroService.getActiveHero().pipe(
       startWith(null),
-      tap(hero => {
-        if (hero) {
-          console.log(`📨 Hero recibido del servicio: "${hero.title}" (GIF: ${hero.isGif})`);
-        } else {
-          console.log('⚠️ No se recibió hero del servicio');
-        }
-      }),
       retry(2), // Reintentar 2 veces en caso de error
       catchError(error => {
         console.error('❌ Error en getActiveHero:', error);

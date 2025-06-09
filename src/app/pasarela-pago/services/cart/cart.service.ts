@@ -97,11 +97,6 @@ export class CartService {
     const previousUserId = this.currentUserId;
     this.currentUserId = user?.uid || null;
 
-    console.log('👤 Cambio de usuario:', {
-      previous: previousUserId,
-      current: this.currentUserId
-    });
-
     // ✅ PREVENIR procesamiento innecesario
     if (previousUserId === this.currentUserId) {
       return;
@@ -122,7 +117,6 @@ export class CartService {
   // ✅ NUEVO: Cuando usuario se loguea
   private async handleUserLogin(previousUserId: string | null): Promise<void> {
     try {
-      console.log('🔄 Usuario logueado, sincronizando carrito...');
 
       const currentCart = this.getCart();
       const userCart = await this.loadUserCartFromFirestore();
@@ -137,7 +131,6 @@ export class CartService {
         this.loadCartItemDetails(mergedCart.items);
       }
 
-      console.log('✅ Carrito sincronizado exitosamente');
     } catch (error) {
       console.error('❌ Error sincronizando carrito:', error);
     }
@@ -145,7 +138,6 @@ export class CartService {
 
   // ✅ NUEVO: Cuando usuario se desloguea
   private async handleUserLogout(): Promise<void> {
-    console.log('👋 Usuario deslogueado, limpiando carrito...');
     this.cartSubject.next({ ...this.initialCartState });
     localStorage.removeItem('cart');
   }
@@ -160,7 +152,6 @@ export class CartService {
 
       if (cartSnap.exists()) {
         const data = cartSnap.data();
-        console.log('📦 Carrito cargado desde Firestore:', data);
 
         // Validar y limpiar datos
         return this.sanitizeCartData(data as Cart);
@@ -206,7 +197,6 @@ export class CartService {
       };
 
       await setDoc(cartRef, cartToSave);
-      console.log('💾 Carrito guardado en Firestore');
     } catch (error) {
       console.error('❌ Error guardando carrito en Firestore:', error);
       // ✅ NO lanzar error - continuar sin sincronización
@@ -215,10 +205,6 @@ export class CartService {
 
   // ✅ NUEVO: Merge inteligente de carritos
   private mergeCartItems(localCart: Cart, userCart: Cart): Cart {
-    console.log('🔀 Mergeando carritos...', {
-      local: localCart.items.length,
-      user: userCart.items.length
-    });
 
     // ✅ SOLUCIÓN: Usar carrito de usuario como base, NO sumar local
     const mergedItems = [...userCart.items];
@@ -231,12 +217,8 @@ export class CartService {
 
       if (existingIndex === -1) {
         // ✅ Solo agregar si NO existe en el carrito del usuario
-        console.log(`➕ Agregando item local no existente: ${localItem.product?.name}`);
         mergedItems.push(localItem);
-      } else {
-        // ✅ NO sumar - mantener la cantidad del usuario
-        console.log(`🔄 Item ya existe en carrito de usuario, manteniendo cantidad del servidor: ${mergedItems[existingIndex].quantity}`);
-      }
+      } 
     });
 
     const mergedCart = {
@@ -287,7 +269,6 @@ export class CartService {
     productData?: Product,
     variantData?: ProductVariant
   ): Observable<boolean> {
-    console.log(`🛒 CartService: Agregando al carrito - Product: ${productId}, Variant: ${variantId}, Qty: ${quantity}`);
 
     // Usar los datos proporcionados si están disponibles, o buscarlos si no
     if (productData && variantData) {
@@ -302,8 +283,6 @@ export class CartService {
             return of(false);
           }
 
-          console.log('✅ CartService: Stock disponible, cargando datos del producto...');
-
           // Cargar datos completos del producto
           return this.productService.getProductById(productId).pipe(
             take(1),
@@ -313,8 +292,6 @@ export class CartService {
                 return of(false);
               }
 
-              console.log(`✅ CartService: Producto encontrado: ${product.name}`);
-
               // Encontrar la variante
               return this.productService.getVariantById(variantId).pipe(
                 take(1),
@@ -323,9 +300,6 @@ export class CartService {
                     console.error('❌ CartService: Variante no encontrada');
                     return of(false);
                   }
-
-                  console.log(`✅ CartService: Variante encontrada: ${variant.colorName}-${variant.sizeName}`);
-
                   // Proceder con la adición al carrito
                   return this.processAddToCart(productId, variantId, quantity, product, variant);
                 })
@@ -345,7 +319,6 @@ export class CartService {
           return of(false);
         }),
         finalize(() => {
-          console.log('🏁 CartService: addToCart completado');
         })
       );
     }
@@ -366,7 +339,6 @@ export class CartService {
     variant: ProductVariant
   ): Observable<boolean> {
     try {
-      console.log(`🔄 CartService: Procesando adición al carrito para ${product.name}`);
 
       const unitPrice = product.currentPrice || product.price;
       const currentCart = this.getCart();
@@ -375,7 +347,6 @@ export class CartService {
       );
 
       if (existingItemIndex !== -1) {
-        console.log('🔄 CartService: Item ya existe en carrito, actualizando cantidad...');
 
         const newQuantity = currentCart.items[existingItemIndex].quantity + quantity;
 
@@ -395,7 +366,6 @@ export class CartService {
             this.cartSubject.next(currentCart);
             this.saveCartToStorage();
 
-            console.log(`✅ CartService: Cantidad actualizada - Nueva cantidad: ${newQuantity}`);
             return true;
           }),
           // ✅ AGREGAR: Sincronización con Firestore AQUÍ
@@ -407,11 +377,9 @@ export class CartService {
             }
           }),
           finalize(() => {
-            console.log('🏁 CartService: processAddToCart (update) completado');
           })
         );
       } else {
-        console.log('➕ CartService: Agregando nuevo item al carrito...');
 
         const newItem: CartItem = {
           productId,
@@ -435,7 +403,6 @@ export class CartService {
           );
         }
 
-        console.log(`✅ CartService: Nuevo item agregado - Items en carrito: ${currentCart.items.length}`);
         return of(true);
       }
     } catch (error) {
@@ -449,7 +416,6 @@ export class CartService {
    * 🚀 CORREGIDO: Actualiza la cantidad de un item en el carrito
    */
   updateItemQuantity(variantId: string, quantity: number): Observable<boolean> {
-    console.log(`🔄 CartService: Actualizando cantidad - Variant: ${variantId}, Qty: ${quantity}`);
 
     if (quantity <= 0) {
       return this.removeItem(variantId);
@@ -484,7 +450,6 @@ export class CartService {
           this.saveCartToFirestore();
         }
 
-        console.log(`✅ CartService: Cantidad actualizada exitosamente`);
         return true;
       }),
       catchError(error => {
@@ -492,7 +457,6 @@ export class CartService {
         return of(false);
       }),
       finalize(() => {
-        console.log('🏁 CartService: updateItemQuantity completado');
       })
     );
   }
@@ -501,7 +465,6 @@ export class CartService {
    * Elimina un item del carrito
    */
   removeItem(variantId: string): Observable<boolean> {
-    console.log(`🗑️ CartService: Eliminando item - Variant: ${variantId}`);
 
     try {
       const currentCart = this.getCart();
@@ -524,7 +487,6 @@ export class CartService {
         this.saveCartToFirestore();
       }
 
-      console.log('✅ CartService: Item eliminado exitosamente');
       return of(true);
     } catch (error) {
       console.error('❌ CartService: Error al eliminar item:', error);
@@ -540,7 +502,6 @@ export class CartService {
    * Vacía completamente el carrito
    */
   clearCart(): void {
-    console.log('🧹 CartService: Limpiando carrito completo');
 
     // ✅ LIMPIAR TODO INMEDIATAMENTE
     this.cartSubject.next({ ...this.initialCartState });
@@ -553,25 +514,20 @@ export class CartService {
     const currentUser = this.getCurrentUser();
     if (currentUser && !currentUser.isAnonymous) {
       this.clearRemoteCart().subscribe({
-        next: () => console.log('✅ CartService: Carrito remoto limpiado'),
         error: (error) => console.error('❌ Error limpiando carrito remoto:', error)
       });
     }
 
     // ✅ FORZAR ACTUALIZACIÓN DE PRODUCTOS
-    console.log('🔄 CartService: Forzando actualización de productos...');
     this.productService.forceReloadProducts().pipe(
       take(1)
     ).subscribe({
-      next: (products) => {
-        console.log(`✅ CartService: ${products.length} productos actualizados después de limpiar carrito`);
-      },
+      
       error: (error) => {
         console.error('❌ CartService: Error actualizando productos:', error);
       }
     });
 
-    console.log('✅ CartService: Carrito limpiado completamente');
   }
 
   private clearRemoteCart(): Observable<void> {
@@ -587,11 +543,6 @@ export class CartService {
         // Opción 1: Si guardas el carrito como documento del usuario
         const userCartRef = doc(this.firestore, `users/${user.uid}/cart`, 'current');
         await deleteDoc(userCartRef);
-        console.log('🗑️ CartService: Carrito remoto eliminado de Firestore');
-
-        // Opción 2: Si guardas el carrito en el documento del usuario
-        // const userRef = doc(this.firestore, `users/${user.uid}`);
-        // await updateDoc(userRef, { cart: null });
 
       } catch (error) {
         console.error('❌ CartService: Error limpiando carrito remoto:', error);
@@ -611,7 +562,6 @@ export class CartService {
     try {
       const cartRef = doc(this.firestore, `users/${this.currentUserId}/cart`, 'current');
       await deleteDoc(cartRef);
-      console.log('✅ Carrito remoto limpiado');
     } catch (error) {
       console.error('❌ Error limpiando carrito remoto:', error);
     }
@@ -623,7 +573,6 @@ export class CartService {
    */
   applyDiscount(discountCode: string, discountAmount: number): boolean {
     try {
-      console.log(`💰 CartService: Aplicando descuento - Código: ${discountCode}, Monto: ${discountAmount}`);
 
       const currentCart = this.getCart();
 
@@ -637,7 +586,6 @@ export class CartService {
       this.cartSubject.next(currentCart);
       this.saveCartToStorage();
 
-      console.log('✅ CartService: Descuento aplicado exitosamente');
       return true;
     } catch (error) {
       console.error('❌ CartService: Error al aplicar descuento:', error);
@@ -664,7 +612,6 @@ export class CartService {
     // Calcular total general
     cart.total = cart.subtotal + cart.tax + cart.shipping - cart.discount;
 
-    console.log(`💰 CartService: Totales recalculados - Items: ${cart.totalItems}, Total: $${cart.total.toFixed(2)}`);
   }
 
 
@@ -676,7 +623,6 @@ export class CartService {
     requested: number,
     availableStock: number
   }> {
-    console.log(`🔍 CartService: Verificando stock - Variant: ${variantId}, Cantidad: ${quantity}`);
 
     return this.productService.getVariantById(variantId).pipe(
       take(1),
@@ -690,8 +636,6 @@ export class CartService {
         const stockAvailable = variant.stock !== undefined && variant.stock !== null ? variant.stock : 0;
         const available = stockAvailable >= quantity;
 
-        console.log(`📊 CartService: Stock verificado - Disponible: ${stockAvailable}, Solicitado: ${quantity}, OK: ${available}`);
-
         return {
           available,
           requested: quantity,
@@ -703,7 +647,6 @@ export class CartService {
         return of({ available: false, requested: quantity, availableStock: 0 });
       }),
       finalize(() => {
-        console.log('🏁 CartService: checkStock completado');
       })
     );
   }
@@ -734,7 +677,6 @@ export class CartService {
       };
 
       localStorage.setItem('cart', JSON.stringify(storageCart));
-      console.log('💾 CartService: Carrito guardado en localStorage');
     } catch (error) {
       console.error('❌ CartService: Error al guardar carrito en localStorage:', error);
     }
@@ -753,7 +695,6 @@ export class CartService {
 
         // Si fue limpiado hace menos de 5 minutos, no cargar desde storage
         if (timeDiff < 5 * 60 * 1000) { // 5 minutos
-          console.log('🚫 CartService: Carrito fue limpiado recientemente, no cargando desde storage');
           localStorage.removeItem('cart_cleared_flag'); // Limpiar flag
           return;
         }
@@ -769,11 +710,9 @@ export class CartService {
 
       // Si no hay items, no hacemos nada
       if (!parsedCart.items || parsedCart.items.length === 0) {
-        console.log('ℹ️ CartService: Carrito guardado está vacío');
         return;
       }
 
-      console.log(`📦 CartService: Carrito cargado con ${parsedCart.items.length} items`);
 
       // Inicializar un carrito básico con los items del storage
       const initialCart: Cart = {
@@ -800,7 +739,6 @@ export class CartService {
   private loadCartItemDetails(items: CartItem[]): void {
     if (!items || items.length === 0) return;
 
-    console.log(`🔄 CartService: Cargando detalles de ${items.length} items del carrito`);
 
     // Cargar todos los productos y variantes de manera paralela
     const loadPromises = items.map(item => {
@@ -822,7 +760,6 @@ export class CartService {
 
     forkJoin(loadPromises).subscribe({
       next: (enrichedItems) => {
-        console.log('✅ CartService: Detalles de items cargados exitosamente');
 
         const currentCart = this.getCart();
         const updatedCart = {
@@ -842,16 +779,12 @@ export class CartService {
    * 🚀 CORREGIDO: Finaliza la compra con los items del carrito
    */
   checkout(): Observable<{ success: boolean, orderId?: string, error?: string }> {
-    console.log('🛒 CartService: Preparando para checkout...');
 
     const cart = this.getCart();
 
     if (cart.items.length === 0) {
       return of({ success: false, error: 'El carrito está vacío' });
     }
-
-    // ✅ AHORA: Solo validar que haya items, el inventario se procesa en backend
-    console.log(`✅ CartService: ${cart.items.length} items listos para checkout`);
 
     return of({
       success: true,
@@ -866,7 +799,6 @@ export class CartService {
     return this.cart$.pipe(
       map(cart => cart.totalItems),
       finalize(() => {
-        console.log('🏁 CartService: getCartItemCount completado');
       })
     );
   }

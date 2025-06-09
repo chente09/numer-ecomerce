@@ -16,6 +16,7 @@ import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { InstagramAdminComponent } from "../instagram-admin/instagram-admin.component";
 
 
 @Component({
@@ -33,8 +34,9 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
     NzPaginationModule,
     NzSpinModule,
     NzDropDownModule,
-    NzIconModule
-  ],
+    NzIconModule,
+    InstagramAdminComponent
+],
   templateUrl: './review-management.component.html',
   styleUrl: './review-management.component.css'
 })

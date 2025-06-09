@@ -127,12 +127,6 @@ export class TendenciasSectionComponent implements OnInit, OnDestroy {
         this.trendingProducts = products;
         this.loading = false;
         this.cdr.detectChanges();
-
-        console.log('✅ Productos de tendencias cargados:', {
-          populares: products.mostPopular.length,
-          nuevos: products.newArrivals.length,
-          ofertas: products.onSale.length
-        });
       },
       error: (error) => {
         console.error('❌ Error en suscripción:', error);
@@ -194,7 +188,6 @@ export class TendenciasSectionComponent implements OnInit, OnDestroy {
       targetArray[productIndex].selectedColorIndex = index;
       targetArray[productIndex].displayImageUrl = color.imageUrl || product.imageUrl;
 
-      console.log(`🎨 Color cambiado en ${tab}: ${product.name} → ${color.name}`);
       this.cdr.detectChanges();
     }
   }

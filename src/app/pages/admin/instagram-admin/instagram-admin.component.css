@@ -1,0 +1,493 @@
+/* Contenedor principal */
+.instagram-admin-container {
+    width: 100%;
+    padding: 0 0 24px;
+}
+
+/* Card de encabezado con estadísticas */
+.header-card {
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.stat-item {
+    text-align: center;
+    min-width: 80px;
+}
+
+.stat-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1890ff;
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #8c8c8c;
+    margin-top: 4px;
+}
+
+.card-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Tabla y contenido */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.highlight-row {
+    background-color: #f0f7ff !important;
+}
+
+/* Imagen del post en tabla */
+.post-image-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.post-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+
+.post-thumbnail:hover {
+    transform: scale(1.05);
+}
+
+/* Caption y hashtags */
+.caption-cell {
+    max-width: 250px;
+}
+
+.caption-text {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #262626;
+}
+
+.hashtags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.hashtag-tag {
+    font-size: 11px;
+    margin: 0;
+}
+
+.more-tags {
+    font-size: 11px;
+    color: #8c8c8c;
+}
+
+/* Estadísticas de engagement */
+.engagement-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+}
+
+.like-icon {
+    color: #ff4757;
+}
+
+.comment-icon {
+    color: #8c8c8c;
+}
+
+/* Información del usuario */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-avatar {
+    flex-shrink: 0;
+}
+
+.username {
+    font-size: 13px;
+    font-weight: 500;
+    color: #262626;
+}
+
+/* Fecha */
+.date-text {
+    font-size: 12px;
+    color: #8c8c8c;
+    white-space: nowrap;
+}
+
+/* Botones de acción */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.comment-count {
+    font-size: 10px;
+    background: #ff4757;
+    color: white;
+    padding: 1px 4px;
+    border-radius: 8px;
+    margin-left: 2px;
+}
+
+/* Formulario del modal */
+.form-help-text {
+    color: #8c8c8c;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.required-mark {
+    color: #ff4d4f;
+    margin-left: 4px;
+}
+
+.error-message {
+    color: #ff4d4f;
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+/* Upload de imagen */
+.upload-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+:host ::ng-deep .ant-upload-select-picture-card i {
+    font-size: 24px;
+    color: #999;
+}
+
+:host ::ng-deep .ant-upload-select-picture-card .ant-upload-text {
+    margin-top: 6px;
+    color: #666;
+    font-size: 12px;
+}
+
+:host ::ng-deep .ant-upload.ant-upload-select-picture-card {
+    width: 120px;
+    height: 120px;
+    margin: 0;
+}
+
+:host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item {
+    width: 120px;
+    height: 120px;
+    margin: 0;
+}
+
+/* Modal de comentarios */
+.comments-modal {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.post-header {
+    margin-bottom: 16px;
+}
+
+.post-info {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.post-mini-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.post-details {
+    flex: 1;
+}
+
+.mini-caption {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #262626;
+}
+
+.mini-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: #8c8c8c;
+}
+
+.mini-stats span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Lista de comentarios */
+.comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.comment-item {
+    padding: 12px;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.comment-item:hover {
+    border-color: #d9d9d9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.comment-item.unapproved {
+    background-color: #fffbe6;
+    border-color: #ffe58f;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.comment-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.comment-user strong {
+    font-size: 14px;
+    color: #262626;
+}
+
+.comment-time {
+    font-size: 12px;
+    color: #8c8c8c;
+}
+
+.comment-text {
+    margin: 8px 0 12px 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #262626;
+    word-wrap: break-word;
+}
+
+.comment-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.comment-mod-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+}
+
+/* Estados de error para imágenes */
+:host ::ng-deep .error-image {
+    opacity: 0.6;
+    filter: grayscale(100%);
+}
+
+/* Responsividad */
+@media (max-width: 991px) {
+    .hide-md {
+        display: none;
+    }
+    
+    .stats-row {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 767px) {
+    .hide-sm {
+        display: none;
+    }
+
+    :host ::ng-deep .ant-table {
+        font-size: 13px;
+    }
+
+    :host ::ng-deep .ant-table th,
+    :host ::ng-deep .ant-table td {
+        padding: 8px 6px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    :host ::ng-deep .action-buttons .ant-btn {
+        padding: 0 6px;
+        height: 28px;
+        font-size: 12px;
+        width: 100%;
+    }
+
+    .caption-cell {
+        max-width: 150px;
+    }
+
+    .stats-row {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: auto;
+    }
+
+    .stat-number {
+        font-size: 18px;
+    }
+
+    .stat-label {
+        font-size: 13px;
+        margin-top: 0;
+    }
+}
+
+@media (max-width: 575px) {
+    .button-text {
+        display: none;
+    }
+
+    :host ::ng-deep .ant-card-head-title {
+        font-size: 16px;
+    }
+
+    :host ::ng-deep .ant-upload-list-picture-card .ant-upload-list-item,
+    :host ::ng-deep .ant-upload.ant-upload-select-picture-card {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .post-image-wrapper {
+        width: 50px;
+        height: 50px;
+    }
+
+    .card-actions {
+        justify-content: center;
+    }
+
+    .comments-modal {
+        padding: 8px;
+    }
+
+    .comment-item {
+        padding: 8px;
+    }
+
+    .comment-mod-actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Mejoras en los mensajes de nz-empty */
+:host ::ng-deep .ant-empty {
+    margin: 32px 0;
+}
+
+:host ::ng-deep .ant-empty-footer {
+    margin-top: 16px;
+}
+
+/* Mejoras para switches */
+:host ::ng-deep .ant-switch-checked {
+    background-color: #52c41a;
+}
+
+/* Mejoras para tags de prioridad */
+:host ::ng-deep .ant-tag {
+    margin: 0;
+    font-size: 11px;
+}
+
+/* Scroll personalizado para modal de comentarios */
+.comments-modal::-webkit-scrollbar {
+    width: 6px;
+}
+
+.comments-modal::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.comments-modal::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.comments-modal::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}

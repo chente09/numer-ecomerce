@@ -1,0 +1,327 @@
+<div class="instagram-admin-container">
+    <!-- Encabezado con estadísticas -->
+    <nz-card nzTitle="Administrar Posts de Instagram" class="mb-4 header-card">
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.totalPosts }}</div>
+                <div class="stat-label">Posts</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.totalLikes }}</div>
+                <div class="stat-label">Likes</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.totalComments }}</div>
+                <div class="stat-label">Comentarios</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.averageLikes }}</div>
+                <div class="stat-label">Promedio Likes</div>
+            </div>
+        </div>
+
+        <nz-divider></nz-divider>
+
+        <div class="card-actions">
+            <button nz-button nzType="primary" (click)="openModal()">
+                <span nz-icon nzType="plus"></span>
+                <span class="button-text">Nuevo Post</span>
+            </button>
+            <button nz-button (click)="loadPosts()" [nzLoading]="loading">
+                <span nz-icon nzType="reload"></span>
+                <span class="button-text">Actualizar</span>
+            </button>
+        </div>
+    </nz-card>
+
+    <!-- Mensaje de sin datos -->
+    <nz-empty *ngIf="posts?.length === 0 && !loading" nzNotFoundContent="No hay posts de Instagram disponibles"
+        [nzNotFoundFooter]="emptyButton">
+    </nz-empty>
+    <ng-template #emptyButton>
+        <button nz-button nzType="primary" (click)="openModal()">Crear primer post</button>
+    </ng-template>
+
+    <!-- Tabla de posts -->
+    <div class="table-responsive" *ngIf="posts && posts.length > 0">
+        <nz-table #tabla [nzData]="posts" [nzBordered]="true" [nzLoading]="loading" [nzShowPagination]="true"
+            [nzPageSize]="10" [nzScroll]="{ x: '800px' }">
+            <thead>
+                <tr>
+                    <th nzWidth="90px">Imagen</th>
+                    <th nzWidth="auto">Caption</th>
+                    <th nzWidth="120px" class="hide-sm">Engagement</th>
+                    <th nzWidth="120px" class="hide-md">Usuario</th>
+                    <th nzWidth="100px" class="hide-sm">Prioridad</th>
+                    <th nzWidth="120px" class="hide-md">Fecha</th>
+                    <th nzWidth="100px">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let post of tabla.data" [class.highlight-row]="selectedPost?.id === post.id">
+                    <!-- Imagen -->
+                    <td>
+                        <div class="post-image-wrapper">
+                            <img [src]="post.imageUrl" [alt]="'Post ' + post.username"
+                                (error)="handleImageError($event)" class="post-thumbnail">
+                        </div>
+                    </td>
+
+                    <!-- Caption con hashtags -->
+                    <td>
+                        <div class="caption-cell">
+                            <p class="caption-text">{{ getPostPreview(post.caption, 80) }}</p>
+                            <div class="hashtags-container" *ngIf="post.hashtags && post.hashtags.length > 0">
+                                <nz-tag *ngFor="let tag of post.hashtags.slice(0, 3)" nzColor="blue"
+                                    class="hashtag-tag">
+                                    #{{ tag }}
+                                </nz-tag>
+                                <span *ngIf="post.hashtags.length > 3" class="more-tags">
+                                    +{{ post.hashtags.length - 3 }} más
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Engagement -->
+                    <td class="hide-sm">
+                        <div class="engagement-stats">
+                            <div class="stat-row">
+                                <span nz-icon nzType="heart" nzTheme="fill" class="like-icon"></span>
+                                {{ post.likesCount || 0 }}
+                            </div>
+                            <div class="stat-row">
+                                <span nz-icon nzType="message" class="comment-icon"></span>
+                                {{ post.comments.length || 0 }}
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Usuario -->
+                    <td class="hide-md">
+                        <div class="user-info">
+                            <nz-avatar [nzSrc]="post.userAvatar" nzSize="small" class="user-avatar">
+                                {{ post.username.charAt(0).toUpperCase() }}
+                            </nz-avatar>
+                            <span class="username">{{ post.username }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Prioridad -->
+                    <td class="hide-sm">
+                        <nz-tag
+                            [nzColor]="(post?.priority ?? 0) <= 10 ? 'red' : (post?.priority ?? 0) <= 50 ? 'orange' : 'default'">
+                            {{ post?.priority ?? 0 }}
+                        </nz-tag>
+                    </td>
+
+                    <!-- Fecha -->
+                    <td class="hide-md">
+                        <span class="date-text">{{ formatDate(post.createdAt) }}</span>
+                    </td>
+
+                    <!-- Acciones -->
+                    <td>
+                        <div class="action-buttons">
+                            <button nz-button nzSize="small" (click)="editPost(post)" nz-tooltip
+                                nzTooltipTitle="Editar post">
+                                <span nz-icon nzType="edit"></span>
+                            </button>
+
+                            <button nz-button nzSize="small" (click)="showComments(post)" nz-tooltip
+                                nzTooltipTitle="Ver comentarios">
+                                <span nz-icon nzType="message"></span>
+                            </button>
+
+                            <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar este post?"
+                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deletePost(post.id)" nzSize="small"
+                                nz-tooltip nzTooltipTitle="Eliminar post">
+                                <span nz-icon nzType="delete" nzTheme="outline"></span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+    </div>
+
+    <!-- Modal para crear/editar post -->
+    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Post' : 'Nuevo Post'" [nzOkLoading]="saving"
+        (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="modalWidth" nzCentered>
+        <ng-container *nzModalContent>
+            <form [formGroup]="postForm" nz-form nzLayout="vertical">
+                <!-- Caption -->
+                <nz-form-item>
+                    <nz-form-label nzRequired>Caption del Post</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingresa un caption válido">
+                        <textarea nz-input formControlName="caption" placeholder="Escribe el caption de tu post aquí..."
+                            [nzAutosize]="{ minRows: 4, maxRows: 8 }">
+                        </textarea>
+                        <div class="form-help-text">
+                            Máximo 2200 caracteres. Puedes incluir hashtags (#) y menciones (&#64;).
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <!-- Usuario -->
+                <nz-form-item>
+                    <nz-form-label nzRequired>Usuario</nz-form-label>
+                    <nz-form-control nzErrorTip="Por favor ingresa el nombre de usuario">
+                        <input nz-input formControlName="username" placeholder="@numer.ec" />
+                    </nz-form-control>
+                </nz-form-item>
+
+                <!-- Avatar del usuario -->
+                <nz-form-item>
+                    <nz-form-label>URL del Avatar</nz-form-label>
+                    <nz-form-control>
+                        <input nz-input formControlName="userAvatar" placeholder="https://ejemplo.com/avatar.jpg" />
+                        <div class="form-help-text">
+                            URL de la imagen del avatar del usuario (opcional).
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <!-- Hashtags -->
+                <nz-form-item>
+                    <nz-form-label>Hashtags</nz-form-label>
+                    <nz-form-control>
+                        <input nz-input formControlName="hashtags" placeholder="fashion, style, nuevacoleccion" />
+                        <div class="form-help-text">
+                            Separa los hashtags con comas (sin incluir #).
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+
+                <!-- Estado y Prioridad -->
+                <div nz-row [nzGutter]="16">
+                    <div nz-col nzXs="24" nzSm="12">
+                        <nz-form-item>
+                            <nz-form-label>Estado</nz-form-label>
+                            <nz-form-control>
+                                <nz-switch formControlName="isActive" [nzCheckedChildren]="'Activo'"
+                                    [nzUnCheckedChildren]="'Inactivo'">
+                                </nz-switch>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                    <div nz-col nzXs="24" nzSm="12">
+                        <nz-form-item>
+                            <nz-form-label>Prioridad</nz-form-label>
+                            <nz-form-control nzErrorTip="La prioridad debe ser mayor a 0">
+                                <nz-input-number formControlName="priority" [nzMin]="1" [nzMax]="9999"
+                                    nzPlaceHolder="999">
+                                </nz-input-number>
+                                <div class="form-help-text">
+                                    Menor número = mayor prioridad en la visualización.
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <!-- Imagen del post -->
+                <nz-form-item>
+                    <nz-form-label>
+                        Imagen del Post
+                        <span *ngIf="!isEditMode" class="required-mark">*</span>
+                    </nz-form-label>
+                    <nz-form-control>
+                        <div class="upload-container">
+                            <nz-upload [nzFileList]="fileList" [nzBeforeUpload]="beforeUpload"
+                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                [nzPreview]="handlePreview" [nzRemove]="handleRemove" nzListType="picture-card"
+                                [nzMultiple]="false">
+                                <div *ngIf="fileList.length < 1">
+                                    <span nz-icon nzType="plus"></span>
+                                    <div class="ant-upload-text">Subir Imagen</div>
+                                </div>
+                            </nz-upload>
+                        </div>
+                        <div class="form-help-text">
+                            Formatos: JPG, PNG, GIF, WebP. Tamaño recomendado: 1080x1080px (cuadrada).
+                        </div>
+                        <div *ngIf="imageErrorMessage" class="error-message">
+                            {{ imageErrorMessage }}
+                        </div>
+                    </nz-form-control>
+                </nz-form-item>
+            </form>
+        </ng-container>
+    </nz-modal>
+
+    <!-- Modal de comentarios -->
+    <nz-modal [(nzVisible)]="commentsModalVisible" [nzTitle]="'Comentarios de ' + selectedPost?.username"
+        (nzOnCancel)="commentsModalVisible = false" [nzFooter]="null" [nzWidth]="600" nzCentered>
+        <ng-container *nzModalContent>
+            <div *ngIf="selectedPost" class="comments-modal">
+                <!-- Header del post -->
+                <div class="post-header">
+                    <div class="post-info">
+                        <img [src]="selectedPost.imageUrl" class="post-mini-image" (error)="handleImageError($event)">
+                        <div class="post-details">
+                            <p class="mini-caption">{{ getPostPreview(selectedPost.caption, 60) }}</p>
+                            <div class="mini-stats">
+                                <span><i nz-icon nzType="heart" nzTheme="fill"></i> {{ selectedPost.likesCount }}</span>
+                                <span><i nz-icon nzType="message"></i> {{ selectedPost.comments.length || 0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <nz-divider></nz-divider>
+
+                <!-- Lista de comentarios -->
+                <div class="comments-list" *ngIf="selectedPost.comments && selectedPost.comments.length > 0">
+                    <div *ngFor="let comment of selectedPost.comments" class="comment-item"
+                        [class.unapproved]="comment.approved === false">
+
+                        <div class="comment-header">
+                            <div class="comment-user">
+                                <nz-avatar [nzSrc]="comment.userAvatar" nzSize="small">
+                                    {{ comment.username.charAt(0).toUpperCase() }}
+                                </nz-avatar>
+                                <strong>{{ comment.username }}</strong>
+                                <span class="comment-time">{{ formatDate(comment.timestamp) }}</span>
+                            </div>
+
+                            <div class="comment-actions">
+                                <nz-tag *ngIf="comment.approved === false" nzColor="orange">
+                                    Pendiente
+                                </nz-tag>
+                                <nz-tag *ngIf="comment.approved === true" nzColor="green">
+                                    Aprobado
+                                </nz-tag>
+                            </div>
+                        </div>
+
+                        <div class="comment-text">{{ comment.text }}</div>
+
+                        <div class="comment-mod-actions">
+                            <button nz-button nzSize="small" nzType="primary" *ngIf="comment.approved !== true"
+                                (click)="moderateComment(comment.id, true)">
+                                <span nz-icon nzType="check"></span> Aprobar
+                            </button>
+
+                            <button nz-button nzSize="small" nzDanger *ngIf="comment.approved !== false"
+                                (click)="moderateComment(comment.id, false)">
+                                <span nz-icon nzType="close"></span> Rechazar
+                            </button>
+
+                            <button nz-button nzSize="small" nz-popconfirm
+                                nzPopconfirmTitle="¿Eliminar este comentario?"
+                                (nzOnConfirm)="deleteComment(comment.id)">
+                                <span nz-icon nzType="delete"></span> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sin comentarios -->
+                <nz-empty *ngIf="!selectedPost.comments || selectedPost.comments.length === 0"
+                    nzNotFoundContent="No hay comentarios en este post" [nzNotFoundImage]="'simple'">
+                </nz-empty>
+            </div>
+        </ng-container>
+    </nz-modal>
+</div>

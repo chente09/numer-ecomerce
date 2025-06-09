@@ -15,7 +15,7 @@
 
             <!-- ===== CAROUSEL PRINCIPAL ===== -->
             <nz-carousel #carousel nzAutoPlay *ngIf="!isLoading && hasTestimonials()" [nzAutoPlaySpeed]="autoplaySpeed"
-                [nzDots]="!isMobile" nzDotPosition="bottom" nzEffect="fade" [nzEnableSwipe]="true" [nzLoop]="true"
+                [nzDots]="testimonials.length > 1" nzDotPosition="bottom" nzEffect="fade" [nzEnableSwipe]="true" [nzLoop]="true"
                 role="region" aria-label="Carousel de testimonios" aria-live="polite"
                 (nzAfterChange)="onSlideChange($event)">
 

@@ -2,23 +2,60 @@
 <section class="newsletter-section">
     <div class="container">
         <div class="newsletter-container">
+            <!-- Estados dinámicos -->
+            <div class="newsletter-status">
+                <div *ngIf="!isUserLoggedIn" class="status-message">
+                    <span nz-icon nzType="info-circle" class="status-icon"></span>
+                    Inicia sesión con Google para suscribirte automáticamente
+                </div>
+
+                <div *ngIf="isUserLoggedIn && !isSubscribed" class="status-message">
+                    <span nz-icon nzType="user" class="status-icon"></span>
+                    ¡Hola, {{ usersService.getCurrentUser()?.displayName }}! ¿Te suscribes a nuestro newsletter?
+                </div>
+
+                <div *ngIf="isUserLoggedIn && isSubscribed" class="status-message success">
+                    <span nz-icon nzType="check-circle" class="status-icon"></span>
+                    ¡Perfecto! Ya estás suscrito con {{ userEmail }}
+                </div>
+            </div>
             <div nz-row [nzGutter]="[24, 24]" nzAlign="middle">
-                <div nz-col [nzXs]="24" [nzMd]="12">
+                <div nz-col [nzXs]="24" [nzMd]="14">
                     <div class="newsletter-content">
-                        <h2 class="newsletter-title">Suscríbete para recibir ofertas exclusivas</h2>
-                        <p class="newsletter-description">Sé el primero en conocer nuestras novedades, promociones y
-                            descuentos especiales.</p>
+                        <h2 class="newsletter-title">
+                            Newsletter Exclusivo
+                        </h2>
+                        <p class="newsletter-description">
+                            Sé el primero en conocer nuestras novedades, promociones y descuentos especiales.
+                        </p>
                     </div>
                 </div>
-                <div nz-col [nzXs]="24" [nzMd]="12">
-                    <div class="newsletter-form">
-                        <nz-input-group [nzSuffix]="suffixButton">
-                            <input type="email" nz-input placeholder="Tu correo electrónico"
-                                [(ngModel)]="emailSubscription" />
-                        </nz-input-group>
-                        <ng-template #suffixButton>
-                            <button nz-button (click)="subscribeToNewsletter()">Suscribirse</button>
-                        </ng-template>
+
+                <div nz-col [nzXs]="24" [nzMd]="10">
+                    <div class="newsletter-action">
+                        <button class="newsletter-btn" [class.subscribed]="isSubscribed" [class.loading]="isLoading"
+                            [disabled]="isLoading || (isUserLoggedIn && isSubscribed)"
+                            (click)="handleNewsletterAction()">
+                            <span nz-icon [nzType]="getButtonIcon()" *ngIf="!isLoading"></span>
+                            <span nz-icon nzType="loading" *ngIf="isLoading"></span>
+                            {{ getButtonText() }}
+                        </button>
+
+                        <!-- Información adicional -->
+                        <div class="newsletter-info">
+                            <small *ngIf="!isUserLoggedIn">
+                                <span nz-icon nzType="check-circle"></span>
+                                Seguro con Google • Sin spam
+                            </small>
+                            <small *ngIf="isUserLoggedIn && !isSubscribed">
+                                <span nz-icon nzType="gift"></span>
+                                Ofertas exclusivas y descuentos especiales
+                            </small>
+                            <small *ngIf="isSubscribed">
+                                <span nz-icon nzType="heart"></span>
+                                Gracias por formar parte de nuestra comunidad
+                            </small>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -2,79 +2,183 @@
 <section class="instagram-section">
     <div>
         <h2 class="section-title">Síguenos en Instagram</h2>
-        <p class="instagram-subtitle">Comparte tus compras con nosotros &#64;numer.ec y recibe descuentos exclusivos</p>
+        <p class="instagram-subtitle">Comparte tus compras con nosotros &#64;numer.ec y recibe sorpresas exclusivas</p>
+
+        <!-- ✅ MEJORADO: Estado de autenticación más sutil -->
+        <div class="auth-status" *ngIf="!isAuthenticated">
+            <button nz-button nzType="primary" nzSize="small" [nzLoading]="loading" (click)="handleLoginFromButton()"
+                class="simple-login-btn">
+                <span nz-icon nzType="google"></span>
+                <span *ngIf="!loading">Inicia sesión para interactuar</span>
+                <span *ngIf="loading">Iniciando sesión...</span>
+            </button>
+        </div>
 
         <div class="instagram-feed">
-            <div nz-row [nzGutter]="[16, 16]">
-                <div *ngFor="let post of instagramFeed" nz-col [nzXs]="12" [nzSm]="8" [nzMd]="4">
+            <div class="instagram-grid" [class.scroll-mode]="instagramFeed.length > maxVisiblePosts">
+                <div *ngFor="let post of instagramFeed" nz-col [nzXs]="8" [nzSm]="8" [nzMd]="4">
                     <div class="instagram-post" (click)="openPostModal(post)">
                         <div class="instagram-image">
-                            <img [src]="post.imageUrl" [alt]="post.caption">
+                            <img [src]="post.imageUrl" [alt]="post.caption" (error)="handleImageError($event)">
                             <div class="instagram-overlay">
                                 <div class="instagram-stats">
                                     <span class="likes">
-                                        <i nz-icon nzType="heart" nzTheme="fill"></i> {{ post.likes }}
+                                        <i nz-icon nzType="heart" nzTheme="fill"></i> {{ post.likesCount || 0 }}
                                     </span>
                                     <span class="comments">
-                                        <i nz-icon nzType="message" nzTheme="fill"></i> {{ post.comments.length }}
+                                        <i nz-icon nzType="message" nzTheme="fill"></i> {{ post.comments.length || 0 }}
                                     </span>
+                                </div>
+
+                                <!-- ✅ NUEVO: Indicador de like del usuario -->
+                                <div class="user-like-indicator" *ngIf="isAuthenticated && post.liked">
+                                    <i nz-icon nzType="heart" nzTheme="fill"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="scroll-indicator" [class.visible]="instagramFeed.length > maxVisiblePosts">
+                ← Desliza para ver más →
+            </div>
         </div>
 
-        <div class="instagram-cta">
-            <a href="https://www.instagram.com/numer.ec/?hl=es" target="_blank" rel="noopener noreferrer" nz-button
-                nzType="default" nzSize="large">
-                <i nz-icon nzType="instagram" nzTheme="outline"></i> Seguir en Instagram
+        <div class="section-footer">
+            <a href="https://www.instagram.com/numer.ec/?hl=es" target="_blank" rel="noopener noreferrer"
+                class="view-all-btn">
+                <span nz-icon nzType="instagram" nzTheme="outline"></span>
+                <span>Seguir en Instagram</span>
+                <i nz-icon nzType="caret-right" nzTheme="outline" style="color: #f9f9f9;"></i>
             </a>
         </div>
     </div>
 </section>
 
-<!-- Modal para ver el post en detalle -->
+<!-- ✅ MODAL CORREGIDO: Estructura optimizada -->
 <ng-template #postDetailModal>
     <div class="instagram-modal-content" *ngIf="selectedPost">
+
+        <button class="custom-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
+            <i nz-icon nzType="close" nzTheme="outline"></i>
+        </button>
+        
+        <!-- ✅ IMAGEN: Proporción fija -->
         <div class="modal-image-container">
-            <img [src]="selectedPost.imageUrl" [alt]="selectedPost.caption">
+            <img [src]="selectedPost.imageUrl" [alt]="selectedPost.caption" (error)="handleImageError($event)">
         </div>
+
+        <!-- ✅ INTERACCIÓN: Layout mejorado -->
         <div class="modal-interaction">
+            <!-- ✅ HEADER: Más compacto -->
             <div class="post-header">
-                <div class="post-user">
-                    <img [src]="selectedPost.userAvatar || 'assets/images/avatar-placeholder.png'" alt="User Avatar"
-                        class="user-avatar">
-                    <span class="username">{{ selectedPost.username || 'numer.ec' }}</span>
+                <a href="https://www.instagram.com/numer.ec/?hl=es" target="_blank" rel="noopener noreferrer" class="post-user">
+                    <img [src]="selectedPost.userAvatar || 'https://i.postimg.cc/7LgKRbyJ/Logo-Numer-negro.png'"
+                        alt="User Avatar" class="user-avatar">
+                    <div class="user-details">
+                        <span class="username">{{ selectedPost.username || 'numer.ec' }}</span>
+                        <span class="post-date">{{ formatDate(selectedPost.createdAt) }}</span>
+                    </div>
+                </a>
+
+                <!-- ✅ USUARIO ACTUAL: Más pequeño -->
+                
+            </div>
+
+            <!-- ✅ CAPTION: Sin padding excesivo -->
+            <div class="post-caption">
+                <span class="username">{{ selectedPost.username || 'numer.ec' }}</span>
+                <span class="caption-text">{{ selectedPost.caption }}</span>
+
+                <!-- ✅ HASHTAGS: Más compactos -->
+                <div class="hashtags" *ngIf="extractHashtags(selectedPost.caption).length > 0">
+                    <span *ngFor="let hashtag of extractHashtags(selectedPost.caption)" class="hashtag">{{ hashtag
+                        }}</span>
                 </div>
             </div>
-            <div class="post-caption">
-                <span class="username">{{ selectedPost.username || 'numer.ec' }}</span> {{ selectedPost.caption }}
-            </div>
+
+            <!-- ✅ COMENTARIOS: Altura controlada -->
             <div class="post-comments">
                 <div *ngFor="let comment of selectedPost.comments" class="comment">
-                    <span class="username">{{ comment.username }}</span> {{ comment.text }}
+                    <img [src]="comment.userAvatar || getUserAvatar()" alt="Avatar" class="comment-avatar">
+                    <div class="comment-content">
+                        <span class="comment-header">
+                            <span class="username">{{ comment.username }}</span>
+                            <span class="comment-time">{{ formatDate(comment.timestamp) }}</span>
+                        </span>
+                        <span class="comment-text">{{ comment.text }}</span>
+                    </div>
+                </div>
+
+                <!-- ✅ SIN COMENTARIOS: Más compacto -->
+                <div class="no-comments" *ngIf="selectedPost.comments?.length === 0">
+                    <p>Sé el primero en comentar</p>
                 </div>
             </div>
+
+            <!-- ✅ ACCIONES: Layout fijo -->
             <div class="post-actions">
                 <div class="action-buttons">
-                    <button nz-button nzType="text" (click)="toggleLike(selectedPost)">
-                        <i nz-icon [nzType]="selectedPost.liked ? 'heart' : 'heart-o'"
-                            [nzTheme]="selectedPost.liked ? 'fill' : 'outline'"
-                            [ngClass]="{'liked': selectedPost.liked}"></i>
+                    <!-- ✅ LIKE: Con nueva función de login -->
+                    <button nz-button nzType="text" (click)="toggleLike(selectedPost)"
+                        [class.liked]="selectedPost.liked" [class.disabled]="!isAuthenticated"
+                        [nz-tooltip]="!isAuthenticated ? 'Inicia sesión para dar like' : (selectedPost.liked ? 'Quitar like' : 'Me gusta')">
+                        <i nz-icon [nzType]="selectedPost.liked ? 'heart' : 'heart'"
+                            [nzTheme]="selectedPost.liked ? 'fill' : 'outline'"></i>
                     </button>
-                    <button nz-button nzType="text" (click)="focusCommentInput()">
+
+                    <!-- ✅ COMENTARIO: Con nueva función de login -->
+                    <button nz-button nzType="text" (click)="focusCommentInput()" [class.disabled]="!isAuthenticated"
+                        [nz-tooltip]="!isAuthenticated ? 'Inicia sesión para comentar' : 'Agregar comentario'">
                         <i nz-icon nzType="message" nzTheme="outline"></i>
                     </button>
+
+                    <!-- ✅ COMPARTIR: Nueva funcionalidad completa -->
+                    <button nz-button nzType="text" nz-tooltip="Compartir publicación" (click)="sharePost()">
+                        <i nz-icon nzType="share-alt" nzTheme="outline"></i>
+                    </button>
                 </div>
+
+                <!-- ✅ CONTADOR: Compacto -->
                 <div class="likes-count">
-                    {{ selectedPost.likes }} Me gusta
+                    <strong>{{ selectedPost.likesCount || 0 }}</strong> me gusta
                 </div>
             </div>
-            <div class="comment-input">
-                <input #commentInput nz-input placeholder="Añade un comentario..." [(ngModel)]="newComment">
-                <button nz-button nzType="text" [disabled]="!newComment.trim()" (click)="addComment()">Publicar</button>
+
+            <!-- ✅ INPUT: Altura fija -->
+            <div class="comment-input-container">
+                <div class="comment-input" [class.authenticated]="isAuthenticated">
+                    <!-- ✅ AVATAR: Solo si está autenticado -->
+                    <div class="comment-user-avatar" *ngIf="isAuthenticated">
+                        <img [src]="getUserAvatar()" alt="Tu avatar" class="mini-avatar">
+                    </div>
+
+                    <!-- ✅ INPUT: Tamaño controlado -->
+                    <input #commentInput nz-input
+                        [placeholder]="isAuthenticated ? 'Comentar como ' + getUserDisplayName() : 'Inicia sesión para comentar'"
+                        [(ngModel)]="newComment" [disabled]="!isAuthenticated" (keyup.enter)="addComment()"
+                        class="comment-input-field">
+
+                    <!-- ✅ BOTÓN: Estilo neutro -->
+                    <button nz-button [disabled]="!newComment.trim() || !isAuthenticated" (click)="addComment()"
+                        [nz-tooltip]="!isAuthenticated ? 'Inicia sesión para comentar' : ''" class="publish-button">
+                        <i nz-icon nzType="send" nzTheme="outline"></i>
+                    </button>
+                </div>
+
+                <!-- ✅ AUTH PROMPT: Solo si no está autenticado, compacto -->
+                <div class="auth-prompt-inline" *ngIf="!isAuthenticated">
+                    <span class="auth-text">
+                        <i nz-icon nzType="heart" nzTheme="outline"></i>
+                        Inicia sesión para interactuar
+                    </span>
+                    <button nz-button nzType="link" nzSize="small" [nzLoading]="loading"
+                        (click)="handleLoginFromButton()" class="login-link">
+                        <span nz-icon nzType="google" *ngIf="!loading"></span>
+                        Google
+                    </button>
+                </div>
+
             </div>
         </div>
     </div>

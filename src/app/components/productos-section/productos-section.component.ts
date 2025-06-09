@@ -139,7 +139,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         },
         complete: () => {
-          console.log('🎯 COMPLETE ejecutado');
           this.productsLoading = false;
           this.cdr.detectChanges();
         }
@@ -155,7 +154,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
       this.featuredProducts[productIndex].selectedColorIndex = index;
       this.featuredProducts[productIndex].displayImageUrl = color.imageUrl || product.imageUrl;
 
-      console.log(`🎨 Color cambiado: ${product.name} → ${color.name}`);
       this.cdr.detectChanges();
     }
   }
@@ -187,8 +185,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
       this.featuredProducts = candidateProducts
         .slice(0, this.MAX_FEATURED_PRODUCTS)
         .map(product => this.initializeProductColorState(product));
-
-      console.log(`🎲 Productos destacados barajeados: ${this.featuredProducts.length}`);
 
     } catch (error) {
       console.error('❌ Error al procesar productos destacados:', error);

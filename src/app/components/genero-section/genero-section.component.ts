@@ -96,7 +96,6 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
 
   // 🎯 NAVEGACIÓN SIMPLIFICADA - SOLO GÉNERO
   onItemClick(item: GenderSectionItem): void {
-    console.log('🖱️ Click en género:', item.title);
 
     if (!item.category) {
       console.error('❌ Item sin categoría definida');
@@ -115,8 +114,6 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
       console.warn('⚠️ Categoría no reconocida como género:', item.category);
       return;
     }
-
-    console.log('👤 Navegando con género:', genderParam);
 
     // 🚀 Navegación simple
     this.router.navigate(['/shop'], {
@@ -144,16 +141,7 @@ export class GeneroSectionComponent implements OnInit, OnDestroy {
   }
 
   validateItemConfiguration(): void {
-    console.group('✅ Validando configuración de items');
     this.items.forEach((item, index) => {
-      console.log(`Item ${index + 1}:`, {
-        id: item.id,
-        title: item.title,
-        category: item.category,
-        isActive: item.isActive,
-        hasImage: !!item.imageUrl,
-        hasMobileImage: !!item.mobileImageUrl
-      });
 
       if (!item.category) {
         console.warn(`⚠️ Item "${item.title}" no tiene categoría definida`);
