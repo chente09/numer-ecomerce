@@ -60,11 +60,11 @@ export interface ProductVariant {
     originalPrice?: number;  // Precio original antes del descuento
 }
 export interface AdditionalImageItem {
-  file?: File;           // Solo para nuevas imágenes
-  url: string;          // URL para mostrar (blob local o Firebase URL)
-  id: string;           // ID único
-  isExisting: boolean;  // true = existe en Firebase, false = nueva
-  toDelete?: boolean;   // true = marcar para eliminar
+    file?: File;           // Solo para nuevas imágenes
+    url: string;          // URL para mostrar (blob local o Firebase URL)
+    id: string;           // ID único
+    isExisting: boolean;  // true = existe en Firebase, false = nueva
+    toDelete?: boolean;   // true = marcar para eliminar
 }
 
 export interface Product {
@@ -77,11 +77,11 @@ export interface Product {
     currentPrice?: number;
     discountPercentage?: number;
     imageUrl: string;
-    additionalImages?: string[]; 
+    additionalImages?: string[];
     rating: number;
     category: string;
     categories: string[];
-    technologies?: string[]; 
+    technologies?: string[];
     description?: string;
     isNew?: boolean;
     isBestSeller?: boolean;
@@ -167,4 +167,15 @@ export interface Review {
     approved?: boolean;
     createdAt: Date;
     productId?: string; // Opcional, si quieres asociar reseñas a productos específicos
+}
+
+export interface NavigationItem {
+    id: string;
+    icon: string;
+    title: string;
+    description: string;
+    link: string;
+    isExternal?: boolean;
+    isActive?: boolean;
+    order?: number;
 }

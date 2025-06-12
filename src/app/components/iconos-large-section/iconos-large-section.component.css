@@ -1,69 +1,228 @@
-
-/* Formato para el footer */
-.navbar {
+/* 🎨 SECCIÓN HERITAGE STYLE */
+.heritage-section {
     background-color: #000;
     color: #fff;
-    padding: 80px 0;
+    padding: 60px 0;
     width: 100%;
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 0 15px;
+    padding: 0 40px;
 }
 
-.nav-items {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+/* 📱 GRID HORIZONTAL */
+.heritage-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
 }
 
-.nav-item {
-    display: flex;
-    align-items: flex-start;
-    padding: 0 15px;
+/* 🎨 ITEMS HERITAGE */
+.heritage-item {
+    padding: 40px 30px;
     cursor: pointer;
-    width: 25%;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
-.icon-container {
-    margin-right: 10px;
+.heritage-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+    transform: translateY(-2px);
 }
 
-.icon {
-    font-size: 45px;
+.heritage-item:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.3);
+    outline-offset: -2px;
+}
+
+/* 🎯 CABECERA DEL ITEM */
+.item-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 15px;
+}
+
+.heritage-icon {
+    font-size: 24px;
+    color: #fff;
     font-weight: bold;
+    flex-shrink: 0;
+}
+
+.heritage-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #fff;
+    line-height: 1.2;
+}
+
+/* 📝 DESCRIPCIÓN */
+.heritage-description {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.75);
+    font-weight: 400;
+}
+
+.heritage-arrow {
+    display: inline-block;
+    margin-left: 8px;
+    transition: transform 0.3s ease;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.heritage-item:hover .heritage-arrow {
+    transform: translateX(4px);
     color: #fff;
 }
 
-.title {
-    margin: 0 0 10px 0;
-    font-size: 25px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+/* 🌊 EFECTO SUTIL */
+.heritage-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
 }
 
-.description {
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.4;
+.heritage-item:hover::before {
+    transform: translateX(100%);
 }
 
-.arrow {
-    display: inline-block;
-    margin-left: 5px;
+/* 📱 RESPONSIVE DESIGN */
+@media (max-width: 1200px) {
+    .container {
+        padding: 0 30px;
+    }
+
+    .heritage-item {
+        padding: 35px 25px;
+    }
+
+    .heritage-title {
+        font-size: 1.1rem;
+        letter-spacing: 1.5px;
+    }
 }
 
-/* Responsive adjustments */
+@media (max-width: 992px) {
+    .heritage-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .heritage-item {
+        padding: 40px 25px;
+    }
+
+    .heritage-item:nth-child(even) {
+        border-right: none;
+    }
+}
+
 @media (max-width: 768px) {
-    .nav-items {
-        flex-direction: column;
+    .heritage-section {
+        padding: 40px 0;
     }
 
-    .nav-item {
-        width: 100%;
-        margin-bottom: 20px;
+    .container {
+        padding: 0 20px;
+    }
+
+    .heritage-grid {
+        grid-template-columns: 1fr;
+        border-left: none;
+    }
+
+    .heritage-item {
+        padding: 30px 20px;
+        border-right: none;
+    }
+
+    .heritage-item:last-child {
+        border-bottom: none;
+    }
+
+    .item-header {
+        margin-bottom: 15px;
+        gap: 12px;
+    }
+
+    .heritage-icon {
+        font-size: 20px;
+    }
+
+    .heritage-title {
+        font-size: 1rem;
+        letter-spacing: 1px;
+    }
+
+    .heritage-description {
+        font-size: 13px;
     }
 }
+
+@media (max-width: 480px) {
+    .heritage-item {
+        padding: 25px 15px;
+    }
+
+    .item-header {
+        gap: 10px;
+    }
+
+    .heritage-icon {
+        font-size: 18px;
+    }
+
+    .heritage-title {
+        font-size: 0.9rem;
+    }
+
+    .heritage-description {
+        font-size: 12px;
+        line-height: 1.5;
+    }
+}
+
+/* ♿ ACCESIBILIDAD */
+@media (prefers-reduced-motion: reduce) {
+
+    .heritage-item,
+    .heritage-arrow,
+    .heritage-item::before {
+        transition: none;
+    }
+
+    .heritage-item:hover {
+        transform: none;
+    }
+}
+
+/* 🎯 ESTADOS ADICIONALES */
+.heritage-item:active {
+    transform: translateY(0);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* 🌙 CONTRASTE MEJORADO */
+@media (prefers-contrast: high) {
+
+    .heritage-description {
+        color: rgba(255, 255, 255, 0.9);
+    }
+}
+
+

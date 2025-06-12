@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { Category, CategoryService } from '../../services/admin/category/category.service';
+import { MountainRidgeComponent } from "../mountain-ridge/mountain-ridge.component";
 
 @Component({
   selector: 'app-footer',
@@ -13,8 +14,9 @@ import { Category, CategoryService } from '../../services/admin/category/categor
     NzGridModule,
     RouterLink,
     NzIconModule,
-    NzInputModule
-  ],
+    NzInputModule,
+    MountainRidgeComponent
+],
   templateUrl: './footer.component.html',
   styleUrl: './footer.component.css'
 })
