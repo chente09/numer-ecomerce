@@ -33,7 +33,7 @@ export class IconosLargeSectionComponent implements OnInit, OnDestroy {
       icon: 'team',
       title: 'Embajadores',
       description: 'Conoce a nuestros embajadores',
-      link: '/ubicaciones',
+      link: '/embajadores',
       order: 1,
       isActive: true
     },
@@ -42,7 +42,7 @@ export class IconosLargeSectionComponent implements OnInit, OnDestroy {
       icon: 'trophy',
       title: 'ATLETAS',
       description: 'Conoce a nuestros atletas',
-      link: '/atletas',
+      link: '/embajadores',
       order: 2,
       isActive: true
     },

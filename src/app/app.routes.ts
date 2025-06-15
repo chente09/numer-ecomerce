@@ -18,6 +18,7 @@ import { PerfilComponent } from './pages/user/perfil/perfil.component';
 import { CompletarPerfilComponent } from './pages/user/completar-perfil/completar-perfil.component';
 import { ClientesComponent } from './pages/admin/clientes/clientes.component';
 import { UbicacionesComponent } from './pages/ubicaciones/ubicaciones.component';
+import { EmbajadoresAtletasComponent } from './pages/embajadores-atletas/embajadores-atletas.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
@@ -37,7 +38,7 @@ export const routes: Routes = [
     { path: 'cuidado-producto', component: CuidadoProductoComponent },
     { path: 'review-form', component: ReviewFormComponent },
     { path: 'ubicaciones', component: UbicacionesComponent },
-    
+    { path: 'embajadores', component: EmbajadoresAtletasComponent },
 
     // Rutas protegidas que requieren autenticación pero no perfil completo
     { path: 'perfil', component: PerfilComponent, canActivate: [authGuard] },
