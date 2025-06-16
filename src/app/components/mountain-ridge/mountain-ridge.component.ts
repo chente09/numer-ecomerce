@@ -17,24 +17,11 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
   private animationTimeout: any;
   private intersectionObserver: IntersectionObserver | null = null;
   private initAttempts = 0;
-  private maxInitAttempts = 30; // Aumentado para móviles más lentos
-  private resizeTimeout: any;
-  private isMobile = false;
+  private maxInitAttempts = 20;
 
   ngAfterViewInit(): void {
-    // Detectar si es móvil
-    this.detectMobile();
-    
-    // Esperar más tiempo en móviles para que el DOM esté completamente listo
-    const delay = this.isMobile ? 200 : 100;
-    setTimeout(() => {
-      this.tryInitialize();
-    }, delay);
-  }
-
-  private detectMobile(): void {
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
-                    || window.innerWidth <= 768;
+    // Inicializar después de que la vista esté lista
+    this.tryInitialize();
   }
 
   private tryInitialize(): void {
@@ -43,21 +30,9 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
     // Verificar si tenemos los elementos necesarios
     if (!this.ridgelinePath?.nativeElement || !this.mountainSvg?.nativeElement) {
       if (this.initAttempts < this.maxInitAttempts) {
-        const retryDelay = this.isMobile ? 100 : 50; // Más tiempo en móviles
-        setTimeout(() => this.tryInitialize(), retryDelay);
+        setTimeout(() => this.tryInitialize(), 50);
       } else {
         console.error('Failed to initialize mountain ridge component after', this.maxInitAttempts, 'attempts');
-        // Fallback: intentar con valores por defecto
-        this.fallbackInitialization();
-      }
-      return;
-    }
-
-    // Verificar que el elemento sea visible
-    const rect = this.mountainSvg.nativeElement.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-      if (this.initAttempts < this.maxInitAttempts) {
-        setTimeout(() => this.tryInitialize(), 100);
       }
       return;
     }
@@ -72,61 +47,31 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
       // Iniciar la animación después de un breve delay
       setTimeout(() => {
         this.restartAnimation();
-      }, this.isMobile ? 200 : 100);
+      }, 100);
     } else if (this.initAttempts < this.maxInitAttempts) {
       // Reintentar si falló
-      setTimeout(() => this.tryInitialize(), 100);
-    } else {
-      this.fallbackInitialization();
+      setTimeout(() => this.tryInitialize(), 50);
     }
-  }
-
-  private fallbackInitialization(): void {
-    console.warn('Using fallback initialization for mountain ridge');
-    this.pathLength = 4000; // Valor por defecto
-    
-    const path = this.ridgelinePath?.nativeElement;
-    if (path) {
-      path.style.strokeDasharray = `${this.pathLength}`;
-      path.style.strokeDashoffset = `${this.pathLength}`;
-    }
-    
-    this.setupIntersectionObserver();
   }
 
   calculatePathLength(): boolean {
     try {
       const path = this.ridgelinePath.nativeElement;
       
-      // Verificar que el path esté renderizado
-      if (!path.isConnected) {
-        return false;
-      }
-      
-      // Obtener la longitud del path con manejo de errores específico para móviles
-      let length: number;
-      try {
-        length = path.getTotalLength();
-      } catch (error) {
-        // Algunas versiones de Android pueden fallar con getTotalLength
-        console.warn('getTotalLength failed, using fallback');
-        length = 0;
-      }
+      // Obtener la longitud del path
+      const length = path.getTotalLength();
       
       // Verificar si obtuvimos una longitud válida
-      if (length > 0 && length < 100000) { // Sanity check
+      if (length > 0) {
         this.pathLength = Math.ceil(length);
       } else {
         // Usar un valor por defecto basado en el viewBox del SVG
         this.pathLength = 4000;
-        console.warn('Using default path length:', this.pathLength);
       }
       
-      // Configurar los estilos iniciales con timeout para móviles
-      setTimeout(() => {
-        path.style.strokeDasharray = `${this.pathLength}`;
-        path.style.strokeDashoffset = `${this.pathLength}`;
-      }, this.isMobile ? 50 : 0);
+      // Configurar los estilos iniciales
+      path.style.strokeDasharray = `${this.pathLength}`;
+      path.style.strokeDashoffset = `${this.pathLength}`;
       
       return true;
     } catch (error) {
@@ -157,7 +102,7 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
       progress.classList.add('visible');
     }
     
-    // Resetear animación con timeout para móviles
+    // Resetear animación
     svg.classList.remove('in-view');
     path.classList.remove('glowing');
     
@@ -165,9 +110,7 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
     path.style.strokeDasharray = `${this.pathLength}`;
     path.style.strokeDashoffset = `${this.pathLength}`;
     
-    // Delay más largo para móviles para asegurar que los cambios se apliquen
-    const activationDelay = this.isMobile ? 100 : 50;
-    
+    // Pequeño delay para asegurar que los cambios se apliquen
     setTimeout(() => {
       // Activar animación
       svg.classList.add('in-view');
@@ -177,8 +120,7 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
         path.classList.add('glowing');
       }, 500);
       
-      // Limpiar después de la animación - tiempo ajustado según el CSS
-      const animationDuration = this.isMobile ? 4000 : 5000;
+      // Limpiar después de la animación
       this.animationTimeout = setTimeout(() => {
         if (btn) {
           btn.textContent = 'Dibujar Ridge';
@@ -188,8 +130,8 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
           progress.classList.remove('visible');
         }
         this.isAnimating = false;
-      }, animationDuration);
-    }, activationDelay);
+      }, 5000);
+    }, 50);
   }
 
   private setupIntersectionObserver(): void {
@@ -197,24 +139,17 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
       this.intersectionObserver.disconnect();
     }
 
-    // Threshold más bajo para móviles
-    const threshold = this.isMobile ? 0.05 : 0.1;
-
     this.intersectionObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting && !this.isAnimating) {
           // Solo animar si el componente está completamente inicializado
           if (this.pathLength > 0) {
-            // Delay adicional en móviles para asegurar estabilidad
-            setTimeout(() => {
-              this.restartAnimation();
-            }, this.isMobile ? 300 : 100);
+            this.restartAnimation();
           }
         }
       });
     }, { 
-      threshold: threshold,
-      rootMargin: '10px' // Margen adicional para activación temprana
+      threshold: 0.1
     });
 
     const svg = this.mountainSvg?.nativeElement;
@@ -225,9 +160,6 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
-    // Deshabilitar en móviles para evitar problemas
-    if (this.isMobile) return;
-    
     switch(event.key.toLowerCase()) {
       case 'r':
       case 'm':
@@ -245,47 +177,18 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
   @HostListener('document:dblclick', ['$event'])
   handleDoubleClick(event: MouseEvent) {
     const target = event.target as Element;
-    if (!target.classList.contains('restart-btn') && !this.isMobile) {
+    if (!target.classList.contains('restart-btn')) {
       this.restartAnimation();
     }
   }
 
   @HostListener('window:resize')
   onResize() {
-    // Debounce resize para evitar múltiples llamadas
-    if (this.resizeTimeout) {
-      clearTimeout(this.resizeTimeout);
-    }
-    
-    this.resizeTimeout = setTimeout(() => {
-      // Actualizar detección de móvil
-      this.detectMobile();
-      
-      if (!this.isAnimating) {
-        // Recalcular la longitud del path después de redimensionar
-        // Delay más largo en móviles
-        setTimeout(() => {
-          this.calculatePathLength();
-        }, this.isMobile ? 500 : 300);
-      }
-    }, 250);
-  }
-
-  @HostListener('window:orientationchange')
-  onOrientationChange() {
-    // Manejar cambios de orientación específicamente en móviles
-    if (this.isMobile) {
+    if (!this.isAnimating) {
+      // Recalcular la longitud del path después de redimensionar
       setTimeout(() => {
-        this.detectMobile();
         this.calculatePathLength();
-        
-        // Reiniciar animación si no está corriendo
-        if (!this.isAnimating) {
-          setTimeout(() => {
-            this.restartAnimation();
-          }, 500);
-        }
-      }, 600); // Tiempo extra para que el navegador móvil se ajuste
+      }, 300);
     }
   }
 
@@ -318,10 +221,6 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.animationTimeout) {
       clearTimeout(this.animationTimeout);
-    }
-    
-    if (this.resizeTimeout) {
-      clearTimeout(this.resizeTimeout);
     }
     
     if (this.intersectionObserver) {
