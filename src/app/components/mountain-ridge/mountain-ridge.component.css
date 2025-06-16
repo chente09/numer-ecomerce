@@ -10,13 +10,11 @@
 :host {
     display: block;
     width: 100%;
-    /* Mantener altura más agresiva - montaña alta */
     height: clamp(200px, 20vh, 220px);
     background-color: #000;
     font-family: 'Arial', sans-serif;
     position: relative;
     overflow: hidden;
-    /* Evitar overflow durante la carga */
 }
 
 /* Contenedor de la montaña */
@@ -28,7 +26,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: #000;
-    overflow: hidden; /* Importante: ocultar el exceso del SVG escalado */
+    overflow: hidden;
 }
 
 /* SVG de la montaña */
@@ -40,40 +38,34 @@
     left: 0;
     will-change: transform;
     shape-rendering: geometricPrecision;
-    /* Sin recorte por defecto - montaña completa */
 }
 
-/* Línea de montaña - strokeWidth más agresivo y visible */
+/* Línea de montaña */
 .ridgeline-path {
     fill: none;
     stroke: #ffffff;
-    /* Grosor más pronunciado para montaña agresiva */
     stroke-width: clamp(1.5px, 1.2vw, 1.5px);
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-miterlimit: 10;
-
-    /* Estado inicial - se establece desde JavaScript */
     stroke-dasharray: 0;
     stroke-dashoffset: 0;
-
     transition: filter 0.3s ease;
     will-change: stroke-dashoffset, filter;
 }
 
-/* Animación de dibujo con duración responsiva */
+/* Animación de dibujo */
 @keyframes draw {
     to {
         stroke-dashoffset: 0;
     }
 }
 
-/* Clase para activar cuando está en vista - duración fija */
 .mountain-svg.in-view .ridgeline-path {
     animation: draw 5s ease-out forwards;
 }
 
-/* Información - posicionamiento original pero mejorado */
+/* Información */
 .info {
     position: absolute;
     bottom: 15px;
@@ -97,17 +89,7 @@
     color: #ffffff;
 }
 
-/* Animación de pulso para el indicador */
-@keyframes pulse {
-    0%, 100% {
-        opacity: 0.7;
-    }
-    50% {
-        opacity: 1;
-    }
-}
-
-/* Efecto de brillo mejorado - valores fijos */
+/* Efecto de brillo */
 .ridgeline-path.glowing {
     filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.4)) 
             drop-shadow(0 0 6px rgba(255, 255, 255, 0.2));
@@ -124,15 +106,6 @@
     opacity: 0.7;
 }
 
-/* Variables CSS para diferentes tamaños de pantalla */
-:host {
-    --stroke-mobile: 1.2px;
-    --stroke-tablet: 1.8px;
-    --stroke-desktop: 2.5px;
-    --draw-duration: 5s;
-    --mountain-width: 100%; /* Ancho completo por defecto */
-}
-
 /* Tablets y pantallas medianas */
 @media (max-width: 768px) and (min-width: 481px) {
     :host {
@@ -140,8 +113,7 @@
     }
     
     .mountain-svg {
-        /* Escalar para que la parte visible ocupe todo el ancho */
-        width: 138%; /* 100% / 0.85 = 118% */
+        width: 138%;
         transform: translateX(0);
         overflow: hidden;
     }
@@ -162,14 +134,14 @@
     }
 }
 
-/* Móviles en portrait - mantener presencia agresiva */
+/* Móviles en portrait */
 @media (max-width: 480px) {
     :host {
         height: clamp(100px, 15vh, 120px);
     }
     
     .mountain-svg {
-        width: 153%; 
+        width: 153%;
         transform: translateX(0);
         overflow: hidden;
     }
@@ -192,15 +164,14 @@
     }
 }
 
-/* Móviles muy pequeños - pero manteniendo dignidad */
+/* Móviles muy pequeños */
 @media (max-width: 320px) {
     :host {
         height: clamp(80px, 12vh, 100px);
     }
     
     .mountain-svg {
-        /* Escalar para que el 70% visible ocupe todo el ancho */
-        width: 143%; /* 100% / 0.70 = 143% */
+        width: 143%;
         transform: translateX(0);
         overflow: hidden;
     }
@@ -220,15 +191,14 @@
     }
 }
 
-/* Orientación horizontal en móviles - mantener impacto */
+/* Orientación horizontal en móviles */
 @media (max-width: 768px) and (orientation: landscape) and (max-height: 500px) {
     :host {
         height: clamp(70px, 25vh, 100px);
     }
     
     .mountain-svg {
-        /* Escalar para que el 80% visible ocupe todo el ancho */
-        width: 125%; /* 100% / 0.80 = 125% */
+        width: 125%;
         transform: translateX(0);
         overflow: hidden;
     }
@@ -244,7 +214,7 @@
     }
 }
 
-/* Pantallas de alta densidad - líneas más gruesas y definidas */
+/* Pantallas de alta densidad */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
     .ridgeline-path {
         shape-rendering: geometricPrecision;
