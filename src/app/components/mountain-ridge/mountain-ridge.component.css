@@ -147,25 +147,30 @@
 
 @media (max-width: 480px) {
     :host {
-        height: 90px; /* Altura relativa al viewport */
-        min-height: 60px;
-        max-height: 90px;
+        height: clamp(100px, 15vh, 120px);
     }
-
-    .mountain-container {
-        height: 90px; /* Altura relativa al viewport */
-        min-height: 60px;
-        max-height: 90px;
+    
+    .mountain-svg {
+        width: 153%;
+        transform: translateX(0);
+        overflow: hidden;
     }
-
+    
+    .mountain-svg.in-view .ridgeline-path {
+        animation: draw 4s ease-out forwards;
+    }
+    
     .ridgeline-path {
-        stroke-width: 1.2;
+        stroke-width: 1.2px;
     }
-
+    
     .info {
-        font-size: 7px;
-        bottom: 5px;
-        right: 5px;
+        font-size: clamp(7px, 1.8vw, 8px);
+        letter-spacing: none;
+        bottom: 10px;
+        left: 70%;
+        padding-right: 5px;
+        width: fit-content;
     }
 
 }
