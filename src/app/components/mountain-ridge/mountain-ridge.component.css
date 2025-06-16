@@ -152,8 +152,9 @@
     
     .mountain-svg {
         width: 153%;
-        transform: translateX(0);
-        overflow: hidden;
+        /* Cambiar translateX(0) por un valor negativo para centrar los picos */
+        transform: translateX(0.1%);
+        /* No necesitas overflow: hidden aquí */
     }
     
     .mountain-svg.in-view .ridgeline-path {
@@ -172,7 +173,6 @@
         padding-right: 5px;
         width: fit-content;
     }
-
 }
 
 /* Pantallas muy pequeñas (ej. móviles en landscape) */
