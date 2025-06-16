@@ -165,12 +165,11 @@
 /* Móviles en portrait - mantener presencia agresiva */
 @media (max-width: 480px) {
     :host {
-        height: clamp(90px, 15vh, 120px);
+        height: clamp(100px, 15vh, 120px);
     }
     
     .mountain-svg {
-        /* Escalar para que el 75% visible ocupe todo el ancho */
-        width: 163%; /* 100% / 0.75 = 133% */
+        width: 153%; 
         transform: translateX(0);
         overflow: hidden;
     }
@@ -187,8 +186,8 @@
         font-size: clamp(7px, 1.8vw, 8px);
         letter-spacing: none;
         bottom: 10px;
-        left: 85%;
-        padding-right: 20px;
+        left: 80%;
+        padding-right: 25px;
         width: max-content;
     }
 }
