@@ -191,18 +191,18 @@ export class EmbajadoresAtletasComponent implements OnInit {
     const todosEmbajadores: Embajador[] = [
       {
         id: '1',
-        nombre: 'Carlos',
-        apellido: 'Rodríguez',
-        nickname: 'CharlieRuns',
+        nombre: 'Vicente',
+        apellido: 'Nenger',
+        nickname: 'ChenteNc',
         ciudad: 'Quito',
         provincia: 'Pichincha',
         especialidades: ['Trail Running', 'Montañismo', 'Fotografía de Aventura'],
         especialidadPrincipal: 'Trail Running',
         categoria: 'deportista',
         nivel: 'profesional',
-        stravaProfile: 'https://strava.com/athletes/12345',
-        instagramProfile: '@charlieruns_ec',
-        youtubeChannel: 'https://youtube.com/@charlieruns',
+        stravaProfile: 'https://strava.app.link/eRfXRnM8fUb',
+        instagramProfile: '@chentenec',
+        youtubeChannel: 'https://youtube.com/@vicentenenger?si=fhTiTtkgenSBjG95',
         biografia: 'Ultra runner y aventurero ecuatoriano especializado en carreras de montaña extremas. Documentando la belleza de los Andes a través del running y la fotografía.',
         historiaDestacada: 'En 2024 completé la travesía completa de la Cordillera Occidental del Ecuador en 15 días, cubriendo más de 800km de trail running entre volcanes.',
         logros: [
@@ -218,7 +218,7 @@ export class EmbajadoresAtletasComponent implements OnInit {
         tipo: 'atleta-patrocinado',
         coverImage: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800',
         estadisticas: {
-          seguidores: 25000,
+          seguidores: 1000,
           kilometrosMes: 500,
           eventosCompletados: 45,
           contenidoCreado: 150
@@ -227,8 +227,8 @@ export class EmbajadoresAtletasComponent implements OnInit {
           {
             id: '1-1',
             tipo: 'video',
-            url: 'https://example.com/video1.mp4',
-            thumbnail: 'https://images.unsplash.com/photo-1486218119243-13883505764c?w=400',
+            url: 'auspicios/aus3.mp4',
+            thumbnail: 'auspicios/aus.jpg',
             titulo: 'Cotopaxi Ultra Challenge 2024',
             descripcion: 'Recorrido completo del ultra trail más extremo del Ecuador',
             fecha: new Date('2024-03-15'),
@@ -238,7 +238,7 @@ export class EmbajadoresAtletasComponent implements OnInit {
           {
             id: '1-2',
             tipo: 'imagen',
-            url: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800',
+            url: 'auspicios/aus2.jpg',
             titulo: 'Amanecer en el Chimborazo',
             descripcion: 'Momento mágico durante el entrenamiento matutino',
             fecha: new Date('2024-02-20'),
@@ -248,19 +248,19 @@ export class EmbajadoresAtletasComponent implements OnInit {
       },
       {
         id: '2',
-        nombre: 'María',
-        apellido: 'González',
-        nickname: 'WanderMary',
-        ciudad: 'Cuenca',
-        provincia: 'Azuay',
+        nombre: 'Aby',
+        apellido: 'Sanchez',
+        nickname: 'Abychita',
+        ciudad: 'Quito',
+        provincia: 'Pichincha',
         especialidades: ['Viajes de Aventura', 'Fotografía de Viajes', 'Turismo Sostenible'],
         especialidadPrincipal: 'Viajes de Aventura',
         categoria: 'viajero',
         nivel: 'semi-pro',
-        instagramProfile: '@wandermary_ec',
-        youtubeChannel: 'https://youtube.com/@wandermaryecuador',
-        blogUrl: 'https://wandermary.blog',
-        biografia: 'Exploradora y creadora de contenido especializada en turismo sostenible en Ecuador. Promociono destinos únicos y experiencias auténticas en nuestro país.',
+        instagramProfile: '@abychita_aby',
+        youtubeChannel: 'https://youtube.com/@abychita_aby',
+        blogUrl: 'https://www.instagram.com/abychita_aby?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==',
+        biografia: 'Exploradora ecuatoriana especializada en turismo sostenible en Ecuador. Promociono destinos únicos y experiencias auténticas en nuestro país.',
         historiaDestacada: 'He recorrido todos los pisos climáticos del Ecuador en un solo año, desde la selva amazónica hasta los glaciares andinos, documentando la increíble biodiversidad del país.',
         logros: [
           'Embajadora Turismo Ecuador 2024',
@@ -273,8 +273,8 @@ export class EmbajadoresAtletasComponent implements OnInit {
         tipo: 'embajador',
         coverImage: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800',
         estadisticas: {
-          seguidores: 18000,
-          paisesVisitados: 25,
+          seguidores: 1465,
+          paisesVisitados: 5,
           contenidoCreado: 200,
           eventosCompletados: 30
         },
@@ -282,8 +282,8 @@ export class EmbajadoresAtletasComponent implements OnInit {
           {
             id: '2-1',
             tipo: 'imagen',
-            url: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800',
-            titulo: 'Quilotoa al Amanecer',
+            url: 'embajadores/portada2.jpeg',
+            titulo: 'Altar al Amanecer',
             descripcion: 'Capturando la magia de la laguna más hermosa del Ecuador',
             fecha: new Date('2024-01-15'),
             ubicacion: 'Quilotoa, Cotopaxi',
@@ -292,11 +292,29 @@ export class EmbajadoresAtletasComponent implements OnInit {
           {
             id: '2-2',
             tipo: 'story',
-            url: 'https://example.com/story1',
-            titulo: 'Expedición Yasuní',
-            descripcion: 'Mi aventura de 7 días en el corazón de la Amazonía',
+            url: 'embajadores/portada.jpeg',
+            titulo: 'Tocando el cielo junto al Cotopaxi',
+            descripcion: 'Un día perfecto de trekking y fotografía en el volcán más icónico del Ecuador',
             fecha: new Date('2024-02-10'),
-            ubicacion: 'Yasuní, Ecuador'
+            ubicacion: 'Cotopaxi, Ecuador'
+          },
+          {
+            id: '2-3',
+            tipo: 'story',
+            url: 'embajadores/portada.jpeg',
+            titulo: 'Tocando el cielo junto al Cotopaxi',
+            descripcion: 'Un día perfecto de trekking y fotografía en el volcán más icónico del Ecuador',
+            fecha: new Date('2024-02-10'),
+            ubicacion: 'Cotopaxi, Ecuador'
+          },
+          {
+            id: '2-4',
+            tipo: 'story',
+            url: 'embajadores/portada.jpeg',
+            titulo: 'Tocando el cielo junto al Cotopaxi',
+            descripcion: 'Un día perfecto de trekking y fotografía en el volcán más icónico del Ecuador',
+            fecha: new Date('2024-02-10'),
+            ubicacion: 'Cotopaxi, Ecuador'
           }
         ]
       }
