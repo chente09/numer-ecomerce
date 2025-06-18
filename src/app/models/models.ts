@@ -105,6 +105,8 @@ export interface Product {
     searchKeywords?: string[];
     activePromotion?: string;
     features?: string[];
+    createdAt?: Date;          // Fecha de creación del producto
+    updatedAt?: Date;          // Fecha de última actualización del producto
 }
 
 export interface ProductCreate {

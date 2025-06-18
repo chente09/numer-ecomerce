@@ -19,6 +19,7 @@ import { CompletarPerfilComponent } from './pages/user/completar-perfil/completa
 import { ClientesComponent } from './pages/admin/clientes/clientes.component';
 import { UbicacionesComponent } from './pages/ubicaciones/ubicaciones.component';
 import { EmbajadoresAtletasComponent } from './pages/embajadores-atletas/embajadores-atletas.component';
+import { SitemapAdminComponent } from './pages/admin/sitemap-admin/sitemap-admin.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
@@ -55,6 +56,7 @@ export const routes: Routes = [
             { path: 'heroes', component: HeroesComponent },
             { path: 'reviews', component: ReviewManagementComponent },
             { path: 'clientes', component: ClientesComponent },
+            { path: 'sitemap', component: SitemapAdminComponent },
         ]
     },
 ];

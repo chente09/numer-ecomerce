@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { CategoryService, Category } from '../../../services/admin/category/category.service';
-import { ProductVariantService } from '../../../services/admin/productVariante/product-variant.service';
+import { SeoService } from '../../../services/seo/seo.service';
 import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
 import { Product, Color, Size, ProductVariant } from '../../../models/models';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
@@ -108,7 +108,8 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     private modalService: NzModalService,
     private cartService: CartService,
     private cacheService: CacheService,
-    private message: NzMessageService
+    private message: NzMessageService,
+    private seoService: SeoService,
   ) { }
 
   ngOnInit(): void {
@@ -722,6 +723,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     this.loadCategoryInfo(product.category);
     this.checkIfInWishlist();
     this.trackProductView(); // Solo analytics locales
+    this.seoService.updateProductSEO(product);
 
     if (product.colors?.length > 0) {
       this.selectColor(product.colors[0]);

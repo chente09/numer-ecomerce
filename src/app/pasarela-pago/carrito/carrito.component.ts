@@ -49,6 +49,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
   processingCheckout = false;
   errorMessage: string | null = null;
   categoryLoadError = false;
+  isLoggingIn = false;
 
   currentUser: User | null = null;
   canCheckout = false;
@@ -420,10 +421,24 @@ export class CarritoComponent implements OnInit, OnDestroy {
   }
 
   // Métodos auxiliares existentes
-  redirectToLogin(): void {
-    this.router.navigate(['/welcome'], {
-      queryParams: { returnUrl: '/carrito' }
-    });
+  async redirectToLogin(): Promise<void> {
+    if (this.isLoggingIn) return;
+
+    this.isLoggingIn = true;
+    try {
+      // Usar persistencia local para mantener la sesión activa entre visitas
+      await this.usersService.setLocalPersistence();
+      await this.usersService.loginWithGoogle();
+      this.message.success('Inicio de sesión exitoso');
+
+      // Registrar la actividad de inicio de sesión
+      await this.usersService.logUserActivity('login', 'authentication', { method: 'google' });
+    } catch (error) {
+      console.error('Error al iniciar sesión:', error);
+      this.message.error('No se pudo iniciar sesión. Intente nuevamente.');
+    } finally {
+      this.isLoggingIn = false;
+    }
   }
 
   redirectToCompleteProfile(): void {

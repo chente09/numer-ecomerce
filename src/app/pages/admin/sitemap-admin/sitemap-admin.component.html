@@ -1,0 +1,139 @@
+<div class="sitemap-container">
+    <!-- Header -->
+    <nz-card nzTitle="Gestión de Sitemap y SEO">
+        <div class="header-content">
+            <p>Administra el sitemap.xml y robots.txt para optimizar la indexación en buscadores.</p>
+
+            <div class="quick-actions">
+                <button nz-button nzType="primary" (click)="generateAndDownloadSitemap()"
+                    [nzLoading]="generatingSitemap">
+                    <span nz-icon nzType="download"></span>
+                    Descargar Sitemap
+                </button>
+
+                <button nz-button nzType="default" (click)="downloadRobotsTxt()">
+                    <span nz-icon nzType="file-text"></span>
+                    Descargar Robots.txt
+                </button>
+
+                <button nz-button nzType="default" (click)="validateCurrentSitemap()" [nzLoading]="validating">
+                    <span nz-icon nzType="check-circle"></span>
+                    Validar Sitemap
+                </button>
+            </div>
+        </div>
+    </nz-card>
+
+    <!-- Estado del Sitemap -->
+    <nz-card nzTitle="Estado del Sitemap" class="status-card">
+        <div *ngIf="!sitemapStatus && !validating" class="empty-state">
+            <p>Haz clic en "Validar Sitemap" para verificar el estado actual</p>
+        </div>
+
+        <div *ngIf="validating" class="loading-state">
+            <nz-spin nzTip="Validando sitemap..."></nz-spin>
+        </div>
+
+        <div *ngIf="sitemapStatus && !validating" class="status-content">
+            <nz-alert [nzType]="sitemapStatus.isValid ? 'success' : 'error'"
+                [nzMessage]="sitemapStatus.isValid ? 'Sitemap válido' : 'Sitemap con errores'"
+                [nzDescription]="getStatusDescription()" nzShowIcon>
+            </nz-alert>
+
+            <div class="stats" *ngIf="sitemapStatus.isValid">
+                <nz-tag nzColor="blue">
+                    <span nz-icon nzType="link"></span>
+                    {{ sitemapStatus.urlCount }} URLs
+                </nz-tag>
+
+                <nz-tag nzColor="green">
+                    <span nz-icon nzType="check"></span>
+                    Válido para Google
+                </nz-tag>
+            </div>
+
+            <div class="errors" *ngIf="!sitemapStatus.isValid">
+                <h4>Errores encontrados:</h4>
+                <ul>
+                    <li *ngFor="let error of sitemapStatus.errors">{{ error }}</li>
+                </ul>
+            </div>
+        </div>
+    </nz-card>
+
+    <!-- Guía de Google Search Console -->
+    <nz-card nzTitle="Google Search Console">
+        <div class="gsc-guide">
+            <h4>📊 Pasos para configurar Google Search Console:</h4>
+
+            <ol class="setup-steps">
+                <li>
+                    <strong>Verifica tu dominio:</strong>
+                    <p>Ve a <a href="https://search.google.com/search-console" target="_blank">Google Search Console</a>
+                        y agrega tu propiedad</p>
+                </li>
+
+                <li>
+                    <strong>Agrega verificación HTML:</strong>
+                    <div class="code-block">
+                        <code>{{ getGoogleVerificationTag() }}</code>
+                        <button nz-button nzType="text" (click)="copyToClipboard(getGoogleVerificationTag())">
+                            <span nz-icon nzType="copy"></span>
+                        </button>
+                    </div>
+                    <p><small>Agrégalo al &lt;head&gt; de tu index.html</small></p>
+                </li>
+
+                <li>
+                    <strong>Envía tu sitemap:</strong>
+                    <div class="sitemap-url">
+                        <code>{{ getSitemapUrl() }}</code>
+                        <button nz-button nzType="text" (click)="copyToClipboard(getSitemapUrl())">
+                            <span nz-icon nzType="copy"></span>
+                        </button>
+                    </div>
+                </li>
+
+                <li>
+                    <strong>Configura robots.txt:</strong>
+                    <p>Sube el archivo robots.txt a la raíz de tu dominio</p>
+                </li>
+            </ol>
+
+            <nz-divider></nz-divider>
+
+            <div class="tips">
+                <h4>💡 Tips importantes:</h4>
+                <ul>
+                    <li>El sitemap se regenera automáticamente cuando agregas/modificas productos</li>
+                    <li>Google puede tardar 24-48 horas en indexar cambios</li>
+                    <li>Revisa semanalmente el estado en Search Console</li>
+                    <li>Las páginas nuevas aparecerán en el sitemap inmediatamente</li>
+                </ul>
+            </div>
+        </div>
+    </nz-card>
+
+    <!-- URLs incluidas -->
+    <nz-card nzTitle="URLs Incluidas en el Sitemap">
+        <div class="url-preview">
+            <h4>📄 Páginas estáticas:</h4>
+            <nz-list nzSize="small" [nzDataSource]="staticUrls" nzBordered>
+                <ng-template #renderItem let-item>
+                    <nz-list-item>
+                        <span>{{ item.path }}</span>
+                        <span class="priority">Prioridad: {{ item.priority }}</span>
+                    </nz-list-item>
+                </ng-template>
+            </nz-list>
+
+            <nz-divider></nz-divider>
+
+            <p><strong>📦 URLs dinámicas:</strong></p>
+            <ul>
+                <li>Todos los productos: <code>/products/{{ '{' }}id{{ '}' }}</code></li>
+                <li>Categorías: <code>/shop?category={{ '{' }}categoryId{{ '}' }}</code></li>
+            </ul>
+        </div>
+    </nz-card>
+</div>

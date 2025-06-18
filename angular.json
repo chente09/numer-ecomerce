@@ -30,7 +30,8 @@
                 "input": "./node_modules/@ant-design/icons-angular/src/inline-svg/",
                 "output": "/assets/"
               },
-              "src/_redirects"
+              "src/_redirects",
+              "src/robots.txt" 
             ],
             "styles": [
               "src/theme.less",
@@ -91,8 +92,7 @@
           },
           "defaultConfiguration": "development",
           "options": {
-            "host": "0.0.0.0",
-            "disableHostCheck": true
+            "host": "0.0.0.0"
           }
         },
         "extract-i18n": {

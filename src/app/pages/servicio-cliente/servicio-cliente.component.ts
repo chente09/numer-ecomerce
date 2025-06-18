@@ -13,6 +13,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
+import { SeoService } from '../../services/seo/seo.service';
 
 interface FAQ {
   question: string;
@@ -106,10 +107,15 @@ export class ServicioClienteComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private message: NzMessageService
+    private message: NzMessageService,
+    private seoService: SeoService
   ) {}
 
   ngOnInit(): void {
+
+    this.seoService.updatePageSEO('servicio-cliente');
+
+
     // Configurar formulario de contacto
     this.contactForm = this.fb.group({
       name: ['', [Validators.required]],

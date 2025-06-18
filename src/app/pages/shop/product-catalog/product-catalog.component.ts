@@ -11,7 +11,7 @@ import { CategoryService, Category } from '../../../services/admin/category/cate
 import { ColorService } from '../../../services/admin/color/color.service';
 import { SizeService } from '../../../services/admin/size/size.service';
 import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
-
+import { SeoService } from '../../../services/seo/seo.service';
 // Models
 import { Product, Color, Size, ProductVariant } from '../../../models/models';
 
@@ -166,39 +166,27 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private message: NzMessageService,
     private modal: NzModalService,
-    public cdr: ChangeDetectorRef
+    public cdr: ChangeDetectorRef,
+    private seoService: SeoService
   ) {
     this.initFilterForm();
   }
 
   async ngOnInit(): Promise<void> {
-    console.log('🚀 Iniciando carga del catálogo...');
+
+    this.seoService.updatePageSEO('shop');
 
     try {
       // Configurar suscripciones
       this.setupFilterSubscriptions();
-
-      // 🔑 CRÍTICO: Cargar opciones de filtro Y ESPERAR
-      console.log('📋 Cargando opciones de filtro...');
       await this.loadFilterOptions();
-      console.log('✅ Opciones de filtro listas:', {
-        categories: this.filterOptions.categories.length,
-        colors: this.filterOptions.colors.length,
-        sizes: this.filterOptions.sizes.length
-      });
-
       // 🔑 CRÍTICO: Cargar productos DESPUÉS
-      console.log('📦 Cargando productos...');
       await this.loadProductsAsync();
-      console.log('✅ Productos listos');
 
       // Manejar URL params
       this.handleUrlParams();
       this.updateActiveFiltersCount();
       this.cdr.detectChanges();
-
-      console.log('🎯 Inicialización completada');
-
     } catch (error) {
       console.error('❌ Error en inicialización:', error);
       this.message.error('Error al cargar el catálogo');

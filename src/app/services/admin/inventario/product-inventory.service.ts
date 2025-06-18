@@ -782,6 +782,7 @@ export class ProductInventoryService {
   /**
    * 🚀 CORREGIDO: Incrementa el contador de vistas de un producto
    */
+  // En ProductInventoryService - OPTIMIZACIÓN
   incrementProductViews(productId: string): Observable<void> {
     if (!productId) {
       return throwError(() => new Error('ID de producto no válido'));
@@ -789,39 +790,37 @@ export class ProductInventoryService {
 
     return from((async () => {
       try {
-        // 🆕 VERIFICAR Y CREAR AUTENTICACIÓN ANÓNIMA SI ES NECESARIO
+        // ✅ VERIFICAR USUARIO ACTUAL SIN CREAR ANÓNIMO AUTOMÁTICAMENTE
         const auth = getAuth();
-        if (!auth.currentUser) {
-          await signInAnonymously(auth);
-          console.log('👤 Usuario anónimo creado para analytics');
+        const currentUser = auth.currentUser;
+
+        // Solo incrementar si hay usuario real o permitir tracking anónimo
+        if (!currentUser) {
+          console.log('👤 Sin usuario - vista no registrada en Firestore');
+          return; // Salir silenciosamente
         }
 
         const productRef = doc(this.firestore, this.productsCollection, productId);
         await updateDoc(productRef, {
           views: increment(1),
           lastViewDate: new Date(),
-          updatedAt: new Date() // 🆕 AGREGAR updatedAt para las reglas
+          updatedAt: new Date()
         });
 
         console.log(`📊 Vista incrementada para producto: ${productId}`);
+
       } catch (error: any) {
-        // 🆕 MANEJO ESPECÍFICO DE ERRORES DE PERMISOS
         if (error?.code === 'permission-denied' ||
           error?.message?.includes('Missing or insufficient permissions')) {
-          console.warn(`⚠️ Sin permisos para incrementar vistas del producto ${productId}. Continuando sin incrementar.`);
-          // No lanzar error, solo logear y continuar
-          return;
+          console.warn(`⚠️ Sin permisos para incrementar vistas del producto ${productId}`);
+          return; // Continuar sin error
         }
-
-        // Para otros errores, sí lanzar
         throw error;
       }
     })()).pipe(
       catchError(error => {
-        // 🆕 MANEJO SILENCIOSO DE ERRORES DE VISTAS
         console.warn(`No se pudo incrementar vistas para ${productId}:`, error.message);
-        // Retornar observable vacío en lugar de error para no interrumpir la app
-        return of(void 0);
+        return of(void 0); // ✅ Retornar vacío sin fallar
       })
     );
   }

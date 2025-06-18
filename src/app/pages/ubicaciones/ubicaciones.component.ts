@@ -16,6 +16,9 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { Subject, takeUntil } from 'rxjs';
 
+// ✅ IMPORTAR SEO SERVICE
+import { SeoService } from '../../services/seo/seo.service';
+
 interface TiendaFisica {
   id: string;
   nombre: string;
@@ -180,14 +183,23 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private message: NzMessageService,
-    private modal: NzModalService
+    private modal: NzModalService,
+    // ✅ AGREGAR SEO SERVICE
+    private seoService: SeoService
   ) {
     this.createForm();
   }
 
   ngOnInit(): void {
-    // Aquí podrías cargar datos desde un servicio
-    console.log('🏪 UbicacionesComponent inicializado');
+    // ✅ CONFIGURAR SEO PARA UBICACIONES
+    this.seoService.updatePageSEO('ubicaciones', {
+      title: 'Ubicaciones y Distribuidores - NUMER Ecuador | Tiendas Físicas',
+      description: 'Encuentra nuestra tienda física en Quito y distribuidores autorizados de NUMER en todo Ecuador. Ubicaciones, horarios, contacto y mapa. Pantalón Extraligero, Chompa AGUACERO.',
+      keywords: 'NUMER tienda física Quito, distribuidores NUMER Ecuador, ubicaciones tienda outdoor, mapa NUMER store, horarios atención, contacto directo',
+      image: 'https://firebasestorage.googleapis.com/v0/b/numer-16f35.firebasestorage.app/o/products%2F27d9425a-2698-452d-8b93-4962772f11b7%2Fcolors%2Fverde%20olivo.webp?alt=media&token=9aaea191-a3c5-47ef-ab6f-c59e0b8226c0'
+    });
+
+    console.log('🏪 UbicacionesComponent inicializado con SEO');
   }
 
   ngOnDestroy(): void {

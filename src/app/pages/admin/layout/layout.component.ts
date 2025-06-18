@@ -51,6 +51,12 @@ export class LayoutComponent implements OnInit, OnDestroy {
     },
     {
       level: 1,
+      title: 'Sitemap & SEO',
+      icon: 'sitemap',
+      path: '/admin/sitemap'
+    },
+    {
+      level: 1,
       title: 'Productos',
       icon: 'shopping',
       path: '/admin/products'

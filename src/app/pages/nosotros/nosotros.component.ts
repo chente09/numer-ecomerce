@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -6,6 +6,7 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { SeoService } from '../../services/seo/seo.service';
 
 @Component({
   selector: 'app-nosotros',
@@ -21,7 +22,7 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
   templateUrl: './nosotros.component.html',
   styleUrl: './nosotros.component.css'
 })
-export class NosotrosComponent {
+export class NosotrosComponent implements OnInit {
 
   storyTitle = 'Nuestra Historia';
   storyContent = 'En medio de uno de los momentos más retadores de nuestra historia —la pandemia COVID 19— mientras el mundo se detenía, en 2021 nosotros decidimos ir hacia adelante. Así nació NUMER, una marca con alma aventurera y corazón textil, creada para quienes encontraron en el ciclismo y los deportes al aire libre una nueva forma de vivir, respirar y sentirse libres. Lo que comenzó como una idea para vestir a ciclistas, rápidamente se transformó en una marca outdoor con visión deportiva, gracias al impulso y pasión de nuestros primeros clientes. Con años de experiencia en confección de uniformes corporativos y ropa técnica, decidimos rediseñar nuestro camino y poner todo ese conocimiento al servicio de una nueva comunidad: la que no se detiene. Lanzamos nuestro primer producto con los pilares que siguen guiando todo lo que hacemos: calidad, transparencia, mejora constante, diseño propio e innovación. Desde entonces, no hemos parado. Nuestra línea ha crecido, nuestras aventuras también… y lo más emocionante es que apenas estamos comenzando. En NUMER creemos que la ropa no solo acompaña tus recorridos: los potencia, los hace inolvidables y te empuja a ir más allá. Gracias por ser parte de esta historia que seguimos construyendo juntos, paso a paso, kilómetro a kilómetro, cima tras cima.';
@@ -57,5 +58,20 @@ export class NosotrosComponent {
       icon: 'bi bi-people'
     }
   ];  
+
+  constructor(private seoService: SeoService) {}
+
+  // ✅ IMPLEMENTAR ngOnInit
+  ngOnInit(): void {
+    // ✅ CONFIGURAR SEO PARA NOSOTROS
+    this.seoService.updatePageSEO('nosotros', {
+      title: 'Nosotros - Historia y Misión de NUMER | Ropa Outdoor Ecuador',
+      description: 'Conoce la historia de NUMER, marca ecuatoriana de ropa técnica para deportes outdoor. Desde 2021 creando Pantalón Extraligero, Chompa AGUACERO y prendas de calidad para aventureros.',
+      keywords: 'NUMER historia, marca ecuatoriana outdoor, misión visión NUMER, ropa técnica Ecuador, aventureros ciclismo montaña, calidad innovación sostenibilidad',
+      image: 'https://firebasestorage.googleapis.com/v0/b/numer-16f35.firebasestorage.app/o/products%2F27d9425a-2698-452d-8b93-4962772f11b7%2Fcolors%2Fverde%20olivo.webp?alt=media&token=9aaea191-a3c5-47ef-ab6f-c59e0b8226c0'
+    });
+
+    console.log('✅ NosotrosComponent inicializado con SEO');
+  }
 
 }

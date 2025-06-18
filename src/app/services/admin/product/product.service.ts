@@ -53,16 +53,15 @@ export class ProductService {
 
   private async initializeAuth(): Promise<void> {
     try {
-      // Escuchar cambios de autenticación
+      // Escuchar cambios de autenticación SIN auto-crear usuarios anónimos
       this.auth.onAuthStateChanged((user) => {
-        if (user) {
-          console.log('✅ Usuario autenticado:', user.isAnonymous ? 'Anónimo' : user.uid);
+        if (user && !user.isAnonymous) {
+          console.log('✅ Usuario real autenticado:', user.uid);
+        } else if (user && user.isAnonymous) {
+          console.log('👤 Usuario anónimo detectado');
         } else {
-          console.log('👤 Sin usuario autenticado');
-          // Auto-autenticar como anónimo
-          signInAnonymously(this.auth).catch(error => {
-            console.warn('⚠️ No se pudo autenticar automáticamente:', error);
-          });
+          console.log('👤 Sin usuario autenticado - modo público');
+          // NO crear usuario anónimo automáticamente
         }
       });
     } catch (error) {
@@ -75,26 +74,18 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Obtiene todos los productos con caché optimizado
    */
-  // ✅ CORREGIDO en ProductService
   getProducts(): Observable<Product[]> {
-
     return this.cacheService.getCached<Product[]>(this.productsCacheKey, () => {
-
       const productsRef = collection(this.firestore, this.productsCollection);
       return collectionData(productsRef, { idField: 'id' }).pipe(
-        map(data => {
-          return data as Product[];
-        }),
-        switchMap(products => {
-          return this.enrichProductsWithRealTimeStock(products);
-        }),
+        take(1), // ✅ CRÍTICO: Forzar completar
+        map(data => data as Product[]),
+        switchMap(products => this.enrichProductsWithRealTimeStock(products)),
         catchError(error => {
           console.error('❌ ProductService: Error en getProducts:', error);
           return ErrorUtil.handleError(error, 'getProducts');
         }),
-        shareReplay({ bufferSize: 1, refCount: true }),
-        finalize(() => {
-        })
+        shareReplay({ bufferSize: 1, refCount: false }) // ✅ refCount: false
       );
     });
   }
@@ -108,6 +99,7 @@ export class ProductService {
     // Obtener productos frescos
     const productsRef = collection(this.firestore, this.productsCollection);
     return collectionData(productsRef, { idField: 'id' }).pipe(
+      take(1),
       map(data => {
         return data as Product[];
       }),
@@ -237,9 +229,6 @@ export class ProductService {
       });
     }
 
-    // Siempre invalidar caché principal
-    this.cacheService.invalidate(this.productsCacheKey);
-
   }
 
   /**
@@ -295,40 +284,35 @@ export class ProductService {
     const cacheKey = `${this.productsCacheKey}_${productId}`;
 
     return this.cacheService.getCached<Product | null>(cacheKey, () => {
-      return from((async () => {
-        try {
-          const productDoc = doc(this.firestore, this.productsCollection, productId);
-          const productSnap = await getDoc(productDoc);
+      const productDoc = doc(this.firestore, this.productsCollection, productId);
 
+      return from(getDoc(productDoc)).pipe(
+        take(1), // ✅ Emitimos solo una vez
+        map(productSnap => {
           if (!productSnap.exists()) {
             return null;
           }
+          return { id: productSnap.id, ...productSnap.data() } as Product;
+        }),
+        switchMap(product => {
+          if (!product) return of(null);
 
-          const product = {
-            id: productSnap.id,
-            ...productSnap.data()
-          } as Product;
-
-          // Enriquecer con stock
-          const enrichedProduct = await firstValueFrom(
-            this.enrichSingleProductWithRealTimeStock(product).pipe(take(1))
+          return this.enrichSingleProductWithRealTimeStock(product).pipe(
+            switchMap(enrichedProduct =>
+              // ✅ Registramos la vista sin bloquear el flujo principal
+              from(this.incrementProductView(productId)).pipe(
+                catchError(viewError => {
+                  console.warn('Vista no registrada:', viewError);
+                  return of(null); // ✅ Continuar flujo aunque falle el conteo de vista
+                }),
+                map(() => enrichedProduct) // ✅ Retornar el producto enriquecido
+              )
+            )
           );
-
-          // ✅ SOLUCIÓN 4: AWAIT la vista correctamente
-          try {
-            await this.incrementProductView(productId);
-          } catch (viewError) {
-            console.warn('Vista no registrada:', viewError);
-            // No fallar toda la carga por un error de vista
-          }
-
-          return enrichedProduct;
-        } catch (error) {
-          console.error(`Error al obtener producto ${productId}:`, error);
-          throw error;
-        }
-      })()).pipe(
-        catchError(error => ErrorUtil.handleError(error, `getProductById(${productId})`))
+        }),
+        catchError(error =>
+          ErrorUtil.handleError(error, `getProductById(${productId})`)
+        )
       );
     });
   }
@@ -338,7 +322,7 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Enriquece múltiples productos con stock calculado en tiempo real (OPTIMIZADO)
    */
-  // En ProductService.enrichProductsWithRealTimeStock()
+
   private enrichProductsWithRealTimeStock(products: Product[]): Observable<Product[]> {
     if (!products || products.length === 0) {
       return of([]);
@@ -422,21 +406,33 @@ export class ProductService {
       return of([]);
     }
 
-    // Usar el inventoryService para obtener todas las variantes
-    // Si no existe este método, usar forkJoin como fallback
-    const variantObservables = productIds.map(id =>
-      this.inventoryService.getVariantsByProductId(id).pipe(take(1))
+    // ✅ VALIDAR IDs antes de procesar
+    const validIds = productIds.filter(id => id && id.trim().length > 0);
+    if (validIds.length === 0) {
+      console.warn('No hay IDs válidos para obtener variantes');
+      return of([]);
+    }
+
+    const variantObservables = validIds.map(id =>
+      this.inventoryService.getVariantsByProductId(id).pipe(
+        take(1),
+        catchError(error => {
+          console.warn(`Error obteniendo variantes para producto ${id}:`, error);
+          return of([]);
+        })
+      )
     );
 
     return forkJoin(variantObservables).pipe(
       map(variantArrays => {
         const allVariants = variantArrays.flat();
+        console.log(`📦 ProductService: Obtenidas ${allVariants.length} variantes para ${validIds.length} productos`);
         return allVariants;
       }),
       catchError(error => {
-        console.error('Error al obtener variantes múltiples:', error);
+        console.error('❌ Error al obtener variantes múltiples:', error);
         return of([]);
-      }),
+      })
     );
   }
 
@@ -565,6 +561,7 @@ export class ProductService {
       const q = query(productsRef, where('category', '==', categoryId));
 
       return collectionData(q, { idField: 'id' }).pipe(
+        take(1),
         map(products => {
           return products as Product[];
         }),
@@ -1370,97 +1367,34 @@ export class ProductService {
    */
   private async incrementProductView(productId: string): Promise<void> {
     try {
-      // Control de tiempo para evitar spam
-      const now = Date.now();
-      const lastViewKey = `view_${productId}`;
-      const lastViewTime = localStorage.getItem(lastViewKey);
+      // ✅ Throttling mejorado con tu lógica existente
+      const viewKey = `view_${productId}`;
+      const lastView = this.viewedInSession.has(productId);
 
-      if (lastViewTime && (now - parseInt(lastViewTime)) < 30000) {
-        console.log(`ℹ️ Vista reciente de ${productId}, omitiendo`);
-        return;
+      if (lastView) {
+        return; // Ya visto en esta sesión
       }
 
-      console.log(`🔍 Intentando registrar vista para ${productId}...`);
+      this.viewedInSession.add(productId);
 
-      // ✅ SOLUCIÓN 1: Usar runTransaction correctamente
-      await runTransaction(this.firestore, async (transaction) => {
-        const productRef = doc(this.firestore, this.productsCollection, productId);
-        const productSnap = await transaction.get(productRef);
+      // ✅ DELEGAR AL INVENTORY SERVICE (mejor arquitectura)
+      await firstValueFrom(
+        this.inventoryService.incrementProductViews(productId).pipe(
+          take(1),
+          catchError(error => {
+            console.warn('Vista no registrada via service:', error);
+            return of(void 0);
+          })
+        )
+      );
 
-        if (!productSnap.exists()) {
-          console.warn(`❌ Producto ${productId} no existe`);
-          throw new Error(`Producto ${productId} no encontrado`);
-        }
+      // ✅ Siempre trackear localmente también
+      this.trackProductViewLocally(productId);
 
-        const currentViews = productSnap.data()?.['views'] || 0;
-        const newViews = currentViews + 1;
-
-        // ✅ USAR increment() para operaciones atómicas
-        transaction.update(productRef, {
-          views: increment(1),
-          lastViewDate: new Date(),
-          updatedAt: new Date()
-        });
-
-        console.log(`✅ Vista registrada: ${currentViews} → ${newViews}`);
-      });
-
-      // ✅ SOLUCIÓN 2: Guardar timestamp DESPUÉS de éxito
-      localStorage.setItem(lastViewKey, now.toString());
-
-      // ✅ SOLUCIÓN 3: Invalidar caché de forma inteligente
-      setTimeout(() => {
-        this.cacheService.invalidateProductCache(productId);
-      }, 100); // Pequeño delay para asegurar consistencia
-
-    } catch (error: any) {
-      console.error(`❌ Error registrando vista:`, error);
-
-      // ✅ MANEJO ESPECÍFICO DE ERRORES
-      if (error.code === 'permission-denied') {
-        console.warn('🔐 Sin permisos para registrar vista, intentando autenticación...');
-        await this.ensureAuthenticationAndRetry(productId);
-      } else if (error.code === 'unavailable') {
-        console.warn('🌐 Firestore temporalmente no disponible');
-        this.trackProductViewLocally(productId);
-      } else {
-        // Fallback a registro local
-        this.trackProductViewLocally(productId);
-      }
-    }
-  }
-
-  private async ensureAuthenticationAndRetry(productId: string): Promise<void> {
-    try {
-      // Verificar si ya hay usuario
-      if (!this.auth.currentUser) {
-        console.log('🔐 Autenticando usuario anónimo...');
-        await signInAnonymously(this.auth);
-      }
-
-      // Reintentar una sola vez
-      await this.incrementProductViewDirect(productId);
-    } catch (retryError) {
-      console.error('❌ Fallo en reintento:', retryError);
+    } catch (error) {
+      console.warn('❌ Error registrando vista:', error);
       this.trackProductViewLocally(productId);
     }
-  }
-
-  private async incrementProductViewDirect(productId: string): Promise<void> {
-    await runTransaction(this.firestore, async (transaction) => {
-      const productRef = doc(this.firestore, this.productsCollection, productId);
-      const productSnap = await transaction.get(productRef);
-
-      if (!productSnap.exists()) {
-        throw new Error(`Producto ${productId} no encontrado`);
-      }
-
-      transaction.update(productRef, {
-        views: increment(1),
-        lastViewDate: new Date(),
-        updatedAt: new Date()
-      });
-    });
   }
 
   private trackProductViewLocally(productId: string): void {
