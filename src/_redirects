@@ -1,1 +1,2 @@
-/*    /index.html   200
+/    /welcome    200
+/*   /welcome/:splat    200
