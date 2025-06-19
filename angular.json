@@ -31,8 +31,7 @@
                 "output": "/assets/"
               },
               "src/_redirects",
-              "src/robots.txt",
-              "google6c9e3b5e4c19d193.html" 
+              "src/robots.txt"
             ],
             "styles": [
               "src/theme.less",
