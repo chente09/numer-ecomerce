@@ -40,7 +40,6 @@ export class StockUpdateService {
   private pendingUpdates = new Map<string, StockUpdate>();
 
   constructor(private cacheService: CacheService) {
-    console.log('📦 StockUpdateService inicializado');
     this.setupStockAggregation();
   }
 
@@ -50,13 +49,6 @@ export class StockUpdateService {
    * 🚀 Notifica un cambio de stock (llamado desde admin/carrito)
    */
   notifyStockChange(update: StockUpdate): void {
-    console.log('📢 Notificando cambio de stock:', {
-      productId: update.productId,
-      variantId: update.variantId,
-      change: update.stockChange,
-      newStock: update.newStock,
-      source: update.source
-    });
 
     // ✅ Validar datos
     if (!this.isValidStockUpdate(update)) {
@@ -68,7 +60,6 @@ export class StockUpdateService {
     const key = `${update.productId}-${update.variantId}`;
 
     if (this.pendingUpdates.has(key)) {
-      console.log('🔄 Combinando actualizaciones duplicadas...');
       const existing = this.pendingUpdates.get(key)!;
       update.stockChange += existing.stockChange;
     }
@@ -101,8 +92,6 @@ export class StockUpdateService {
     if (update.source === 'restock' || Math.abs(update.stockChange) > 10) {
         this.cacheService.invalidate('products');
     }
-    
-    console.log('📢 Stock actualizado selectivamente');
 }
 
   
@@ -111,7 +100,6 @@ export class StockUpdateService {
    * 🎯 Notifica múltiples cambios en lote (optimización)
    */
   notifyBatchStockChanges(updates: StockUpdate[]): void {
-    console.log(`📢 Notificando ${updates.length} cambios de stock en lote`);
 
     updates.forEach(update => {
       if (this.isValidStockUpdate(update)) {
@@ -218,7 +206,6 @@ export class StockUpdateService {
       this.cacheService.invalidate(key);
     });
 
-    console.log('🗑️ Caché invalidado para producto:', productId);
   }
 
   /**
@@ -252,12 +239,6 @@ export class StockUpdateService {
     currentSummaries.set(update.productId, productSummary);
     this.productStockSummary$.next(currentSummaries);
 
-    console.log('📊 Resumen actualizado:', {
-      productId: update.productId,
-      oldVariantStock,
-      newVariantStock: update.newStock,
-      totalStock: productSummary.totalStock
-    });
   }
 
   /**
@@ -315,41 +296,8 @@ export class StockUpdateService {
    * 🧹 Limpia el estado del servicio (útil para testing)
    */
   clearState(): void {
-    console.log('🧹 Limpiando estado del StockUpdateService');
     this.pendingUpdates.clear();
     this.productStockSummary$.next(new Map());
   }
 
-  /**
-   * 🔍 Debug: Muestra el estado actual del servicio
-   */
-  debugState(): void {
-    const stats = this.getRecentUpdateStats();
-
-    console.group('📦 [STOCK UPDATE SERVICE DEBUG]');
-    console.log('📊 Estadísticas:', stats);
-    console.log('🔄 Operaciones pendientes:', Array.from(this.pendingUpdates.entries()));
-    console.log('📈 Resúmenes de productos:', Array.from(this.productStockSummary$.value.entries()));
-    console.groupEnd();
-  }
-
-  /**
-   * 🎯 Simula una actualización de stock (útil para testing)
-   */
-  simulateStockUpdate(productId: string, variantId: string, stockChange: number): void {
-    const mockUpdate: StockUpdate = {
-      productId,
-      variantId,
-      stockChange,
-      newStock: Math.max(0, stockChange), // Asume que el stock anterior era 0
-      timestamp: new Date(),
-      source: 'admin',
-      metadata: {
-        userAction: 'simulation'
-      }
-    };
-
-    console.log('🎭 Simulando actualización de stock:', mockUpdate);
-    this.notifyStockChange(mockUpdate);
-  }
 }

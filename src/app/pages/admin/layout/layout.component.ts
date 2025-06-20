@@ -52,7 +52,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     {
       level: 1,
       title: 'Sitemap & SEO',
-      icon: 'sitemap',
+      icon: 'global',
       path: '/admin/sitemap'
     },
     {

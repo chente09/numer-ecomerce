@@ -46,28 +46,9 @@ export class ProductService {
     private variantService: ProductVariantService,
     private imageService: ProductImageService,
     private cacheService: CacheService,
-    private auth: Auth
   ) {
-    this.initializeAuth();
   }
 
-  private async initializeAuth(): Promise<void> {
-    try {
-      // Escuchar cambios de autenticación SIN auto-crear usuarios anónimos
-      this.auth.onAuthStateChanged((user) => {
-        if (user && !user.isAnonymous) {
-          console.log('✅ Usuario real autenticado:', user.uid);
-        } else if (user && user.isAnonymous) {
-          console.log('👤 Usuario anónimo detectado');
-        } else {
-          console.log('👤 Sin usuario autenticado - modo público');
-          // NO crear usuario anónimo automáticamente
-        }
-      });
-    } catch (error) {
-      console.warn('⚠️ Error en inicialización de auth:', error);
-    }
-  }
 
   // -------------------- MÉTODOS DE CONSULTA --------------------
 
@@ -426,7 +407,6 @@ export class ProductService {
     return forkJoin(variantObservables).pipe(
       map(variantArrays => {
         const allVariants = variantArrays.flat();
-        console.log(`📦 ProductService: Obtenidas ${allVariants.length} variantes para ${validIds.length} productos`);
         return allVariants;
       }),
       catchError(error => {

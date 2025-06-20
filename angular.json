@@ -32,14 +32,14 @@
               },
               "src/_redirects",
               "src/robots.txt",
-              "src/sitemap.xml"
+              "src/sitemap.xml",
+              "src/manifest.json"
             ],
             "styles": [
               "src/theme.less",
               "src/styles.css"
             ],
-            "scripts": [],
-            "preserveSymlinks": true
+            "scripts": []
           },
           "configurations": {
             "production": {
@@ -91,10 +91,7 @@
               "buildTarget": "numer-ecomerce:build:development"
             }
           },
-          "defaultConfiguration": "development",
-          "options": {
-            "host": "0.0.0.0"
-          }
+          "defaultConfiguration": "development"
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n"

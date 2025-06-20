@@ -1,5 +1,10 @@
+/* src/app/pages/admin/product-promotions/product-promotions.component.css */
+
 .promotions-container {
     padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .loading-container {
@@ -15,10 +20,26 @@
     gap: 16px;
 }
 
+.product-info h3 {
+    margin: 0 0 8px 0;
+    color: #1890ff;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.product-info p {
+    margin: 4px 0;
+    color: #666;
+    font-size: 14px;
+}
+
 .price-section {
     display: flex;
     align-items: center;
     gap: 16px;
+    padding: 12px;
+    background-color: #f5f5f5;
+    border-radius: 6px;
 }
 
 .price-display {
@@ -34,37 +55,559 @@
 
 .current-price {
     font-size: 20px;
-    font-weight: 500;
+    font-weight: 600;
+    color: #52c41a;
 }
 
 .discount-badge {
     background-color: #ff4d4f;
     color: white;
-    padding: 2px 8px;
+    padding: 4px 8px;
     border-radius: 4px;
     font-weight: 500;
+    font-size: 12px;
 }
 
 .active-promotion {
     margin-top: 8px;
 }
 
+.active-promotion nz-tag {
+    font-size: 14px;
+    padding: 4px 8px;
+}
+
 .action-buttons {
-    margin-top: 8px;
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
 }
 
 .no-promotions {
     margin: 24px 0;
+    text-align: center;
 }
 
 .help-card {
     margin-top: 16px;
 }
 
-.help-card h3 {
-    margin-bottom: 16px;
+.help-card h3, .help-card h4 {
+    margin-bottom: 12px;
+    color: #1890ff;
 }
 
 .help-card ul {
     margin-left: 16px;
+    margin-bottom: 16px;
+}
+
+.help-card li {
+    margin-bottom: 4px;
+    line-height: 1.5;
+}
+
+/* Estilos para la tabla de promociones */
+.promotion-applicable {
+    background-color: #f6ffed;
+    border-left: 3px solid #52c41a;
+}
+
+.promotion-not-applicable {
+    background-color: #fff2f0;
+    border-left: 3px solid #ff4d4f;
+    opacity: 0.7;
+}
+
+.promotion-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.preview-price {
+    font-weight: 600;
+    color: #52c41a;
+    font-size: 14px;
+}
+
+.preview-discount {
+    font-size: 12px;
+    color: #ff4d4f;
+    background-color: #fff2f0;
+    padding: 2px 4px;
+    border-radius: 2px;
+}
+
+.not-applicable {
+    color: #999;
+    font-style: italic;
+}
+
+.criteria-info h4 {
+    color: #1890ff;
+    margin: 16px 0 8px 0;
+    font-size: 14px;
+}
+
+.criteria-info ul {
+    margin: 8px 0 16px 16px;
+}
+
+.criteria-info li {
+    margin-bottom: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .promotions-container {
+        padding: 8px 0;
+        gap: 12px;
+    }
+    
+    .price-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .promotion-preview {
+        align-items: center;
+    }
+    
+    .product-info h3 {
+        font-size: 16px;
+    }
+    
+    .current-price {
+        font-size: 18px;
+    }
+}
+
+/* Estados de carga */
+.applying-promotion {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Animaciones */
+.promotion-applied {
+    animation: highlight 0.5s ease-in-out;
+}
+
+@keyframes highlight {
+    0% { background-color: #52c41a; }
+    100% { background-color: transparent; }
+}
+
+/* Tooltips personalizados */
+.promotion-tooltip {
+    max-width: 300px;
+}
+
+/* Estilos para tags */
+nz-tag {
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+
+/* Mejoras visuales */
+.promotion-card {
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+}
+
+.promotion-card:hover {
+    border-color: #1890ff;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
+}
+
+.promotion-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.promotion-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.promotion-name {
+    font-weight: 600;
+    color: #262626;
+    margin-bottom: 4px;
+}
+
+.promotion-description {
+    color: #666;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.promotion-dates {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #999;
+}
+
+.promotion-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Estilos para estado de promociones */
+.promotion-expired {
+    background-color: #f5f5f5;
+    opacity: 0.6;
+}
+
+.promotion-expired .promotion-name {
+    color: #999;
+    text-decoration: line-through;
+}
+
+.promotion-upcoming {
+    background-color: #fff7e6;
+    border-left: 3px solid #fa8c16;
+}
+
+.promotion-upcoming .promotion-name {
+    color: #fa8c16;
+}
+
+/* Indicadores de estado */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.status-active {
+    background-color: #f6ffed;
+    color: #52c41a;
+    border: 1px solid #b7eb8f;
+}
+
+.status-inactive {
+    background-color: #fff2f0;
+    color: #ff4d4f;
+    border: 1px solid #ffb3b3;
+}
+
+.status-applied {
+    background-color: #e6f7ff;
+    color: #1890ff;
+    border: 1px solid #91d5ff;
+}
+
+/* Mejoras en la tabla */
+::ng-deep .ant-table-tbody > tr.promotion-applicable:hover > td {
+    background-color: #f6ffed !important;
+}
+
+::ng-deep .ant-table-tbody > tr.promotion-not-applicable:hover > td {
+    background-color: #fff2f0 !important;
+}
+
+/* Loading states */
+.loading-overlay {
+    position: relative;
+}
+
+.loading-overlay::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: 1;
+}
+
+/* Estilos para formularios y inputs */
+.promotion-form {
+    padding: 16px;
+    background-color: #fafafa;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: center;
+}
+
+.form-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    color: #333;
+}
+
+/* Alertas y notificaciones */
+.promotion-alert {
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    border-left: 4px solid;
+}
+
+.alert-warning {
+    background-color: #fffbe6;
+    border-left-color: #fadb14;
+    color: #613400;
+}
+
+.alert-info {
+    background-color: #e6f7ff;
+    border-left-color: #1890ff;
+    color: #003a8c;
+}
+
+.alert-success {
+    background-color: #f6ffed;
+    border-left-color: #52c41a;
+    color: #135200;
+}
+
+.alert-error {
+    background-color: #fff2f0;
+    border-left-color: #ff4d4f;
+    color: #a8071a;
+}
+
+/* Mejoras específicas para promociones */
+.promotion-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background-color: #f0f2f5;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.promotion-count {
+    font-weight: 600;
+    color: #1890ff;
+}
+
+.promotion-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Estilos para fechas y tiempos */
+.date-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #666;
+}
+
+.date-separator {
+    color: #999;
+}
+
+.date-valid {
+    color: #52c41a;
+}
+
+.date-expired {
+    color: #ff4d4f;
+}
+
+.date-upcoming {
+    color: #fa8c16;
+}
+
+/* Mejoras en botones */
+.btn-group {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon-only {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Estilos para tooltips personalizados */
+.custom-tooltip {
+    max-width: 250px;
+    text-align: left;
+}
+
+.tooltip-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #262626;
+}
+
+.tooltip-content {
+    color: #666;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+/* Responsive adicional */
+@media (max-width: 576px) {
+    .promotion-details {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .promotion-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .promotion-summary {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    
+    .promotion-stats {
+        flex-wrap: wrap;
+    }
+}
+
+/* Animaciones adicionales */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Estados hover mejorados */
+.promotion-row:hover {
+    background-color: rgba(24, 144, 255, 0.02);
+    cursor: pointer;
+}
+
+.promotion-applicable:hover {
+    background-color: rgba(82, 196, 26, 0.05) !important;
+}
+
+.promotion-not-applicable:hover {
+    background-color: rgba(255, 77, 79, 0.05) !important;
+}
+
+/* Estilos para badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-new {
+    background-color: #1890ff;
+    color: white;
+}
+
+.badge-limited {
+    background-color: #fa541c;
+    color: white;
+}
+
+.badge-exclusive {
+    background-color: #722ed1;
+    color: white;
+}
+
+/* Separadores visuales */
+.section-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #d9d9d9, transparent);
+    margin: 24px 0;
+}
+
+/* Mejoras finales */
+.no-select {
+    user-select: none;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.text-muted {
+    color: #999 !important;
+}
+
+.text-success {
+    color: #52c41a !important;
+}
+
+.text-warning {
+    color: #fa8c16 !important;
+}
+
+.text-danger {
+    color: #ff4d4f !important;
+}
+
+/* Ajustes finales para la estructura */
+.promotions-container nz-card {
+    margin-bottom: 16px;
+}
+
+.promotions-container nz-card:last-child {
+    margin-bottom: 0;
 }

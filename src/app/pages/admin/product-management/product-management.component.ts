@@ -1,7 +1,7 @@
-import { ChangeDetectorRef, Component, NgZone, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, finalize, takeUntil } from 'rxjs';
+import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, takeUntil, filter } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 
@@ -12,9 +12,10 @@ import { SizeService } from '../../../services/admin/size/size.service';
 import { CategoryService, Category } from '../../../services/admin/category/category.service';
 import { CacheService } from '../../../services/admin/cache/cache.service';
 import { StockUpdateService, StockUpdate } from '../../../services/admin/stockUpdate/stock-update.service';
+import { PromotionStateService, PromotionChangeEvent  } from '../../../services/admin/promotionState/promotion-state.service';
 
 // Modelos
-import { Product, Color, Size } from '../../../models/models';
+import { Product, Color, Size, Promotion } from '../../../models/models';
 
 // Componentes
 import { ProductFormComponent } from '../product-form/product-form.component';
@@ -126,6 +127,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   private pendingOperations = new Map<string, OptimisticProductOperation>();
   private originalProductsBackup: Product[] = [];
 
+  private productPromotionsMap = new Map<string, Promotion[]>();
+
   constructor(
     private fb: FormBuilder,
     private productService: ProductService,
@@ -137,7 +140,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     private message: NzMessageService,
     private modal: NzModalService,
     private cdr: ChangeDetectorRef,
-    private zone: NgZone
+    private promotionStateService: PromotionStateService,
   ) { }
 
   ngOnInit(): void {
@@ -169,6 +172,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     // Carga inicial
     this.loadProducts();
     this.subscribeToStockUpdates();
+    this.subscribeToPromotionChanges();
   }
 
   ngOnDestroy(): void {
@@ -185,7 +189,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   private handleStockUpdate(update: StockUpdate): void {
-    console.log('📦 Actualizando stock en management:', update);
 
     const productIndex = this.products.findIndex(p => p.id === update.productId);
 
@@ -203,6 +206,62 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
       this.cdr.detectChanges();
     }
+  }
+
+  private subscribeToPromotionChanges(): void {
+    // Escuchar cambios globales
+    this.promotionStateService.onPromotionChange()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(event => {
+        console.log('📢 [MANAGEMENT] Cambio de promoción detectado:', event);
+        this.handlePromotionChange(event);
+      });
+
+    // Escuchar estado de productos con promociones
+    this.promotionStateService.getProductsWithPromotions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(promotionsMap => {
+        this.productPromotionsMap = promotionsMap;
+        this.updateProductsWithPromotionInfo();
+      });
+  }
+
+  private handlePromotionChange(event: PromotionChangeEvent): void {
+    switch (event.type) {
+      case 'applied':
+      case 'removed':
+        if (event.productId) {
+          this.refreshSingleProduct(event.productId);
+        }
+        break;
+
+      case 'created':
+      case 'updated':
+      case 'deleted':
+        // Recargar productos para aplicar cambios globales
+        this.loadProducts();
+        break;
+    }
+  }
+
+  private updateProductsWithPromotionInfo(): void {
+    // Actualizar la información de promociones en los productos
+    this.products = this.products.map(product => {
+      const promotions = this.productPromotionsMap.get(product.id) || [];
+      return {
+        ...product,
+        promotions,
+        hasActivePromotions: promotions.length > 0
+      };
+    });
+
+    this.cdr.detectChanges();
+  }
+
+  // 🆕 NUEVO: Método para verificar promociones activas
+  hasActivePromotions(product: Product): boolean {
+    return this.promotionStateService.hasActivePromotions(product.id) ||
+      this.hasDiscount(product);
   }
 
   initFilterForm(): void {
@@ -252,7 +311,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   // ✅ MODIFICAR en ProductManagementComponent
-  // ✅ MEJORAR loadProducts con validaciones
   loadProducts(): void {
     this.loading = true;
     this.originalProductsBackup = [...this.products];
@@ -270,7 +328,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       limit: this.pageSize
     };
 
-    console.log('🔍 [MANAGEMENT] Filtros aplicados:', filter);
 
     // Resto del código igual...
     const products$ = filter.searchQuery
@@ -281,12 +338,10 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (products) => {
-          console.log(`📦 [MANAGEMENT] Productos recibidos: ${products.length}`);
 
           const validProducts = this.validateFilterData(products);
           const filteredProducts = this.applyClientSideFilters(validProducts, filter);
 
-          console.log(`📊 [MANAGEMENT] Productos después de filtros: ${filteredProducts.length}`);
 
           this.products = filteredProducts;
           this.total = this.products.length;
@@ -309,6 +364,9 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     // Limpiar caché
     this.cacheService.invalidate('products');
     this.cacheService.invalidatePattern('products_');
+
+    this.loading = true;
+    this.cdr.detectChanges();
 
     // Recargar
     this.loadProducts();
@@ -378,12 +436,10 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
     // ✅ FILTRO DE CATEGORÍAS CORREGIDO (igual que el otro componente)
     if (filter.categories && filter.categories.length > 0) {
-      console.log('🔍 [MANAGEMENT] Aplicando filtro de categorías:', filter.categories);
 
       filtered = filtered.filter(p => {
         // Verificar campo singular (legacy)
         if (p.category && filter.categories.includes(p.category)) {
-          console.log(`✅ [MANAGEMENT] ${p.name} coincide con categoría singular: ${p.category}`);
           return true;
         }
 
@@ -402,8 +458,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
         return false;
       });
-
-      console.log(`📊 [MANAGEMENT] Productos después de filtro categoría: ${filtered.length}`);
     }
 
     // ✅ FILTRO DE PRECIO
@@ -527,16 +581,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       });
   }
 
-  private forceProductsReload(): void {
-
-    // Limpiar solo caché de productos (no todo)
-    this.cacheService.invalidate('products');
-
-    this.loading = true;
-    this.cdr.detectChanges();
-
-    this.loadProducts();
-  }
   // 3️⃣ Método para verificar actualización de producto específico
   private verifyProductUpdate(productId: string): void {
 
@@ -556,7 +600,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
               );
 
               if (hasChanges) {
-                console.log('🔄 [MANAGEMENT] Aplicando cambios verificados para:', productId);
                 this.products[index] = updatedProduct;
 
                 if (this.selectedProduct && this.selectedProduct.id === productId) {
@@ -625,7 +668,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.total = this.products.length;
 
     this.cdr.detectChanges();
-    console.log('✅ [MANAGEMENT] Producto creado optimísticamente');
   }
 
   /**
@@ -769,7 +811,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
    * 🔄 Método mejorado para refrescar un producto específico
    */
   refreshProduct(productId: string): void {
-    console.log('🔄 [MANAGEMENT] Refrescando producto:', productId);
 
     this.invalidateProductCache(productId);
 
@@ -797,7 +838,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
               }
 
               this.cdr.detectChanges();
-              console.log('✅ [MANAGEMENT] Producto refrescado exitosamente');
             } else {
               this.loadProducts();
             }
@@ -1031,7 +1071,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       nzOkType: 'primary',
       nzOkDanger: true,
       nzOnOk: () => {
-        console.log('🗑️ [MANAGEMENT] Eliminando producto:', id);
 
         // Eliminación optimista
         this.deleteProductOptimistically(id);
@@ -1043,7 +1082,6 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
             next: () => {
               this.message.success('Producto eliminado correctamente');
               this.confirmOptimisticOperation(id);
-              console.log('✅ [MANAGEMENT] Producto eliminado exitosamente');
             },
             error: (error) => {
               console.error('❌ [MANAGEMENT] Error al eliminar producto:', error);
@@ -1069,17 +1107,5 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * 🧹 Limpia operaciones pendientes antiguas (opcional)
-   */
-  private cleanupOldPendingOperations(): void {
-    const now = Date.now();
-    const maxAge = 5 * 60 * 1000; // 5 minutos
 
-    this.pendingOperations.forEach((operation, productId) => {
-      if (operation.backup && (now - operation.backup.timestamp) > maxAge) {
-        this.pendingOperations.delete(productId);
-      }
-    });
-  }
 }

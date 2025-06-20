@@ -1,0 +1,30 @@
+{
+    "name": "NUMER - Ropa Técnica Outdoor",
+    "short_name": "NUMER",
+    "description": "Ropa técnica para deportes outdoor, montaña y aventura",
+    "theme_color": "#000000",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "orientation": "portrait",
+    "scope": "/",
+    "start_url": "/",
+    "icons": [
+        {
+            "src": "/Logo-blanco-sf.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/Logo-blanco-sf.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "shopping",
+        "sports"
+    ],
+    "lang": "es-EC"
+}

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Promotion } from '../../../models/models';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
+import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
@@ -67,38 +68,39 @@ export class PromotionManagementComponent implements OnInit {
   formModalVisible = false;
   isEditMode = false;
   selectedPromotion: Promotion | null = null;
-  
+
   // Formulario para crear/editar promociones
   promotionForm!: FormGroup;
-  
+
   // Opciones para el formulario
   discountTypes = [
     { label: 'Porcentaje (%)', value: 'percentage' },
     { label: 'Monto fijo ($)', value: 'fixed' }
   ];
-  
+
   // Filtros y paginación
   totalPromotions = 0;
   pageSize = 10;
   pageIndex = 1;
-  
+
   constructor(
     private promotionService: PromotionService,
     private productService: ProductService,
     private categoryService: CategoryService,
+    private promotionStateService: PromotionStateService,
     private message: NzMessageService,
     private modal: NzModalService,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef
   ) { }
-  
+
   ngOnInit(): void {
     this.initForm();
     this.loadPromotions();
     this.loadCategories();
     this.loadProducts();
   }
-  
+
   initForm(): void {
     this.promotionForm = this.fb.group({
       name: ['', [Validators.required]],
@@ -114,11 +116,11 @@ export class PromotionManagementComponent implements OnInit {
       minPurchaseAmount: [null, [Validators.min(0)]]
     });
   }
-  
+
   loadPromotions(): void {
     this.loading = true;
     this.cdr.detectChanges();
-    
+
     this.promotionService.getPromotions()
       .subscribe({
         next: (result) => {
@@ -135,7 +137,7 @@ export class PromotionManagementComponent implements OnInit {
         }
       });
   }
-  
+
   loadCategories(): void {
     this.categoryService.getCategories()
       .subscribe({
@@ -148,7 +150,7 @@ export class PromotionManagementComponent implements OnInit {
         }
       });
   }
-  
+
   loadProducts(): void {
     this.productService.getProducts()
       .subscribe({
@@ -161,7 +163,7 @@ export class PromotionManagementComponent implements OnInit {
         }
       });
   }
-  
+
   openCreatePromotionModal(): void {
     this.isEditMode = false;
     this.selectedPromotion = null;
@@ -176,11 +178,11 @@ export class PromotionManagementComponent implements OnInit {
     });
     this.formModalVisible = true;
   }
-  
+
   openEditPromotionModal(promotion: Promotion): void {
     this.isEditMode = true;
     this.selectedPromotion = promotion;
-    
+
     // Populate form with promotion data
     this.promotionForm.patchValue({
       name: promotion.name,
@@ -195,10 +197,10 @@ export class PromotionManagementComponent implements OnInit {
       applicableCategories: promotion.applicableCategories || [],
       minPurchaseAmount: promotion.minPurchaseAmount || null
     });
-    
+
     this.formModalVisible = true;
   }
-  
+
   deletePromotion(id: string): void {
     this.modal.confirm({
       nzTitle: '¿Está seguro de eliminar esta promoción?',
@@ -209,10 +211,11 @@ export class PromotionManagementComponent implements OnInit {
       nzOnOk: () => {
         this.loading = true;
         this.cdr.detectChanges();
-        
+
         this.promotionService.deletePromotion(id)
           .subscribe({
             next: () => {
+              this.promotionStateService.notifyPromotionDeleted(id);
               this.message.success('Promoción eliminada correctamente');
               this.loadPromotions();
             },
@@ -226,7 +229,7 @@ export class PromotionManagementComponent implements OnInit {
       }
     });
   }
-  
+
   submitForm(): void {
     if (this.promotionForm.invalid) {
       // Marcar todos los campos como touched para mostrar errores
@@ -234,28 +237,32 @@ export class PromotionManagementComponent implements OnInit {
         control.markAsDirty();
         control.updateValueAndValidity();
       });
-      
+
       this.message.warning('Por favor complete todos los campos requeridos correctamente');
       return;
     }
-    
+
     this.submitting = true;
     this.cdr.detectChanges();
-    
+
     const formData = this.promotionForm.value;
-    
+
     // Asegurarse de que las fechas son objetos Date
     const promotionData: Partial<Promotion> = {
       ...formData,
       startDate: formData.startDate instanceof Date ? formData.startDate : new Date(formData.startDate),
       endDate: formData.endDate instanceof Date ? formData.endDate : new Date(formData.endDate)
     };
-    
+
     if (this.isEditMode && this.selectedPromotion) {
       // Actualizar promoción existente
       this.promotionService.updatePromotion(this.selectedPromotion.id, promotionData)
         .subscribe({
           next: () => {
+            this.promotionStateService.notifyPromotionUpdated(
+              this.selectedPromotion!.id,
+              promotionData as Promotion
+            );
             this.message.success('Promoción actualizada correctamente');
             this.closeFormModal();
             this.loadPromotions();
@@ -275,7 +282,11 @@ export class PromotionManagementComponent implements OnInit {
       // Crear nueva promoción
       this.promotionService.createPromotion(promotionData as Promotion)
         .subscribe({
-          next: () => {
+          next: (promotionId) => {
+            this.promotionStateService.notifyPromotionCreated({
+              ...promotionData,
+              id: promotionId
+            } as Promotion);
             this.message.success('Promoción creada correctamente');
             this.closeFormModal();
             this.loadPromotions();
@@ -293,21 +304,21 @@ export class PromotionManagementComponent implements OnInit {
         });
     }
   }
-  
+
   closeFormModal(): void {
     this.formModalVisible = false;
     this.isEditMode = false;
     this.selectedPromotion = null;
     this.submitting = false;
   }
-  
+
   disabledStartDate = (startValue: Date): boolean => {
     if (!startValue) {
       return false;
     }
     return startValue.getTime() < Date.now() - 8.64e7; // No permitir fechas anteriores al día actual
   };
-  
+
   disabledEndDate = (endValue: Date): boolean => {
     if (!endValue) {
       return false;
@@ -318,73 +329,73 @@ export class PromotionManagementComponent implements OnInit {
     }
     return endValue.getTime() <= startDate.getTime();
   };
-  
+
   formatDate(date: any): string {
-  try {
-    // Si no hay fecha, retornar un valor por defecto
-    if (!date) {
-      return 'Fecha no disponible';
+    try {
+      // Si no hay fecha, retornar un valor por defecto
+      if (!date) {
+        return 'Fecha no disponible';
+      }
+
+      // Convertir a objeto Date si aún no lo es
+      let dateObj: Date;
+
+      if (date instanceof Date) {
+        dateObj = date;
+      } else if (typeof date === 'string') {
+        // Intentar convertir desde string
+        dateObj = new Date(date);
+      } else if (typeof date === 'number') {
+        // Intentar convertir desde timestamp (milisegundos)
+        dateObj = new Date(date);
+      } else if (typeof date === 'object' && date.seconds) {
+        // Manejar fechas de Firestore específicamente
+        // Las fechas de Firestore a menudo tienen un formato {seconds: number, nanoseconds: number}
+        dateObj = new Date(date.seconds * 1000);
+      } else {
+        // Si no se puede determinar el formato, devolver un mensaje
+        return 'Formato de fecha no válido';
+      }
+
+      // Verificar si la conversión resultó en una fecha válida
+      if (isNaN(dateObj.getTime())) {
+        return 'Fecha no válida';
+      }
+
+      // Formatear la fecha utilizando Intl.DateTimeFormat
+      return new Intl.DateTimeFormat('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(dateObj);
+    } catch (error) {
+      console.error('Error al formatear fecha:', error, 'Valor recibido:', date);
+      return 'Error en fecha';
     }
-    
-    // Convertir a objeto Date si aún no lo es
-    let dateObj: Date;
-    
-    if (date instanceof Date) {
-      dateObj = date;
-    } else if (typeof date === 'string') {
-      // Intentar convertir desde string
-      dateObj = new Date(date);
-    } else if (typeof date === 'number') {
-      // Intentar convertir desde timestamp (milisegundos)
-      dateObj = new Date(date);
-    } else if (typeof date === 'object' && date.seconds) {
-      // Manejar fechas de Firestore específicamente
-      // Las fechas de Firestore a menudo tienen un formato {seconds: number, nanoseconds: number}
-      dateObj = new Date(date.seconds * 1000);
-    } else {
-      // Si no se puede determinar el formato, devolver un mensaje
-      return 'Formato de fecha no válido';
-    }
-    
-    // Verificar si la conversión resultó en una fecha válida
-    if (isNaN(dateObj.getTime())) {
-      return 'Fecha no válida';
-    }
-    
-    // Formatear la fecha utilizando Intl.DateTimeFormat
-    return new Intl.DateTimeFormat('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(dateObj);
-  } catch (error) {
-    console.error('Error al formatear fecha:', error, 'Valor recibido:', date);
-    return 'Error en fecha';
   }
-}
-  
+
   getCategoryNames(categoryIds: string[]): string {
     if (!categoryIds || !categoryIds.length) return 'Todas';
-    
+
     return categoryIds.map(id => {
       const category = this.categories.find(c => c.id === id);
       return category ? category.name : id;
     }).join(', ');
   }
-  
+
   getProductNames(productIds: string[]): string {
     if (!productIds || !productIds.length) return 'Todos';
-    
+
     return productIds.map(id => {
       const product = this.products.find(p => p.id === id);
       return product ? product.name : id;
     }).join(', ');
   }
-  
+
   formatDiscountType(type: string): string {
     return type === 'percentage' ? 'Porcentaje' : 'Monto fijo';
   }
-  
+
   formatDiscountValue(promotion: Promotion): string {
     return promotion.discountType === 'percentage'
       ? `${promotion.discountValue}%`
