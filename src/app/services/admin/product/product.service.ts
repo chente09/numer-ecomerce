@@ -950,6 +950,28 @@ export class ProductService {
   }
 
   /**
+ * 🔧 NUEVO: Sanitiza datos para Firestore eliminando campos undefined
+ */
+  private sanitizeForFirestore(data: any): any {
+  const sanitized: any = {};
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined) {
+      sanitized[key] = value;
+    }
+  });
+
+  return sanitized;
+}
+
+  /**
+ * 🔧 NUEVO: Método público para sanitizar (uso desde componentes)
+ */
+  public sanitizeDataForFirestore(data: any): any {
+  return this.sanitizeForFirestore(data);
+}
+
+  /**
    * Lógica interna de actualización de producto (CORREGIDA)
    */
   private async updateProductInternal(
@@ -1033,8 +1055,8 @@ export class ProductService {
       await this.syncVariantsWithColorStocks(productId, updateData.colors, updateData.sizes);
     }
 
-    // Actualizar datos del producto
-    await this.variantService.updateProductBase(productId, updateData);
+    const sanitizedData = this.sanitizeForFirestore(updateData);
+    await this.variantService.updateProductBase(productId, sanitizedData);
   }
 
   private async syncVariantsWithColorStocks(

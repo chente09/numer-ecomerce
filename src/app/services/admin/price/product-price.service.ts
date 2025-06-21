@@ -20,7 +20,7 @@ import { Product, Promotion } from '../../../models/models';
 export class ProductPriceService {
   // 🔧 SOLUCIÓN: Usar inject() en lugar de constructor injection para Firestore
   private firestore = inject(Firestore);
-  
+
   private promotionsCollection = 'promotions';
   private productsCollection = 'products';
 
@@ -41,20 +41,26 @@ export class ProductPriceService {
     }
 
     return this.getActivePromotions().pipe(
-      take(1), // ✅ NUEVO: Forzar completar
+      take(1),
       map(promotions => {
         return products.map(product => {
-          // Obtener promociones aplicables para este producto
+          // 🔧 CORREGIR: Aplicar promociones automáticamente
           const applicablePromotions = this.filterApplicablePromotions(product, promotions);
-          return this.calculateDiscountedPrice({
-            ...product,
-            promotions: applicablePromotions
-          });
+
+          // Si hay promociones aplicables, calcular precio con descuento
+          if (applicablePromotions.length > 0) {
+            const productWithPromotions = {
+              ...product,
+              promotions: applicablePromotions
+            };
+            return this.calculateDiscountedPrice(productWithPromotions);
+          }
+
+          return this.calculateDiscountedPriceSimple(product);
         });
       }),
       catchError(error => {
         console.error('❌ Error al calcular precios con descuento:', error);
-        // Fallback: calcular precios simples sin promociones
         return of(products.map(product => this.calculateDiscountedPriceSimple(product)));
       })
     );
@@ -89,7 +95,7 @@ export class ProductPriceService {
       const discountPercentage = Math.round(
         ((product.originalPrice - product.price) / product.originalPrice) * 100
       );
-      
+
       return {
         ...product,
         currentPrice: product.price,
@@ -100,7 +106,7 @@ export class ProductPriceService {
     // Si tiene discountPercentage configurado
     if (product.discountPercentage && product.discountPercentage > 0) {
       const discountedPrice = product.price * (1 - (product.discountPercentage / 100));
-      
+
       return {
         ...product,
         originalPrice: product.price,
@@ -158,7 +164,7 @@ export class ProductPriceService {
         const product = { id: productSnap.id, ...productSnap.data() } as Product;
         return product;
       }
-      
+
       return null;
     } catch (error) {
       console.error(`Error al obtener producto ${productId}:`, error);
@@ -301,7 +307,7 @@ export class ProductPriceService {
    * 🚀 CORREGIDO: Crea el observable de promociones activas
    */
   private createActivePromotionsObservable(): Observable<Promotion[]> {
-    
+
     try {
       const now = new Date();
       const promotionsRef = collection(this.firestore, this.promotionsCollection);
@@ -310,7 +316,7 @@ export class ProductPriceService {
       return collectionData(q, { idField: 'id' }).pipe(
         take(1), // ✅ CRÍTICO: Forzar que se complete después del primer emit
         map(promotions => {
-          
+
           // Filtrar por fecha en el cliente
           const activePromotions = (promotions as any[])
             .filter(promo => {
@@ -443,10 +449,10 @@ export class ProductPriceService {
               startDate: this.convertTimestampToDate(data['startDate']),
               endDate: this.convertTimestampToDate(data['endDate'])
             } as Promotion;
-            
+
             return promotion;
           }
-          
+
           return null;
         } catch (error) {
           console.error(`❌ Error obteniendo promoción ${promotionId}:`, error);
@@ -467,7 +473,7 @@ export class ProductPriceService {
   hasActivePromotion(product: Product): boolean {
     const hasPromotion = !!product.activePromotion ||
       (product.discountPercentage !== undefined && product.discountPercentage > 0);
-    
+
     return hasPromotion;
   }
 
@@ -478,10 +484,10 @@ export class ProductPriceService {
     if (!product || !allPromotions || allPromotions.length === 0) {
       return [];
     }
-    
+
     const applicable = allPromotions.filter(promo => this.isPromotionApplicable(product, promo));
-    
-    
+
+
     return applicable;
   }
 
@@ -502,7 +508,7 @@ export class ProductPriceService {
     promotion: Promotion
   ): Observable<void> {
     return from((async () => {
-      try {        
+      try {
         // Obtener la variante
         const variantRef = doc(this.firestore, 'productVariants', variantId);
         const variantSnap = await getDoc(variantRef);
@@ -556,14 +562,14 @@ export class ProductPriceService {
     variantId: string
   ): Observable<void> {
     return from((async () => {
-      try {        
+      try {
         const variantRef = doc(this.firestore, 'productVariants', variantId);
         const variantSnap = await getDoc(variantRef);
-        
+
         if (!variantSnap.exists()) {
           throw new Error('La variante no existe');
         }
-        
+
         // Eliminar campos relacionados con promociones
         await updateDoc(variantRef, {
           promotionId: deleteField(),
@@ -572,15 +578,15 @@ export class ProductPriceService {
           discountedPrice: deleteField(),
           updatedAt: new Date()
         });
-        
+
         // Verificar si hay otras variantes con promociones
         const productVariantsRef = collection(this.firestore, 'productVariants');
         const q = query(
-          productVariantsRef, 
+          productVariantsRef,
           where('productId', '==', productId),
           where('promotionId', '!=', null)
         );
-        
+
         const otherPromotionsSnap = await getDocs(q);
         const hasOtherPromotions = otherPromotionsSnap.size > 0;
         // Actualizar el producto principal si no hay más variantes con promociones
@@ -591,10 +597,10 @@ export class ProductPriceService {
             updatedAt: new Date()
           });
         }
-        
+
         // Invalidar caché
         this.invalidatePromotionsCache();
-        
+
         return;
       } catch (error) {
         console.error('Error al eliminar promoción de variante:', error);
@@ -623,12 +629,12 @@ export class ProductPriceService {
    * 🆕 NUEVO: Método de debugging para ver promociones
    */
   debugPromotions(): void {
-    
+
     this.getActivePromotions().pipe(
       take(1)
     ).subscribe({
       next: (promotions) => {
-        
+
         if (promotions.length > 0) {
           console.table(promotions.map(promo => ({
             id: promo.id,
@@ -647,7 +653,7 @@ export class ProductPriceService {
         console.error('❌ Error obteniendo promociones:', error);
       }
     });
-    
+
     console.groupEnd();
   }
 }

@@ -4,6 +4,7 @@ import { ProductService } from '../../../services/admin/product/product.service'
 import { ProductPriceService } from '../../../services/admin/price/product-price.service';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
+import { CacheService } from '../../../services/admin/cache/cache.service';
 import { Product, Promotion, ProductVariant } from '../../../models/models';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { finalize, forkJoin, take } from 'rxjs';
@@ -20,6 +21,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzCardModule } from 'ng-zorro-antd/card';
+import { deleteField } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-product-promotions',
@@ -59,6 +61,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     private productPriceService: ProductPriceService,
     private promotionService: PromotionService, // 🆕 NUEVO: Agregar PromotionService
     private promotionStateService: PromotionStateService, // 🆕 NUEVO: Agregar PromotionStateService
+    private cacheService: CacheService,
     private message: NzMessageService,
     private modal: NzModalService,
     private cdr: ChangeDetectorRef
@@ -102,8 +105,19 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
 
     this.loading = true;
 
-    // 🔧 CORREGIDO: Usar el método correcto del servicio
-    this.promotionService.getPromotionsByProduct(this.product.id)
+    // 🆕 NUEVO: Debug del producto para entender su estado
+    console.log('🔍 [DEBUG] Estado del producto:', {
+      name: this.product.name,
+      activePromotion: this.product.activePromotion,
+      discountPercentage: this.product.discountPercentage,
+      currentPrice: this.product.currentPrice,
+      originalPrice: this.product.price,
+      promotions: this.product.promotions?.length || 0,
+      variantsWithPromo: this.product.variants?.filter(v => v.promotionId).length || 0
+    });
+
+    // Obtener TODAS las promociones activas
+    this.promotionService.getActivePromotions()
       .pipe(
         take(1),
         finalize(() => {
@@ -112,9 +126,17 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         })
       )
       .subscribe({
-        next: (promotions) => {
-          this.promotions = promotions;
-          console.log(`📢 Promociones para producto ${this.product?.name}:`, promotions.length);
+        next: (allActivePromotions) => {
+          console.log('🔍 [DEBUG] Promociones activas totales:', allActivePromotions.length);
+
+          // 🆕 NUEVO: Buscar promociones que están aplicadas al producto
+          this.promotions = allActivePromotions.filter(promo => {
+            const isApplied = this.isPromotionReallyApplied(promo.id);
+            console.log(`🔍 [DEBUG] Promoción ${promo.name}: aplicada = ${isApplied}`);
+            return isApplied;
+          });
+
+          console.log(`📢 Promociones aplicadas al producto ${this.product?.name}:`, this.promotions.length);
           this.cdr.markForCheck();
         },
         error: (error) => {
@@ -123,6 +145,82 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         }
       });
   }
+
+  private isPromotionReallyApplied(promotionId: string): boolean {
+    if (!this.product) return false;
+
+    console.log(`🔍 [DEBUG] Verificando promoción ${promotionId}:`);
+
+    // ✅ 1. Verificar activePromotion
+    if (this.product.activePromotion === promotionId) {
+      console.log(`   ✅ Encontrada en activePromotion`);
+      return true;
+    }
+
+    // ✅ 2. Verificar array de promociones
+    if (this.product.promotions?.some(p => p.id === promotionId)) {
+      console.log(`   ✅ Encontrada en array promotions`);
+      return true;
+    }
+
+    // ✅ 3. Verificar variantes
+    if (this.product.variants?.some(v => v.promotionId === promotionId)) {
+      console.log(`   ✅ Encontrada en variantes`);
+      return true;
+    }
+
+    // ✅ 4. Verificar por descuento calculado (NUEVA LÓGICA)
+    if (this.product.discountPercentage && this.product.discountPercentage > 0) {
+      console.log(`   🔍 Producto tiene descuento ${this.product.discountPercentage}%`);
+
+      // Buscar la promoción en allPromotions que coincida con el descuento
+      const matchingPromotion = this.allPromotions.find(p => {
+        if (p.id !== promotionId) return false;
+
+        // Verificar si esta promoción es aplicable al producto
+        const isApplicable = this.isPromotionApplicableToProduct(p);
+        if (!isApplicable) return false;
+
+        // Calcular el descuento esperado
+        const preview = this.calculatePromotionPreview(p);
+        const discountMatch = Math.abs(preview.discount - this.product!.discountPercentage!) < 1; // Margen de 1%
+
+        console.log(`   🔍 Promoción ${p.name}: aplicable=${isApplicable}, descuento esperado=${preview.discount}%, actual=${this.product!.discountPercentage}%, coincide=${discountMatch}`);
+
+        return discountMatch;
+      });
+
+      if (matchingPromotion) {
+        console.log(`   ✅ Encontrada por coincidencia de descuento: ${matchingPromotion.name}`);
+        return true;
+      }
+    }
+
+    console.log(`   ❌ No encontrada`);
+    return false;
+  }
+
+  private isPromotionApplicableToProduct(promotion: Promotion): boolean {
+    if (!this.product) return false;
+
+    // Verificar si aplica a este producto específicamente
+    if (promotion.applicableProductIds && promotion.applicableProductIds.length > 0) {
+      return promotion.applicableProductIds.includes(this.product.id);
+    }
+
+    // Verificar si aplica a la categoría del producto
+    if (promotion.applicableCategories && promotion.applicableCategories.length > 0) {
+      return promotion.applicableCategories.includes(this.product.category) ||
+        (this.product.categories && this.product.categories.some(cat =>
+          promotion.applicableCategories!.includes(cat)
+        ));
+    }
+
+    // Si no tiene restricciones específicas, aplica a todos
+    return true;
+  }
+
+
 
   applyPromotion(promotionId: string): void {
     if (!this.product) return;
@@ -300,67 +398,91 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
   }
 
   removeAllPromotions(): void {
-    if (!this.product) return;
+  if (!this.product) return;
 
-    this.modal.confirm({
-      nzTitle: '¿Está seguro de eliminar todas las promociones?',
-      nzContent: 'Esta acción eliminará todas las promociones asociadas a este producto.',
-      nzOkText: 'Eliminar',
-      nzOkType: 'primary',
-      nzOkDanger: true,
-      nzOnOk: () => {
-        this.applying = true;
+  this.modal.confirm({
+    nzTitle: '¿Está seguro de eliminar todas las promociones?',
+    nzContent: 'Esta acción eliminará todas las promociones asociadas a este producto.',
+    nzOkText: 'Eliminar',
+    nzOkType: 'primary',
+    nzOkDanger: true,
+    nzOnOk: () => {
+      this.applying = true;
 
-        // 🚀 ACTUALIZACIÓN OPTIMISTA LOCAL
-        const optimisticProduct = {
-          ...this.product!,
-          promotions: [],
-          activePromotion: undefined,
-          currentPrice: this.product!.price, // Restaurar precio original
-          discountPercentage: 0
-        };
+      // 🔧 SOLUCIÓN: Usar el método de sanitización del ProductService
+      const rawUpdateData = {
+        promotions: [],
+        activePromotion: deleteField(),
+        currentPrice: deleteField(),
+        discountPercentage: deleteField()
+      };
 
-        this.product = optimisticProduct;
+      // ✅ CORRECCIÓN: Usar el método de sanitización
+      const sanitizedData = this.productService.sanitizeDataForFirestore(rawUpdateData);
 
-        // 🚀 EMITIR CAMBIO AL PADRE INMEDIATAMENTE
-        this.promotionChanged.emit({
-          productId: optimisticProduct.id,
-          updatedProduct: optimisticProduct
+      this.productService.updateProduct(this.product!.id, sanitizedData)
+        .pipe(
+          take(1),
+          finalize(() => {
+            this.applying = false;
+            this.cdr.markForCheck();
+          })
+        )
+        .subscribe({
+          next: () => {
+            console.log('✅ Promociones eliminadas en servidor');
+            
+            // 🔧 LIMPIAR ESTADO EN PROMOTION STATE SERVICE
+            this.promotionStateService.clearProductPromotions(this.product!.id);
+
+            // 🔧 INVALIDACIÓN COMPLETA Y FORZADA
+            this.cacheService.invalidateProductCache(this.product!.id);
+            this.cacheService.clearCache();
+
+            // 🔧 NOTIFICAR AL PROMOTION STATE SERVICE
+            this.promotionStateService.notifyPromotionRemoved(
+              this.product!.id,
+              this.product!.activePromotion || 'unknown'
+            );
+
+            // 🔧 REFRESCO FORZADO CON DELAY
+            setTimeout(() => {
+              this.productService.forceRefreshProduct(this.product!.id)
+                .pipe(take(1))
+                .subscribe({
+                  next: (refreshedProduct) => {
+                    if (refreshedProduct) {
+                      console.log('🔄 Producto refrescado:', {
+                        activePromotion: refreshedProduct.activePromotion,
+                        discountPercentage: refreshedProduct.discountPercentage
+                      });
+
+                      this.product = refreshedProduct;
+                      this.promotionChanged.emit({
+                        productId: refreshedProduct.id,
+                        updatedProduct: refreshedProduct
+                      });
+                    }
+                    this.loadPromotions();
+                    this.message.success('Promociones eliminadas correctamente');
+                  },
+                  error: (error) => {
+                    console.error('Error refrescando producto:', error);
+                    this.loadPromotions();
+                  }
+                });
+            }, 1500);
+          },
+          error: (error) => {
+            console.error('❌ Error al eliminar promociones en servidor:', error);
+            this.loadPromotions();
+            this.message.error('Error al eliminar promociones: ' + (error.message || 'Error desconocido'));
+          }
         });
+    }
+  });
+}
 
-        this.message.success('Promociones eliminadas correctamente');
-        this.cdr.markForCheck();
-
-        // Procesar en servidor en segundo plano
-        this.productService.updateProduct(this.product.id, {
-          promotions: [],
-          activePromotion: undefined,
-          currentPrice: undefined,
-          discountPercentage: undefined
-        })
-          .pipe(
-            take(1),
-            finalize(() => {
-              this.applying = false;
-              this.cdr.markForCheck();
-            })
-          )
-          .subscribe({
-            next: () => {
-              console.log('✅ Promociones eliminadas en servidor');
-              this.loadPromotions(); // Recargar para sincronizar
-            },
-            error: (error) => {
-              console.error('❌ Error al eliminar promociones en servidor:', error);
-
-              // 🔄 ROLLBACK: Recargar estado desde servidor
-              this.loadPromotions();
-              this.message.error('Error al eliminar promociones: ' + (error.message || 'Error desconocido'));
-            }
-          });
-      }
-    });
-  }
 
   // 🆕 NUEVO: Obtener detalles de dónde está aplicada la promoción
   getPromotionApplicationDetails(promotionId: string): {

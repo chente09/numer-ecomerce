@@ -89,14 +89,13 @@
                                         <nz-tag *ngIf="product.isNew" [nzColor]="'blue'">Nuevo</nz-tag>
                                         <nz-tag *ngIf="product.isBestSeller" [nzColor]="'gold'">Bestseller</nz-tag>
 
-                                        <!-- 🔧 MEJORADO: Mostrar promociones activas -->
+                                        <!-- 🔧 MEJORADO: Mostrar descuentos calculados automáticamente -->
                                         <nz-tag *ngIf="hasDiscount(product)" [nzColor]="'red'">
                                             -{{ product.discountPercentage }}%
                                         </nz-tag>
 
-                                        <!-- 🆕 NUEVO: Mostrar promociones aplicadas -->
-                                        <nz-tag *ngIf="hasActivePromotions(product) && !hasDiscount(product)"
-                                            [nzColor]="'purple'">
+                                        <!-- 🆕 NUEVO: Mostrar si tiene promoción activa -->
+                                        <nz-tag *ngIf="product.activePromotion" [nzColor]="'purple'">
                                             <span nz-icon nzType="tags"></span> Promoción
                                         </nz-tag>
                                     </div>

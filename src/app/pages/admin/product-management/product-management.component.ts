@@ -1,18 +1,19 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, takeUntil, filter } from 'rxjs';
+import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, takeUntil, filter, switchMap, take } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 
 // Servicios
 import { ProductService } from '../../../services/admin/product/product.service';
+import { ProductPriceService } from '../../../services/admin/price/product-price.service';
 import { ColorService } from '../../../services/admin/color/color.service';
 import { SizeService } from '../../../services/admin/size/size.service';
 import { CategoryService, Category } from '../../../services/admin/category/category.service';
 import { CacheService } from '../../../services/admin/cache/cache.service';
 import { StockUpdateService, StockUpdate } from '../../../services/admin/stockUpdate/stock-update.service';
-import { PromotionStateService, PromotionChangeEvent  } from '../../../services/admin/promotionState/promotion-state.service';
+import { PromotionStateService, PromotionChangeEvent } from '../../../services/admin/promotionState/promotion-state.service';
 
 // Modelos
 import { Product, Color, Size, Promotion } from '../../../models/models';
@@ -141,6 +142,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     private modal: NzModalService,
     private cdr: ChangeDetectorRef,
     private promotionStateService: PromotionStateService,
+    private productPriceService: ProductPriceService
   ) { }
 
   ngOnInit(): void {
@@ -335,7 +337,9 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       : this.productService.forceReloadProducts();
 
     products$
-      .pipe(takeUntil(this.destroy$))
+      .pipe(takeUntil(this.destroy$),
+        switchMap(products => this.productPriceService.calculateDiscountedPrices(products))
+      )
       .subscribe({
         next: (products) => {
 
@@ -1005,11 +1009,27 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     // Invalidar cachés relevantes
     this.cacheService.invalidate(`products_${event.productId}`);
     this.cacheService.invalidate('products_discounted');
+    this.cacheService.invalidate('products');
 
     if (!event.updatedProduct) {
-      this.refreshSingleProduct(event.productId);
+      // 🔧 FORZAR REFRESCO EN LUGAR DE SIMPLE REFRESH
+      this.productService.forceRefreshProduct(event.productId)
+        .pipe(take(1))
+        .subscribe({
+          next: (product) => {
+            if (product) {
+              this.updateProductInList(event.productId, product);
+            }
+          },
+          error: (error) => {
+            console.error('Error en force refresh:', error);
+            this.refreshSingleProduct(event.productId);
+          }
+        });
       return;
     }
+
+    this.updateProductInList(event.productId, event.updatedProduct);
 
     const productIndex = this.products.findIndex(p => p.id === event.productId);
 
@@ -1031,10 +1051,25 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     // Verificación en segundo plano
     setTimeout(() => {
       this.verifyProductUpdate(event.productId);
-    }, 3000);
+    }, 2000);
   }
 
+  private updateProductInList(productId: string, updatedProduct: Product): void {
+    const productIndex = this.products.findIndex(p => p.id === productId);
 
+    if (productIndex === -1) {
+      console.warn('⚠️ [MANAGEMENT] Producto no encontrado para actualización');
+      return;
+    }
+
+    this.products[productIndex] = { ...updatedProduct };
+
+    if (this.selectedProduct && this.selectedProduct.id === productId) {
+      this.selectedProduct = { ...updatedProduct };
+    }
+
+    this.cdr.detectChanges();
+  }
 
   /**
    * 📊 Maneja cambios de estadísticas desde el drawer

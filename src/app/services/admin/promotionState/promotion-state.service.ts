@@ -17,10 +17,10 @@ export interface PromotionChangeEvent {
 export class PromotionStateService {
   // 📡 EVENTOS DE CAMBIO DE PROMOCIONES
   private promotionChanges$ = new Subject<PromotionChangeEvent>();
-  
+
   // 🔄 ESTADO DE PRODUCTOS CON PROMOCIONES APLICADAS
   private productsWithPromotions$ = new BehaviorSubject<Map<string, Promotion[]>>(new Map());
-  
+
   // 📊 CACHE DE PROMOCIONES ACTIVAS
   private activePromotions$ = new BehaviorSubject<Promotion[]>([]);
 
@@ -46,7 +46,7 @@ export class PromotionStateService {
       promotionId: promotion.id,
       promotion
     });
-    
+
     // Actualizar cache de promociones activas
     this.updateActivePromotionsCache();
   }
@@ -60,7 +60,7 @@ export class PromotionStateService {
       promotionId,
       promotion
     });
-    
+
     this.updateActivePromotionsCache();
   }
 
@@ -72,7 +72,7 @@ export class PromotionStateService {
       type: 'deleted',
       promotionId
     });
-    
+
     this.updateActivePromotionsCache();
     this.removePromotionFromProducts(promotionId);
   }
@@ -87,7 +87,7 @@ export class PromotionStateService {
       productId,
       promotion
     });
-    
+
     // Actualizar mapa de productos con promociones
     this.addPromotionToProduct(productId, promotion);
   }
@@ -101,7 +101,7 @@ export class PromotionStateService {
       promotionId,
       productId
     });
-    
+
     // Actualizar mapa de productos con promociones
     this.removePromotionFromProduct(productId, promotionId);
   }
@@ -164,14 +164,14 @@ export class PromotionStateService {
   private addPromotionToProduct(productId: string, promotion: Promotion): void {
     const currentMap = this.productsWithPromotions$.value;
     const existingPromotions = currentMap.get(productId) || [];
-    
+
     // Evitar duplicados
     const updatedPromotions = existingPromotions.filter(p => p.id !== promotion.id);
     updatedPromotions.push(promotion);
-    
+
     currentMap.set(productId, updatedPromotions);
     this.productsWithPromotions$.next(new Map(currentMap));
-    
+
     console.log(`✅ [PROMOTION STATE] Promoción ${promotion.id} agregada al producto ${productId}`);
   }
 
@@ -181,17 +181,17 @@ export class PromotionStateService {
   private removePromotionFromProduct(productId: string, promotionId: string): void {
     const currentMap = this.productsWithPromotions$.value;
     const existingPromotions = currentMap.get(productId) || [];
-    
+
     const updatedPromotions = existingPromotions.filter(p => p.id !== promotionId);
-    
+
     if (updatedPromotions.length > 0) {
       currentMap.set(productId, updatedPromotions);
     } else {
       currentMap.delete(productId);
     }
-    
+
     this.productsWithPromotions$.next(new Map(currentMap));
-    
+
     console.log(`➖ [PROMOTION STATE] Promoción ${promotionId} eliminada del producto ${productId}`);
   }
 
@@ -200,19 +200,19 @@ export class PromotionStateService {
    */
   private removePromotionFromProducts(promotionId: string): void {
     const currentMap = this.productsWithPromotions$.value;
-    
+
     for (const [productId, promotions] of currentMap.entries()) {
       const updatedPromotions = promotions.filter(p => p.id !== promotionId);
-      
+
       if (updatedPromotions.length > 0) {
         currentMap.set(productId, updatedPromotions);
       } else {
         currentMap.delete(productId);
       }
     }
-    
+
     this.productsWithPromotions$.next(new Map(currentMap));
-    
+
     console.log(`🗑️ [PROMOTION STATE] Promoción ${promotionId} eliminada de todos los productos`);
   }
 
@@ -249,17 +249,48 @@ export class PromotionStateService {
    */
   debugState(): void {
     console.group('🎯 [PROMOTION STATE DEBUG]');
-    
+
     const productsMap = this.productsWithPromotions$.value;
     const activePromotions = this.activePromotions$.value;
-    
+
     console.log('📦 Productos con promociones:', productsMap.size);
     productsMap.forEach((promotions, productId) => {
       console.log(`   ${productId}: ${promotions.length} promociones`);
     });
-    
+
     console.log('📊 Promociones activas:', activePromotions.length);
-    
+
     console.groupEnd();
+  }
+
+  /**
+ * 🔧 NUEVO: Limpiar estado de producto específico
+ */
+  clearProductPromotions(productId: string): void {
+    const currentMap = this.productsWithPromotions$.value;
+    currentMap.delete(productId);
+    this.productsWithPromotions$.next(new Map(currentMap));
+
+    console.log(`🧹 [PROMOTION STATE] Estado limpiado para producto ${productId}`);
+  }
+
+  /**
+   * 🔧 NUEVO: Validar consistencia de estado
+   */
+  validateProductState(productId: string, expectedPromotions: string[]): boolean {
+    const currentPromotions = this.getProductPromotions(productId);
+    const currentIds = currentPromotions.map(p => p.id).sort();
+    const expectedIds = expectedPromotions.sort();
+
+    const isConsistent = JSON.stringify(currentIds) === JSON.stringify(expectedIds);
+
+    if (!isConsistent) {
+      console.warn(`⚠️ [PROMOTION STATE] Estado inconsistente para ${productId}:`, {
+        current: currentIds,
+        expected: expectedIds
+      });
+    }
+
+    return isConsistent;
   }
 }
