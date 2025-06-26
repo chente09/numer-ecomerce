@@ -413,12 +413,12 @@ export class InstagramComponent implements OnInit, OnDestroy {
   // ✅ NUEVO: Obtener avatar del usuario
   getUserAvatar(): string {
     if (!this.isAuthenticated) {
-      return 'https://i.postimg.cc/7LgKRbyJ/Logo-Numer-negro.png';
+      return '/logo.png';
     }
 
     return this.userProfile?.photoURL ||
       this.currentUser?.photoURL ||
-      'https://i.postimg.cc/7LgKRbyJ/Logo-Numer-negro.png';
+      '/logo.png';
   }
 
   // ✅ NUEVO: Verificar si el usuario puede moderar comentarios (admin)

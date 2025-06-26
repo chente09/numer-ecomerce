@@ -73,16 +73,13 @@
             <!-- ✅ HEADER: Más compacto -->
             <div class="post-header">
                 <a href="https://www.instagram.com/numer.ec/?hl=es" target="_blank" rel="noopener noreferrer" class="post-user">
-                    <img [src]="selectedPost.userAvatar || 'https://i.postimg.cc/7LgKRbyJ/Logo-Numer-negro.png'"
+                    <img [src]="selectedPost.userAvatar || '/logo.png'" (error)="handleImageError($event)"
                         alt="User Avatar" class="user-avatar">
                     <div class="user-details">
                         <span class="username">{{ selectedPost.username || 'numer.ec' }}</span>
                         <span class="post-date">{{ formatDate(selectedPost.createdAt) }}</span>
                     </div>
                 </a>
-
-                <!-- ✅ USUARIO ACTUAL: Más pequeño -->
-                
             </div>
 
             <!-- ✅ CAPTION: Sin padding excesivo -->

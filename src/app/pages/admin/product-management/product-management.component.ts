@@ -391,6 +391,44 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       this.hasDiscount(product);
   }
 
+  /**
+ * 🏷️ Verifica si el producto tiene promociones aplicadas en sus variantes
+ */
+hasVariantPromotions(product: Product): boolean {
+  if (!product.variants || product.variants.length === 0) {
+    return false;
+  }
+
+  return product.variants.some(variant => 
+    variant.promotionId && 
+    variant.discountType && 
+    variant.discountValue
+  );
+}
+
+/**
+ * 🔍 Obtiene información detallada de promociones en variantes
+ */
+getVariantPromotionsInfo(product: Product): {
+  count: number;
+  hasPromotions: boolean;
+  promotedVariants: string[];
+} {
+  if (!product.variants || product.variants.length === 0) {
+    return { count: 0, hasPromotions: false, promotedVariants: [] };
+  }
+
+  const promotedVariants = product.variants.filter(variant => 
+    variant.promotionId && variant.discountType && variant.discountValue
+  );
+
+  return {
+    count: promotedVariants.length,
+    hasPromotions: promotedVariants.length > 0,
+    promotedVariants: promotedVariants.map(v => `${v.colorName}-${v.sizeName}`)
+  };
+}
+
   initFilterForm(): void {
     this.filterForm = this.fb.group({
       searchQuery: [''],

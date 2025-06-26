@@ -94,10 +94,20 @@
                                             -{{ product.discountPercentage }}%
                                         </nz-tag>
 
-                                        <!-- 🆕 NUEVO: Mostrar si tiene promoción activa -->
+                                        <!-- 🆕 NUEVO: Mostrar si tiene promoción activa general -->
                                         <nz-tag *ngIf="hasActivePromotions(product)" [nzColor]="'purple'">
                                             <span nz-icon nzType="tags"></span> Promoción
                                         </nz-tag>
+
+                                        <!-- 🆕 NUEVO: Mostrar promociones específicas en variantes -->
+                                        <ng-container *ngIf="hasVariantPromotions(product)">
+                                            <nz-tag *ngIf="getVariantPromotionsInfo(product) as info"
+                                                [nzColor]="'orange'" nz-tooltip
+                                                [nzTooltipTitle]="'Promociones en: ' + info.promotedVariants.join(', ')">
+                                                <nz-icon nzType="tags"></nz-icon>
+                                                Variantes ({{ info.count }})
+                                            </nz-tag>
+                                        </ng-container>
                                     </div>
                                 </td>
                                 <td>
