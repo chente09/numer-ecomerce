@@ -8,8 +8,10 @@ import { ProductService } from '../../services/admin/product/product.service';
 import { Product, Color } from '../../models/models';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil, map } from 'rxjs';
+import { Subject, takeUntil, map, debounceTime } from 'rxjs';
 import { ProductCardComponent } from '../product-card/product-card.component';
+import { PromotionStateService } from '../../services/admin/promotionState/promotion-state.service';
+import { CacheService } from '../../services/admin/cache/cache.service';
 
 interface ProductWithSelectedColor extends Product {
   selectedColorIndex?: number;
@@ -46,15 +48,19 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
   // Configuración mejorada
   private readonly MAX_FEATURED_PRODUCTS = 8;
   private readonly FALLBACK_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOGY4Ii8+PGcgZmlsbD0iIzk5OSI+PGNpcmNsZSBjeD0iMTIwIiBjeT0iMTAwIiByPSIyMCIvPjxwYXRoIGQ9Im05MCAx NjBoNjB2NDBINTB6Ii8+PC9nPjx0ZXh0IHg9IjUwJSIgeT0iODAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlByb2R1Y3RvPC90ZXh0Pjwvc3ZnPg==';
+  private readonly COMPONENT_NAME = 'ProductosSectionComponent';
 
   constructor(
     private productService: ProductService,
     private message: NzMessageService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private promotionStateService: PromotionStateService,
+    private cacheService: CacheService
   ) { }
 
   ngOnInit(): void {
+    this.promotionStateService.registerComponent(this.COMPONENT_NAME);
     this.loadFeaturedProducts();
 
     // ✅ OPCIONAL: Safety net
@@ -65,85 +71,138 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     }, 10000);
+
+    this.setupPromotionUpdateListener();
   }
 
 
   ngOnDestroy(): void {
+    this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
     this.destroy$.next();
     this.destroy$.complete();
   }
 
+  // 🆕 NUEVO: Configurar escucha de actualizaciones de promociones
+  private setupPromotionUpdateListener(): void {
+
+    this.promotionStateService.onGlobalUpdate()
+      .pipe(
+        takeUntil(this.destroy$),
+        debounceTime(2000)
+      )
+      .subscribe({
+        next: (globalUpdate) => {
+          console.log('🏠 [PRODUCTOS-SECTION] ¡ACTUALIZACIÓN RECIBIDA!:', globalUpdate);
+          this.handlePromotionUpdate(globalUpdate);
+        },
+        error: (error) => {
+          console.error('🏠 [PRODUCTOS-SECTION] Error en listener:', error);
+        },
+        complete: () => {
+          console.log('🏠 [PRODUCTOS-SECTION] Listener completado');
+        }
+      });
+
+    console.log('🏠 [PRODUCTOS-SECTION] Listener configurado exitosamente');
+  }
+
+  // 🆕 NUEVO: Manejar actualizaciones de promociones
+  private handlePromotionUpdate(globalUpdate: any): void {
+  const event = globalUpdate.data;
+
+  // Mostrar mensaje de actualización
+  this.message.loading('Actualizando productos...', { nzDuration: 1500 });
+
+  // Pequeño delay y luego forzar recarga
+  setTimeout(() => {
+    // Llamar con forceRefresh = true
+    this.loadFeaturedProducts(true);
+  }, 100);
+}
+
   /**
    * 🚀 SOLUCIONADO: Forzar finalize después de recibir datos
    */
-  loadFeaturedProducts(): void {
-    this.productsLoading = true;
-    this.hasError = false;
-    this.featuredProducts = [];
-    this.cdr.detectChanges();
+  loadFeaturedProducts(forceRefresh: boolean = false): void {
+  this.productsLoading = true;
+  this.hasError = false;
+  this.featuredProducts = [];
+  this.cdr.detectChanges();
 
-    this.productService.getProducts()
-      .pipe(
-        takeUntil(this.destroy$),
-        map(products => {
-          if (!products?.length) return [];
+  // Si forceRefresh, limpiar caché
+  if (forceRefresh) {
+    // Agregar método para limpiar caché si tienes acceso a CacheService
+    if (this.cacheService) {
+      this.cacheService.invalidate('products');
+    }
+  }
 
-          return products.map(product => {
-            if (product.currentPrice !== undefined) {
-              return product;
-            }
+  // Usar getProductsNoCache si forceRefresh es true
+  const productsMethod = forceRefresh && this.productService.getProductsNoCache
+    ? this.productService.getProductsNoCache()
+    : this.productService.getProducts();
 
-            if (product.originalPrice && product.originalPrice > product.price) {
-              const discountPercentage = Math.round(
-                ((product.originalPrice - product.price) / product.originalPrice) * 100
-              );
+  productsMethod
+    .pipe(
+      takeUntil(this.destroy$),
+      map(products => {
+        if (!products?.length) return [];
 
-              return {
-                ...product,
-                currentPrice: product.price,
-                discountPercentage: discountPercentage
-              };
-            }
+        return products.map(product => {
+          if (product.currentPrice !== undefined) {
+            return product;
+          }
 
-            if (product.discountPercentage && product.discountPercentage > 0) {
-              const discountedPrice = product.price * (1 - (product.discountPercentage / 100));
-
-              return {
-                ...product,
-                originalPrice: product.price,
-                currentPrice: discountedPrice
-              };
-            }
+          if (product.originalPrice && product.originalPrice > product.price) {
+            const discountPercentage = Math.round(
+              ((product.originalPrice - product.price) / product.originalPrice) * 100
+            );
 
             return {
               ...product,
               currentPrice: product.price,
-              discountPercentage: 0
+              discountPercentage: discountPercentage
             };
-          });
-        }),
-      )
-      .subscribe({
-        next: (products) => {
-          this.allProducts = products || [];
-          this.processFeaturedProducts();
-          this.productsLoading = false;
-          this.cdr.detectChanges();
+          }
 
-        },
-        error: (error) => {
-          console.error('❌ ERROR ejecutado:', error);
-          this.hasError = true;
-          this.productsLoading = false;
-          this.message.error('Error al cargar los productos destacados');
-          this.cdr.detectChanges();
-        },
-        complete: () => {
-          this.productsLoading = false;
-          this.cdr.detectChanges();
-        }
-      });
-  }
+          if (product.discountPercentage && product.discountPercentage > 0) {
+            const discountedPrice = product.price * (1 - (product.discountPercentage / 100));
+
+            return {
+              ...product,
+              originalPrice: product.price,
+              currentPrice: discountedPrice
+            };
+          }
+
+          return {
+            ...product,
+            currentPrice: product.price,
+            discountPercentage: 0
+          };
+        });
+      }),
+    )
+    .subscribe({
+      next: (products) => {
+        this.allProducts = products || [];
+        this.processFeaturedProducts();
+        this.productsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('❌ ERROR ejecutado:', error);
+        this.hasError = true;
+        this.productsLoading = false;
+        this.message.error('Error al cargar los productos destacados');
+        this.cdr.detectChanges();
+      },
+      complete: () => {
+        this.productsLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+}
 
   onColorChanged(event: { product: Product, color: Color, index: number }): void {
     const { product, color, index } = event;
@@ -276,11 +335,6 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
       return true;
     }
 
-    // Verificar promoción activa
-    if (product.activePromotion) {
-      return true;
-    }
-
     return false;
   }
 
@@ -365,16 +419,32 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
       return true;
     }
 
-    if (product.activePromotion) {
-      return true;
-    }
-
     if (product.currentPrice !== undefined && product.price &&
       product.currentPrice < product.price) {
       return true;
     }
 
     return false;
+  }
+
+  // ✅ AGREGAR: Método para verificar promociones activas (opcional)
+  hasActivePromotions(product: Product): boolean {
+    if (!product) return false;
+
+    // Usar los mismos criterios que hasDiscount pero con nombre más específico
+    return this.hasDiscount(product);
+  }
+
+  // ✅ AGREGAR: Método para obtener texto de promoción (opcional)
+  getPromotionText(product: Product): string {
+    if (!this.hasDiscount(product)) return '';
+
+    const discountPercent = this.getDiscountPercentage(product);
+    if (discountPercent > 0) {
+      return `${discountPercent}% OFF`;
+    }
+
+    return 'OFERTA';
   }
 
   /**

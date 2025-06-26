@@ -12,6 +12,8 @@ import { ColorService } from '../../../services/admin/color/color.service';
 import { SizeService } from '../../../services/admin/size/size.service';
 import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
 import { SeoService } from '../../../services/seo/seo.service';
+import { CacheService } from '../../../services/admin/cache/cache.service';
+import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
 // Models
 import { Product, Color, Size, ProductVariant } from '../../../models/models';
 
@@ -97,6 +99,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   loading = false;
   products: ProductWithSelectedVariant[] = [];
   filteredProducts: ProductWithSelectedVariant[] = [];
+  private readonly COMPONENT_NAME = 'ProductCatalogComponent';
 
   searchControl = new FormControl('');
   sortControl = new FormControl('relevance');
@@ -162,10 +165,11 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     private colorService: ColorService,
     private sizeService: SizeService,
     private cartService: CartService,
+    private cacheService: CacheService,
     private router: Router,
     private route: ActivatedRoute,
     private message: NzMessageService,
-    private modal: NzModalService,
+    private promotionStateService: PromotionStateService,
     public cdr: ChangeDetectorRef,
     private seoService: SeoService
   ) {
@@ -174,11 +178,13 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
 
+    this.promotionStateService.registerComponent(this.COMPONENT_NAME);
     this.seoService.updatePageSEO('shop');
 
     try {
       // Configurar suscripciones
       this.setupFilterSubscriptions();
+      this.setupPromotionUpdateListener();
       await this.loadFilterOptions();
       // 🔑 CRÍTICO: Cargar productos DESPUÉS
       await this.loadProductsAsync();
@@ -196,8 +202,55 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // 🆕 NUEVO: Configurar escucha de actualizaciones de promociones
+  private setupPromotionUpdateListener(): void {
+    console.log('🛍️ [CATALOG] Configurando listener de promociones...');
+
+    this.promotionStateService.onGlobalUpdate()
+      .pipe(
+        takeUntil(this.destroy$),
+        debounceTime(2000) // Más tiempo para evitar múltiples actualizaciones
+      )
+      .subscribe({
+        next: (globalUpdate) => {
+          console.log('🛍️ [CATALOG] ¡ACTUALIZACIÓN RECIBIDA!:', globalUpdate);
+          this.handlePromotionUpdate(globalUpdate);
+        },
+        error: (error) => {
+          console.error('🛍️ [CATALOG] Error en listener:', error);
+        }
+      });
+  }
+
+  // 🆕 NUEVO: Manejar actualizaciones de promociones
+  private handlePromotionUpdate(globalUpdate: any): void {
+    const event = globalUpdate.data;
+
+    console.log(`🛍️ [CATALOG] Procesando evento: ${event.type}`);
+
+    // Mostrar mensaje de actualización
+    this.message.loading('Actualizando catálogo...', { nzDuration: 1500 });
+
+    // Limpiar caché si tienes acceso
+    if (this.cacheService) {
+      this.cacheService.invalidate('products');
+      this.cacheService.clearCache();
+    }
+
+    // Pequeño delay y luego forzar recarga
+    setTimeout(() => {
+      // Llamar con forceRefresh = true
+      this.loadProductsAsync(true).then(() => {
+        console.log('🛍️ [CATALOG] Productos actualizados');
+      }).catch(error => {
+        console.error('🛍️ [CATALOG] Error actualizando productos:', error);
+      });
+    }, 100);
   }
 
   private initFilterForm(): void {
@@ -306,16 +359,22 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
     console.groupEnd();
   }
-  private async loadProductsAsync(): Promise<void> {
+  private async loadProductsAsync(forceRefresh: boolean = false): Promise<void> {
     this.loading = true;
     this.cdr.detectChanges();
 
     try {
-      // Obtener productos
-      const products = await firstValueFrom(this.productService.getProducts());
-      console.log(`📦 ${products.length} productos obtenidos`);
+      // 🔧 MODIFICAR: Elegir método según forceRefresh
+      let products: Product[];
 
-      // Calcular precios
+      if (forceRefresh && this.productService.getProductsNoCache) {
+        console.log('🔄 [CATALOG] Forzando recarga sin caché');
+        products = await firstValueFrom(this.productService.getProductsNoCache());
+      } else {
+        products = await firstValueFrom(this.productService.getProducts());
+      }
+
+      // Calcular precios con promociones
       const productsWithPrices = await firstValueFrom(
         this.productPriceService.calculateDiscountedPrices(products)
       );
@@ -408,8 +467,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     const sortBy = this.sortControl.value || 'relevance';
     let filtered = [...this.products];
 
-    console.log(`📊 Filtrando ${filtered.length} productos`);
-
     // Búsqueda por texto
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -419,7 +476,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         p.tags?.some(tag => tag.toLowerCase().includes(query)) ||
         p.sku.toLowerCase().includes(query)
       );
-      console.log(`🔍 Después de búsqueda: ${filtered.length}`);
     }
 
     // Filtro de categorías
@@ -433,7 +489,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         }
         return false;
       });
-      console.log(`📂 Después de categorías: ${filtered.length}`);
     }
 
     // Filtro por género
@@ -448,7 +503,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
         return productGender === filterGender;
       });
-      console.log(`👤 Después de género (${filters.gender}): ${filtered.length}`);
     }
 
     // Resto de tus filtros...
@@ -459,7 +513,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
           filters.colors.includes(productColor.name)
         );
       });
-      console.log(`🎨 Después de colores: ${filtered.length}`);
     }
 
     if (filters.sizes?.length) {
@@ -469,7 +522,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
           filters.sizes.includes(productSize.name)
         );
       });
-      console.log(`📏 Después de tallas: ${filtered.length}`);
     }
 
     if (filters.priceRange) {
@@ -478,7 +530,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         const price = p.currentPrice || p.price;
         return price >= minPrice && price <= maxPrice;
       });
-      console.log(`💰 Después de precio: ${filtered.length}`);
     }
 
     if (filters.priceRanges?.length) {
@@ -494,7 +545,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
           }
         });
       });
-      console.log(`💵 Después de rangos precio: ${filtered.length}`);
     }
 
     // Filtros booleanos
@@ -517,8 +567,6 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     // Actualizar
     this.filteredProducts = filtered;
     this.total = filtered.length;
-
-    console.log(`✅ Filtros aplicados: ${this.total} productos finales`);
 
     setTimeout(() => {
       this.syncProductsWithActiveFilters();

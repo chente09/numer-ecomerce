@@ -4,73 +4,188 @@ import { BehaviorSubject, filter, Observable, Subject } from 'rxjs';
 import { Product, Promotion } from '../../../models/models';
 
 export interface PromotionChangeEvent {
-  type: 'created' | 'updated' | 'deleted' | 'applied' | 'removed';
+  type: 'created' | 'updated' | 'deleted' | 'applied' | 'removed' | 'activated' | 'deactivated';
   promotionId: string;
   productId?: string;
   promotion?: Promotion;
   affectedProducts?: string[];
+  // 🆕 NUEVOS CAMPOS para broadcasting
+  timestamp?: Date;
+  source?: 'admin' | 'system' | 'schedule';
+  reason?: string;
+}
+
+// 🆕 NUEVA INTERFACE para actualizaciones globales
+export interface GlobalPromotionUpdate {
+  action: 'promotion_changed' | 'product_promotion_changed' | 'bulk_update';
+  data: PromotionChangeEvent;
+  affectedComponents: string[];
+}
+
+export interface GlobalUpdateEvent {
+  type: string;
+  data: any;
+  timestamp: Date;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class PromotionStateService {
-  // 📡 EVENTOS DE CAMBIO DE PROMOCIONES
+  // 📡 EVENTOS DE CAMBIO DE PROMOCIONES (existente)
   private promotionChanges$ = new Subject<PromotionChangeEvent>();
 
-  // 🔄 ESTADO DE PRODUCTOS CON PROMOCIONES APLICADAS
+  // 🔄 ESTADO DE PRODUCTOS CON PROMOCIONES APLICADAS (existente)
   private productsWithPromotions$ = new BehaviorSubject<Map<string, Promotion[]>>(new Map());
 
-  // 📊 CACHE DE PROMOCIONES ACTIVAS
+  // 📊 CACHE DE PROMOCIONES ACTIVAS (existente)
   private activePromotions$ = new BehaviorSubject<Promotion[]>([]);
 
+  // 🆕 NUEVOS SUBJECTS para broadcasting global
+  private globalUpdates$ = new Subject<GlobalPromotionUpdate>();
+  private componentRegistrations$ = new BehaviorSubject<Set<string>>(new Set());
+
+  private broadcastChannel: BroadcastChannel | null = null;
+  private readonly CHANNEL_NAME = 'numer-promotions';
+
+
   constructor() {
+    this.initCrossWindowCommunication();
   }
 
-  // ==================== EMISIÓN DE EVENTOS ====================
+  // 🆕 AGREGAR: Inicializar canal de comunicación
+  private initCrossWindowCommunication(): void {
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        this.broadcastChannel = new BroadcastChannel(this.CHANNEL_NAME);
+
+        this.broadcastChannel.onmessage = (event) => {
+
+          // Emitir el evento a los componentes locales
+          this.promotionChanges$.next(event.data);
+
+          const globalUpdate: GlobalPromotionUpdate = {
+            action: 'promotion_changed',
+            data: event.data,
+            affectedComponents: Array.from(this.componentRegistrations$.value)
+          };
+
+          this.globalUpdates$.next(globalUpdate);
+        };
+      } catch (error) {
+        console.error('📡 [CROSS-WINDOW] Error:', error);
+      }
+    }
+  }
+
+  // ==================== 🆕 NUEVOS MÉTODOS DE BROADCASTING ====================
 
   /**
-   * 🚀 Notifica cambios en promociones (CRUD)
+   * 📢 BROADCASTING GLOBAL - Notifica a TODOS los componentes
+   */
+  broadcastGlobalUpdate(event: PromotionChangeEvent): void {
+
+    // Enriquecer evento con timestamp si no lo tiene
+    const enrichedEvent = {
+      ...event,
+      timestamp: event.timestamp || new Date(),
+      source: event.source || 'admin'
+    };
+
+    // Notificar por el canal normal
+    this.promotionChanges$.next(enrichedEvent);
+
+    // 🆕 NOTIFICAR POR EL CANAL GLOBAL
+    const globalUpdate: GlobalPromotionUpdate = {
+      action: 'promotion_changed',
+      data: enrichedEvent,
+      affectedComponents: Array.from(this.componentRegistrations$.value)
+    };
+
+    this.globalUpdates$.next(globalUpdate);
+
+    // 🆕 AGREGAR: Enviar a otras ventanas (solo 3 líneas)
+    if (this.broadcastChannel) {
+      this.broadcastChannel.postMessage(enrichedEvent);
+    }
+  }
+
+  /**
+   * 👂 ESCUCHAR actualizaciones globales
+   */
+  onGlobalUpdate(): Observable<GlobalPromotionUpdate> {
+    return this.globalUpdates$.asObservable();
+  }
+
+  /**
+   * 📝 REGISTRAR componente para actualizaciones
+   */
+  registerComponent(componentName: string): void {
+    const current = this.componentRegistrations$.value;
+    current.add(componentName);
+    this.componentRegistrations$.next(new Set(current));
+  }
+
+  /**
+   * 🗑️ DESREGISTRAR componente
+   */
+  unregisterComponent(componentName: string): void {
+    const current = this.componentRegistrations$.value;
+    current.delete(componentName);
+    this.componentRegistrations$.next(new Set(current));
+  }
+
+  // ==================== 🔧 MODIFICACIONES A MÉTODOS EXISTENTES ====================
+
+  /**
+   * 🚀 Notifica cambios en promociones (MODIFICADO)
    */
   notifyPromotionChange(event: PromotionChangeEvent): void {
     console.log('📢 [PROMOTION STATE] Cambio notificado:', event);
-    this.promotionChanges$.next(event);
+
+    // 🆕 USAR EL NUEVO BROADCASTING
+    this.broadcastGlobalUpdate(event);
   }
 
   /**
-   * 🎯 Notifica creación de promoción
+   * 🎯 Notifica creación de promoción (MODIFICADO)
    */
   notifyPromotionCreated(promotion: Promotion): void {
-    this.notifyPromotionChange({
+    this.broadcastGlobalUpdate({
       type: 'created',
       promotionId: promotion.id,
-      promotion
+      promotion,
+      timestamp: new Date(),
+      source: 'admin'
     });
 
-    // Actualizar cache de promociones activas
     this.updateActivePromotionsCache();
   }
 
   /**
-   * 🔄 Notifica actualización de promoción
+   * 🔄 Notifica actualización de promoción (MODIFICADO)
    */
   notifyPromotionUpdated(promotionId: string, promotion: Promotion): void {
-    this.notifyPromotionChange({
+    this.broadcastGlobalUpdate({
       type: 'updated',
       promotionId,
-      promotion
+      promotion,
+      timestamp: new Date(),
+      source: 'admin'
     });
 
     this.updateActivePromotionsCache();
   }
 
   /**
-   * 🗑️ Notifica eliminación de promoción
+   * 🗑️ Notifica eliminación de promoción (MODIFICADO)
    */
   notifyPromotionDeleted(promotionId: string): void {
-    this.notifyPromotionChange({
+    this.broadcastGlobalUpdate({
       type: 'deleted',
-      promotionId
+      promotionId,
+      timestamp: new Date(),
+      source: 'admin'
     });
 
     this.updateActivePromotionsCache();
@@ -78,35 +193,69 @@ export class PromotionStateService {
   }
 
   /**
-   * ✅ Notifica aplicación de promoción a producto
+   * ✅ Notifica aplicación de promoción a producto (MODIFICADO)
    */
   notifyPromotionApplied(productId: string, promotion: Promotion): void {
-    this.notifyPromotionChange({
+    this.broadcastGlobalUpdate({
       type: 'applied',
       promotionId: promotion.id,
       productId,
-      promotion
+      promotion,
+      affectedProducts: [productId],
+      timestamp: new Date(),
+      source: 'admin'
     });
 
-    // Actualizar mapa de productos con promociones
     this.addPromotionToProduct(productId, promotion);
   }
 
   /**
-   * ❌ Notifica eliminación de promoción de producto
+   * ❌ Notifica eliminación de promoción de producto (MODIFICADO)
    */
   notifyPromotionRemoved(productId: string, promotionId: string): void {
-    this.notifyPromotionChange({
+    this.broadcastGlobalUpdate({
       type: 'removed',
       promotionId,
-      productId
+      productId,
+      affectedProducts: [productId],
+      timestamp: new Date(),
+      source: 'admin'
     });
 
-    // Actualizar mapa de productos con promociones
     this.removePromotionFromProduct(productId, promotionId);
   }
 
-  // ==================== SUSCRIPCIÓN A EVENTOS ====================
+  // 🆕 NUEVOS MÉTODOS para acciones específicas
+
+  /**
+   * 🟢 Notifica activación de promoción
+   */
+  notifyPromotionActivated(promotionId: string, affectedProductIds?: string[]): void {
+    this.broadcastGlobalUpdate({
+      type: 'activated',
+      promotionId,
+      affectedProducts: affectedProductIds,
+      timestamp: new Date(),
+      source: 'admin',
+      reason: 'Promoción activada por administrador'
+    });
+  }
+
+  /**
+   * 🔴 Notifica desactivación de promoción
+   */
+  notifyPromotionDeactivated(promotionId: string, affectedProductIds?: string[]): void {
+    this.broadcastGlobalUpdate({
+      type: 'deactivated',
+      promotionId,
+      affectedProducts: affectedProductIds,
+      timestamp: new Date(),
+      source: 'admin',
+      reason: 'Promoción desactivada por administrador'
+    });
+  }
+
+  // ==================== MÉTODOS EXISTENTES (sin cambios) ====================
 
   /**
    * 👂 Escucha todos los cambios de promociones
@@ -147,14 +296,12 @@ export class PromotionStateService {
     return this.activePromotions$.asObservable();
   }
 
-  // ==================== GESTIÓN DE ESTADO ====================
+  // ==================== MÉTODOS PRIVADOS (sin cambios) ====================
 
   /**
    * 🔄 Actualiza cache de promociones activas
    */
   private updateActivePromotionsCache(): void {
-    // Este método se podría integrar con PromotionService
-    // Por ahora es un placeholder
     console.log('🔄 [PROMOTION STATE] Actualizando cache de promociones activas');
   }
 
@@ -165,14 +312,11 @@ export class PromotionStateService {
     const currentMap = this.productsWithPromotions$.value;
     const existingPromotions = currentMap.get(productId) || [];
 
-    // Evitar duplicados
     const updatedPromotions = existingPromotions.filter(p => p.id !== promotion.id);
     updatedPromotions.push(promotion);
 
     currentMap.set(productId, updatedPromotions);
     this.productsWithPromotions$.next(new Map(currentMap));
-
-    console.log(`✅ [PROMOTION STATE] Promoción ${promotion.id} agregada al producto ${productId}`);
   }
 
   /**
@@ -191,8 +335,6 @@ export class PromotionStateService {
     }
 
     this.productsWithPromotions$.next(new Map(currentMap));
-
-    console.log(`➖ [PROMOTION STATE] Promoción ${promotionId} eliminada del producto ${productId}`);
   }
 
   /**
@@ -212,11 +354,9 @@ export class PromotionStateService {
     }
 
     this.productsWithPromotions$.next(new Map(currentMap));
-
-    console.log(`🗑️ [PROMOTION STATE] Promoción ${promotionId} eliminada de todos los productos`);
   }
 
-  // ==================== UTILIDADES ====================
+  // ==================== MÉTODOS DE UTILIDAD (sin cambios) ====================
 
   /**
    * 🔍 Verificar si un producto tiene promociones activas
@@ -241,7 +381,6 @@ export class PromotionStateService {
   clearState(): void {
     this.productsWithPromotions$.next(new Map());
     this.activePromotions$.next([]);
-    console.log('🧹 [PROMOTION STATE] Estado limpiado');
   }
 
   /**
@@ -252,6 +391,7 @@ export class PromotionStateService {
 
     const productsMap = this.productsWithPromotions$.value;
     const activePromotions = this.activePromotions$.value;
+    const registeredComponents = this.componentRegistrations$.value;
 
     console.log('📦 Productos con promociones:', productsMap.size);
     productsMap.forEach((promotions, productId) => {
@@ -259,23 +399,22 @@ export class PromotionStateService {
     });
 
     console.log('📊 Promociones activas:', activePromotions.length);
+    console.log('🔌 Componentes registrados:', Array.from(registeredComponents));
 
     console.groupEnd();
   }
 
   /**
- * 🔧 NUEVO: Limpiar estado de producto específico
- */
+   * 🔧 Limpiar estado de producto específico
+   */
   clearProductPromotions(productId: string): void {
     const currentMap = this.productsWithPromotions$.value;
     currentMap.delete(productId);
     this.productsWithPromotions$.next(new Map(currentMap));
-
-    console.log(`🧹 [PROMOTION STATE] Estado limpiado para producto ${productId}`);
   }
 
   /**
-   * 🔧 NUEVO: Validar consistencia de estado
+   * 🔧 Validar consistencia de estado
    */
   validateProductState(productId: string, expectedPromotions: string[]): boolean {
     const currentPromotions = this.getProductPromotions(productId);
@@ -292,5 +431,28 @@ export class PromotionStateService {
     }
 
     return isConsistent;
+  }
+
+  /**
+ * 📡 Notifica un update global específico (MÉTODO NUEVO - SEGURO DE AGREGAR)
+ */
+  notifyGlobalUpdate(update: GlobalUpdateEvent): void {
+
+    // Convertir el GlobalUpdateEvent a tu formato existente GlobalPromotionUpdate
+    const promotionUpdate: GlobalPromotionUpdate = {
+      action: 'promotion_changed',
+      data: {
+        type: update.data.type || 'updated',
+        promotionId: update.data.promotionId || '',
+        productId: update.data.affectedProducts?.[0],
+        affectedProducts: update.data.affectedProducts,
+        timestamp: update.timestamp,
+        source: 'admin'
+      },
+      affectedComponents: Array.from(this.componentRegistrations$.value)
+    };
+
+    // Usar tu método existente
+    this.globalUpdates$.next(promotionUpdate);
   }
 }

@@ -45,20 +45,15 @@ export class CacheService {
 
   // ✅ CORREGIDO: getCached sin logs excesivos
   getCached<T>(key: string, dataFactory: () => Observable<T>): Observable<T> {
-    this.log(`🔍 [CACHE] Solicitando: ${key}`);
 
     if (this.isCacheExpired(key)) {
-      this.log(`⏰ [CACHE] Caché expirado para: ${key}`);
       this.invalidate(key);
     }
 
     const cachedData = this.cache.get(key);
     if (cachedData && !this.isCacheExpired(key)) {
-      this.log(`♻️ [CACHE] Usando caché existente para: ${key}`);
       return of(cachedData.data);
     }
-
-    this.log(`🆕 [CACHE] Creando nueva petición para: ${key}`);
 
     return dataFactory().pipe(
       take(1),
@@ -137,7 +132,6 @@ export class CacheService {
   // ✅ CORREGIDO: invalidate sin setTimeout problemático
   invalidate(key: string): void {
     if (this.invalidatingCache) {
-      this.log(`⚠️ [CACHE] Evitando bucle infinito para: ${key}`, true);
       return;
     }
 

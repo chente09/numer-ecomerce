@@ -173,12 +173,60 @@ export class ProductService {
   /**
    * Fuerza la actualización de un producto específico
    */
+  // REEMPLAZAR tu método existente forceRefreshProduct con esta versión mejorada:
   forceRefreshProduct(productId: string): Observable<Product | null> {
+    console.log(`🔄 [PRODUCT SERVICE] Forzando recarga completa del producto ${productId}...`);
+
     // Invalidar TODOS los cachés relacionados con este producto
     this.cacheService.invalidateProductCache(productId);
 
+    // ✅ NUEVO: También invalidar caché específico de variantes
+    this.inventoryService.invalidateVariantCache(productId);
+
     // Obtener producto fresco del servidor
-    return this.getProductByIdNoCache(productId);
+    return this.getProductByIdNoCache(productId).pipe(
+      take(1),
+      switchMap(product => {
+        if (!product) return of(null);
+
+        console.log(`📦 [PRODUCT SERVICE] Producto base obtenido, obteniendo variantes frescas...`);
+
+        // ✅ NUEVO: Obtener variantes frescas usando el método sin caché
+        return this.inventoryService.getVariantsByProductIdNoCache(productId).pipe(
+          take(1),
+          map(variants => {
+            console.log(`🧬 [PRODUCT SERVICE] Variantes frescas obtenidas: ${variants.length}`);
+
+            // Verificar si hay variantes con promociones
+            const variantsWithPromotions = variants.filter(v => v.promotionId);
+            if (variantsWithPromotions.length > 0) {
+              console.log(`🏷️ [PRODUCT SERVICE] Variantes con promociones encontradas: ${variantsWithPromotions.length}`);
+              variantsWithPromotions.forEach(v => {
+                console.log(`   - ${v.colorName}-${v.sizeName}: Promoción ${v.promotionId}`);
+              });
+            }
+
+            // Enriquecer producto con variantes frescas
+            const enrichedProduct = this.enrichProductWithVariants(product, variants);
+
+            // Calcular precios con las promociones aplicadas
+            const productWithPricing = this.priceService.calculateDiscountedPrice(enrichedProduct);
+
+            console.log(`✅ [PRODUCT SERVICE] Producto enriquecido con variantes frescas completado`);
+            return productWithPricing;
+          }),
+          catchError(error => {
+            console.error('❌ [PRODUCT SERVICE] Error obteniendo variantes frescas:', error);
+            // Fallback: usar el producto sin variantes actualizadas
+            return of(product);
+          })
+        );
+      }),
+      catchError(error => {
+        console.error(`❌ [PRODUCT SERVICE] Error en forceRefreshProduct:`, error);
+        return of(null);
+      })
+    );
   }
 
   /**
@@ -485,7 +533,6 @@ export class ProductService {
           return this.inventoryService.getVariantsByProductId(productId).pipe(
             take(1),
             map(variants => {
-
               // ✅ VERIFICACIÓN CRÍTICA: Asegurar que son objetos
               if (!variants || !Array.isArray(variants)) {
                 return product; // Devolver producto sin variantes si fallan
@@ -499,21 +546,14 @@ export class ProductService {
               // ✅ ENRIQUECER SOLO SI LAS VARIANTES SON VÁLIDAS
               const enrichedProduct = this.enrichProductWithVariants(product, variants);
 
-              return enrichedProduct;
+              // ✅ CALCULAR PRECIO DIRECTAMENTE (sin promociones externas)
+              const productWithPricing = this.priceService.calculateDiscountedPrice(enrichedProduct);
+
+              return productWithPricing;
             }),
-            switchMap(enrichedProduct => {
-              // Aplicar promociones
-              return from(this.priceService.addPromotionsToProduct(enrichedProduct)).pipe(
-                take(1),
-                map(productWithPromotions => {
-                  const productWithPricing = this.priceService.calculateDiscountedPrice(productWithPromotions);
-                  return productWithPricing;
-                }),
-                catchError(error => {
-                  console.error('❌ Error aplicando promociones:', error);
-                  return of(enrichedProduct); // Fallback sin promociones
-                })
-              );
+            catchError(error => {
+              console.error('❌ Error enriqueciendo producto:', error);
+              return of(product); // Fallback
             })
           );
         }),
@@ -524,6 +564,7 @@ export class ProductService {
       );
     });
   }
+
 
   /**
    * 🚀 CORREGIDO: Obtiene productos por categoría
@@ -555,8 +596,12 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Obtiene productos destacados
    */
-  getFeaturedProducts(limit: number = 8): Observable<Product[]> {
+  getFeaturedProducts(limit: number = 8, forceRefresh: boolean = false): Observable<Product[]> {
     const cacheKey = `${this.productsCacheKey}_featured_${limit}`;
+
+    if (forceRefresh) {
+      this.cacheService.invalidate(cacheKey);
+    }
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
 
@@ -579,8 +624,12 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Obtiene productos más vendidos
    */
-  getBestSellingProducts(limit: number = 8): Observable<Product[]> {
+  getBestSellingProducts(limit: number = 8, forceRefresh: boolean = false): Observable<Product[]> {
     const cacheKey = `${this.productsCacheKey}_bestselling_${limit}`;
+
+    if (forceRefresh) {
+      this.cacheService.invalidate(cacheKey);
+    }
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
 
@@ -603,8 +652,12 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Obtiene productos nuevos
    */
-  getNewProducts(limit: number = 8): Observable<Product[]> {
+  getNewProducts(limit: number = 8, forceRefresh: boolean = false): Observable<Product[]> {
     const cacheKey = `${this.productsCacheKey}_new_${limit}`;
+
+    if (forceRefresh) {
+      this.cacheService.invalidate(cacheKey);
+    }
 
     return this.cacheService.getCached<Product[]>(cacheKey, () => {
 
@@ -627,25 +680,147 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Obtiene los productos en oferta
    */
-  getDiscountedProducts(limit: number = 8): Observable<Product[]> {
+  getDiscountedProducts(limit: number = 8, forceRefresh: boolean = false): Observable<Product[]> {
     const cacheKey = `${this.productsCacheKey}_discounted_${limit}`;
 
-    return this.cacheService.getCached<Product[]>(cacheKey, () => {
+    // Si forceRefresh es true, NO usar caché en absoluto
+    if (forceRefresh) {
+      console.log('🔄 [PRODUCT SERVICE] Forzando recarga de productos con descuento...');
 
+      // Limpiar caché para futuras llamadas
+      this.cacheService.invalidate(cacheKey);
+      this.cacheService.invalidate(this.productsCacheKey);
+
+      // Usar getProductsNoCache directamente
+      return this.getProductsNoCache().pipe(
+        take(1),
+        switchMap(products => {
+          console.log(`📊 Total productos obtenidos sin caché: ${products.length}`);
+          return this.priceService.calculateDiscountedPrices(products).pipe(take(1));
+        }),
+        map(products => {
+          const discounted = products.filter(product => {
+            const hasDirectDiscount = product.discountPercentage && product.discountPercentage > 0;
+            const hasPriceReduction = product.currentPrice &&
+              product.originalPrice &&
+              product.currentPrice < product.originalPrice;
+            const hasVariantPromotion = product.variants && product.variants.some(variant =>
+              variant.promotionId ||
+              (variant.discountedPrice && variant.originalPrice &&
+                variant.discountedPrice < variant.originalPrice)
+            );
+
+            return hasDirectDiscount || hasPriceReduction || hasVariantPromotion;
+          });
+
+          const sorted = discounted.sort((a, b) => {
+            const getDiscountPercent = (product: Product) => {
+              if (product.discountPercentage) return product.discountPercentage;
+              if (product.originalPrice && product.currentPrice) {
+                return ((product.originalPrice - product.currentPrice) / product.originalPrice) * 100;
+              }
+              return 0;
+            };
+
+            return getDiscountPercent(b) - getDiscountPercent(a);
+          });
+
+          console.log(`📊 Productos con descuento encontrados: ${sorted.length}`);
+
+          return sorted.slice(0, limit);
+        }),
+        catchError(error => ErrorUtil.handleError(error, 'getDiscountedProducts'))
+      );
+    }
+
+    // Si no es forceRefresh, usar caché normal
+    return this.cacheService.getCached<Product[]>(cacheKey, () => {
       return this.getProducts().pipe(
-        take(1), // ✅ NUEVO: Forzar completar
+        take(1),
         switchMap(products => this.priceService.calculateDiscountedPrices(products).pipe(take(1))),
         map(products => {
-          const discounted = products.filter(product =>
-            (product.discountPercentage && product.discountPercentage > 0) ||
-            product.activePromotion
-          );
-          const limited = discounted.slice(0, limit);
-          return limited;
+          const discounted = products.filter(product => {
+            const hasDirectDiscount = product.discountPercentage && product.discountPercentage > 0;
+            const hasPriceReduction = product.currentPrice &&
+              product.originalPrice &&
+              product.currentPrice < product.originalPrice;
+            const hasVariantPromotion = product.variants && product.variants.some(variant =>
+              variant.promotionId ||
+              (variant.discountedPrice && variant.originalPrice &&
+                variant.discountedPrice < variant.originalPrice)
+            );
+
+            return hasDirectDiscount || hasPriceReduction || hasVariantPromotion;
+          });
+
+          const sorted = discounted.sort((a, b) => {
+            const getDiscountPercent = (product: Product) => {
+              if (product.discountPercentage) return product.discountPercentage;
+              if (product.originalPrice && product.currentPrice) {
+                return ((product.originalPrice - product.currentPrice) / product.originalPrice) * 100;
+              }
+              return 0;
+            };
+
+            return getDiscountPercent(b) - getDiscountPercent(a);
+          });
+
+          return sorted.slice(0, limit);
         }),
         catchError(error => ErrorUtil.handleError(error, 'getDiscountedProducts'))
       );
     });
+  }
+
+  // En ProductService, agrega este método:
+  getDiscountedProductsForceRefresh(limit: number = 8): Observable<Product[]> {
+    console.log('🔄 [PRODUCT SERVICE] Forzando recarga de productos con descuento...');
+
+    // Limpiar caché específico
+    this.cacheService.invalidate(`${this.productsCacheKey}_discounted_${limit}`);
+    this.cacheService.invalidate(this.productsCacheKey);
+
+    // Obtener productos frescos directamente
+    return this.getProductsNoCache().pipe(
+      take(1),
+      switchMap(products => {
+        console.log(`📊 Total productos obtenidos: ${products.length}`);
+        return this.priceService.calculateDiscountedPrices(products).pipe(take(1));
+      }),
+      map(products => {
+        const discounted = products.filter(product => {
+          const hasDirectDiscount = product.discountPercentage && product.discountPercentage > 0;
+          const hasPriceReduction = product.currentPrice &&
+            product.originalPrice &&
+            product.currentPrice < product.originalPrice;
+          const hasVariantPromotion = product.variants && product.variants.some(variant =>
+            variant.promotionId ||
+            (variant.discountedPrice && variant.originalPrice &&
+              variant.discountedPrice < variant.originalPrice)
+          );
+
+          const includeProduct = hasDirectDiscount || hasPriceReduction || hasVariantPromotion;
+
+          if (includeProduct) {
+            console.log(`✅ Incluyendo producto con descuento: ${product.name}`, {
+              hasDirectDiscount,
+              hasPriceReduction,
+              hasVariantPromotion
+            });
+          }
+
+          return includeProduct;
+        });
+
+        console.log(`📊 Productos con descuento encontrados: ${discounted.length}`);
+
+        return discounted.slice(0, limit);
+      }),
+      catchError(error => {
+        console.error('❌ Error en getDiscountedProductsForceRefresh:', error);
+        return of([]);
+      })
+    );
   }
 
   /**
@@ -953,23 +1128,23 @@ export class ProductService {
  * 🔧 NUEVO: Sanitiza datos para Firestore eliminando campos undefined
  */
   private sanitizeForFirestore(data: any): any {
-  const sanitized: any = {};
+    const sanitized: any = {};
 
-  Object.entries(data).forEach(([key, value]) => {
-    if (value !== undefined) {
-      sanitized[key] = value;
-    }
-  });
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined) {
+        sanitized[key] = value;
+      }
+    });
 
-  return sanitized;
-}
+    return sanitized;
+  }
 
   /**
  * 🔧 NUEVO: Método público para sanitizar (uso desde componentes)
  */
   public sanitizeDataForFirestore(data: any): any {
-  return this.sanitizeForFirestore(data);
-}
+    return this.sanitizeForFirestore(data);
+  }
 
   /**
    * Lógica interna de actualización de producto (CORREGIDA)

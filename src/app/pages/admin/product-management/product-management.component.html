@@ -95,7 +95,7 @@
                                         </nz-tag>
 
                                         <!-- 🆕 NUEVO: Mostrar si tiene promoción activa -->
-                                        <nz-tag *ngIf="product.activePromotion" [nzColor]="'purple'">
+                                        <nz-tag *ngIf="hasActivePromotions(product)" [nzColor]="'purple'">
                                             <span nz-icon nzType="tags"></span> Promoción
                                         </nz-tag>
                                     </div>

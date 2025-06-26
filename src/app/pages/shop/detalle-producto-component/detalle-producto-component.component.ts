@@ -1,6 +1,6 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ProductService } from '../../../services/admin/product/product.service';
-import { CategoryService, Category } from '../../../services/admin/category/category.service';
+import { CategoryService } from '../../../services/admin/category/category.service';
 import { SeoService } from '../../../services/seo/seo.service';
 import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
 import { Product, Color, Size, ProductVariant } from '../../../models/models';
@@ -13,11 +13,13 @@ import { FormsModule } from '@angular/forms';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
-import { Observable, Subject, catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
+import { Observable, Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
 import { CacheService } from '../../../services/admin/cache/cache.service';
 import { StockUpdate, StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ProductCardComponent } from "../../../components/product-card/product-card.component";
+import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
+import { ChangeDetectorRef } from '@angular/core';
 
 // 🆕 Interfaces para las nuevas funcionalidades
 interface TechnicalSpec {
@@ -78,6 +80,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   productsLoading: boolean = true;
 
   private destroy$ = new Subject<void>();
+  private promotionNamesCache = new Map<string, string>();
 
   // Categoría
   categoryName: string = '';
@@ -97,44 +100,178 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
 
   // 🆕 Nuevas propiedades para funcionalidades ecuatorianas
   userLocation: string = 'Tu ciudad'; // Detectar o configurar ubicación del usuario
+  private readonly COMPONENT_NAME = 'DetalleProductoComponent';
+  private _cachedVariantPrice: any = null;
+  private _lastVariantId: string | null = null;
+
 
   constructor(
     private route: ActivatedRoute,
-    private router: Router,
     private productService: ProductService,
     private categoryService: CategoryService,
     private stockUpdateService: StockUpdateService,
     private inventoryService: ProductInventoryService,
+    private promotionStateService: PromotionStateService,
     private modalService: NzModalService,
     private cartService: CartService,
     private cacheService: CacheService,
     private message: NzMessageService,
     private seoService: SeoService,
+    private cdr: ChangeDetectorRef,
   ) { }
 
   ngOnInit(): void {
+    this.promotionStateService.registerComponent(this.COMPONENT_NAME);
 
     this.detectUserLocation();
 
+    // 🆕 ACTUALIZAR SUSCRIPCIÓN A PARÁMETROS
     this.route.paramMap.pipe(
       takeUntil(this.destroy$)
     ).subscribe(params => {
       const productId = params.get('id');
       if (productId) {
-        this.loadProduct(productId);
+        // 🚀 LLAMAR CON PARÁMETRO forceRefresh
+        this.loadProduct(productId, false); // false = carga normal inicial
       } else {
         console.error('ID de producto no proporcionado');
         this.productsLoading = false;
       }
     });
-
-    this.setupCacheNotifications();
     this.setupStockUpdateListener();
+    this.setupPromotionUpdateListener();
   }
 
   ngOnDestroy(): void {
+    this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // 🆕 NUEVO: Configurar escucha de actualizaciones de promociones
+  private setupPromotionUpdateListener(): void {
+    
+
+    // 📡 Listener para updates globales
+    this.promotionStateService.onGlobalUpdate()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (globalUpdate) => {
+
+          // Verificar si es relevante
+          const isRelevant = this.isPromotionUpdateRelevant(globalUpdate);
+
+          if (isRelevant) {
+            this.handlePromotionUpdate(globalUpdate);
+          }
+        },
+        error: (error) => {
+          console.error('❌ [DETALLE] Error en listener global:', error);
+        }
+      });
+
+    // 📡 También escuchar el listener normal de promociones
+    this.promotionStateService.onPromotionChange()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (event) => {
+
+          if (this.product && event.affectedProducts?.includes(this.product.id)) {
+            this.forceReloadProduct();
+          }
+        },
+        error: (error) => {
+          console.error('❌ [DETALLE] Error en listener de promociones:', error);
+        }
+      });
+  }
+
+  // 🆕 NUEVO: Verificar si la actualización es relevante para este producto
+  private isPromotionUpdateRelevant(globalUpdate: any): boolean {
+    if (!this.product) return false;
+
+    const event = globalUpdate.data;
+
+    // 🟢 AGREGAR: Verificar si afecta a variantes específicas
+    if (event.targetType === 'variant' && this.selectedVariant) {
+      return event.targetId === this.selectedVariant.id;
+    }
+
+    // Tu lógica existente
+    if (event.affectedProducts && Array.isArray(event.affectedProducts)) {
+      return event.affectedProducts.includes(this.product.id);
+    }
+
+    return true;
+  }
+
+  // 🆕 NUEVO: Manejar actualizaciones de promociones
+  private handlePromotionUpdate(globalUpdate: any): void {
+    if (!this.product) return;
+
+    const event = globalUpdate.data;
+
+    // 🟢 AGREGAR: Manejar actualizaciones de variantes específicas
+    if (event.targetType === 'variant') {
+      this.reloadVariantData(event);
+    } else {
+      // Tu lógica existente
+      this.reloadProductData();
+    }
+
+    this.showClientPromotionMessage(event);
+  }
+
+  private reloadVariantData(event: any): void {
+    const currentProductId = this.route.snapshot.paramMap.get('id');
+    if (!currentProductId) return;
+
+
+    // Mostrar indicador de carga
+    this.message.loading('Actualizando precios...', { nzDuration: 1000 });
+
+    // 🚀 FORZAR RECARGA COMPLETA DEL PRODUCTO (más agresivo)
+    this.loadProduct(currentProductId, true);
+  }
+
+  /**
+   * 🆕 NUEVO: Recargar datos completos del producto
+   */
+  private reloadProductData(): void {
+    const currentProductId = this.route.snapshot.paramMap.get('id');
+    if (!currentProductId) return;
+
+    // Mostrar indicador de carga
+    this.message.loading('Actualizando promociones...', { nzDuration: 1500 });
+
+    // Delay pequeño para asegurar que el caché del backend se limpió
+    setTimeout(() => {
+      // 🚀 RECARGAR CON FORCE REFRESH = TRUE
+      this.loadProduct(currentProductId, true);
+    }, 100);
+  }
+
+  // 🆕 NUEVO: Mostrar mensajes amigables al cliente
+  private showClientPromotionMessage(event: any): void {
+    switch (event.type) {
+      case 'deactivated':
+      case 'removed':
+      case 'deleted':
+        this.message.warning('🏷️ La promoción de este producto ya no está disponible');
+        break;
+
+      case 'activated':
+      case 'applied':
+        this.message.success('🎉 ¡Nueva promoción disponible para este producto!');
+        break;
+
+      case 'updated':
+        this.message.info('🔄 Se ha actualizado la promoción de este producto');
+        break;
+
+      default:
+        this.message.info('🔄 Se ha actualizado la información del producto');
+    }
   }
 
   // 🚀 NUEVO MÉTODO: Configurar escucha de actualizaciones de stock
@@ -154,7 +291,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
           )
         )
         .subscribe(update => {
-          console.log('🔄 [DETALLE] Recibida actualización de stock:', update);
           this.handleStockUpdate(update);
         });
     });
@@ -163,14 +299,12 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   // 🔄 NUEVO MÉTODO: Manejar actualizaciones de stock con mensajes ecuatorianos
   private handleStockUpdate(update: StockUpdate): void {
     if (!this.product || !this.product.variants) {
-      console.log('⚠️ [DETALLE] Producto no cargado, ignorando actualización');
       return;
     }
 
     const variantIndex = this.product.variants.findIndex(v => v.id === update.variantId);
 
     if (variantIndex === -1) {
-      console.log('⚠️ [DETALLE] Variante no encontrada:', update.variantId);
       return;
     }
 
@@ -189,14 +323,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     }
 
     this.showStockUpdateNotification(update, oldStock);
-
-    console.log('✅ [DETALLE] Stock actualizado localmente:', {
-      variantId: update.variantId,
-      oldStock,
-      newStock: update.newStock,
-      newTotalStock,
-      source: update.source
-    });
   }
 
   // 🎉 NUEVO MÉTODO: Notificaciones ecuatorianas para stock
@@ -221,65 +347,273 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     }
   }
 
-  private setupCacheNotifications(): void {
-    this.route.paramMap.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(params => {
-      const productId = params.get('id');
-      if (!productId) return;
 
-      this.cacheService.getInvalidationNotifier(`products_${productId}`)
-        .pipe(
-          takeUntil(this.destroy$),
-          debounceTime(500),
-          distinctUntilChanged()
-        )
-        .subscribe(() => {
-          console.log('🔄 Producto invalidado, recargando con datos frescos...');
-          this.loadProduct(productId);
-        });
+  // 🚀 MÉTODO ACTUALIZADO: loadProduct con soporte para forceRefresh
+loadProduct(productId: string, forceRefresh: boolean = false): void {
+  this.productsLoading = true;
 
-      this.cacheService.getInvalidationNotifier('products')
-        .pipe(
-          takeUntil(this.destroy$),
-          debounceTime(1000),
-          distinctUntilChanged()
-        )
-        .subscribe(() => {
-          console.log('🔄 Caché de productos invalidado, recargando...');
-          this.loadProduct(productId);
-        });
-    });
-  }
+  // ✅ SOLUCIÓN: Usar el método correcto del ProductService según forceRefresh
+  const productObservable = forceRefresh 
+    ? this.productService.forceRefreshProduct(productId)
+    : this.productService.getCompleteProduct(productId);
 
-  loadProduct(productId: string): void {
-    this.productsLoading = true;
-
-    // ✅ OPCIÓN 1: Usar producto completo (recomendado)
-    this.productService.getCompleteProduct(productId)
-      .pipe(
-        take(1),
-        finalize(() => this.productsLoading = false)
-      )
-      .subscribe({
-        next: (product) => {
-          if (!product) {
-            this.handleProductNotFound();
-            return;
-          }
-
-          this.product = product as ExtendedProduct;
-          this.currentImageUrl = product.imageUrl;
-          this.continueProductSetup(product, productId);
-          this.loadRelatedProducts(product);
-        },
-        error: (error) => {
-          console.error('❌ Error cargando producto:', error);
-          this.handleProductError();
+  productObservable
+    .pipe(
+      take(1),
+      finalize(() => this.productsLoading = false)
+    )
+    .subscribe({
+      next: (product) => {
+        if (!product) {
+          this.handleProductNotFound();
+          return;
         }
-      });
+        
+
+        this.product = product as ExtendedProduct;
+        this.currentImageUrl = product.imageUrl;
+        this.continueProductSetup(product, productId);
+        this.loadRelatedProducts(product, forceRefresh);
+      },
+      error: (error) => {
+        console.error('❌ [DETALLE] Error cargando producto:', error);
+        this.handleProductError();
+      }
+    });
+}
+
+  /**
+ * 🏷️ Verifica si el producto tiene descuento
+ */
+  hasDiscount(product: ExtendedProduct): boolean {
+    return !!(product.discountPercentage && product.discountPercentage > 0);
   }
 
+  /**
+   * 🎯 Verifica si el producto tiene promociones activas
+   */
+  hasActivePromotions(product: ExtendedProduct): boolean {
+    // Verificar por descuento calculado
+    if (this.hasDiscount(product)) {
+      return true;
+    }
+
+    // Verificar por currentPrice vs price
+    if (product.currentPrice && product.currentPrice < product.price) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * 🏷️ Obtiene el texto de la promoción para mostrar
+   */
+  getPromotionText(product: ExtendedProduct): string {
+    if (!this.hasActivePromotions(product)) {
+      return '';
+    }
+
+    if (product.discountPercentage && product.discountPercentage > 0) {
+      return `${product.discountPercentage}% OFF`;
+    }
+
+    if (product.currentPrice && product.currentPrice < product.price) {
+      const discount = Math.round(((product.price - product.currentPrice) / product.price) * 100);
+      return `${discount}% OFF`;
+    }
+
+    return 'OFERTA ESPECIAL';
+  }
+
+  /**
+   * 🔥 Obtiene el nombre de la promoción activa
+   */
+  getActivePromotionName(product: ExtendedProduct): string {
+    if (!this.hasActivePromotions(product)) {
+      return '';
+    }
+
+    // Verificar cache primero
+    const cacheKey = `${product.id}_promotion_name`;
+    if (this.promotionNamesCache.has(cacheKey)) {
+      return this.promotionNamesCache.get(cacheKey)!;
+    }
+
+    let promotionName = '';
+
+    // Lógica basada en descuentos
+    if (product.discountPercentage && product.discountPercentage > 0) {
+      if (product.discountPercentage >= 50) {
+        promotionName = 'MEGA DESCUENTO';
+      } else if (product.discountPercentage >= 30) {
+        promotionName = 'GRAN OFERTA';
+      } else if (product.discountPercentage >= 20) {
+        promotionName = 'DESCUENTO ESPECIAL';
+      } else {
+        promotionName = 'PRECIO REBAJADO';
+      }
+    } else if (product.currentPrice && product.currentPrice < product.price) {
+      promotionName = 'OFERTA LIMITADA';
+    } else {
+      promotionName = 'PROMOCIÓN ACTIVA';
+    }
+
+    // Personalizar según categoría ecuatoriana
+    if (product.category) {
+      const categoryPromotions: { [key: string]: string } = {
+        'outdoor': 'AVENTURA ESPECIAL',
+        'running': 'OFERTA RUNNING',
+        'casual': 'DESCUENTO CASUAL',
+        'deportivo': 'PROMO DEPORTIVA',
+        'trekking': 'OFERTA MONTAÑERA'
+      };
+
+      if (categoryPromotions[product.category.toLowerCase()]) {
+        promotionName = categoryPromotions[product.category.toLowerCase()];
+      }
+    }
+
+    // Guardar en cache por 5 minutos
+    this.promotionNamesCache.set(cacheKey, promotionName);
+    setTimeout(() => {
+      this.promotionNamesCache.delete(cacheKey);
+    }, 5 * 60 * 1000);
+
+    return promotionName;
+  }
+
+  /**
+   * 🏷️ Verifica si la variante seleccionada tiene promoción
+   */
+  hasVariantPromotion(): boolean {
+    if (!this.selectedVariant) return false;
+
+    return !!(this.selectedVariant.promotionId &&
+      this.selectedVariant.discountType &&
+      this.selectedVariant.discountValue);
+  }
+
+  /**
+   * 💰 Obtiene el precio de la variante seleccionada (con promoción si aplica)
+   */
+  getVariantPrice(): {
+    originalPrice: number;
+    currentPrice: number;
+    hasDiscount: boolean;
+    discountPercentage?: number;
+    savings?: number;
+  } {
+    if (!this.selectedVariant || !this.product) {
+      return {
+        originalPrice: this.product?.price || 0,
+        currentPrice: this.product?.price || 0,
+        hasDiscount: false
+      };
+    }
+
+    // 🔥 PRIORIDAD 1: Precio específico de variante con promoción
+    if (this.hasVariantPromotion()) {
+      const originalPrice = this.selectedVariant.originalPrice ||
+        this.selectedVariant.price ||
+        this.product.price;
+
+      const currentPrice = this.selectedVariant.discountedPrice || originalPrice;
+      const savings = Math.max(0, originalPrice - currentPrice);
+      const discountPercentage = originalPrice > 0 ? (savings / originalPrice) * 100 : 0;
+
+      return {
+        originalPrice,
+        currentPrice,
+        hasDiscount: savings > 0,
+        discountPercentage: Math.round(discountPercentage),
+        savings
+      };
+    }
+
+    // 🔥 PRIORIDAD 2: Precio específico de variante sin promoción
+    if (this.selectedVariant.price && this.selectedVariant.price > 0) {
+      return {
+        originalPrice: this.selectedVariant.price,
+        currentPrice: this.selectedVariant.price,
+        hasDiscount: false
+      };
+    }
+
+    // 🔥 PRIORIDAD 3: Precio del producto (con promoción del producto si aplica)
+    const productPrice = this.product.currentPrice || this.product.price;
+    const hasProductDiscount = this.hasActivePromotions(this.product);
+
+    return {
+      originalPrice: this.product.originalPrice || this.product.price,
+      currentPrice: productPrice,
+      hasDiscount: hasProductDiscount,
+      discountPercentage: this.product.discountPercentage,
+      savings: hasProductDiscount ? (this.product.originalPrice || this.product.price) - productPrice : 0
+    };
+  }
+
+  /**
+   * 🏷️ Obtiene el texto de promoción para la variante
+   */
+  getVariantPromotionText(): string {
+    if (!this.hasVariantPromotion() || !this.selectedVariant) {
+      return '';
+    }
+
+    if (this.selectedVariant.discountType === 'percentage') {
+      return `${this.selectedVariant.discountValue}% OFF EN ESTA VARIANTE`;
+    } else if (this.selectedVariant.discountType === 'fixed') {
+      return `$${this.selectedVariant.discountValue} OFF EN ESTA VARIANTE`;
+    }
+
+    return 'PROMOCIÓN EN VARIANTE';
+  }
+
+  /**
+   * 🔍 Obtiene nombre de la promoción aplicada a la variante
+   */
+  getVariantPromotionName(): string {
+    if (!this.hasVariantPromotion() || !this.selectedVariant) {
+      return '';
+    }
+
+    // Usar cache si existe
+    const cacheKey = `${this.selectedVariant.id}_promotion_name`;
+    if (this.promotionNamesCache.has(cacheKey)) {
+      return this.promotionNamesCache.get(cacheKey)!;
+    }
+
+    let promotionName = 'OFERTA ESPECIAL EN VARIANTE';
+
+    if (this.selectedVariant.discountValue) {
+      if (this.selectedVariant.discountValue >= 50) {
+        promotionName = 'MEGA DESCUENTO EN COLOR/TALLA';
+      } else if (this.selectedVariant.discountValue >= 30) {
+        promotionName = 'GRAN OFERTA EN VARIANTE';
+      } else if (this.selectedVariant.discountValue >= 20) {
+        promotionName = 'DESCUENTO ESPECIAL';
+      } else {
+        promotionName = 'PRECIO REBAJADO';
+      }
+    }
+
+    // Guardar en cache
+    this.promotionNamesCache.set(cacheKey, promotionName);
+    setTimeout(() => {
+      this.promotionNamesCache.delete(cacheKey);
+    }, 5 * 60 * 1000);
+
+    return promotionName;
+  }
+
+  /**
+   * 🎯 Verifica si mostrar promoción de variante o producto
+   */
+  shouldShowVariantPromotion(): boolean {
+    // Mostrar promoción de variante si existe, sino la del producto
+    return this.hasVariantPromotion();
+  }
   private handleProductNotFound(): void {
     this.modalService.error({
       nzTitle: 'Producto no encontrado',
@@ -377,9 +711,12 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     return icons[type] || 'check-circle';
   }
 
-  private loadRelatedProducts(product: ExtendedProduct): void {
+  // 🚀 MÉTODO ACTUALIZADO: loadRelatedProducts con soporte para forceRefresh
+  private loadRelatedProducts(product: ExtendedProduct, forceRefresh: boolean = false): void {
     this.relatedLoading = true;
 
+
+    // ✅ NOTA: getRelatedProducts no tiene versión NoCache, pero usa forceReloadProducts internamente
     this.productService.getRelatedProducts(product, 4)
       .pipe(
         take(1),
@@ -390,7 +727,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
           this.relatedProducts = products;
         },
         error: (error) => {
-          console.error('Error cargando relacionados:', error);
+          console.error('❌ Error cargando relacionados:', error);
           this.relatedProducts = [];
         }
       });
@@ -398,10 +735,13 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
 
   forceReloadProduct(): void {
     const productId = this.route.snapshot.paramMap.get('id');
-    if (!productId) return;
+    if (!productId) {
+      console.warn('🛍️ [DETALLE] No se pudo obtener ID para forzar recarga');
+      return;
+    }
 
-    this.cacheService.clearCache();
-    this.loadProduct(productId);
+    // 🆕 USAR EL NUEVO PATRÓN CON forceRefresh = true
+    this.loadProduct(productId, true);
   }
 
 
@@ -540,9 +880,32 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     return this.product.colors.filter(c => colorNames.includes(c.name));
   }
 
+  /**
+ * 💰 Propiedad computed para el precio de variante (evita múltiples llamadas)
+ */
+  get currentVariantPrice(): {
+    originalPrice: number;
+    currentPrice: number;
+    hasDiscount: boolean;
+    discountPercentage?: number;
+    savings?: number;
+  } {
+    // Cache manual para evitar recálculos innecesarios
+    const currentVariantId = this.selectedVariant?.id || null;
+
+    if (this._lastVariantId !== currentVariantId || !this._cachedVariantPrice) {
+      this._cachedVariantPrice = this.getVariantPrice();
+      this._lastVariantId = currentVariantId;
+    }
+
+    return this._cachedVariantPrice;
+  }
+
   updateSelectedVariant(): void {
     if (!this.product || !this.selectedColor || !this.selectedSize) {
       this.selectedVariant = undefined;
+      this._cachedVariantPrice = null; // 🆕 Limpiar cache
+      this._lastVariantId = null;
       return;
     }
 
@@ -554,6 +917,13 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     if (this.selectedVariant && this.selectedVariant.stock < this.quantity) {
       this.quantity = Math.max(1, this.selectedVariant.stock);
     }
+
+    // 🆕 Limpiar cache cuando cambia la variante
+    this._cachedVariantPrice = null;
+    this._lastVariantId = null;
+
+    // 🆕 Forzar actualización de la vista cuando cambia la variante
+    this.cdr.detectChanges();
   }
 
   increaseQuantity(): void {
@@ -733,8 +1103,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
       this.selectSize(product.sizes[0]);
     }
 
-    // ✅ Vista ya se incrementó automáticamente en getProductById()
-    console.log('✅ Producto configurado, vista ya registrada automáticamente');
   }
 
   onRelatedProductColorChange(event: { product: Product, color: Color, index: number }): void {
@@ -902,9 +1270,4 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     }
   }
 
-  clearProblematicCache(): void {
-    this.cacheService.clearCache();
-    this.message.success('Caché limpiado, loco. Recarga la página');
-    console.log('🧹 Caché limpiado - recarga la página');
-  }
 }

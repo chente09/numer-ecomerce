@@ -962,4 +962,29 @@ export class ProductVariantService {
       throw new Error(`Error al exportar datos: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
+
+  // En ProductVariantService, agregar:
+  async getVariantsByProductIdNoCache(productId: string): Promise<ProductVariant[]> {
+    if (!productId) {
+      console.warn('⚠️ VariantService: ProductId no proporcionado');
+      return [];
+    }
+
+    try {
+      const variantsRef = collection(this.firestore, this.variantsCollection);
+      const q = query(variantsRef, where('productId', '==', productId));
+      const snapshot = await getDocs(q);
+
+      const variants = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as ProductVariant));
+
+      console.log(`🧬 [VARIANT SERVICE NO CACHE] Variantes obtenidas: ${variants.length}`);
+      return variants;
+    } catch (error) {
+      console.error('❌ Error obteniendo variantes sin caché:', error);
+      return [];
+    }
+  }
 }

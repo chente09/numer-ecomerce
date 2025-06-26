@@ -9,7 +9,9 @@
         <div class="product-badges">
             <span *ngIf="product.isNew" class="new-badge">¡RECIÉN LLEGADO!</span>
             <span *ngIf="product.isBestSeller" class="bestseller-badge">EL MÁS CHEVERE</span>
-            <span *ngIf="product.activePromotion" class="sale-badge">¡OFERTÓN!</span>
+            <span *ngIf="hasActivePromotions(product)" class="sale-badge">
+                ¡OFERTÓN! {{ getPromotionText(product) }}
+            </span>
         </div>
 
         <div class="main-image-container">
@@ -92,20 +94,56 @@
                 <span class="rating-count">{{ product.views }} aventureros lo han elegido</span>
             </div>
 
-            <!-- Precio con jerga ecuatoriana -->
+            <!-- 🏷️ PRECIO ÚNICO - SIN DUPLICACIONES -->
             <div class="product-price-container">
-                <span *ngIf="product.originalPrice && product.originalPrice > product.price" class="original-price">
-                    ${{ product.originalPrice.toFixed(2) }}
-                </span>
-                <span class="product-price">${{ product.price.toFixed(2) }}</span>
-                <span *ngIf="product.discountPercentage" class="discount-badge">
-                    -{{ product.discountPercentage }}% ¡Qué chévere!
-                </span>
+                <!-- 🆕 PRECIO DE VARIANTE (si está seleccionada) -->
+                <ng-container *ngIf="selectedVariant">
+                    <!-- Precio original tachado si hay descuento -->
+                    <span *ngIf="currentVariantPrice.hasDiscount" class="original-price">
+                        ${{ currentVariantPrice.originalPrice.toFixed(2) }}
+                    </span>
+
+                    <!-- Precio actual -->
+                    <span class="product-price">${{ currentVariantPrice.currentPrice.toFixed(2) }}</span>
+
+                    <!-- Badge de descuento -->
+                    <span *ngIf="currentVariantPrice.hasDiscount && currentVariantPrice.discountPercentage"
+                        class="discount-badge">
+                        -{{ currentVariantPrice.discountPercentage }}% ¡Qué chévere!
+                    </span>
+
+                    <!-- Ahorro en dólares -->
+                    <span *ngIf="currentVariantPrice.hasDiscount && currentVariantPrice.savings" class="savings-amount">
+                        ¡Ahorras ${{ currentVariantPrice.savings.toFixed(2) }}!
+                    </span>
+                </ng-container>
+
+                <!-- 🆕 PRECIO DEL PRODUCTO (si no hay variante seleccionada) -->
+                <ng-container *ngIf="!selectedVariant">
+                    <span *ngIf="product.originalPrice && product.originalPrice > product.price" class="original-price">
+                        ${{ product.originalPrice.toFixed(2) }}
+                    </span>
+                    <span class="product-price">${{ product.price.toFixed(2) }}</span>
+                    <span *ngIf="product.discountPercentage" class="discount-badge">
+                        -{{ product.discountPercentage }}% ¡Qué chévere!
+                    </span>
+                </ng-container>
             </div>
 
-            <!-- Promoción con expresión ecuatoriana -->
-            <div *ngIf="product.activePromotion" class="active-promotion">
-                <span class="promotion-tag">🔥 {{ product.activePromotion }} - ¡No te la pierdas, loco!</span>
+            <!-- 🏷️ PROMOCIÓN ÚNICA - SIN DUPLICACIONES -->
+            <!-- 🆕 PROMOCIÓN ESPECÍFICA DE VARIANTE (prioridad) -->
+            <div *ngIf="shouldShowVariantPromotion()" class="active-promotion variant-promotion">
+                <span class="promotion-tag variant-promotion-tag">
+                    🎯 {{ getVariantPromotionName() }} - ¡Solo en {{ selectedVariant?.colorName }} {{
+                    selectedVariant?.sizeName }}!
+                </span>
+                <span class="promotion-details">{{ getVariantPromotionText() }}</span>
+            </div>
+
+            <!-- 🆕 PROMOCIÓN DEL PRODUCTO (solo si NO hay promoción de variante) -->
+            <div *ngIf="!shouldShowVariantPromotion() && hasActivePromotions(product)"
+                class="active-promotion product-promotion">
+                <span class="promotion-tag">🔥 {{ getActivePromotionName(product) }} - ¡No te la pierdas, loco!</span>
             </div>
 
             <!-- Características especiales del producto -->

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, NgZone, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, NgZone, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../../../services/admin/product/product.service';
@@ -26,6 +26,7 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { ProductPriceService } from '../../../services/admin/price/product-price.service';
 import { StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
+import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
 
 // 🚀 Interfaces para el backup y control de estado
 interface VariantBackup {
@@ -65,7 +66,7 @@ interface OptimisticOperation {
   styleUrls: ['./product-inventory.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProductInventoryComponent implements OnInit, OnChanges {
+export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
   @Input() product: Product | null = null;
   @Output() inventoryChanged = new EventEmitter<{
     productId: string;
@@ -88,6 +89,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
 
   // 🚀 Control de operaciones optimistas
   private pendingOperations = new Map<string, OptimisticOperation>();
+  private readonly COMPONENT_NAME = 'ProductInventoryComponent';
 
   constructor(
     private productService: ProductService,
@@ -98,14 +100,20 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
     private cdr: ChangeDetectorRef,
     private promotionService: PromotionService,
     private productPriceService: ProductPriceService,
+    private promotionStateService: PromotionStateService,
     private zone: NgZone
   ) { }
 
   ngOnInit(): void {
+    this.promotionStateService.registerComponent(this.COMPONENT_NAME);
     if (this.product) {
       this.loadVariants();
       this.loadPromotions();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -310,8 +318,6 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
           return throwError(() => new Error('La promoción no existe'));
         }
 
-        // 🚀 ACTUALIZACIÓN OPTIMISTA INMEDIATA
-        console.log('🎯 Aplicando promoción optimísticamente...');
         this.applyPromotionOptimistically(variant, promotion, backup);
 
         // 🚀 EMITIR EVENTO AL PADRE CON PRODUCTO ACTUALIZADO
@@ -320,6 +326,12 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
           productId: this.product!.id,
           updatedProduct
         });
+
+        // 🆕 NUEVO: BROADCASTING A TODOS LOS COMPONENTES
+        const selectedPromotion = this.promotions.find(p => p.id === promotionId);
+        if (selectedPromotion) {
+          this.broadcastVariantPromotionApplied(variant, selectedPromotion);
+        }
 
         // Mostrar loading y actualizar UI
         this.loading = true;
@@ -356,6 +368,9 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
           productId: this.product!.id,
           updatedProduct: rolledBackProduct
         });
+
+        // 🆕 NUEVO: BROADCASTING DE ROLLBACK
+        this.broadcastVariantPromotionRemoved(variant, promotionId);
 
         this.message.error('Error al aplicar promoción: ' + error.message);
       }
@@ -668,8 +683,9 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
           index: variantIndex
         };
 
+        const promotionId = variant.promotionId; // Guardar ID antes de eliminar
+
         // 🚀 REMOVER PROMOCIÓN OPTIMÍSTICAMENTE
-        console.log('🗑️ Removiendo promoción optimísticamente...');
         this.removePromotionOptimistically(variant, backup);
 
         // 🚀 EMITIR EVENTO AL PADRE
@@ -678,6 +694,9 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
           productId: this.product!.id,
           updatedProduct
         });
+
+        // 🆕 NUEVO: BROADCASTING A TODOS LOS COMPONENTES
+        this.broadcastVariantPromotionRemoved(variant, promotionId!);
 
         this.loading = true;
         this.cdr.detectChanges();
@@ -709,10 +728,59 @@ export class ProductInventoryComponent implements OnInit, OnChanges {
               updatedProduct: rolledBackProduct
             });
 
+            // 🆕 NUEVO: BROADCASTING DE ROLLBACK (reaplicar promoción)
+            const promotion = this.promotions.find(p => p.id === promotionId);
+            if (promotion) {
+              this.broadcastVariantPromotionApplied(variant, promotion);
+            }
+
             this.message.error('Error al eliminar promoción: ' + error.message);
           }
         });
       }
+    });
+  }
+
+  // 🆕 NUEVO: Método para broadcasting cuando se aplica promoción a variante
+  private broadcastVariantPromotionApplied(variant: ProductVariant, promotion: Promotion): void {
+    if (!this.product) return;
+
+    // Usar tu método existente
+    this.promotionStateService.notifyPromotionActivated(promotion.id, [this.product.id]);
+
+    // También usar el nuevo método para variantes específicas
+    this.promotionStateService.notifyGlobalUpdate({
+      type: 'variant_promotion_applied',
+      data: {
+        type: 'applied',
+        targetType: 'variant',
+        targetId: variant.id,
+        promotionId: promotion.id,
+        affectedProducts: [this.product.id]
+      },
+      timestamp: new Date()
+    });
+  }
+
+
+  // 🆕 NUEVO: Método para broadcasting cuando se remueve promoción de variante
+  private broadcastVariantPromotionRemoved(variant: ProductVariant, promotionId: string): void {
+    if (!this.product) return;
+
+    // Usar tu método existente
+    this.promotionStateService.notifyPromotionDeactivated(promotionId, [this.product.id]);
+
+    // También usar el nuevo método para variantes específicas
+    this.promotionStateService.notifyGlobalUpdate({
+      type: 'variant_promotion_removed',
+      data: {
+        type: 'removed',
+        targetType: 'variant',
+        targetId: variant.id,
+        promotionId: promotionId,
+        affectedProducts: [this.product.id]
+      },
+      timestamp: new Date()
     });
   }
 

@@ -129,6 +129,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   private originalProductsBackup: Product[] = [];
 
   private productPromotionsMap = new Map<string, Promotion[]>();
+  private readonly COMPONENT_NAME = 'ProductManagementComponent';
 
   constructor(
     private fb: FormBuilder,
@@ -146,6 +147,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
+    this.promotionStateService.registerComponent(this.COMPONENT_NAME);
     this.initFilterForm();
     this.loadCategories();
     this.loadColors();
@@ -175,11 +177,134 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.loadProducts();
     this.subscribeToStockUpdates();
     this.subscribeToPromotionChanges();
+    this.subscribeToGlobalPromotionUpdates();
   }
 
   ngOnDestroy(): void {
+    this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // 🆕 NUEVO: Método para escuchar actualizaciones globales
+  private subscribeToGlobalPromotionUpdates(): void {
+    this.promotionStateService.onGlobalUpdate()
+      .pipe(
+        takeUntil(this.destroy$),
+        debounceTime(500) // Evitar spam de actualizaciones
+      )
+      .subscribe(globalUpdate => {
+        console.log('📱 [MANAGEMENT] Actualización global recibida:', globalUpdate);
+        this.handleGlobalPromotionUpdate(globalUpdate);
+      });
+  }
+
+  // 🆕 NUEVO: Manejar actualizaciones globales
+  private handleGlobalPromotionUpdate(globalUpdate: any): void {
+    const event = globalUpdate.data;
+
+    console.log(`📱 [MANAGEMENT] Procesando evento: ${event.type} para promoción ${event.promotionId}`);
+
+    switch (event.type) {
+      case 'activated':
+      case 'applied':
+        this.handlePromotionActivated(event);
+        break;
+
+      case 'deactivated':
+      case 'removed':
+      case 'deleted':
+        this.handlePromotionDeactivated(event);
+        break;
+
+      case 'updated':
+        this.handlePromotionUpdated(event);
+        break;
+
+      default:
+        console.log(`📱 [MANAGEMENT] Evento no manejado: ${event.type}`);
+    }
+  }
+
+  // 🆕 NUEVO: Manejar activación de promoción
+  private handlePromotionActivated(event: any): void {
+    if (event.affectedProducts && event.affectedProducts.length > 0) {
+      // Actualizar productos específicos
+      event.affectedProducts.forEach((productId: string) => {
+        this.refreshSingleProduct(productId);
+      });
+
+      this.showPromotionNotification('activated', event.affectedProducts.length);
+    } else {
+      // Si no hay productos específicos, recargar todo
+      this.loadProducts();
+      this.showPromotionNotification('activated');
+    }
+
+    // 🆕 AGREGAR: Forzar actualización visual inmediata
+    setTimeout(() => {
+      this.cdr.detectChanges();
+      this.cdr.markForCheck();
+    }, 100);
+  }
+
+  // 🆕 NUEVO: Manejar desactivación de promoción
+  private handlePromotionDeactivated(event: any): void {
+    if (event.affectedProducts && event.affectedProducts.length > 0) {
+      // Actualizar productos específicos
+      event.affectedProducts.forEach((productId: string) => {
+        this.refreshSingleProduct(productId);
+      });
+
+      this.showPromotionNotification('deactivated', event.affectedProducts.length);
+    } else {
+      // Si no hay productos específicos, recargar todo
+      this.loadProducts();
+      this.showPromotionNotification('deactivated');
+    }
+  }
+
+  // 🆕 NUEVO: Manejar actualización de promoción
+  private handlePromotionUpdated(event: any): void {
+    if (event.affectedProducts && event.affectedProducts.length > 0) {
+      event.affectedProducts.forEach((productId: string) => {
+        this.refreshSingleProduct(productId);
+      });
+
+      this.showPromotionNotification('updated', event.affectedProducts.length);
+    } else {
+      this.loadProducts();
+      this.showPromotionNotification('updated');
+    }
+  }
+
+  // 🆕 NUEVO: Mostrar notificaciones de promociones
+  private showPromotionNotification(action: string, affectedCount?: number): void {
+    const messages = {
+      'activated': affectedCount
+        ? `✅ Promoción activada en ${affectedCount} producto(s) - Vista actualizada`
+        : '✅ Promoción activada - Vista actualizada',
+      'deactivated': affectedCount
+        ? `⚠️ Promoción desactivada en ${affectedCount} producto(s) - Vista actualizada`
+        : '⚠️ Promoción desactivada - Vista actualizada',
+      'updated': affectedCount
+        ? `🔄 Promoción actualizada en ${affectedCount} producto(s) - Vista actualizada`
+        : '🔄 Promoción actualizada - Vista actualizada'
+    };
+
+    const message = messages[action as keyof typeof messages] || 'Promoción actualizada';
+
+    // Usar diferentes tipos de mensaje según la acción
+    switch (action) {
+      case 'activated':
+        this.message.success(message);
+        break;
+      case 'deactivated':
+        this.message.warning(message);
+        break;
+      default:
+        this.message.info(message);
+    }
   }
 
   private subscribeToStockUpdates(): void {
@@ -560,29 +685,68 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  private refreshSingleProduct(productId: string): void {
+  // ✅ MANTENER tu método y solo agregar estas líneas:
 
-    this.productService.getProductById(productId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (updatedProduct) => {
-          if (updatedProduct) {
-            const index = this.products.findIndex(p => p.id === productId);
-            if (index !== -1) {
-              this.products[index] = updatedProduct;
+private refreshSingleProduct(productId: string): void {
 
-              if (this.selectedProduct && this.selectedProduct.id === productId) {
-                this.selectedProduct = updatedProduct;
-              }
+  // 🆕 FORZAR invalidación de caché (ya lo tienes ✅)
+  this.cacheService.invalidate(`products_${productId}`);
+  this.cacheService.invalidate('products');
 
-              this.cdr.detectChanges();
+  // 🆕 AGREGAR: Probar forceRefreshProduct si existe, sino usar getProductById
+  const refreshMethod = this.productService.forceRefreshProduct 
+    ? this.productService.forceRefreshProduct(productId)
+    : this.productService.getProductById(productId);
+
+  refreshMethod
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (updatedProduct) => {
+        if (updatedProduct) {
+          const index = this.products.findIndex(p => p.id === productId);
+          if (index !== -1) {
+
+            // 🆕 FORZAR actualización completa del producto (ya lo tienes ✅)
+            this.products[index] = { ...updatedProduct };
+
+            if (this.selectedProduct && this.selectedProduct.id === productId) {
+              this.selectedProduct = { ...updatedProduct };
             }
+
+            // 🆕 FORZAR múltiples detecciones de cambios (ya lo tienes ✅)
+            this.cdr.detectChanges();
+            this.cdr.markForCheck();
+
+            // 🆕 FORZAR actualización del array completo para triggear change detection (ya lo tienes ✅)
+            this.products = [...this.products];
+
+            setTimeout(() => {
+              this.cdr.detectChanges();
+              this.cdr.markForCheck();
+            }, 50);
           }
-        },
-        error: (error) => {
-          console.error('❌ [MANAGEMENT] Error al refrescar producto individual:', error);
         }
-      });
+      },
+      error: (error) => {
+        console.error('❌ [MANAGEMENT] Error al refrescar producto individual:', error);
+      }
+    });
+}
+
+  // 🆕 NUEVO: Método para forzar re-render completo
+  forceTableRefresh(): void {
+
+    // Crear nueva referencia del array
+    this.products = [...this.products];
+
+    // Forzar múltiples ciclos de detección
+    this.cdr.detectChanges();
+    this.cdr.markForCheck();
+
+    setTimeout(() => {
+      this.cdr.detectChanges();
+      this.cdr.markForCheck();
+    }, 100);
   }
 
   // 3️⃣ Método para verificar actualización de producto específico
@@ -1019,6 +1183,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
           next: (product) => {
             if (product) {
               this.updateProductInList(event.productId, product);
+              this.forceTableRefresh();
             }
           },
           error: (error) => {
@@ -1047,6 +1212,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
 
     this.cdr.detectChanges();
+    this.forceTableRefresh();
 
     // Verificación en segundo plano
     setTimeout(() => {

@@ -943,4 +943,43 @@ export class ProductInventoryService {
       })
     );
   }
+
+  getVariantsByProductIdNoCache(productId: string): Observable<ProductVariant[]> {
+    if (!productId) {
+      return of([]);
+    }
+
+    return from((async () => {
+      const variantsRef = collection(this.firestore, this.variantsCollection);
+      const q = query(variantsRef, where('productId', '==', productId));
+
+      const variantsSnap = await getDocs(q);
+      const variants = variantsSnap.docs.map(doc => {
+        const data = doc.data();
+        const variant = {
+          id: doc.id,
+          ...data
+        } as ProductVariant;
+
+        return variant;
+      });
+      return variants;
+    })()).pipe(
+      catchError(error => ErrorUtil.handleError(error, `getVariantsByProductIdNoCache(${productId})`))
+    );
+  }
+
+  // Agregar este método en ProductInventoryService
+  invalidateVariantCache(productId: string): void {
+    const cacheKey = `${this.variantCacheKey}_product_${productId}`;
+    this.cacheService.invalidate(cacheKey);
+
+  }
+
+  // Método público para uso externo
+  forceRefreshVariants(productId: string): Observable<ProductVariant[]> {
+    this.invalidateVariantCache(productId);
+    return this.getVariantsByProductId(productId);
+  }
+
 }

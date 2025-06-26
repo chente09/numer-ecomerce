@@ -43,6 +43,15 @@ export interface Promotion {
     perCustomerLimit?: number;       // Límite de usos por cliente
 }
 
+export interface AppliedPromotion {
+    promotionId: string;
+    appliedAt: Date;
+    appliedBy: string; // userId del admin
+    target: 'product' | 'variant';
+    targetId: string; // productId o variantId
+    expiresAt: Date;
+}
+
 export interface ProductVariant {
     id: string;
     productId: string;  // ID del producto al que pertenece
@@ -97,13 +106,11 @@ export interface Product {
     sales: number;             // Número de unidades vendidas
     lastRestockDate?: Date;    // Última fecha de reabastecimiento
     popularityScore?: number;  // Puntuación calculada de popularidad
-    promotions?: Promotion[];
     variants: ProductVariant[];
     tags: string[];
     metaTitle?: string;
     metaDescription?: string;
     searchKeywords?: string[];
-    activePromotion?: string;
     features?: string[];
     createdAt?: Date;          // Fecha de creación del producto
     updatedAt?: Date;          // Fecha de última actualización del producto
