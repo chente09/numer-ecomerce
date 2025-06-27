@@ -13,11 +13,197 @@
                 <p>Stock Total: <strong>{{ product.totalStock || 0 }}</strong></p>
             </div>
 
-            <!-- Tabla de variantes -->
-            <nz-table #variantsTable [nzData]="variants" [nzSize]="'small'" [nzShowPagination]="variants.length > 10"
-                [nzPageSize]="10">
+            <!-- 🆕 SECCIÓN DE FILTROS -->
+            <nz-card class="filters-card" [nzBodyStyle]="{'padding': '16px'}">
+                <div class="filters-header">
+                    <h4>Filtros de Inventario</h4>
+                    <div class="filters-actions">
+                        <span class="results-count">
+                            Mostrando {{ filteredVariants.length }} de {{ variants.length }} variantes
+                        </span>
+                        <button nz-button nzSize="small" nzType="default" (click)="clearAllFilters()"
+                            [disabled]="!hasActiveFilters()" nz-tooltip nzTooltipTitle="Limpiar todos los filtros">
+                            <span nz-icon nzType="clear"></span>
+                            Limpiar
+                        </button>
+                        <button nz-button nzSize="small" nzType="default" (click)="toggleFiltersExpanded()" nz-tooltip
+                            [nzTooltipTitle]="filtersExpanded ? 'Contraer filtros' : 'Expandir filtros'">
+                            <span nz-icon [nzType]="filtersExpanded ? 'up' : 'down'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros rápidos (siempre visibles) -->
+                <div class="quick-filters">
+                    <nz-button-group>
+                        <button nz-button [nzType]="quickFilter === 'all' ? 'primary' : 'default'" nzSize="small"
+                            (click)="setQuickFilter('all')">
+                            Todos ({{ variants.length }})
+                        </button>
+                        <button nz-button [nzType]="quickFilter === 'problems' ? 'primary' : 'default'" nzSize="small"
+                            (click)="setQuickFilter('problems')" [nzDanger]="getProblemsCount() > 0">
+                            Problemas ({{ getProblemsCount() }})
+                        </button>
+                        <button nz-button [nzType]="quickFilter === 'low_stock' ? 'primary' : 'default'" nzSize="small"
+                            (click)="setQuickFilter('low_stock')">
+                            Stock Bajo ({{ getLowStockCount() }})
+                        </button>
+                        <button nz-button [nzType]="quickFilter === 'promotions' ? 'primary' : 'default'" nzSize="small"
+                            (click)="setQuickFilter('promotions')">
+                            Con Promoción ({{ getPromotionsCount() }})
+                        </button>
+                        <button nz-button [nzType]="quickFilter === 'no_stock' ? 'primary' : 'default'" nzSize="small"
+                            (click)="setQuickFilter('no_stock')" nzDanger>
+                            Sin Stock ({{ getNoStockCount() }})
+                        </button>
+                    </nz-button-group>
+                </div>
+
+                <!-- Filtros detallados (expandibles) -->
+                <div class="detailed-filters" [class.expanded]="filtersExpanded">
+                    <div nz-row [nzGutter]="[12, 12]">
+                        <!-- Búsqueda -->
+                        <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="6">
+                            <nz-input-group [nzSuffix]="searchSuffix">
+                                <input type="text" nz-input [(ngModel)]="searchTerm"
+                                    placeholder="Buscar por color, talla, SKU..."
+                                    (ngModelChange)="onSearchChange($event)">
+                            </nz-input-group>
+                            <ng-template #searchSuffix>
+                                <span nz-icon nzType="search"></span>
+                            </ng-template>
+                        </div>
+
+                        <!-- Filtro por colores -->
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                            <nz-select [(ngModel)]="selectedColors" nzMode="multiple" nzPlaceHolder="Colores"
+                                [nzMaxTagCount]="2" style="width: 100%;" (ngModelChange)="onColorFilterChange($event)">
+                                <nz-option *ngFor="let color of availableColors" [nzValue]="color.value"
+                                    [nzLabel]="color.label">
+                                    <span class="color-option">
+                                        <span class="color-dot" [style.background-color]="color.color"></span>
+                                        {{ color.label }} ({{ color.count }})
+                                    </span>
+                                </nz-option>
+                            </nz-select>
+                        </div>
+
+                        <!-- Filtro por tallas -->
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                            <nz-select [(ngModel)]="selectedSizes" nzMode="multiple" nzPlaceHolder="Tallas"
+                                [nzMaxTagCount]="2" style="width: 100%;" (ngModelChange)="onSizeFilterChange($event)">
+                                <nz-option *ngFor="let size of availableSizes" [nzValue]="size.value"
+                                    [nzLabel]="size.label + ' (' + size.count + ')'">
+                                </nz-option>
+                            </nz-select>
+                        </div>
+
+                        <!-- Ordenamiento -->
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                            <nz-select [(ngModel)]="sortBy" nzPlaceHolder="Ordenar por" style="width: 100%;"
+                                (ngModelChange)="onSortChange($event)">
+                                <nz-option nzValue="stock_desc" nzLabel="Stock (mayor a menor)"></nz-option>
+                                <nz-option nzValue="stock_asc" nzLabel="Stock (menor a mayor)"></nz-option>
+                                <nz-option nzValue="color_name" nzLabel="Color (A-Z)"></nz-option>
+                                <nz-option nzValue="size_name" nzLabel="Talla (A-Z)"></nz-option>
+                                <nz-option nzValue="sku" nzLabel="SKU (A-Z)"></nz-option>
+                                <nz-option nzValue="promotion_status" nzLabel="Estado promoción"></nz-option>
+                            </nz-select>
+                        </div>
+                    </div>
+
+                    <!-- Segunda fila de filtros -->
+                    <div nz-row [nzGutter]="[12, 12]" style="margin-top: 12px;">
+                        <!-- Estado de stock -->
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+                            <label class="filter-label">Estado de Stock:</label>
+                            <nz-checkbox-group [(ngModel)]="selectedStockStatus"
+                                (ngModelChange)="onStockStatusChange($event)">
+                                <div nz-row>
+                                    <div nz-col nz-checkbox nzValue="no_stock" class="stock-checkbox">
+                                        <span class="status-indicator error"></span>Sin stock
+                                    </div>
+                                    <div nz-col nz-checkbox nzValue="critical" class="stock-checkbox">
+                                        <span class="status-indicator error"></span>Crítico (1-3)
+                                    </div>
+                                    <div nz-col nz-checkbox nzValue="low" class="stock-checkbox">
+                                        <span class="status-indicator warning"></span>Bajo (4-10)
+                                    </div>
+                                    <div nz-col nz-checkbox nzValue="normal" class="stock-checkbox">
+                                        <span class="status-indicator success"></span>Normal (11+)
+                                    </div>
+                                </div>
+                            </nz-checkbox-group>
+                        </div>
+
+                        <!-- Rango de stock personalizado -->
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+                            <label class="filter-label">Rango de Stock:</label>
+                            <div class="stock-range">
+                                <nz-input-number [(ngModel)]="stockRange.min" [nzMin]="0" [nzStep]="1" [nzPrecision]="0"
+                                    nzPlaceHolder="Mín" style="width: 80px;" (ngModelChange)="onStockRangeChange()">
+                                </nz-input-number>
+                                <span class="range-separator">-</span>
+                                <nz-input-number [(ngModel)]="stockRange.max" [nzMin]="0" [nzStep]="1" [nzPrecision]="0"
+                                    nzPlaceHolder="Máx" style="width: 80px;" (ngModelChange)="onStockRangeChange()">
+                                </nz-input-number>
+                            </div>
+                        </div>
+
+                        <!-- Filtros de promoción -->
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+                            <label class="filter-label">Promociones:</label>
+                            <nz-radio-group [(ngModel)]="promotionFilter"
+                                (ngModelChange)="onPromotionFilterChange($event)">
+                                <label nz-radio nzValue="all">Todas</label>
+                                <label nz-radio nzValue="with">Con promoción</label>
+                                <label nz-radio nzValue="without">Sin promoción</label>
+                            </nz-radio-group>
+                        </div>
+                    </div>
+
+                    <!-- Acciones masivas -->
+                    <div class="bulk-actions" *ngIf="selectedVariantIds.length > 0">
+                        <nz-divider nzText="Acciones Masivas" nzOrientation="left"></nz-divider>
+                        <div class="bulk-actions-content">
+                            <span class="selection-info">
+                                {{ selectedVariantIds.length }} variante(s) seleccionada(s)
+                            </span>
+                            <nz-button-group>
+                                <button nz-button nzSize="small" (click)="bulkUpdateStock()"
+                                    [disabled]="selectedVariantIds.length === 0">
+                                    <span nz-icon nzType="edit"></span>
+                                    Actualizar Stock
+                                </button>
+                                <button nz-button nzSize="small" (click)="bulkApplyPromotion()"
+                                    [disabled]="selectedVariantIds.length === 0">
+                                    <span nz-icon nzType="tag"></span>
+                                    Aplicar Promoción
+                                </button>
+                                <button nz-button nzSize="small" nzDanger (click)="bulkDeleteVariants()"
+                                    [disabled]="selectedVariantIds.length === 0">
+                                    <span nz-icon nzType="delete"></span>
+                                    Eliminar
+                                </button>
+                            </nz-button-group>
+                            <button nz-button nzSize="small" nzType="default" (click)="clearSelection()">
+                                Limpiar selección
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </nz-card>
+
+            <!-- 🔄 TABLA DE VARIANTES ACTUALIZADA -->
+            <nz-table #variantsTable [nzData]="filteredVariants" [nzSize]="'small'"
+                [nzShowPagination]="filteredVariants.length > 10" [nzPageSize]="10">
                 <thead>
                     <tr>
+                        <th nzWidth="40px">
+                            <label nz-checkbox [(ngModel)]="selectAll" [nzIndeterminate]="indeterminate"
+                                (ngModelChange)="onSelectAllChange($event)">
+                            </label>
+                        </th>
                         <th>Color</th>
                         <th>Talla</th>
                         <th>Stock</th>
@@ -26,7 +212,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let variant of variantsTable.data; trackBy: trackByVariant">
+                    <tr *ngFor="let variant of variantsTable.data; trackBy: trackByVariant"
+                        [class.selected-row]="selectedVariantIds.includes(variant.id)"
+                        [class.has-promotion]="variant.promotionId">
+                        <td>
+                            <label nz-checkbox [(ngModel)]="variant.checked"
+                                (ngModelChange)="onVariantSelectChange(variant, $event)">
+                            </label>
+                        </td>
                         <td>
                             <div class="color-cell">
                                 <div class="color-box"
@@ -141,7 +334,7 @@
         nzNotFoundContent="No hay variantes disponibles para este producto"></nz-empty>
 </div>
 
-<!-- Modal para aplicar promociones -->
+<!-- Modal para aplicar promociones (SIN CAMBIOS) -->
 <nz-modal [(nzVisible)]="promotionModalVisible" nzTitle="Aplicar Promoción a Variante"
     (nzOnCancel)="cancelApplyPromotion()" [nzFooter]="null" [nzWidth]="600">
     <ng-container *nzModalContent>
@@ -206,6 +399,98 @@
             <button nz-button nzType="default" (click)="cancelApplyPromotion()">
                 Cancelar
             </button>
+        </div>
+    </ng-container>
+</nz-modal>
+
+<!-- 🆕 MODAL PARA ACTUALIZACIÓN MASIVA DE STOCK -->
+<nz-modal [(nzVisible)]="bulkStockModalVisible" nzTitle="Actualizar Stock Masivamente"
+    (nzOnCancel)="closeBulkStockModal()" [nzFooter]="null" [nzWidth]="500">
+    <ng-container *nzModalContent>
+        <div class="bulk-stock-info">
+            <p><strong>Variantes seleccionadas:</strong> {{ selectedVariantIds.length }}</p>
+            <nz-divider></nz-divider>
+
+            <form class="bulk-stock-form">
+                <div class="form-group">
+                    <label>Tipo de actualización:</label>
+                    <nz-radio-group [(ngModel)]="bulkStockOperation" name="stockOperation">
+                        <label nz-radio nzValue="set">Establecer valor</label>
+                        <label nz-radio nzValue="add">Agregar cantidad</label>
+                        <label nz-radio nzValue="subtract">Restar cantidad</label>
+                    </nz-radio-group>
+                </div>
+
+                <div class="form-group">
+                    <label>Cantidad:</label>
+                    <nz-input-number [(ngModel)]="bulkStockValue" [nzMin]="0" [nzStep]="1" [nzPrecision]="0"
+                        style="width: 100%;" nzPlaceHolder="Ingrese cantidad">
+                    </nz-input-number>
+                </div>
+
+                <div class="form-actions">
+                    <button nz-button nzType="default" (click)="closeBulkStockModal()">
+                        Cancelar
+                    </button>
+                    <button nz-button nzType="primary" (click)="confirmBulkStockUpdate()"
+                        [disabled]="bulkStockValue === null || bulkStockValue === undefined">
+                        Actualizar Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </ng-container>
+</nz-modal>
+
+<!-- 🆕 MODAL PARA APLICACIÓN MASIVA DE PROMOCIONES -->
+<nz-modal [(nzVisible)]="bulkPromotionModalVisible" nzTitle="Aplicar Promoción Masivamente"
+    (nzOnCancel)="closeBulkPromotionModal()" [nzFooter]="null" [nzWidth]="600">
+    <ng-container *nzModalContent>
+        <div class="bulk-promotion-info">
+            <p><strong>Variantes seleccionadas:</strong> {{ selectedVariantIds.length }}</p>
+            <nz-divider></nz-divider>
+
+            <div *ngIf="promotions.length === 0" class="empty-promotions">
+                <nz-empty nzNotFoundContent="No hay promociones activas disponibles"></nz-empty>
+            </div>
+
+            <nz-table *ngIf="promotions.length > 0" [nzData]="promotions" [nzShowPagination]="false"
+                [nzScroll]="{ y: '300px' }">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let promotion of promotions">
+                        <td>{{ promotion.name }}</td>
+                        <td>{{ promotion.discountType === 'percentage' ? 'Porcentaje' : 'Fijo' }}</td>
+                        <td>
+                            <span *ngIf="promotion.discountType === 'percentage'">
+                                {{ promotion.discountValue }}%
+                            </span>
+                            <span *ngIf="promotion.discountType === 'fixed'">
+                                ${{ promotion.discountValue.toFixed(2) }}
+                            </span>
+                        </td>
+                        <td>
+                            <button nz-button nzType="primary" nzSize="small"
+                                (click)="confirmBulkPromotionApplication(promotion.id)">
+                                Aplicar a Todas
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </nz-table>
+
+            <div class="modal-footer" style="margin-top: 16px; text-align: right;">
+                <button nz-button nzType="default" (click)="closeBulkPromotionModal()">
+                    Cancelar
+                </button>
+            </div>
         </div>
     </ng-container>
 </nz-modal>

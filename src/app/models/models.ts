@@ -67,6 +67,7 @@ export interface ProductVariant {
     discountValue?: number;  // Valor del descuento
     discountedPrice?: number;  // Precio con descuento calculado
     originalPrice?: number;  // Precio original antes del descuento
+    checked?: boolean; 
 }
 export interface AdditionalImageItem {
     file?: File;           // Solo para nuevas imágenes

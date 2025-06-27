@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, NgZone, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostListener, Input, NgZone, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../../../services/admin/product/product.service';
@@ -27,6 +27,18 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { ProductPriceService } from '../../../services/admin/price/product-price.service';
 import { StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
+import { NzGridModule } from 'ng-zorro-antd/grid';
+
+// 🚀 Interfaces para filtros y selección
+interface FilterOption {
+  value: string;
+  label: string;
+  count: number;
+  color?: string;
+}
 
 // 🚀 Interfaces para el backup y control de estado
 interface VariantBackup {
@@ -39,6 +51,12 @@ interface OptimisticOperation {
   variantId: string;
   backup?: VariantBackup;
 }
+
+type QuickFilterType = 'all' | 'problems' | 'low_stock' | 'promotions' | 'no_stock';
+type StockStatusType = 'no_stock' | 'critical' | 'low' | 'normal';
+type PromotionFilterType = 'all' | 'with' | 'without';
+type SortType = 'stock_desc' | 'stock_asc' | 'color_name' | 'size_name' | 'sku' | 'promotion_status';
+
 
 @Component({
   selector: 'app-product-inventory',
@@ -60,7 +78,11 @@ interface OptimisticOperation {
     NzModalModule,
     NzAvatarModule,
     NzCardModule,
-    NzPopoverModule
+    NzPopoverModule,
+    NzSelectModule,
+    NzCheckboxModule,
+    NzRadioModule,
+    NzGridModule
   ],
   templateUrl: './product-inventory.component.html',
   styleUrls: ['./product-inventory.component.css'],
@@ -91,6 +113,42 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
   private pendingOperations = new Map<string, OptimisticOperation>();
   private readonly COMPONENT_NAME = 'ProductInventoryComponent';
 
+  // ==================== 🆕 NUEVAS PROPIEDADES PARA FILTROS ====================
+
+  // Variantes filtradas (resultado de aplicar filtros)
+  filteredVariants: ProductVariant[] = [];
+
+  // Estado de filtros
+  filtersExpanded = false;
+  quickFilter: QuickFilterType = 'all';
+  searchTerm = '';
+  selectedColors: string[] = [];
+  selectedSizes: string[] = [];
+  selectedStockStatus: StockStatusType[] = [];
+  stockRange = { min: null as number | null, max: null as number | null };
+  promotionFilter: PromotionFilterType = 'all';
+  sortBy: SortType = 'stock_desc';
+
+  // Opciones disponibles para filtros
+  availableColors: FilterOption[] = [];
+  availableSizes: FilterOption[] = [];
+
+  // Selección múltiple
+  selectedVariantIds: string[] = [];
+  selectAll = false;
+  indeterminate = false;
+
+  // Modales para acciones masivas
+  bulkStockModalVisible = false;
+  bulkPromotionModalVisible = false;
+  bulkStockOperation: 'set' | 'add' | 'subtract' = 'set';
+  bulkStockValue: number | null = null;
+
+  // 🆕 NUEVAS PROPIEDADES para responsividad
+  isMobile = false;
+  isTablet = false;
+  private searchTimeout: any;
+
   constructor(
     private productService: ProductService,
     private inventoryService: ProductInventoryService,
@@ -102,7 +160,10 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
     private productPriceService: ProductPriceService,
     private promotionStateService: PromotionStateService,
     private zone: NgZone
-  ) { }
+  ) {
+    // 🆕 DETECTAR TAMAÑO DE PANTALLA
+    this.checkScreenSize();
+  }
 
   ngOnInit(): void {
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
@@ -114,11 +175,69 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
+    this.cleanupMobileResources();
+
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
   }
 
+  // 🆕 DETECTAR TAMAÑO DE PANTALLA
+  @HostListener('window:resize', ['$event'])
+  private checkScreenSize(): void {
+    const width = window.innerWidth;
+    this.isMobile = width <= 768;
+    this.isTablet = width > 768 && width <= 1024;
+    this.cdr.markForCheck(); // ✅ Usar markForCheck en lugar de detectChanges
+  }
+
+  // 🆕 OBTENER CONFIGURACIÓN DE PAGINACIÓN RESPONSIVA
+  getPageSize(): number {
+    if (this.isMobile) return 5;
+    if (this.isTablet) return 8;
+    return 10;
+  }
+
+  // 🆕 OBTENER CONFIGURACIÓN DE MAX TAGS RESPONSIVA
+  getMaxTagCount(): number {
+    if (this.isMobile) return 1;
+    if (this.isTablet) return 1;
+    return 2;
+  }
+
+  // 🆕 OBTENER ALTURA DE SCROLL PARA MODALES
+  getModalScrollHeight(): string {
+    if (this.isMobile) return '200px';
+    if (this.isTablet) return '250px';
+    return '300px';
+  }
+
+  // 🆕 OBTENER ANCHO DE MODAL RESPONSIVO
+  getModalWidth(): number {
+    if (this.isMobile) return 320;
+    if (this.isTablet) return 500;
+    return 600;
+  }
+
+  // 🆕 OBTENER CONFIGURACIÓN DE GUTTER RESPONSIVO
+  getGutter(): [number, number] {
+    if (this.isMobile) return [4, 4];
+    if (this.isTablet) return [8, 8];
+    return [12, 12];
+  }
+
+  // 🆕 TEXTO ABREVIADO PARA MÓVILES
+  getButtonText(fullText: string, shortText: string): string {
+    return this.isMobile ? shortText : fullText;
+  }
+
+
+
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['product'] && this.product) {
+    if (changes['product'] && changes['product'].currentValue && this.product) {
       this.loadVariants();
+      // ✅ REINICIALIZAR filtros cuando cambia el producto
+      this.clearAllFilters();
     }
   }
 
@@ -140,7 +259,15 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
       .subscribe({
         next: (variants) => {
           this.zone.run(() => {
-            this.variants = [...variants];
+            this.variants = variants.map(variant => ({
+              ...variant,
+              checked: false
+            }));
+
+            // 🆕 INICIALIZAR FILTROS Y OPCIONES
+            this.initializeFilterOptions();
+            this.applyFilters();
+
             this.cdr.detectChanges();
           });
         },
@@ -152,6 +279,587 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
           });
         }
       });
+  }
+
+  // ==================== 🆕 MÉTODOS DE FILTROS ====================
+
+  /**
+   * Inicializa las opciones disponibles para los filtros
+   */
+  private initializeFilterOptions(): void {
+    if (!this.product) return;
+
+    // Generar opciones de colores con conteos
+    const colorCounts = new Map<string, number>();
+    this.variants.forEach(variant => {
+      const count = colorCounts.get(variant.colorName) || 0;
+      colorCounts.set(variant.colorName, count + 1);
+    });
+
+    this.availableColors = this.product.colors.map(color => ({
+      value: color.name,
+      label: color.name,
+      count: colorCounts.get(color.name) || 0,
+      color: color.code
+    })).filter(option => option.count > 0);
+
+    // Generar opciones de tallas con conteos
+    const sizeCounts = new Map<string, number>();
+    this.variants.forEach(variant => {
+      const count = sizeCounts.get(variant.sizeName) || 0;
+      sizeCounts.set(variant.sizeName, count + 1);
+    });
+
+    this.availableSizes = this.product.sizes.map(size => ({
+      value: size.name,
+      label: size.name,
+      count: sizeCounts.get(size.name) || 0
+    })).filter(option => option.count > 0);
+  }
+
+  /**
+   * Aplica todos los filtros activos
+   */
+  private applyFilters(): void {
+    let filtered = [...this.variants];
+
+    // Aplicar filtro rápido
+    filtered = this.applyQuickFilter(filtered, this.quickFilter);
+
+    // Aplicar búsqueda
+    if (this.searchTerm.trim()) {
+      const term = this.searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(variant =>
+        variant.colorName.toLowerCase().includes(term) ||
+        variant.sizeName.toLowerCase().includes(term) ||
+        variant.sku.toLowerCase().includes(term)
+      );
+    }
+
+    // Aplicar filtros de color
+    if (this.selectedColors.length > 0) {
+      filtered = filtered.filter(variant =>
+        this.selectedColors.includes(variant.colorName)
+      );
+    }
+
+    // Aplicar filtros de talla
+    if (this.selectedSizes.length > 0) {
+      filtered = filtered.filter(variant =>
+        this.selectedSizes.includes(variant.sizeName)
+      );
+    }
+
+    // Aplicar filtros de estado de stock
+    if (this.selectedStockStatus.length > 0) {
+      filtered = filtered.filter(variant => {
+        const status = this.getVariantStockStatus(variant.stock || 0);
+        return this.selectedStockStatus.includes(status);
+      });
+    }
+
+    // Aplicar rango de stock
+    if (this.stockRange.min !== null || this.stockRange.max !== null) {
+      filtered = filtered.filter(variant => {
+        const stock = variant.stock || 0;
+        if (this.stockRange.min !== null && stock < this.stockRange.min) return false;
+        if (this.stockRange.max !== null && stock > this.stockRange.max) return false;
+        return true;
+      });
+    }
+
+    // Aplicar filtros de promoción
+    if (this.promotionFilter !== 'all') {
+      filtered = filtered.filter(variant => {
+        const hasPromotion = Boolean(variant.promotionId);
+        return this.promotionFilter === 'with' ? hasPromotion : !hasPromotion;
+      });
+    }
+
+    // Aplicar ordenamiento
+    filtered = this.applySorting(filtered, this.sortBy);
+
+    this.filteredVariants = filtered;
+
+    // 🆕 AGREGAR: Asegurar que todas las variantes tengan la propiedad checked
+    this.filteredVariants.forEach(variant => {
+      if (variant.checked === undefined) {
+        variant.checked = false;
+      }
+    });
+
+    // Actualizar estado de selección
+    this.updateSelectionState();
+  }
+
+  /**
+   * Aplica filtro rápido
+   */
+  private applyQuickFilter(variants: ProductVariant[], filter: QuickFilterType): ProductVariant[] {
+    switch (filter) {
+      case 'problems':
+        return variants.filter(variant =>
+          (variant.stock || 0) <= 3 || !variant.imageUrl
+        );
+      case 'low_stock':
+        return variants.filter(variant =>
+          (variant.stock || 0) > 0 && (variant.stock || 0) <= 10
+        );
+      case 'promotions':
+        return variants.filter(variant => Boolean(variant.promotionId));
+      case 'no_stock':
+        return variants.filter(variant => (variant.stock || 0) === 0);
+      case 'all':
+      default:
+        return variants;
+    }
+  }
+
+  /**
+   * Aplica ordenamiento
+   */
+  private applySorting(variants: ProductVariant[], sortBy: SortType): ProductVariant[] {
+    return [...variants].sort((a, b) => {
+      switch (sortBy) {
+        case 'stock_desc':
+          return (b.stock || 0) - (a.stock || 0);
+        case 'stock_asc':
+          return (a.stock || 0) - (b.stock || 0);
+        case 'color_name':
+          return a.colorName.localeCompare(b.colorName);
+        case 'size_name':
+          return a.sizeName.localeCompare(b.sizeName);
+        case 'sku':
+          return a.sku.localeCompare(b.sku);
+        case 'promotion_status':
+          const aHasPromo = Boolean(a.promotionId) ? 1 : 0;
+          const bHasPromo = Boolean(b.promotionId) ? 1 : 0;
+          return bHasPromo - aHasPromo;
+        default:
+          return 0;
+      }
+    });
+  }
+
+  /**
+   * Obtiene el estado de stock de una variante
+   */
+  private getVariantStockStatus(stock: number): StockStatusType {
+    if (stock === 0) return 'no_stock';
+    if (stock <= 3) return 'critical';
+    if (stock <= 10) return 'low';
+    return 'normal';
+  }
+
+  // ==================== 🆕 EVENTOS DE FILTROS ====================
+
+  toggleFiltersExpanded(): void {
+    this.filtersExpanded = !this.filtersExpanded;
+
+    // En móviles, cerrar automáticamente después de 10 segundos si no hay actividad
+    if (this.isMobile && this.filtersExpanded) {
+      setTimeout(() => {
+        if (this.filtersExpanded) {
+          this.filtersExpanded = false;
+          this.cdr.detectChanges();
+        }
+      }, 10000);
+    }
+
+    this.cdr.markForCheck();
+  }
+
+  setQuickFilter(filter: QuickFilterType): void {
+    this.quickFilter = filter;
+    this.clearDetailedFilters();
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  onSearchChange(term: string): void {
+    // Limpiar timeout anterior
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+
+    // En móviles, agregar debounce de 300ms para mejor performance
+    const delay = this.isMobile ? 300 : 150;
+
+    this.searchTimeout = setTimeout(() => {
+      this.searchTerm = term;
+      this.applyFilters();
+      this.cdr.markForCheck();
+    }, delay);
+  }
+
+  // 🆕 MÉTODO AUXILIAR para mostrar/ocultar columnas en móvil
+  shouldShowColumn(column: string): boolean {
+    if (!this.isMobile) return true;
+
+    // En móvil, ocultar algunas columnas menos importantes
+    const hiddenOnMobile = ['actions-secondary'];
+    return !hiddenOnMobile.includes(column);
+  }
+
+  // 🆕 OBTENER CLASE CSS RESPONSIVA PARA ELEMENTOS
+  getResponsiveClass(baseClass: string): string {
+    let classes = [baseClass];
+
+    if (this.isMobile) classes.push(`${baseClass}--mobile`);
+    if (this.isTablet) classes.push(`${baseClass}--tablet`);
+
+    return classes.join(' ');
+  }
+
+  // 🆕 CONFIGURACIÓN RESPONSIVA PARA LA TABLA
+  getTableScroll(): { x?: string, y?: string } {
+    if (this.isMobile) {
+      return { x: '500px', y: '400px' };
+    }
+    if (this.isTablet) {
+      return { x: '600px', y: '500px' };
+    }
+    return { x: '800px' };
+  }
+
+  onColorFilterChange(colors: string[]): void {
+    this.selectedColors = colors;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  onSizeFilterChange(sizes: string[]): void {
+    this.selectedSizes = sizes;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  onStockStatusChange(statuses: StockStatusType[]): void {
+    this.selectedStockStatus = statuses;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  onStockRangeChange(): void {
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  onPromotionFilterChange(filter: PromotionFilterType): void {
+    this.promotionFilter = filter;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  onSortChange(sortBy: SortType): void {
+    this.sortBy = sortBy;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  clearAllFilters(): void {
+    this.quickFilter = 'all';
+    this.clearDetailedFilters();
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
+  private clearDetailedFilters(): void {
+    this.searchTerm = '';
+    this.selectedColors = [];
+    this.selectedSizes = [];
+    this.selectedStockStatus = [];
+    this.stockRange = { min: null, max: null };
+    this.promotionFilter = 'all';
+  }
+
+  hasActiveFilters(): boolean {
+    return this.quickFilter !== 'all' ||
+      this.searchTerm.trim() !== '' ||
+      this.selectedColors.length > 0 ||
+      this.selectedSizes.length > 0 ||
+      this.selectedStockStatus.length > 0 ||
+      this.stockRange.min !== null ||
+      this.stockRange.max !== null ||
+      this.promotionFilter !== 'all';
+  }
+
+  // ==================== 🆕 MÉTODOS DE CONTEO ====================
+
+  getProblemsCount(): number {
+    return this.variants.filter(variant =>
+      (variant.stock || 0) <= 3 || !variant.imageUrl
+    ).length;
+  }
+
+  getLowStockCount(): number {
+    return this.variants.filter(variant =>
+      (variant.stock || 0) > 0 && (variant.stock || 0) <= 10
+    ).length;
+  }
+
+  getPromotionsCount(): number {
+    return this.variants.filter(variant => Boolean(variant.promotionId)).length;
+  }
+
+  getNoStockCount(): number {
+    return this.variants.filter(variant => (variant.stock || 0) === 0).length;
+  }
+
+  // ==================== 🆕 SELECCIÓN MÚLTIPLE ====================
+
+  onSelectAllChange(checked: boolean): void {
+    this.selectAll = checked;
+    this.indeterminate = false;
+
+    this.filteredVariants.forEach(variant => {
+      variant.checked = checked;
+    });
+
+    this.updateSelectedIds();
+
+    // En móvil, mostrar feedback visual adicional
+    if (this.isMobile && checked) {
+      this.message.info(`${this.filteredVariants.length} variantes seleccionadas`, {
+        nzDuration: 2000
+      });
+    }
+
+    this.cdr.markForCheck();
+  }
+
+  private cleanupMobileResources(): void {
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = null;
+    }
+  }
+
+  onVariantSelectChange(variant: ProductVariant, checked: boolean): void {
+    variant.checked = checked;
+    this.updateSelectionState();
+    this.updateSelectedIds();
+    this.cdr.markForCheck();
+  }
+
+  private updateSelectionState(): void {
+    const checkedCount = this.filteredVariants.filter(v => v.checked).length;
+    const totalCount = this.filteredVariants.length;
+
+    this.selectAll = checkedCount === totalCount && totalCount > 0;
+    this.indeterminate = checkedCount > 0 && checkedCount < totalCount;
+  }
+
+  private updateSelectedIds(): void {
+    this.selectedVariantIds = this.filteredVariants
+      .filter(variant => variant.checked)
+      .map(variant => variant.id);
+  }
+
+  clearSelection(): void {
+    this.filteredVariants.forEach(variant => {
+      variant.checked = false;
+    });
+    this.selectedVariantIds = [];
+    this.selectAll = false;
+    this.indeterminate = false;
+    this.cdr.markForCheck();
+  }
+
+  // ==================== 🆕 ACCIONES MASIVAS ====================
+
+  bulkUpdateStock(): void {
+    if (this.selectedVariantIds.length === 0) {
+      this.message.warning('Seleccione al menos una variante');
+      return;
+    }
+
+    this.bulkStockOperation = 'set';
+    this.bulkStockValue = null;
+    this.bulkStockModalVisible = true;
+
+    // En móvil, hacer scroll al inicio del modal
+    if (this.isMobile) {
+      setTimeout(() => {
+        const modal = document.querySelector('.ant-modal-body');
+        if (modal) {
+          modal.scrollTop = 0;
+        }
+      }, 100);
+    }
+
+    this.cdr.markForCheck();
+  }
+
+  bulkApplyPromotion(): void {
+    if (this.selectedVariantIds.length === 0) {
+      this.message.warning('Seleccione al menos una variante');
+      return;
+    }
+
+    this.loadPromotions();
+    this.bulkPromotionModalVisible = true;
+    this.cdr.markForCheck();
+  }
+
+  bulkDeleteVariants(): void {
+    if (this.selectedVariantIds.length === 0) {
+      this.message.warning('Seleccione al menos una variante');
+      return;
+    }
+
+    this.modal.confirm({
+      nzTitle: '¿Eliminar variantes seleccionadas?',
+      nzContent: `¿Está seguro de eliminar ${this.selectedVariantIds.length} variante(s) seleccionada(s)?`,
+      nzOkText: 'Eliminar',
+      nzOkType: 'primary',
+      nzOkDanger: true,
+      nzOnOk: () => {
+        this.executeBulkDelete();
+      }
+    });
+  }
+
+  private executeBulkDelete(): void {
+    const selectedVariants = this.filteredVariants.filter(v => v.checked);
+    let deletedCount = 0;
+
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    // Eliminar variantes una por una
+    selectedVariants.forEach(variant => {
+      this.inventoryService.deleteVariant(variant.id).subscribe({
+        next: () => {
+          deletedCount++;
+
+          // Remover de la lista local
+          this.variants = this.variants.filter(v => v.id !== variant.id);
+
+          if (deletedCount === selectedVariants.length) {
+            this.loading = false;
+            this.clearSelection();
+            this.applyFilters();
+            this.message.success(`${deletedCount} variante(s) eliminada(s) correctamente`);
+            this.cdr.detectChanges();
+          }
+        },
+        error: (error) => {
+          this.loading = false;
+          this.message.error(`Error al eliminar variante ${variant.sku}: ${error.message}`);
+          this.cdr.detectChanges();
+        }
+      });
+    });
+  }
+
+  confirmBulkStockUpdate(): void {
+    if (this.bulkStockValue === null || this.bulkStockValue === undefined) {
+      this.message.warning('Ingrese un valor válido');
+      return;
+    }
+
+    const selectedVariants = this.filteredVariants.filter(v => v.checked);
+    this.loading = true;
+    this.closeBulkStockModal();
+
+    selectedVariants.forEach(variant => {
+      let newStock = 0;
+
+      switch (this.bulkStockOperation) {
+        case 'set':
+          newStock = this.bulkStockValue!;
+          break;
+        case 'add':
+          newStock = (variant.stock || 0) + this.bulkStockValue!;
+          break;
+        case 'subtract':
+          newStock = Math.max(0, (variant.stock || 0) - this.bulkStockValue!);
+          break;
+      }
+
+      const stockChange = newStock - (variant.stock || 0);
+
+      if (stockChange !== 0) {
+        const update: StockUpdate = {
+          productId: this.product!.id,
+          variantId: variant.id,
+          quantity: stockChange
+        };
+
+        this.inventoryService.updateStock(update).subscribe({
+          next: () => {
+            variant.stock = newStock;
+            this.applyFilters();
+            this.cdr.detectChanges();
+          },
+          error: (error) => {
+            this.message.error(`Error actualizando ${variant.sku}: ${error.message}`);
+          }
+        });
+      }
+    });
+
+    this.loading = false;
+    this.clearSelection();
+    this.message.success('Stock actualizado masivamente');
+    this.cdr.detectChanges();
+  }
+
+  confirmBulkPromotionApplication(promotionId: string): void {
+    const selectedVariants = this.filteredVariants.filter(v => v.checked);
+
+    this.promotionService.getPromotionById(promotionId).subscribe({
+      next: (promotion) => {
+        if (!promotion) {
+          this.message.error('Promoción no encontrada');
+          return;
+        }
+
+        this.loading = true;
+        this.closeBulkPromotionModal();
+
+        selectedVariants.forEach(variant => {
+          this.productPriceService.applyPromotionToVariant(
+            this.product!.id,
+            variant.id,
+            promotion
+          ).subscribe({
+            next: () => {
+              // Actualizar variante local
+              variant.promotionId = promotion.id;
+              variant.discountType = promotion.discountType;
+              variant.discountValue = promotion.discountValue;
+
+              this.applyFilters();
+              this.cdr.detectChanges();
+            },
+            error: (error) => {
+              this.message.error(`Error aplicando promoción a ${variant.sku}: ${error.message}`);
+            }
+          });
+        });
+
+        this.loading = false;
+        this.clearSelection();
+        this.message.success('Promoción aplicada masivamente');
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.message.error('Error cargando promoción: ' + error.message);
+      }
+    });
+  }
+
+  closeBulkStockModal(): void {
+    this.bulkStockModalVisible = false;
+    this.bulkStockValue = null;
+    this.cdr.markForCheck();
+  }
+
+  closeBulkPromotionModal(): void {
+    this.bulkPromotionModalVisible = false;
+    this.cdr.markForCheck();
   }
 
   getColorByName(colorName: string): Color | undefined {
@@ -221,6 +929,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
 
     // Mostrar éxito inmediatamente
     this.message.success('Stock actualizado correctamente');
+    this.applyFilters();
     this.cdr.detectChanges();
 
     // Procesar en servidor en segundo plano
@@ -352,9 +1061,9 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
       })
     ).subscribe({
       next: () => {
-        console.log('✅ Promoción aplicada exitosamente en servidor');
         this.message.success('Promoción aplicada correctamente');
         this.cleanupPendingOperation(variant.id);
+        this.applyFilters();
       },
       error: (error) => {
         console.error('❌ Error al aplicar promoción en servidor:', error);
@@ -450,15 +1159,9 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
     variant.originalPrice = originalPrice;
     variant.discountedPrice = Math.max(0, discountedPrice);
 
-    console.log(`🎯 Promoción aplicada optimísticamente:`, {
-      variantId: variant.id,
-      promotionName: promotion.name,
-      originalPrice,
-      discountedPrice: variant.discountedPrice,
-      discountValue: promotion.discountValue
-    });
 
     // Forzar actualización visual
+    this.applyFilters();
     this.cdr.detectChanges();
   }
 
@@ -473,11 +1176,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
         // Restaurar variante original
         this.variants[index] = { ...originalVariant };
 
-        console.log('🔄 Rollback aplicado para promoción:', {
-          variantId,
-          restoredVariant: this.variants[index]
-        });
-
+        this.applyFilters();
         this.cdr.detectChanges();
       }
     }
@@ -504,9 +1203,6 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
           originalVariant: { ...variant },
           index: variantIndex
         };
-
-        // 🚀 ELIMINACIÓN OPTIMISTA INMEDIATA
-        console.log('🗑️ Eliminando variante optimísticamente...');
         this.deleteVariantOptimistically(variant.id, backup);
 
         // Calcular nuevo stock total
@@ -743,24 +1439,32 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
 
   // 🆕 NUEVO: Método para broadcasting cuando se aplica promoción a variante
   private broadcastVariantPromotionApplied(variant: ProductVariant, promotion: Promotion): void {
-    if (!this.product) return;
+    if (!this.product || !variant || !promotion) {
+      console.warn('❌ [BROADCAST] Datos insuficientes para broadcast');
+      return;
+    }
 
-    // Usar tu método existente
-    this.promotionStateService.notifyPromotionActivated(promotion.id, [this.product.id]);
+    try {
+      // Usar tu método existente
+      this.promotionStateService.notifyPromotionActivated(promotion.id, [this.product.id]);
 
-    // También usar el nuevo método para variantes específicas
-    this.promotionStateService.notifyGlobalUpdate({
-      type: 'variant_promotion_applied',
-      data: {
-        type: 'applied',
-        targetType: 'variant',
-        targetId: variant.id,
-        promotionId: promotion.id,
-        affectedProducts: [this.product.id]
-      },
-      timestamp: new Date()
-    });
+      // También usar el nuevo método para variantes específicas
+      this.promotionStateService.notifyGlobalUpdate({
+        type: 'variant_promotion_applied',
+        data: {
+          type: 'applied',
+          targetType: 'variant',
+          targetId: variant.id,
+          promotionId: promotion.id,
+          affectedProducts: [this.product.id]
+        },
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('❌ [BROADCAST] Error en broadcast:', error);
+    }
   }
+
 
 
   // 🆕 NUEVO: Método para broadcasting cuando se remueve promoción de variante
@@ -879,7 +1583,6 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
     this.selectedVariantForPromotion = variant;
     this.loading = true;
 
-    // Cargar promociones cada vez que se abre el modal
     this.promotionService.getActivePromotions().pipe(
       finalize(() => {
         this.loading = false;
@@ -887,9 +1590,14 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
       })
     ).subscribe({
       next: (promotions) => {
-        console.log('Promociones recibidas en el componente:', promotions);
         this.promotions = promotions;
         this.promotionModalVisible = true;
+
+        // En móvil, cerrar filtros expandidos para dar más espacio
+        if (this.isMobile && this.filtersExpanded) {
+          this.filtersExpanded = false;
+        }
+
         this.cdr.detectChanges();
       },
       error: (error) => {
@@ -899,6 +1607,84 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
       }
     });
   }
+
+  // 🆕 OPTIMIZACIÓN: Lazy loading para imágenes en móvil
+  shouldLazyLoadImages(): boolean {
+    return this.isMobile;
+  }
+
+  getInputNumberConfig(): any {
+    return {
+      size: this.isMobile ? 'small' : 'middle',
+      style: {
+        width: this.isMobile ? '60px' : '80px',
+        fontSize: this.isMobile ? '11px' : '12px'
+      }
+    };
+  }
+
+  getButtonConfig(): any {
+    return {
+      size: this.isMobile ? 'small' : 'default',
+      style: {
+        fontSize: this.isMobile ? '10px' : '12px',
+        padding: this.isMobile ? '2px 4px' : '4px 8px'
+      }
+    };
+  }
+
+  shouldOptimizePerformance(): boolean {
+    return this.isMobile && this.filteredVariants.length > 20;
+  }
+
+  getVirtualScrollConfig(): any {
+    if (this.shouldOptimizePerformance()) {
+      return {
+        itemSize: 40,
+        maxToleratedSize: 200
+      };
+    }
+    return null;
+  }
+
+  onKeyboardNavigation(event: KeyboardEvent, action: string): void {
+    if (this.isMobile) {
+      // Implementar navegación por teclado simplificada para móvil
+      switch (event.key) {
+        case 'Enter':
+          event.preventDefault();
+          if (action === 'toggleFilters') {
+            this.toggleFiltersExpanded();
+          }
+          break;
+        case 'Escape':
+          event.preventDefault();
+          if (this.filtersExpanded) {
+            this.filtersExpanded = false;
+            this.cdr.detectChanges();
+          }
+          break;
+      }
+    }
+  }
+
+  // 🆕 UTILIDAD: Formatear texto para móvil
+  getMobileText(text: string, maxLength: number = 20): string {
+    if (!this.isMobile) return text;
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  }
+
+  // 🆕 CONFIGURACIÓN: Obtener configuración de tooltip para móvil
+  getTooltipConfig(): any {
+    return {
+      nzPlacement: this.isMobile ? 'top' : 'topLeft',
+      nzMouseEnterDelay: this.isMobile ? 0.8 : 0.5,
+      nzOverlayStyle: {
+        fontSize: this.isMobile ? '11px' : '12px'
+      }
+    };
+  }
+
 
   // Función para cancelar la aplicación de promoción
   cancelApplyPromotion(): void {

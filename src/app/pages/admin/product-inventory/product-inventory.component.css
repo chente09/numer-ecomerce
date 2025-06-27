@@ -1,5 +1,8 @@
+/* ==================== ESTILOS BASE ==================== */
 .inventory-container {
-    padding: 16px 0;
+    padding: 8px;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .loading-container {
@@ -7,69 +10,399 @@
     justify-content: center;
     align-items: center;
     height: 200px;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(2px);
 }
 
 .inventory-header {
     margin-bottom: 16px;
 }
 
-.color-cell {
+.inventory-header h2 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+}
+
+.inventory-header p {
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+/* ==================== FILTROS ==================== */
+.filters-card {
+    margin-bottom: 12px;
+    border: 1px solid #f0f0f0;
+}
+
+.filters-card .ant-card-body {
+    padding: 12px;
+}
+
+.filters-header {
     display: flex;
-    align-items: center;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
     gap: 8px;
 }
 
-.color-box {
-    width: 16px;
-    height: 16px;
+.filters-header h4 {
+    margin: 0;
+    font-weight: 600;
+    color: #262626;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.filters-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.results-count {
+    font-size: 11px;
+    color: #595959;
+    background: #f5f5f5;
+    padding: 2px 6px;
     border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* FILTROS RÁPIDOS */
+.quick-filters {
+    margin-bottom: 12px;
+}
+
+.quick-filters .ant-btn-group {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.quick-filters .ant-btn {
+    flex: 1;
+    min-width: 90px;
+    font-size: 11px;
+    padding: 4px 8px;
+    height: auto;
+    line-height: 1.2;
+    transition: all 0.2s ease-in-out;
+}
+
+.quick-filters .ant-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* FILTROS DETALLADOS */
+.detailed-filters {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out;
+}
+
+.detailed-filters.expanded {
+    max-height: 600px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+    animation: fadeIn 0.3s ease-in-out;
+    position: relative;
+    z-index: 1;
+}
+
+.filter-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: #595959;
+}
+
+/* Elementos de filtro más compactos */
+.inventory-container .ant-select,
+.inventory-container .ant-input,
+.inventory-container .ant-input-number {
+    font-size: 12px;
+}
+
+.inventory-container .ant-select-selector,
+.ant-select-selector {
+    min-height: 28px !important;
+}
+
+.inventory-container .ant-input-number,
+.ant-input-number {
+    min-height: 28px !important;
+}
+
+/* Opciones de color */
+.color-option {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
     border: 1px solid #d9d9d9;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* Checkboxes de stock */
+.stock-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+    width: 100%;
+    font-size: 11px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+}
+
+.status-indicator.success {
+    background-color: #52c41a;
+}
+
+.status-indicator.warning {
+    background-color: #faad14;
+}
+
+.status-indicator.error {
+    background-color: #ff4d4f;
+}
+
+/* Rango de stock */
+.stock-range {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.range-separator {
+    color: #8c8c8c;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+/* ==================== ACCIONES MASIVAS ==================== */
+.bulk-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.bulk-actions-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.selection-info {
+    font-weight: 500;
+    color: #1890ff;
+    background: #e6f7ff;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.bulk-actions-content .ant-btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    height: auto;
+}
+
+/* ==================== TABLA ==================== */
+.table-container {
+    overflow-x: auto;
+    margin: 0 -8px;
+    padding: 0 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #d9d9d9 transparent;
+}
+
+.table-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #d9d9d9;
+    border-radius: 3px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #bfbfbf;
+}
+
+.ant-table {
+    font-size: 12px;
+}
+
+.ant-table-thead > tr > th {
+    padding: 8px 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.ant-table-tbody > tr > td {
+    padding: 6px 4px;
+    font-size: 11px;
+}
+
+/* Checkbox en encabezado */
+thead th:first-child {
+    text-align: center;
+    width: 35px;
+}
+
+/* Celdas específicas */
+.color-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.color-box {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1px solid #d9d9d9;
+    flex-shrink: 0;
 }
 
 .stock-cell {
     display: flex;
     align-items: center;
+    gap: 2px;
+    flex-wrap: wrap;
 }
 
 .stock-edit-cell {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    flex-wrap: wrap;
 }
 
 .action-buttons {
     display: flex;
-    gap: 4px;
-}
-
-.help-card {
-    margin-top: 16px;
-}
-
-.stock-legend {
-    display: flex;
+    gap: 2px;
     flex-wrap: wrap;
-    gap: 16px;
+    min-width: 120px;
+    justify-content: flex-start;
 }
 
-.legend-item {
+.action-buttons .ant-btn {
+    padding: 4px;
+    min-width: 28px;
+    height: 28px;
+    transition: all 0.2s ease-in-out;
+}
+
+.action-buttons .ant-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Tags más compactos */
+.ant-tag {
+    font-size: 10px;
+    padding: 1px 4px;
+    line-height: 1.2;
+    margin: 1px;
+}
+
+.promotion-tag {
+    margin-left: 2px;
+    font-size: 9px;
+    padding: 0 3px;
+}
+
+/* Estados de fila */
+.ant-table-tbody > tr.selected-row {
+    background-color: #e6f7ff !important;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.ant-table-tbody > tr.selected-row:hover {
+    background-color: #bae7ff !important;
+}
+
+.ant-table-tbody > tr.has-promotion {
+    border-left: 3px solid #722ed1;
+}
+
+/* ==================== MODALES ==================== */
+.variant-info {
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+}
+
+.empty-promotions {
+    padding: 16px 0;
+    text-align: center;
+}
+
+.modal-footer {
+    margin-top: 12px;
     display: flex;
-    align-items: center;
-    gap: 8px;
+    justify-content: flex-end;
+    gap: 6px;
 }
 
-.legend-description {
-    font-size: 14px;
-    color: #8c8c8c;
+.bulk-stock-form .form-group {
+    margin-bottom: 12px;
 }
 
+.bulk-stock-form label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    color: #262626;
+    font-size: 12px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+/* Imágenes de variantes */
 .variant-image-preview {
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
     overflow: hidden;
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
 }
 
 .variant-image-preview img {
@@ -78,96 +411,301 @@
     object-fit: contain;
 }
 
-/* Error image handler */
-.error-image {
-    opacity: 0.5;
+/* ==================== AYUDA ==================== */
+.help-card {
+    margin-top: 12px;
 }
 
-.variant-info {
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  padding: 12px;
-  margin-bottom: 16px;
+.help-card h3 {
+    font-size: 1rem;
+    margin-bottom: 8px;
 }
 
-.empty-promotions {
-  padding: 24px 0;
+.stock-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.variant-image-preview {
-  width: 100px;
-  height: 100px;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.variant-image-preview img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+.legend-description {
+    font-size: 12px;
+    color: #595959;
 }
 
-.modal-footer {
-  margin-top: 16px;
-  text-align: right;
+/* ==================== ANIMACIONES ==================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 24px;
+/* ==================== RESPONSIVE BREAKPOINTS ==================== */
+
+/* Tablets (768px - 1024px) */
+@media (max-width: 1024px) {
+    .inventory-container {
+        padding: 6px;
+    }
+
+    .filters-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .filters-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .quick-filters .ant-btn {
+        min-width: 80px;
+        font-size: 10px;
+    }
+
+    .ant-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .ant-table {
+        min-width: 600px;
+    }
+
+    .action-buttons {
+        flex-wrap: wrap;
+        gap: 1px;
+    }
+
+    .action-buttons .ant-btn {
+        min-width: 28px;
+        font-size: 11px;
+    }
 }
 
-.empty-promotions {
-  padding: 24px 0;
-  text-align: center;
+/* Móviles (≤ 768px) */
+@media (max-width: 768px) {
+    .table-container {
+        margin: 0 -4px;
+        padding: 0 4px;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .inventory-container {
+        padding: 4px;
+    }
+
+    .inventory-header h2 {
+        font-size: 1.1rem;
+    }
+
+    .filters-card .ant-card-body {
+        padding: 8px;
+    }
+
+    .filters-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .filters-actions {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+
+    .results-count {
+        font-size: 10px;
+        order: 3;
+        width: 100%;
+        text-align: center;
+        margin-top: 4px;
+    }
+
+    /* Filtros rápidos en columna */
+    .quick-filters .ant-btn-group {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .quick-filters .ant-btn {
+        width: 100%;
+        margin-bottom: 2px;
+        min-width: unset;
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+
+    .detailed-filters.expanded {
+        max-height: 700px;
+    }
+
+    /* Acciones masivas en columna */
+    .bulk-actions-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .bulk-actions-content .ant-btn-group {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .bulk-actions-content .ant-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Tabla responsiva */
+    .ant-table {
+        min-width: 500px;
+    }
+
+    .ant-modal {
+        margin: 8px;
+        max-width: calc(100vw - 16px);
+    }
+
+    .ant-modal-body {
+        padding: 12px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        gap: 2px;
+        min-width: 60px;
+        align-items: stretch;
+    }
+
+    .action-buttons .ant-btn {
+        width: 100%;
+        font-size: 10px;
+        margin: 0;
+    }
+
+    /* Rango de stock en columna */
+    .stock-range {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .stock-range .ant-input-number {
+        width: 100%;
+    }
+
+    .range-separator {
+        align-self: center;
+    }
+
+    .stock-checkbox {
+        margin-bottom: 4px;
+        font-size: 10px;
+    }
+
+    .stock-cell .ant-tag {
+        font-size: 9px;
+        padding: 0 2px;
+    }
+
+    .promotion-tag {
+        font-size: 8px;
+        padding: 0 2px;
+    }
 }
 
-.variant-info {
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  padding: 12px;
-  margin-bottom: 16px;
-}
+/* Móviles muy pequeños (≤ 480px) */
+@media (max-width: 480px) {
+    .inventory-container {
+        padding: 2px;
+    }
 
-.modal-footer {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
-}
+    .inventory-header {
+        margin-bottom: 8px;
+    }
 
-.variant-image-preview {
-  width: 100px;
-  height: 100px;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+    .inventory-header h2 {
+        font-size: 1rem;
+    }
 
-.variant-image-preview img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
+    .inventory-header p {
+        font-size: 0.8rem;
+    }
 
-/* Estilo para variantes con promociones */
-.has-promotion {
-  background-color: rgba(24, 144, 255, 0.05);
-}
+    .filters-card .ant-card-body {
+        padding: 6px;
+    }
 
-.has-promotion:hover {
-  background-color: rgba(24, 144, 255, 0.1);
-}
+    .filters-header h4 {
+        font-size: 0.9rem;
+    }
 
-.promotion-tag {
-  margin-left: 8px;
-}
+    .quick-filters .ant-btn {
+        font-size: 10px;
+        padding: 4px 6px;
+    }
 
-/* Tooltip para las promociones */
-.promotion-tooltip {
-  max-width: 300px;
+    .detailed-filters.expanded {
+        max-height: 800px;
+    }
+
+    .ant-table-thead > tr > th {
+        padding: 4px 2px;
+        font-size: 10px;
+    }
+
+    .ant-table-tbody > tr > td {
+        padding: 4px 2px;
+        font-size: 10px;
+    }
+
+    .color-box {
+        width: 10px;
+        height: 10px;
+    }
+
+    .action-buttons .ant-btn {
+        min-height: 32px;
+        min-width: 32px;
+        padding: 4px;
+    }
+
+    .ant-tag {
+        font-size: 9px;
+        padding: 0 2px;
+    }
+
+    .variant-image-preview {
+        width: 60px;
+        height: 60px;
+    }
+
+    .help-card {
+        margin-top: 8px;
+    }
+
+    .help-card h3 {
+        font-size: 0.9rem;
+    }
+
+    .legend-description {
+        font-size: 11px;
+    }
 }
