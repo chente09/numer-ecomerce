@@ -9,6 +9,7 @@
             <button nz-button nzType="primary" (click)="openCreateModal()">
                 <span nz-icon nzType="plus"></span>
                 <span class="button-text">Nuevo Producto</span>
+                <span class="button-text-mobile">Nuevo</span>
             </button>
         </div>
     </nz-card>
@@ -61,7 +62,6 @@
         <nz-tabset>
             <nz-tab nzTitle="Productos">
                 <!-- Tu código existente de la tabla de productos -->
-                <!-- Tabla de productos -->
                 <div class="table-responsive" *ngIf="products && products.length > 0">
                     <nz-table #tabla [nzData]="products" [nzBordered]="true" [nzLoading]="loading"
                         [nzShowPagination]="true" [nzPageSize]="pageSize" [nzTotal]="total" [nzPageIndex]="pageIndex"
@@ -205,7 +205,19 @@
                     <h3>{{ selectedProduct.name }}</h3>
                     <p><strong>Precio:</strong> ${{ (selectedProduct.currentPrice || selectedProduct.price).toFixed(2)
                         }}</p>
-                    <p><strong>Categoría:</strong> {{ getCategoryName(selectedProduct.category) }}</p>
+                    <div class="categories-section">
+                        <strong>Categorías:</strong>
+                        <div class="categories-tags"
+                            *ngIf="selectedProduct.categories && selectedProduct.categories.length > 0; else noCategories">
+                            <nz-tag *ngFor="let categoryId of selectedProduct.categories"
+                                [nzColor]="getCategoryColor(categoryId)" class="category-tag-detail">
+                                {{ getCategoryName(categoryId) }}
+                            </nz-tag>
+                        </div>
+                        <ng-template #noCategories>
+                            <span class="no-categories-detail">Sin categorías</span>
+                        </ng-template>
+                    </div>
                     <p><strong>SKU:</strong> {{ selectedProduct.sku }}</p>
                     <p><strong>Stock:</strong> {{ selectedProduct.totalStock || 0 }}</p>
                     <p *ngIf="selectedProduct.description"><strong>Descripción:</strong> {{ selectedProduct.description
@@ -226,12 +238,11 @@
         </ng-container>
     </nz-modal>
 
-    <!-- Drawers/Paneles laterales -->
     <!-- Drawer de Estadísticas -->
     <nz-drawer [nzVisible]="showStatsDrawer" [nzTitle]="'Estadísticas: ' + (selectedProduct?.name || '')"
-        nzPlacement="right" [nzWidth]="720" (nzOnClose)="closeDrawers()">
+        nzPlacement="right" [nzWidth]="getDrawerWidth()" [nzBodyStyle]="getDrawerBodyStyle()"
+        (nzOnClose)="closeDrawers()">
         <ng-container *nzDrawerContent>
-            <!-- 🚀 NUEVO: Escuchar eventos de cambios de estadísticas -->
             <app-product-stats [product]="selectedProduct" (statsChanged)="onStatsChange($event)">
             </app-product-stats>
         </ng-container>
@@ -239,9 +250,9 @@
 
     <!-- Drawer de Inventario -->
     <nz-drawer [nzVisible]="showInventoryDrawer" [nzTitle]="'Inventario: ' + (selectedProduct?.name || '')"
-        nzPlacement="right" [nzWidth]="720" (nzOnClose)="closeDrawers()">
+        nzPlacement="right" [nzWidth]="getDrawerWidth()" [nzBodyStyle]="getDrawerBodyStyle()"
+        (nzOnClose)="closeDrawers()">
         <ng-container *nzDrawerContent>
-            <!-- 🚀 NUEVO: Escuchar eventos de cambios de inventario -->
             <app-product-inventory [product]="selectedProduct" (inventoryChanged)="onInventoryChange($event)"
                 (productUpdated)="onInventoryChange($event)">
             </app-product-inventory>
@@ -250,9 +261,9 @@
 
     <!-- Drawer de Promociones -->
     <nz-drawer [nzVisible]="showPromotionsDrawer" [nzTitle]="'Promociones: ' + (selectedProduct?.name || '')"
-        nzPlacement="right" [nzWidth]="720" (nzOnClose)="closeDrawers()">
+        nzPlacement="right" [nzWidth]="getDrawerWidth()" [nzBodyStyle]="getDrawerBodyStyle()"
+        (nzOnClose)="closeDrawers()">
         <ng-container *nzDrawerContent>
-            <!-- 🚀 NUEVO: Escuchar eventos de cambios de promociones -->
             <app-product-promotions [product]="selectedProduct" (promotionChanged)="onPromotionChange($event)">
             </app-product-promotions>
         </ng-container>

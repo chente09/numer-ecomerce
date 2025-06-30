@@ -1989,4 +1989,91 @@ export class ProductService {
     );
   }
 
+  // ==================== MÉTODOS DE ESTADÍSTICAS REALES ====================
+
+  /**
+   * 📊 Obtiene historial de ventas de un producto
+   */
+  getProductSalesHistory(productId: string, days: number = 30): Observable<{ date: Date, sales: number }[]> {
+    const cacheKey = `${this.productsCacheKey}_sales_${productId}_${days}`;
+
+    return this.cacheService.getCached<{ date: Date, sales: number }[]>(cacheKey, () => {
+      // TODO: Implementar con datos reales de Firestore
+      // Por ahora simulamos datos
+      const salesHistory: { date: Date, sales: number }[] = [];
+      const today = new Date();
+
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+
+        // Simulación: ventas aleatorias
+        const sales = Math.floor(Math.random() * 10);
+        salesHistory.push({ date, sales });
+      }
+
+      return of(salesHistory);
+    });
+  }
+
+  /**
+   * 👁️ Obtiene datos de vistas por período
+   */
+  getProductViewsData(productId: string): Observable<{ period: string, count: number }[]> {
+    const cacheKey = `${this.productsCacheKey}_views_${productId}`;
+
+    return this.cacheService.getCached<{ period: string, count: number }[]>(cacheKey, () => {
+      // TODO: Implementar con datos reales
+      const viewsData = [
+        { period: 'Hoy', count: Math.floor(Math.random() * 50) + 10 },
+        { period: 'Ayer', count: Math.floor(Math.random() * 40) + 5 },
+        { period: 'Última semana', count: Math.floor(Math.random() * 200) + 50 },
+        { period: 'Último mes', count: Math.floor(Math.random() * 800) + 200 }
+      ];
+
+      return of(viewsData);
+    });
+  }
+
+  /**
+   * 📈 Obtiene estadísticas completas de un producto
+   */
+  getProductCompleteStats(productId: string): Observable<{
+    product: Product;
+    salesHistory: { date: Date, sales: number }[];
+    viewsData: { period: string, count: number }[];
+    stockData: any;
+  }> {
+    return forkJoin({
+      product: this.forceRefreshProduct(productId),
+      salesHistory: this.getProductSalesHistory(productId),
+      viewsData: this.getProductViewsData(productId)
+    }).pipe(
+      take(1),
+      map(({ product, salesHistory, viewsData }) => {
+        if (!product) {
+          throw new Error('Producto no encontrado');
+        }
+
+        const stockData = {
+          totalStock: product.totalStock || 0,
+          variantsWithStock: product.variants?.filter(v => (v.stock || 0) > 0).length || 0,
+          variantsWithoutStock: product.variants?.filter(v => (v.stock || 0) === 0).length || 0,
+          totalVariants: product.variants?.length || 0
+        };
+
+        return {
+          product,
+          salesHistory,
+          viewsData,
+          stockData
+        };
+      }),
+      catchError(error => {
+        console.error(`❌ Error obteniendo estadísticas para ${productId}:`, error);
+        return throwError(() => error);
+      })
+    );
+  }
+
 }

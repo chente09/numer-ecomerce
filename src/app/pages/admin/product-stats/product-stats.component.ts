@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService } from '../../../services/admin/product/product.service';
-import { ProductInventoryService, InventorySummary } from '../../../services/admin/inventario/product-inventory.service';
+import { PromotionStateService, PromotionChangeEvent } from '../../../services/admin/promotionState/promotion-state.service';
 import { Product } from '../../../models/models';
-import { finalize } from 'rxjs';
+import { finalize, Subject, takeUntil, switchMap, take, debounceTime } from 'rxjs';
 
 // Importar módulos ng-zorro necesarios
 import { NzStatisticModule } from 'ng-zorro-antd/statistic';
@@ -40,7 +40,7 @@ import { FormsModule } from '@angular/forms';
   styleUrls: ['./product-stats.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProductStatsComponent implements OnInit, OnChanges {
+export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
   @Input() product: Product | null = null;
   @Output() statsChanged = new EventEmitter<{
     productId: string;
@@ -52,13 +52,22 @@ export class ProductStatsComponent implements OnInit, OnChanges {
   stockData: any = null;
   viewsData: { period: string, count: number }[] = [];
 
+  private destroy$ = new Subject<void>();
+  private readonly COMPONENT_NAME = 'ProductStatsComponent';
+
   constructor(
     private productService: ProductService,
-    private inventoryService: ProductInventoryService,
+    private promotionStateService: PromotionStateService,
     private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
+    // 🔗 Registrar componente para actualizaciones de promociones
+    this.promotionStateService.registerComponent(this.COMPONENT_NAME);
+    
+    // 📡 Suscribirse a cambios de promociones
+    this.subscribeToPromotionChanges();
+    
     if (this.product) {
       this.loadProductStats();
     }
@@ -70,75 +79,151 @@ export class ProductStatsComponent implements OnInit, OnChanges {
     }
   }
 
+  ngOnDestroy(): void {
+    this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  /**
+   * 📡 Suscribirse a cambios de promociones
+   */
+  private subscribeToPromotionChanges(): void {
+    // Escuchar cambios globales de promociones
+    this.promotionStateService.onGlobalUpdate()
+      .pipe(
+        takeUntil(this.destroy$),
+        debounceTime(500) // Evitar spam de actualizaciones
+      )
+      .subscribe(globalUpdate => {
+        this.handlePromotionUpdate(globalUpdate);
+      });
+
+    // Escuchar cambios específicos del producto
+    if (this.product) {
+      this.promotionStateService.onProductPromotionChange(this.product.id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(event => {
+          console.log(`📊 [STATS] Cambio de promoción en producto ${this.product?.id}:`, event);
+          this.refreshProductStats();
+        });
+    }
+  }
+
+  /**
+   * 🔄 Manejar actualizaciones de promociones
+   */
+  private handlePromotionUpdate(globalUpdate: any): void {
+    const event = globalUpdate.data;
+    
+    // Solo actualizar si afecta a nuestro producto
+    if (this.product && this.affectsCurrentProduct(event)) {
+      console.log(`📊 [STATS] Actualizando estadísticas por cambio de promoción`);
+      this.refreshProductStats();
+    }
+  }
+
+  /**
+   * 🎯 Verificar si el evento afecta al producto actual
+   */
+  private affectsCurrentProduct(event: PromotionChangeEvent): boolean {
+    if (!this.product) return false;
+
+    // Verificar si es el producto específico
+    if (event.productId === this.product.id) return true;
+
+    // Verificar si está en la lista de productos afectados
+    if (event.affectedProducts?.includes(this.product.id)) return true;
+
+    // Para eventos globales, asumir que puede afectar
+    if (['activated', 'deactivated', 'updated'].includes(event.type) && !event.productId) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * 📊 Cargar estadísticas del producto
+   */
   loadProductStats(): void {
     if (!this.product) return;
 
     this.loading = true;
+    console.log(`📊 [STATS] Cargando estadísticas para producto: ${this.product.name}`);
 
-    // Simulación de datos de ventas históricas
-    this.salesHistory = [
-      { date: new Date(2025, 4, 10), sales: 5 },
-      { date: new Date(2025, 4, 11), sales: 3 },
-      { date: new Date(2025, 4, 12), sales: 7 },
-      { date: new Date(2025, 4, 13), sales: 2 },
-      { date: new Date(2025, 4, 14), sales: 6 }
-    ];
-
-    // Simulación de datos de vistas
-    this.viewsData = [
-      { period: 'Hoy', count: 12 },
-      { period: 'Ayer', count: 8 },
-      { period: 'Última semana', count: 45 },
-      { period: 'Último mes', count: 180 }
-    ];
-
-    // Obtener datos reales del producto
-    this.productService.getCompleteProduct(this.product.id)
+    this.productService.getProductCompleteStats(this.product.id)
       .pipe(
+        take(1),
         finalize(() => {
           this.loading = false;
           this.cdr.markForCheck();
         })
       )
       .subscribe({
-        next: (product) => {
-          if (product) {
-            this.stockData = {
-              totalStock: product.totalStock || 0,
-              variantsWithStock: product.variants?.filter(v => (v.stock || 0) > 0).length || 0,
-              variantsWithoutStock: product.variants?.filter(v => (v.stock || 0) === 0).length || 0,
-              totalVariants: product.variants?.length || 0
-            };
+        next: (stats) => {
+          console.log(`📊 [STATS] Estadísticas cargadas:`, stats);
+          
+          this.salesHistory = stats.salesHistory;
+          this.viewsData = stats.viewsData;
+          this.stockData = stats.stockData;
 
-            // 🚀 EMITIR CAMBIO AL PADRE SI HAY DIFERENCIAS
-            if (this.hasStatsChanged(product)) {
-              this.statsChanged.emit({
-                productId: product.id,
-                updatedProduct: product
-              });
-            }
+          // 🚀 Verificar si hay cambios y emitir evento
+          if (this.hasStatsChanged(stats.product)) {
+            this.statsChanged.emit({
+              productId: stats.product.id,
+              updatedProduct: stats.product
+            });
           }
+
           this.cdr.markForCheck();
         },
         error: (error) => {
-          console.error('Error al cargar estadísticas del producto:', error);
+          console.error('❌ [STATS] Error al cargar estadísticas:', error);
         }
       });
   }
 
-  // 🔍 Verificar si las estadísticas han cambiado
+  /**
+   * 🔄 Refrescar estadísticas forzando recarga
+   */
+  private refreshProductStats(): void {
+    if (!this.product) return;
+    
+    console.log(`🔄 [STATS] Refrescando estadísticas del producto ${this.product.id}`);
+    this.loadProductStats();
+  }
+
+  /**
+   * 🔍 Verificar si las estadísticas han cambiado
+   */
   private hasStatsChanged(updatedProduct: Product): boolean {
     if (!this.product) return false;
 
-    return (
+    const hasChanges = (
       this.product.views !== updatedProduct.views ||
       this.product.sales !== updatedProduct.sales ||
       this.product.totalStock !== updatedProduct.totalStock ||
-      this.product.popularityScore !== updatedProduct.popularityScore
+      this.product.popularityScore !== updatedProduct.popularityScore ||
+      this.product.discountPercentage !== updatedProduct.discountPercentage ||
+      this.product.currentPrice !== updatedProduct.currentPrice
     );
+
+    if (hasChanges) {
+      console.log(`📊 [STATS] Cambios detectados en estadísticas:`, {
+        views: `${this.product.views} → ${updatedProduct.views}`,
+        sales: `${this.product.sales} → ${updatedProduct.sales}`,
+        totalStock: `${this.product.totalStock} → ${updatedProduct.totalStock}`,
+        discountPercentage: `${this.product.discountPercentage} → ${updatedProduct.discountPercentage}`
+      });
+    }
+
+    return hasChanges;
   }
 
-  // Formateo de datos para visualización
+  /**
+   * 📅 Formateo de datos para visualización
+   */
   formatDate(date: Date): string {
     return new Intl.DateTimeFormat('es-ES', {
       day: '2-digit',
@@ -147,12 +232,67 @@ export class ProductStatsComponent implements OnInit, OnChanges {
     }).format(date);
   }
 
-  private emitStatsChange(): void {
-    if (this.product) {
-      this.statsChanged.emit({
-        productId: this.product.id,
-        updatedProduct: this.product
-      });
+  /**
+   * 📊 Obtener estadísticas de rendimiento
+   */
+  getPerformanceStats(): {
+    conversionRate: number;
+    viewsToSalesRatio: number;
+    stockTurnover: string;
+  } {
+    if (!this.product) {
+      return { conversionRate: 0, viewsToSalesRatio: 0, stockTurnover: 'N/A' };
     }
+
+    const views = this.product.views || 0;
+    const sales = this.product.sales || 0;
+    const totalStock = this.product.totalStock || 0;
+
+    const conversionRate = views > 0 ? (sales / views) * 100 : 0;
+    const viewsToSalesRatio = sales > 0 ? views / sales : 0;
+    
+    let stockTurnover = 'Bajo';
+    if (totalStock === 0) {
+      stockTurnover = 'Agotado';
+    } else if (sales > totalStock * 0.5) {
+      stockTurnover = 'Alto';
+    } else if (sales > totalStock * 0.2) {
+      stockTurnover = 'Medio';
+    }
+
+    return {
+      conversionRate: Number(conversionRate.toFixed(2)),
+      viewsToSalesRatio: Number(viewsToSalesRatio.toFixed(1)),
+      stockTurnover
+    };
+  }
+
+  /**
+   * 🏷️ Verificar si el producto tiene promociones activas
+   */
+  hasActivePromotions(): boolean {
+    if (!this.product) return false;
+    
+    return this.promotionStateService.hasActivePromotions(this.product.id) ||
+           (typeof this.product.discountPercentage === 'number' && this.product.discountPercentage > 0);
+  }
+
+  /**
+   * 🎯 Obtener información de promociones
+   */
+  getPromotionInfo(): string {
+    if (!this.product) return '';
+    
+    const promotions = this.promotionStateService.getProductPromotions(this.product.id);
+    
+    if (promotions.length > 0) {
+      return `${promotions.length} promoción(es) activa(s)`;
+    }
+    
+    if (this.product.discountPercentage && this.product.discountPercentage > 0) {
+      return `Descuento directo: ${this.product.discountPercentage}%`;
+    }
+    
+    return 'Sin promociones activas';
   }
 }

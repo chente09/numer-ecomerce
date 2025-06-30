@@ -13,7 +13,19 @@
                 <div class="product-info">
                     <h3>{{ product.name }}</h3>
                     <p><strong>SKU:</strong> {{ product.sku }}</p>
-                    <p><strong>Categoría:</strong> {{ product.category }}</p>
+                    <div class="categories-section">
+                        <strong>Categorías:</strong>
+                        <div class="categories-tags"
+                            *ngIf="product.categories && product.categories.length > 0; else noCategories">
+                            <nz-tag *ngFor="let categoryId of product.categories" [nzColor]="'blue'"
+                                class="category-tag">
+                                {{ getCategoryName(categoryId) }}
+                            </nz-tag>
+                        </div>
+                        <ng-template #noCategories>
+                            <span class="no-categories">Sin categorías</span>
+                        </ng-template>
+                    </div>
                 </div>
 
                 <div class="price-section">
@@ -67,44 +79,75 @@
 
         <!-- Promociones activas del producto -->
         <nz-card nzTitle="Promociones Activas del Producto" *ngIf="promotions.length > 0">
-            <nz-table #activePromotionsTable [nzData]="promotions" [nzSize]="'small'" [nzShowPagination]="false">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Tipo</th>
-                        <th>Descuento</th>
-                        <th>Fecha Fin</th>
-                        <th>Aplicación</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let promo of activePromotionsTable.data">
-                        <td>{{ promo.name }}</td>
-                        <td>{{ formatDiscountType(promo.discountType) }}</td>
-                        <td>{{ formatDiscountValue(promo) }}</td>
-                        <td>{{ formatDate(promo.endDate) }}</td>
-                        <td>
-                            <div *ngIf="getPromotionApplicationDetails(promo.id) as details">
-                                <nz-tag [nzColor]="details.isProductLevel ? 'blue' : 'green'">
-                                    {{ details.isProductLevel ? 'Producto completo' : details.totalAffectedVariants + '
-                                    variantes' }}
+            <div class="promotions-table-wrapper">
+                <nz-table #activePromotionsTable [nzData]="promotions" [nzSize]="'small'" [nzShowPagination]="false">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th class="hide-mobile">Descuento</th>
+                            <th class="hide-tablet">Fecha Inicio</th>
+                            <th class="hide-mobile-small">Fecha Fin</th>
+                            <th>Estado</th>
+                            <th class="hide-tablet">Aplicación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let promo of activePromotionsTable.data">
+                            <td>
+                                <div class="text-truncate" [title]="promo.name">
+                                    {{ promo.name }}
+                                </div>
+                            </td>
+                            <td>
+                                <nz-tag class="promotion-tag-compact" nzColor="blue">
+                                    {{ formatDiscountType(promo.discountType) }}
                                 </nz-tag>
-                                <small *ngIf="!details.isProductLevel && details.totalAffectedVariants > 0"
-                                    style="display: block; margin-top: 4px; color: #666;">
-                                    Aplicada a: {{ getVariantNames(details.affectedVariants) }}
-                                </small>
-                            </div>
-                        </td>
-                        <td>
-                            <button nz-button nzDanger nzSize="small" (click)="removePromotion(promo.id)"
-                                [nzLoading]="applying" nz-tooltip nzTooltipTitle="Eliminar promoción">
-                                <span nz-icon nzType="delete"></span>
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </nz-table>
+                            </td>
+                            <td class="hide-mobile">
+                                <div class="price-preview-compact">
+                                    <span class="preview-price">{{ formatDiscountValue(promo) }}</span>
+                                </div>
+                            </td>
+                            <td class="hide-tablet">
+                                <div class="date-compact">{{ formatDate(promo.startDate) }}</div>
+                            </td>
+                            <td class="hide-mobile-small">
+                                <div class="date-compact">{{ formatDate(promo.endDate) }}</div>
+                            </td>
+                            <td>
+                                <div class="status-compact">
+                                    <nz-tag nzColor="green" class="promotion-tag-compact">Activa</nz-tag>
+                                    <nz-tag nzColor="blue" class="promotion-tag-compact">Aplicada</nz-tag>
+                                </div>
+                            </td>
+                            <td class="hide-tablet">
+                                <div *ngIf="getPromotionApplicationDetails(promo.id) as details">
+                                    <nz-tag [nzColor]="details.isProductLevel ? 'blue' : 'green'"
+                                        class="promotion-tag-compact" [nz-tooltip]="!details.isProductLevel && details.totalAffectedVariants > 0 ? 
+                                    'Aplicada a: ' + getVariantNames(details.affectedVariants) : null"
+                                        nzTooltipPlacement="top">
+                                        {{ details.isProductLevel ? 'Producto' : details.totalAffectedVariants + ' var.'
+                                        }}
+                                    </nz-tag>
+                                </div>
+                            </td>
+                            <td>
+                                <button nz-button nzDanger nzSize="small" (click)="removePromotion(promo.id)"
+                                    [nzLoading]="applying" nz-tooltip nzTooltipTitle="Eliminar promoción">
+                                    <span nz-icon nzType="delete"></span>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </nz-table>
+            </div>
+
+            <!-- Indicador de scroll solo en móvil -->
+            <div class="scroll-indicator" *ngIf="promotions.length > 0">
+                Desliza para ver más información
+            </div>
         </nz-card>
 
         <!-- Lista de todas las promociones disponibles -->
@@ -113,59 +156,93 @@
                 <nz-empty nzNotFoundContent="No hay promociones disponibles"></nz-empty>
             </div>
 
-            <nz-table *ngIf="allPromotions.length > 0" #allPromotionsTable [nzData]="allPromotions" [nzSize]="'small'"
-                [nzShowPagination]="allPromotions.length > 10" [nzPageSize]="10">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Tipo</th>
-                        <th>Valor</th>
-                        <th>Fecha Inicio</th>
-                        <th>Fecha Fin</th>
-                        <th>Estado</th>
-                        <th>Preview</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let promo of allPromotionsTable.data"
-                        [ngClass]="{'promotion-applicable': isPromotionApplicable(promo), 'promotion-not-applicable': !isPromotionApplicable(promo)}">
-                        <td>{{ promo.name }}</td>
-                        <td>{{ formatDiscountType(promo.discountType) }}</td>
-                        <td>{{ formatDiscountValue(promo) }}</td>
-                        <td>{{ formatDate(promo.startDate) }}</td>
-                        <td>{{ formatDate(promo.endDate) }}</td>
-                        <td>
-                            <nz-tag [nzColor]="promo.isActive ? 'green' : 'default'">
-                                {{ promo.isActive ? 'Activa' : 'Inactiva' }}
-                            </nz-tag>
-                            <nz-tag *ngIf="isPromotionActive(promo.id)" nzColor="blue">
-                                Aplicada
-                            </nz-tag>
-                        </td>
-                        <td>
-                            <div *ngIf="isPromotionApplicable(promo)" class="promotion-preview">
-                                <span class="preview-price">
-                                    ${{ calculatePromotionPreview(promo).newPrice.toFixed(2) }}
-                                </span>
-                                <span class="preview-discount">
-                                    (-{{ calculatePromotionPreview(promo).discount.toFixed(1) }}%)
-                                </span>
-                            </div>
-                            <span *ngIf="!isPromotionApplicable(promo)" class="not-applicable">
-                                N/A
-                            </span>
-                        </td>
-                        <td>
-                            <button nz-button nzType="primary" nzSize="small" (click)="applyPromotion(promo.id)"
-                                [disabled]="!isPromotionApplicable(promo)" [nzLoading]="applying"
-                                [nz-tooltip]="!isPromotionApplicable(promo) ? 'Promoción no aplicable o ya aplicada' : 'Aplicar promoción'">
-                                {{ isPromotionActive(promo.id) ? 'Aplicada' : 'Aplicar' }}
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </nz-table>
+            <div *ngIf="allPromotions.length > 0" class="promotions-table-wrapper">
+                <nz-table #allPromotionsTable [nzData]="allPromotions" [nzSize]="'small'"
+                    [nzShowPagination]="allPromotions.length > 10" [nzPageSize]="10">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th class="hide-mobile">Valor</th>
+                            <th class="hide-tablet">F. Inicio</th>
+                            <th class="hide-mobile-small">F. Fin</th>
+                            <th>Estado</th>
+                            <th class="hide-tablet">Preview</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let promo of allPromotionsTable.data" [ngClass]="{
+                        'promotion-applicable': isPromotionApplicable(promo), 
+                        'promotion-not-applicable': !isPromotionApplicable(promo)
+                    }">
+                            <td>
+                                <div class="text-truncate" [title]="promo.name">
+                                    {{ promo.name }}
+                                </div>
+                            </td>
+                            <td>
+                                <nz-tag class="promotion-tag-compact"
+                                    [nzColor]="promo.discountType === 'percentage' ? 'orange' : 'purple'">
+                                    {{ formatDiscountType(promo.discountType) }}
+                                </nz-tag>
+                            </td>
+                            <td class="hide-mobile">
+                                <div class="price-preview-compact">
+                                    <span class="preview-price">{{ formatDiscountValue(promo) }}</span>
+                                </div>
+                            </td>
+                            <td class="hide-tablet">
+                                <div class="date-compact">{{ formatDate(promo.startDate) }}</div>
+                            </td>
+                            <td class="hide-mobile-small">
+                                <div class="date-compact">{{ formatDate(promo.endDate) }}</div>
+                            </td>
+                            <td>
+                                <div class="status-compact">
+                                    <nz-tag [nzColor]="promo.isActive ? 'green' : 'default'"
+                                        class="promotion-tag-compact">
+                                        {{ promo.isActive ? 'Activa' : 'Inactiva' }}
+                                    </nz-tag>
+                                    <nz-tag *ngIf="isPromotionActive(promo.id)" nzColor="blue"
+                                        class="promotion-tag-compact">
+                                        Aplicada
+                                    </nz-tag>
+                                </div>
+                            </td>
+                            <td class="hide-tablet">
+                                <div *ngIf="isPromotionApplicable(promo)" class="price-preview-compact">
+                                    <span class="preview-price">
+                                        ${{ calculatePromotionPreview(promo).newPrice.toFixed(2) }}
+                                    </span>
+                                    <span class="preview-discount">
+                                        (-{{ calculatePromotionPreview(promo).discount.toFixed(1) }}%)
+                                    </span>
+                                </div>
+                                <div *ngIf="!isPromotionApplicable(promo)" class="not-applicable">
+                                    <span style="font-size: 10px; color: #999;">N/A</span>
+                                </div>
+                            </td>
+                            <td>
+                                <button nz-button [nzType]="isPromotionActive(promo.id) ? 'default' : 'primary'"
+                                    nzSize="small" (click)="applyPromotion(promo.id)"
+                                    [disabled]="!isPromotionApplicable(promo)" [nzLoading]="applying"
+                                    [nz-tooltip]="getActionTooltip(promo)">
+                                    <span nz-icon [nzType]="isPromotionActive(promo.id) ? 'check' : 'plus'"></span>
+                                    <span class="hide-mobile-small">
+                                        {{ isPromotionActive(promo.id) ? 'Aplicada' : 'Aplicar' }}
+                                    </span>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </nz-table>
+            </div>
+
+            <!-- Indicador de scroll -->
+            <div class="scroll-indicator" *ngIf="allPromotions.length > 0">
+                Desliza horizontalmente para ver más columnas
+            </div>
         </nz-card>
 
         <!-- Información sobre criterios de aplicabilidad -->
@@ -176,7 +253,7 @@
                     <li>✅ La promoción está activa</li>
                     <li>✅ La fecha actual está dentro del rango de validez</li>
                     <li>✅ No está ya aplicada al producto</li>
-                    <li>✅ Aplica al producto específico O a su categoría</li>
+                    <li>✅ Aplica al producto específico o a su categoría</li>
                 </ul>
 
                 <h4>Tipos de descuento:</h4>

@@ -1,6 +1,7 @@
-.products-container {
-    padding-bottom: 24px;
-}
+/* ==================== SISTEMA RESPONSIVO OPTIMIZADO ==================== */
+/* Mantiene toda la funcionalidad actual + mejoras responsivas */
+
+/* ==================== 1️⃣ ESTILOS BASE ==================== */
 
 .header-card {
     margin-bottom: 16px;
@@ -11,41 +12,101 @@
     display: flex;
     justify-content: flex-start;
     gap: 8px;
+    flex-wrap: wrap;
+    /* Permitir wrap en móvil */
 }
 
 .filter-form {
     margin-bottom: 8px;
 }
 
-.product-name {
-    font-weight: 500;
+/* ==================== 2️⃣ TABLA RESPONSIVA ==================== */
+/* Eliminar scroll horizontal innecesario */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* Tabla adaptativa sin min-width fijo */
+:host ::ng-deep .ant-table {
+    width: 100%;
+    font-size: 12px;
+    /* Más pequeña en móvil */
+}
+
+:host ::ng-deep .ant-table-thead>tr>th,
+:host ::ng-deep .ant-table-tbody>tr>td {
+    padding: 8px 4px;
+    /* Menos padding en móvil */
+    white-space: normal;
+    /* Permitir wrap del texto */
+}
+
+/* ==================== 3️⃣ CELDAS DE PRODUCTO ==================== */
+.product-name {
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* Tags más compactos */
+.product-name nz-tag {
+    margin: 2px 2px 0 0;
+    font-size: 10px;
+    padding: 0 4px;
+    height: 16px;
+    line-height: 14px;
+}
+
+/* Precio mejorado */
 .product-price {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
+    /* Alinear a la derecha */
 }
 
 .original-price {
     text-decoration: line-through;
     color: #999;
-    font-size: 12px;
+    font-size: 11px;
+    /* Más pequeño */
 }
 
 .current-price {
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 13px;
+    color: #1890ff;
 }
 
+/* ==================== 4️⃣ ACCIONES RESPONSIVAS ==================== */
 .action-buttons {
     display: flex;
-    gap: 8px;
+    gap: 4px;
+    /* Menos espacio */
     flex-wrap: nowrap;
+    justify-content: center;
 }
 
+.action-buttons button {
+    padding: 0 6px;
+    min-width: 28px;
+    height: 28px;
+}
+
+.action-buttons .anticon {
+    font-size: 12px;
+}
+
+/* ==================== 5️⃣ MODAL DE DETALLES ==================== */
 .product-details {
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.detail-image {
+    text-align: center;
 }
 
 .detail-image img {
@@ -72,30 +133,193 @@
     margin-top: 8px;
 }
 
-/* Responsive styles */
-@media (max-width: 991px) {
-    .hide-md {
-        display: none;
-    }
+
+/* ==================== 7️⃣ AVATARES RESPONSIVOS ==================== */
+:host ::ng-deep .ant-avatar {
+    width: 40px !important;
+    height: 40px !important;
 }
 
-@media (max-width: 767px) {
-    .hide-sm {
-        display: none;
-    }
+/* ==================== 8️⃣ PAGINACIÓN RESPONSIVA ==================== */
+:host ::ng-deep .ant-table-pagination {
+    margin: 16px 0;
+}
 
-    .action-buttons {
-        flex-direction: column;
-        gap: 4px;
-    }
 
+/* ==================== 9️⃣ MEJORAS DE ACCESIBILIDAD ==================== */
+/* Focus visible */
+:host ::ng-deep .ant-btn:focus,
+:host ::ng-deep .ant-input:focus,
+:host ::ng-deep .ant-select-focused {
+    outline: 2px solid #1890ff;
+    outline-offset: 2px;
+}
+
+/* Touch targets mínimos de 44px */
+@media (hover: none) and (pointer: coarse) {
     .action-buttons button {
-        padding: 0 4px;
+        min-width: 44px;
+        min-height: 44px;
     }
 }
 
-@media (max-width: 575px) {
-    .button-text {
-        display: none;
+/* ==================== 🔟 UTILIDADES ==================== */
+/* Scrollbar personalizada */
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #1890ff;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #096dd9;
+}
+
+/* Indicador de scroll en móvil */
+@media (max-width: 767px) {
+    .table-responsive::after {
+        content: "➡️ Desliza para ver más";
+        display: block;
+        text-align: center;
+        font-size: 11px;
+        color: #1890ff;
+        padding: 4px;
+        background: #e6f7ff;
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+
+    .table-responsive:not(:hover)::after {
+        animation: pulse 2s infinite;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* ==================== DRAWERS RESPONSIVOS ==================== */
+
+/* Estilos globales para drawers */
+:host ::ng-deep .ant-drawer-wrapper-body {
+    overflow-x: hidden;
+}
+
+:host ::ng-deep .ant-drawer-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+:host ::ng-deep .ant-drawer-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Responsive para móviles */
+@media (max-width: 576px) {
+    :host ::ng-deep .ant-drawer {
+        max-width: 100vw !important;
+    }
+
+    :host ::ng-deep .ant-drawer-header {
+        padding: 8px 12px;
+    }
+
+    :host ::ng-deep .ant-drawer-title {
+        font-size: 14px;
+    }
+
+    :host ::ng-deep .ant-drawer-close {
+        width: 32px;
+        height: 32px;
+        line-height: 32px;
+    }
+}
+
+@media (max-width: 768px) {
+    :host ::ng-deep .ant-drawer-header {
+        padding: 10px 14px;
+    }
+
+    :host ::ng-deep .ant-drawer-title {
+        font-size: 15px;
+    }
+}
+
+/* Mejorar z-index para evitar conflictos */
+:host ::ng-deep .ant-drawer {
+    z-index: 1001;
+}
+
+:host ::ng-deep .ant-drawer-mask {
+    z-index: 1000;
+}
+
+/* Estilos específicos para el modal de detalles */
+.categories-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.categories-section strong {
+    color: #262626;
+    font-size: 14px;
+}
+
+.categories-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.category-tag-detail {
+    font-size: 12px;
+    margin: 0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.no-categories-detail {
+    color: #999;
+    font-style: italic;
+    font-size: 13px;
+    padding: 4px 0;
+}
+
+/* Responsive para el modal */
+@media (max-width: 576px) {
+    .categories-section {
+        gap: 6px;
+    }
+    
+    .category-tag-detail {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    
+    .categories-section strong {
+        font-size: 13px;
     }
 }

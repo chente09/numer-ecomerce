@@ -130,7 +130,6 @@ nz-content {
 }
 
 .inner-content {
-    padding: 24px;
     background: #fff;
     border-radius: 4px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
@@ -165,9 +164,6 @@ nz-footer {
 
 /* Responsive Styles */
 @media (max-width: 992px) {
-    .inner-content {
-        padding: 16px;
-    }
     
     nz-content {
         margin: 12px;

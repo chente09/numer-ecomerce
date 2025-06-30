@@ -1,3 +1,5 @@
+/* ==================== PROMOTION MANAGEMENT RESPONSIVO ==================== */
+
 .promotions-container {
     max-width: 100%;
     padding-bottom: 24px;
@@ -42,6 +44,7 @@
     display: flex;
     gap: 8px;
     flex-wrap: nowrap;
+    justify-content: center;
 }
 
 .form-help-text {
@@ -55,16 +58,237 @@
     text-align: center;
 }
 
-/* Responsive styles */
-@media (max-width: 767px) {
-    .action-buttons {
-        flex-direction: column;
-        gap: 4px;
+/* ==================== TABLA RESPONSIVA MEJORADA ==================== */
+/* Scroll horizontal siempre disponible cuando sea necesario */
+:host ::ng-deep .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+/* Mejorar visibilidad y contraste */
+:host ::ng-deep .ant-table {
+    font-size: 12px;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    min-width: 700px; /* Ancho mínimo para todas las columnas */
+}
+
+/* Encabezado más visible */
+:host ::ng-deep .ant-table-thead > tr > th {
+    background-color: #fafafa;
+    font-weight: 600;
+    color: #262626;
+    padding: 12px 8px;
+    border-bottom: 2px solid #e8e8e8;
+}
+
+/* Celdas del cuerpo */
+:host ::ng-deep .ant-table-tbody > tr > td {
+    padding: 10px 8px;
+    white-space: normal;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+/* Filas con hover más visible */
+:host ::ng-deep .ant-table-tbody > tr:hover {
+    background-color: #f5f9ff;
+    cursor: pointer;
+}
+
+/* Alternado de filas para mejor legibilidad */
+:host ::ng-deep .ant-table-tbody > tr:nth-child(even) {
+    background-color: #fafbfc;
+}
+
+:host ::ng-deep .ant-table-tbody > tr:nth-child(even):hover {
+    background-color: #f0f7ff;
+}
+
+/* ==================== RESPONSIVE BREAKPOINTS ==================== */
+
+/* 📱 TABLET (max-width: 991px) */
+@media (max-width: 991px) {
+    /* Solo ocultar fechas específicas en tablet */
+    :host ::ng-deep .ant-table th:nth-child(4), /* Fecha Inicio */
+    :host ::ng-deep .ant-table td:nth-child(4),
+    :host ::ng-deep .ant-table th:nth-child(5), /* Fecha Fin */
+    :host ::ng-deep .ant-table td:nth-child(5) {
+        display: none;
+    }
+    
+    /* Mantener padding cómodo */
+    :host ::ng-deep .ant-table-thead > tr > th {
+        padding: 10px 6px;
+    }
+    
+    :host ::ng-deep .ant-table-tbody > tr > td {
+        padding: 8px 6px;
     }
 }
 
+/* 📱 MÓVIL (max-width: 767px) */
+@media (max-width: 767px) {
+    /* MANTENER información esencial: Nombre, Tipo, Valor, Estado, Acciones */
+    /* Solo ocultar "Aplica a" que es menos crítica */
+    :host ::ng-deep .ant-table th:nth-child(7), /* Aplica a */
+    :host ::ng-deep .ant-table td:nth-child(7) {
+        display: none;
+    }
+    
+    /* Padding compacto pero legible */
+    :host ::ng-deep .ant-table-thead > tr > th {
+        padding: 8px 4px;
+        font-size: 11px;
+    }
+    
+    :host ::ng-deep .ant-table-tbody > tr > td {
+        padding: 6px 4px;
+    }
+    
+    /* Nombres más pequeños pero legibles */
+    .promotion-name strong {
+        font-size: 13px;
+    }
+    
+    /* Acciones más compactas */
+    .action-buttons {
+        gap: 4px;
+    }
+    
+    .action-buttons button {
+        padding: 3px 6px;
+        min-width: 26px;
+        height: 26px;
+        font-size: 11px;
+    }
+    
+    /* Container más compacto */
+    .promotions-container {
+        padding-bottom: 16px;
+    }
+}
+
+/* 📱 MÓVIL PEQUEÑO (max-width: 575px) */
 @media (max-width: 575px) {
+    /* Ocultar texto de botones */
     .button-text {
         display: none;
+    }
+    
+    /* Header responsive */
+    .card-actions {
+        flex-direction: column;
+    }
+    
+    .card-actions button {
+        width: 100%;
+    }
+    
+    /* Tabla más compacta pero visible */
+    :host ::ng-deep .ant-table {
+        font-size: 10px;
+    }
+    
+    :host ::ng-deep .ant-table-thead > tr > th {
+        padding: 6px 2px;
+        font-size: 10px;
+    }
+    
+    :host ::ng-deep .ant-table-tbody > tr > td {
+        padding: 5px 2px;
+    }
+    
+    /* Nombres aún más pequeños */
+    .promotion-name strong {
+        font-size: 11px;
+        max-width: 120px;
+    }
+    
+    .promotion-description {
+        font-size: 9px;
+        max-width: 120px;
+    }
+    
+    /* Modal responsivo pero no fullscreen agresivo */
+    :host ::ng-deep .ant-modal {
+        max-width: 95%;
+        margin: 10px auto;
+    }
+    
+    :host ::ng-deep .ant-modal-body {
+        padding: 12px 8px;
+    }
+    
+    /* Formulario en una sola columna */
+    :host ::ng-deep .ant-col {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* ==================== MEJORAS ADICIONALES ==================== */
+
+/* Texto truncado para nombres largos */
+.promotion-name strong {
+    color: #262626;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px; /* Reducido para dar más espacio */
+    display: block;
+}
+
+/* Información aplicable más compacta */
+.applies-to div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px; /* Reducido */
+    font-size: 11px;
+    color: #595959;
+    font-weight: 500;
+}
+
+.applies-to strong {
+    color: #262626;
+    font-weight: 600;
+}
+
+/* Mejorar contraste de tags */
+:host ::ng-deep .ant-tag {
+    font-weight: 500;
+    border: 1px solid;
+    font-size: 11px;
+}
+
+/* Valores de descuento más visibles */
+:host ::ng-deep .ant-table-tbody td:nth-child(3) {
+    font-weight: 600;
+    color: #1890ff;
+    font-size: 13px;
+}
+
+/* Tipo de descuento más legible */
+:host ::ng-deep .ant-table-tbody td:nth-child(2) {
+    font-weight: 500;
+    color: #595959;
+}
+
+/* Botones más pequeños en móvil */
+@media (max-width: 767px) {
+    .action-buttons button {
+        padding: 4px 8px;
+        height: 28px;
+        font-size: 12px;
+    }
+    
+    :host ::ng-deep .anticon {
+        font-size: 12px;
     }
 }

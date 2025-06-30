@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ProductService } from '../../../services/admin/product/product.service';
 import { ProductPriceService } from '../../../services/admin/price/product-price.service';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
-import { CacheService } from '../../../services/admin/cache/cache.service';
+import { CategoryService, Category } from '../../../services/admin/category/category.service';
 import { AppliedPromotionsService } from '../../../services/admin/applied-promotions/applied-promotions.service';
 import { Product, Promotion, ProductVariant, AppliedPromotion } from '../../../models/models';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -54,6 +53,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
   promotions: Promotion[] = [];
   allPromotions: Promotion[] = [];
   appliedPromotions: AppliedPromotion[] = []; // Para tracking interno
+  categories: Category[] = [];
   loading = false;
   applying = false;
 
@@ -61,11 +61,10 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
   private readonly COMPONENT_NAME = 'ProductPromotionsComponent';
 
   constructor(
-    private productService: ProductService,
     private productPriceService: ProductPriceService,
     private promotionService: PromotionService,
+    private categoryService: CategoryService,
     private promotionStateService: PromotionStateService,
-    private cacheService: CacheService,
     private appliedPromotionsService: AppliedPromotionsService,
     private message: NzMessageService,
     private modal: NzModalService,
@@ -74,17 +73,83 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
-
+    this.loadCategories();
     if (this.product) {
       this.loadPromotions();
       this.loadAllPromotions();
     }
   }
 
-   // 🆕 NUEVO: ngOnDestroy para cleanup
+  // 🆕 NUEVO: ngOnDestroy para cleanup
   ngOnDestroy(): void {
     // 🗑️ Desregistrar componente
     this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
+  }
+
+  // ⬅️ AGREGAR ESTE MÉTODO
+  loadCategories(): void {
+    this.categoryService.getCategories()
+      .pipe(
+        take(1),
+        finalize(() => this.cdr.markForCheck())
+      )
+      .subscribe({
+        next: (categories) => {
+          this.categories = categories;
+        },
+        error: (error) => {
+          console.error('Error cargando categorías:', error);
+          // No mostrar error al usuario ya que las categorías son solo para display
+        }
+      });
+  }
+
+  // ⬅️ AGREGAR ESTE MÉTODO PARA MÚLTIPLES CATEGORÍAS
+  getCategoriesNames(): string {
+    if (!this.product?.categories || this.product.categories.length === 0) {
+      return 'Sin categorías';
+    }
+
+    const categoryNames = this.product.categories
+      .map(categoryId => {
+        const category = this.categories.find(c => c.id === categoryId);
+        return category?.name || null;
+      })
+      .filter(name => name !== null) as string[];
+
+    if (categoryNames.length === 0) {
+      return 'Categorías no encontradas';
+    }
+
+    return categoryNames.join(', ');
+  }
+
+  // ⬅️ MÉTODO ALTERNATIVO SI NECESITAS MÁS CONTROL
+  getCategoriesDisplay(): { names: string[], count: number, hasUnknown: boolean } {
+    if (!this.product?.categories || this.product.categories.length === 0) {
+      return { names: [], count: 0, hasUnknown: false };
+    }
+
+    const result = { names: [] as string[], count: 0, hasUnknown: false };
+
+    this.product.categories.forEach(categoryId => {
+      const category = this.categories.find(c => c.id === categoryId);
+      if (category) {
+        result.names.push(category.name);
+      } else {
+        result.hasUnknown = true;
+      }
+    });
+
+    result.count = this.product.categories.length;
+    return result;
+  }
+
+  getCategoryName(categoryId: string): string {
+    if (!categoryId) return 'Sin categoría';
+
+    const category = this.categories.find(c => c.id === categoryId);
+    return category?.name || 'Categoría no encontrada';
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -187,10 +252,10 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         // ✅ BROADCASTING EXISTENTE (mantener)
         this.promotionStateService.notifyPromotionApplied(this.product.id, promotion);
         this.promotionStateService.notifyPromotionActivated(promotionId, [this.product.id]);
-        
+
         // 🆕 NUEVO: Broadcasting mejorado con información específica
         this.promotionStateService.notifyPromotionActivated(
-          promotionId, 
+          promotionId,
           [this.product.id]
         );
 
@@ -198,7 +263,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
           productId: this.product.id,
           updatedProduct: this.product
         });
-        
+
         this.loadPromotions();
       },
       error: (error) => {
@@ -265,13 +330,13 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
 
           // ✅ BROADCASTING EXISTENTE (mantener)
           this.promotionStateService.notifyPromotionRemoved(this.product.id, promotionId);
-          
+
           // 🆕 NUEVO: Broadcasting mejorado
           this.promotionStateService.notifyPromotionDeactivated(
-            promotionId, 
+            promotionId,
             [this.product.id]
           );
-          
+
           this.promotionChanged.emit({
             productId: this.product.id,
             updatedProduct: this.product
@@ -281,7 +346,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
           this.message.success(
             `✅ "${promotionName}" eliminada de variantes - Clientes notificados automáticamente`
           );
-          
+
           this.loadPromotions();
         },
         error: (error) => {
@@ -318,10 +383,10 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
 
           // ✅ BROADCASTING EXISTENTE (mantener)
           this.promotionStateService.notifyPromotionRemoved(this.product.id, promotionId);
-          
+
           // 🆕 NUEVO: Broadcasting mejorado
           this.promotionStateService.notifyPromotionDeactivated(
-            promotionId, 
+            promotionId,
             [this.product.id]
           );
 
@@ -329,7 +394,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
             productId: this.product.id,
             updatedProduct: this.product
           });
-          
+
           this.loadPromotions();
         },
         error: (error) => {
@@ -414,7 +479,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
               // 🆕 NUEVO: Broadcasting para múltiples promociones
               affectedPromotionIds.forEach(promotionId => {
                 this.promotionStateService.notifyPromotionDeactivated(
-                  promotionId, 
+                  promotionId,
                   [this.product!.id]
                 );
               });
@@ -423,7 +488,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
                 productId: this.product.id,
                 updatedProduct: this.product
               });
-              
+
               this.loadPromotions();
             },
             error: (error) => {
@@ -552,11 +617,11 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     }
 
     if (this.product.variants) {
-      const hasVariantPromotions = this.product.variants.some(variant => 
-        variant.promotionId || 
+      const hasVariantPromotions = this.product.variants.some(variant =>
+        variant.promotionId ||
         (variant.discountedPrice && variant.discountedPrice < (variant.price || this.product!.price))
       );
-      
+
       if (hasVariantPromotions) {
         return true;
       }
@@ -581,7 +646,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         ?.filter(v => v.promotionId)
         .map(v => v.promotionId) || []
     );
-    
+
     count += variantPromotionIds.size;
 
     return count;
@@ -607,7 +672,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         if (variant.discountedPrice && variant.originalPrice) {
           const variantSavings = variant.originalPrice - variant.discountedPrice;
           totalSavings += variantSavings;
-          
+
           const variantDiscountPercent = (variantSavings / variant.originalPrice) * 100;
           maxDiscount = Math.max(maxDiscount, variantDiscountPercent);
         }
@@ -618,6 +683,37 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
       totalSavings: Math.round(totalSavings * 100) / 100,
       maxDiscount: Math.round(maxDiscount)
     };
+  }
+
+  /**
+ * Obtiene el tooltip apropiado para el botón de acción
+ */
+  getActionTooltip(promo: Promotion): string {
+    if (!this.isPromotionApplicable(promo)) {
+      if (this.isPromotionActive(promo.id)) {
+        return 'Promoción ya aplicada';
+      }
+
+      if (!promo.isActive) {
+        return 'Promoción inactiva';
+      }
+
+      const now = new Date();
+      const startDate = promo.startDate instanceof Date ? promo.startDate : new Date(promo.startDate);
+      const endDate = promo.endDate instanceof Date ? promo.endDate : new Date(promo.endDate);
+
+      if (startDate > now) {
+        return 'Promoción no ha iniciado';
+      }
+
+      if (endDate < now) {
+        return 'Promoción expirada';
+      }
+
+      return 'Promoción no aplicable';
+    }
+
+    return 'Aplicar promoción al producto';
   }
 
 }

@@ -6,78 +6,138 @@
 
     <!-- Contenido principal de estadísticas -->
     <div *ngIf="!loading && product">
-        <!-- Cards con stats principales -->
-        <div nz-row [nzGutter]="[16, 16]">
-            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+        <!-- Cards con stats principales - Grid responsivo mejorado -->
+        <div nz-row [nzGutter]="[16, 16]" class="stats-grid">
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6" [nzLg]="6" [nzXl]="6">
                 <nz-card>
-                    <nz-statistic [nzValue]="product.totalStock || 0" [nzTitle]="'Stock Total'"
-                        [nzValueStyle]="{ color: product.totalStock > 5 ? '#3f8600' : (product.totalStock > 0 ? '#faad14' : '#cf1322') }">
+                    <nz-statistic 
+                        [nzValue]="product.totalStock || 0" 
+                        [nzTitle]="'Stock Total'"
+                        [nzValueStyle]="{ 
+                            color: product.totalStock > 5 ? '#3f8600' : (product.totalStock > 0 ? '#faad14' : '#cf1322') 
+                        }">
+                        <ng-template #nzPrefix>
+                            <span 
+                                nz-icon 
+                                [nzType]="product.totalStock > 5 ? 'check-circle' : (product.totalStock > 0 ? 'exclamation-circle' : 'close-circle')"
+                                class="status-indicator"
+                                [class.success]="product.totalStock > 5"
+                                [class.warning]="product.totalStock > 0 && product.totalStock <= 5"
+                                [class.error]="product.totalStock === 0">
+                            </span>
+                        </ng-template>
                     </nz-statistic>
                 </nz-card>
             </div>
-            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+            
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6" [nzLg]="6" [nzXl]="6">
                 <nz-card>
-                    <nz-statistic [nzValue]="product.sales || 0" [nzTitle]="'Ventas Totales'"></nz-statistic>
+                    <nz-statistic 
+                        [nzValue]="product.sales || 0" 
+                        [nzTitle]="'Ventas Totales'">
+                        <ng-template #nzPrefix>
+                            <span nz-icon nzType="shopping-cart"></span>
+                        </ng-template>
+                    </nz-statistic>
                 </nz-card>
             </div>
-            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+            
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6" [nzLg]="6" [nzXl]="6">
                 <nz-card>
-                    <nz-statistic [nzValue]="product.views || 0" [nzTitle]="'Vistas'"></nz-statistic>
+                    <nz-statistic 
+                        [nzValue]="product.views || 0" 
+                        [nzTitle]="'Vistas'">
+                        <ng-template #nzPrefix>
+                            <span nz-icon nzType="eye"></span>
+                        </ng-template>
+                    </nz-statistic>
                 </nz-card>
             </div>
-            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+            
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6" [nzLg]="6" [nzXl]="6">
                 <nz-card>
-                    <nz-statistic [nzValue]="product.rating" [nzTitle]="'Calificación'"
-                        [nzSuffix]="ratingSuffix"></nz-statistic>
+                    <nz-statistic 
+                        [nzValue]="product.rating" 
+                        [nzTitle]="'Calificación'"
+                        [nzSuffix]="ratingSuffix">
+                    </nz-statistic>
                     <ng-template #ratingSuffix>
-                        <nz-rate [ngModel]="product.rating" nzDisabled [nzAllowHalf]="true"></nz-rate>
+                        <nz-rate 
+                            [ngModel]="product.rating" 
+                            nzDisabled 
+                            [nzAllowHalf]="true">
+                        </nz-rate>
                     </ng-template>
                 </nz-card>
             </div>
         </div>
 
-        <!-- Historial de ventas -->
+        <!-- Historial de ventas - Con wrapper responsivo -->
         <nz-card nzTitle="Historial de Ventas Recientes" class="chart-card">
-            <nz-table #salesTable [nzData]="salesHistory" [nzShowPagination]="false" [nzSize]="'small'">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Unidades Vendidas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let sale of salesTable.data">
-                        <td>{{ formatDate(sale.date) }}</td>
-                        <td>{{ sale.sales }}</td>
-                    </tr>
-                </tbody>
-            </nz-table>
+            <div class="table-responsive">
+                <nz-table 
+                    #salesTable 
+                    [nzData]="salesHistory" 
+                    [nzShowPagination]="false" 
+                    [nzSize]="'small'">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Unidades Vendidas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let sale of salesTable.data">
+                            <td>{{ formatDate(sale.date) }}</td>
+                            <td>
+                                <strong>{{ sale.sales }}</strong>
+                                <span class="hide-mobile"> unidades</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </nz-table>
+            </div>
         </nz-card>
 
-        <!-- Información de stock -->
+        <!-- Información de stock - Layout responsivo mejorado -->
         <nz-card nzTitle="Información de Inventario" *ngIf="stockData" class="stock-info-card">
             <div nz-row [nzGutter]="[16, 16]">
-                <div nz-col [nzXs]="24" [nzSm]="12">
+                <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="12" [nzLg]="12">
                     <div class="stat-item">
                         <div class="stat-label">Variantes con Stock:</div>
-                        <div class="stat-value">{{ stockData.variantsWithStock }} de {{ stockData.totalVariants }}</div>
+                        <div class="stat-value">
+                            {{ stockData.variantsWithStock }} de {{ stockData.totalVariants }}
+                        </div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-label">Variantes sin Stock:</div>
                         <div class="stat-value">{{ stockData.variantsWithoutStock }}</div>
                     </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Porcentaje con Stock:</div>
+                        <div class="stat-value">
+                            {{ stockData.totalVariants > 0 ? 
+                                ((stockData.variantsWithStock / stockData.totalVariants) * 100).toFixed(1) + '%' : 
+                                '0%' 
+                            }}
+                        </div>
+                    </div>
                 </div>
-                <div nz-col [nzXs]="24" [nzSm]="12">
+                <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="12" [nzLg]="12">
                     <div class="stock-chart">
-                        <div class="stock-bar-label">Stock por variante</div>
-                        <div class="stock-bar-container">
-                            <div class="stock-bar with-stock"
-                                [style.width.%]="(stockData.variantsWithStock / stockData.totalVariants) * 100">
-                                {{ stockData.variantsWithStock }}
+                        <div class="stock-bar-label">Distribución de Stock por Variante</div>
+                        <div class="stock-bar-container" *ngIf="stockData.totalVariants > 0">
+                            <div 
+                                class="stock-bar with-stock"
+                                [style.width.%]="(stockData.variantsWithStock / stockData.totalVariants) * 100"
+                                [title]="stockData.variantsWithStock + ' variantes con stock'">
+                                <span *ngIf="stockData.variantsWithStock > 0">{{ stockData.variantsWithStock }}</span>
                             </div>
-                            <div class="stock-bar without-stock"
-                                [style.width.%]="(stockData.variantsWithoutStock / stockData.totalVariants) * 100">
-                                {{ stockData.variantsWithoutStock }}
+                            <div 
+                                class="stock-bar without-stock"
+                                [style.width.%]="(stockData.variantsWithoutStock / stockData.totalVariants) * 100"
+                                [title]="stockData.variantsWithoutStock + ' variantes sin stock'">
+                                <span *ngIf="stockData.variantsWithoutStock > 0">{{ stockData.variantsWithoutStock }}</span>
                             </div>
                         </div>
                         <div class="stock-bar-legend">
@@ -95,25 +155,48 @@
             </div>
         </nz-card>
 
-        <!-- Estadística de vistas -->
+        <!-- Estadística de vistas - Con wrapper responsivo -->
         <nz-card nzTitle="Estadísticas de Vistas" class="chart-card">
-            <nz-table #viewsTable [nzData]="viewsData" [nzShowPagination]="false" [nzSize]="'small'">
-                <thead>
-                    <tr>
-                        <th>Período</th>
-                        <th>Vistas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let viewStat of viewsTable.data">
-                        <td>{{ viewStat.period }}</td>
-                        <td>{{ viewStat.count }}</td>
-                    </tr>
-                </tbody>
-            </nz-table>
+            <div class="table-responsive">
+                <nz-table 
+                    #viewsTable 
+                    [nzData]="viewsData" 
+                    [nzShowPagination]="false" 
+                    [nzSize]="'small'">
+                    <thead>
+                        <tr>
+                            <th>Período</th>
+                            <th>Vistas</th>
+                            <th class="hide-mobile">Tendencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let viewStat of viewsTable.data; let i = index">
+                            <td>{{ viewStat.period }}</td>
+                            <td>
+                                <strong>{{ viewStat.count }}</strong>
+                            </td>
+                            <td class="hide-mobile">
+                                <span 
+                                    nz-icon 
+                                    [nzType]="i === 0 ? 'arrow-up' : (i === 1 ? 'arrow-down' : 'minus')"
+                                    [style.color]="i === 0 ? '#52c41a' : (i === 1 ? '#ff4d4f' : '#8c8c8c')">
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </nz-table>
+            </div>
         </nz-card>
     </div>
 
     <!-- Mensaje si no hay producto seleccionado -->
-    <nz-empty *ngIf="!loading && !product" nzNotFoundContent="No hay datos disponibles"></nz-empty>
+    <nz-empty 
+        *ngIf="!loading && !product" 
+        nzNotFoundContent="No hay datos disponibles"
+        [nzNotFoundImage]="'simple'">
+        <ng-template #nzNotFoundFooter>
+            <span>Selecciona un producto para ver sus estadísticas</span>
+        </ng-template>
+    </nz-empty>
 </div>

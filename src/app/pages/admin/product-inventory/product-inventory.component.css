@@ -1,7 +1,12 @@
+/* ==================== INVENTORY DRAWER - SOLUCIÓN SIMPLE CON SCROLL ==================== */
+
 /* ==================== ESTILOS BASE ==================== */
 .inventory-container {
     padding: 8px;
     max-width: 100%;
+    /* 🔧 SCROLL VERTICAL PARA TODO EL DRAWER */
+    max-height: 100vh;
+    overflow-y: auto;
     overflow-x: hidden;
 }
 
@@ -229,50 +234,35 @@
     height: auto;
 }
 
-/* ==================== TABLA ==================== */
-.table-container {
+/* ==================== TABLA CON SCROLL HORIZONTAL SIMPLE ==================== */
+/* 🔧 SCROLL HORIZONTAL SOLO PARA LA TABLA */
+:host ::ng-deep .ant-table-wrapper {
     overflow-x: auto;
-    margin: 0 -8px;
-    padding: 0 8px;
-    scrollbar-width: thin;
-    scrollbar-color: #d9d9d9 transparent;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
 }
 
-.table-container::-webkit-scrollbar {
-    height: 6px;
-}
-
-.table-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
-}
-
-.table-container::-webkit-scrollbar-thumb {
-    background: #d9d9d9;
-    border-radius: 3px;
-}
-
-.table-container::-webkit-scrollbar-thumb:hover {
-    background: #bfbfbf;
-}
-
-.ant-table {
+:host ::ng-deep .ant-table {
     font-size: 12px;
+    width: 100%;
+    /* 🔧 ANCHO MÍNIMO PARA FORZAR SCROLL CUANDO SEA NECESARIO */
+    min-width: 700px;
 }
 
-.ant-table-thead > tr > th {
+:host ::ng-deep .ant-table-thead > tr > th,
+:host ::ng-deep .ant-table-tbody > tr > td {
     padding: 8px 4px;
     font-size: 11px;
     font-weight: 600;
 }
 
-.ant-table-tbody > tr > td {
+:host ::ng-deep .ant-table-tbody > tr > td {
     padding: 6px 4px;
     font-size: 11px;
 }
 
 /* Checkbox en encabezado */
-thead th:first-child {
+:host ::ng-deep thead th:first-child {
     text-align: center;
     width: 35px;
 }
@@ -327,7 +317,7 @@ thead th:first-child {
 }
 
 /* Tags más compactos */
-.ant-tag {
+:host ::ng-deep .ant-tag {
     font-size: 10px;
     padding: 1px 4px;
     line-height: 1.2;
@@ -341,16 +331,16 @@ thead th:first-child {
 }
 
 /* Estados de fila */
-.ant-table-tbody > tr.selected-row {
+:host ::ng-deep .ant-table-tbody > tr.selected-row {
     background-color: #e6f7ff !important;
     transition: background-color 0.2s ease-in-out;
 }
 
-.ant-table-tbody > tr.selected-row:hover {
+:host ::ng-deep .ant-table-tbody > tr.selected-row:hover {
     background-color: #bae7ff !important;
 }
 
-.ant-table-tbody > tr.has-promotion {
+:host ::ng-deep .ant-table-tbody > tr.has-promotion {
     border-left: 3px solid #722ed1;
 }
 
@@ -450,262 +440,102 @@ thead th:first-child {
     }
 }
 
-/* ==================== RESPONSIVE BREAKPOINTS ==================== */
-
-/* Tablets (768px - 1024px) */
-@media (max-width: 1024px) {
-    .inventory-container {
-        padding: 6px;
-    }
-
-    .filters-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .filters-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .quick-filters .ant-btn {
-        min-width: 80px;
-        font-size: 10px;
-    }
-
-    .ant-table-wrapper {
-        overflow-x: auto;
-    }
-
-    .ant-table {
-        min-width: 600px;
-    }
-
-    .action-buttons {
-        flex-wrap: wrap;
-        gap: 1px;
-    }
-
-    .action-buttons .ant-btn {
-        min-width: 28px;
-        font-size: 11px;
-    }
+/* ==================== SCROLLBAR PERSONALIZADA ==================== */
+/* Scrollbar para el drawer completo */
+.inventory-container::-webkit-scrollbar {
+    width: 8px;
 }
 
-/* Móviles (≤ 768px) */
-@media (max-width: 768px) {
-    .table-container {
-        margin: 0 -4px;
-        padding: 0 4px;
-        overflow-x: auto;
-        overflow-y: hidden;
-    }
+.inventory-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
 
+.inventory-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.inventory-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Scrollbar para la tabla */
+:host ::ng-deep .ant-table-wrapper::-webkit-scrollbar {
+    height: 6px;
+}
+
+:host ::ng-deep .ant-table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+:host ::ng-deep .ant-table-wrapper::-webkit-scrollbar-thumb {
+    background: #d9d9d9;
+    border-radius: 3px;
+}
+
+:host ::ng-deep .ant-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #bfbfbf;
+}
+
+/* ==================== RESPONSIVE MÍNIMO Y EFECTIVO ==================== */
+
+/* Solo ajustes mínimos para pantallas muy pequeñas */
+@media (max-width: 480px) {
     .inventory-container {
         padding: 4px;
     }
-
-    .inventory-header h2 {
-        font-size: 1.1rem;
-    }
-
-    .filters-card .ant-card-body {
-        padding: 8px;
-    }
-
+    
     .filters-header {
         flex-direction: column;
-        align-items: flex-start;
         gap: 4px;
     }
-
+    
     .filters-actions {
         width: 100%;
         justify-content: space-between;
-        flex-wrap: wrap;
     }
-
-    .results-count {
-        font-size: 10px;
-        order: 3;
-        width: 100%;
-        text-align: center;
-        margin-top: 4px;
-    }
-
-    /* Filtros rápidos en columna */
+    
     .quick-filters .ant-btn-group {
         flex-direction: column;
         gap: 2px;
     }
-
+    
     .quick-filters .ant-btn {
         width: 100%;
-        margin-bottom: 2px;
-        min-width: unset;
-        font-size: 11px;
-        padding: 6px 8px;
+        font-size: 10px;
     }
-
-    .detailed-filters.expanded {
-        max-height: 700px;
-    }
-
-    /* Acciones masivas en columna */
+    
     .bulk-actions-content {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .bulk-actions-content .ant-btn-group {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
+        align-items: stretch;
         gap: 4px;
     }
-
+    
     .bulk-actions-content .ant-btn {
         width: 100%;
-        justify-content: center;
     }
-
-    /* Tabla responsiva */
-    .ant-table {
-        min-width: 500px;
+    
+    /* Tabla mantiene su scroll horizontal natural */
+    :host ::ng-deep .ant-table {
+        font-size: 10px;
     }
-
-    .ant-modal {
-        margin: 8px;
-        max-width: calc(100vw - 16px);
+    
+    :host ::ng-deep .ant-table-thead > tr > th,
+    :host ::ng-deep .ant-table-tbody > tr > td {
+        padding: 4px 2px;
+        font-size: 10px;
     }
-
-    .ant-modal-body {
-        padding: 12px;
-        max-height: 70vh;
-        overflow-y: auto;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-        gap: 2px;
-        min-width: 60px;
-        align-items: stretch;
-    }
-
+    
     .action-buttons .ant-btn {
-        width: 100%;
-        font-size: 10px;
-        margin: 0;
-    }
-
-    /* Rango de stock en columna */
-    .stock-range {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .stock-range .ant-input-number {
-        width: 100%;
-    }
-
-    .range-separator {
-        align-self: center;
-    }
-
-    .stock-checkbox {
-        margin-bottom: 4px;
-        font-size: 10px;
-    }
-
-    .stock-cell .ant-tag {
-        font-size: 9px;
-        padding: 0 2px;
-    }
-
-    .promotion-tag {
-        font-size: 8px;
-        padding: 0 2px;
-    }
-}
-
-/* Móviles muy pequeños (≤ 480px) */
-@media (max-width: 480px) {
-    .inventory-container {
+        min-width: 24px;
+        height: 24px;
         padding: 2px;
     }
-
-    .inventory-header {
-        margin-bottom: 8px;
-    }
-
-    .inventory-header h2 {
-        font-size: 1rem;
-    }
-
-    .inventory-header p {
-        font-size: 0.8rem;
-    }
-
-    .filters-card .ant-card-body {
-        padding: 6px;
-    }
-
-    .filters-header h4 {
-        font-size: 0.9rem;
-    }
-
-    .quick-filters .ant-btn {
-        font-size: 10px;
-        padding: 4px 6px;
-    }
-
-    .detailed-filters.expanded {
-        max-height: 800px;
-    }
-
-    .ant-table-thead > tr > th {
-        padding: 4px 2px;
-        font-size: 10px;
-    }
-
-    .ant-table-tbody > tr > td {
-        padding: 4px 2px;
-        font-size: 10px;
-    }
-
-    .color-box {
-        width: 10px;
-        height: 10px;
-    }
-
-    .action-buttons .ant-btn {
-        min-height: 32px;
-        min-width: 32px;
-        padding: 4px;
-    }
-
-    .ant-tag {
-        font-size: 9px;
-        padding: 0 2px;
-    }
-
-    .variant-image-preview {
-        width: 60px;
-        height: 60px;
-    }
-
-    .help-card {
-        margin-top: 8px;
-    }
-
-    .help-card h3 {
-        font-size: 0.9rem;
-    }
-
-    .legend-description {
-        font-size: 11px;
+    
+    .stock-range {
+        flex-direction: column;
+        gap: 4px;
     }
 }

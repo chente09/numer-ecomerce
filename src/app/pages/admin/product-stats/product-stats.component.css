@@ -1,5 +1,16 @@
+/* src/app/pages/admin/product-stats/product-stats.component.css */
+
+/* ==================== ESTILOS BASE ORIGINALES ==================== */
 .stats-container {
     padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 100%;
+    /* 🔧 SCROLL VERTICAL PARA TODO EL DRAWER */
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .loading-container {
@@ -7,14 +18,19 @@
     justify-content: center;
     align-items: center;
     height: 200px;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(2px);
 }
 
 .chart-card {
     margin-top: 16px;
+    border: 1px solid #f0f0f0;
 }
 
 .stock-info-card {
     margin-top: 16px;
+    border: 1px solid #f0f0f0;
 }
 
 .stat-item {
@@ -24,6 +40,14 @@
 .stat-label {
     font-weight: 500;
     margin-bottom: 4px;
+    color: #595959;
+    font-size: 13px;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #262626;
 }
 
 .stock-chart {
@@ -33,6 +57,8 @@
 .stock-bar-label {
     margin-bottom: 8px;
     font-weight: 500;
+    color: #262626;
+    font-size: 14px;
 }
 
 .stock-bar-container {
@@ -40,6 +66,7 @@
     height: 24px;
     border-radius: 4px;
     overflow: hidden;
+    border: 1px solid #d9d9d9;
 }
 
 .stock-bar {
@@ -49,6 +76,8 @@
     color: white;
     font-size: 12px;
     min-width: 24px;
+    font-weight: 500;
+    transition: all 0.3s ease;
 }
 
 .stock-bar.with-stock {
@@ -63,6 +92,7 @@
     display: flex;
     margin-top: 8px;
     gap: 16px;
+    justify-content: center;
 }
 
 .legend-item {
@@ -70,12 +100,14 @@
     align-items: center;
     gap: 4px;
     font-size: 12px;
+    color: #595959;
 }
 
 .legend-color {
     width: 16px;
     height: 16px;
     border-radius: 2px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .legend-color.with-stock {
@@ -83,5 +115,536 @@
 }
 
 .legend-color.without-stock {
+    background-color: #ff4d4f;
+}
+
+.legend-text {
+    font-weight: 500;
+}
+
+/* ==================== MEJORAS RESPONSIVAS APLICADAS ==================== */
+
+/* ==================== 1️⃣ TARJETAS DE ESTADÍSTICAS RESPONSIVAS ==================== */
+
+/* Cards base mejoradas */
+:host ::ng-deep .ant-card {
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+}
+
+:host ::ng-deep .ant-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+:host ::ng-deep .ant-card-head {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 12px 16px;
+}
+
+:host ::ng-deep .ant-card-body {
+    padding: 16px;
+}
+
+/* Estadísticas principales */
+:host ::ng-deep .ant-statistic {
+    text-align: center;
+}
+
+:host ::ng-deep .ant-statistic-title {
+    font-size: 13px;
+    color: #8c8c8c;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+:host ::ng-deep .ant-statistic-content {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+/* ==================== 2️⃣ TABLA RESPONSIVA CON SCROLL HORIZONTAL ==================== */
+
+/* Wrapper para tablas con scroll */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 6px;
+    border: 1px solid #f0f0f0;
+}
+
+:host ::ng-deep .ant-table {
+    min-width: 400px; /* Mínimo para forzar scroll cuando sea necesario */
+    font-size: 13px;
+}
+
+:host ::ng-deep .ant-table-thead > tr > th {
+    padding: 12px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    background-color: #fafafa;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+:host ::ng-deep .ant-table-tbody > tr > td {
+    padding: 10px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+:host ::ng-deep .ant-table-tbody > tr:hover > td {
+    background-color: #f5f5f5;
+}
+
+/* ==================== 3️⃣ GRID RESPONSIVO MEJORADO ==================== */
+
+/* Grid de estadísticas principales */
+.stats-grid {
+    margin-bottom: 16px;
+}
+
+/* ==================== 4️⃣ RESPONSIVE BREAKPOINTS ==================== */
+
+/* Desktop normal - mostrar todo */
+@media (min-width: 1200px) {
+    .stats-container {
+        padding: 20px 0;
+        gap: 20px;
+    }
+    
+    :host ::ng-deep .ant-card-body {
+        padding: 20px;
+    }
+    
+    :host ::ng-deep .ant-statistic-content {
+        font-size: 28px;
+    }
+    
+    .stat-value {
+        font-size: 18px;
+    }
+}
+
+/* Tablets grandes */
+@media (max-width: 1199px) and (min-width: 992px) {
+    .stats-container {
+        padding: 16px 0;
+        gap: 16px;
+    }
+    
+    :host ::ng-deep .ant-statistic-content {
+        font-size: 24px;
+    }
+}
+
+/* Tablets medianas */
+@media (max-width: 991px) and (min-width: 769px) {
+    .stats-container {
+        padding: 14px 0;
+        gap: 14px;
+    }
+    
+    :host ::ng-deep .ant-card-body {
+        padding: 14px;
+    }
+    
+    :host ::ng-deep .ant-statistic-content {
+        font-size: 22px;
+    }
+    
+    .stock-bar-legend {
+        gap: 12px;
+    }
+}
+
+/* Tablets pequeñas */
+@media (max-width: 768px) {
+    .stats-container {
+        padding: 12px 0;
+        gap: 12px;
+    }
+    
+    .chart-card,
+    .stock-info-card {
+        margin-top: 12px;
+    }
+    
+    :host ::ng-deep .ant-card-head {
+        padding: 10px 12px;
+    }
+    
+    :host ::ng-deep .ant-card-body {
+        padding: 12px;
+    }
+    
+    :host ::ng-deep .ant-card-head-title {
+        font-size: 15px;
+    }
+    
+    :host ::ng-deep .ant-statistic-content {
+        font-size: 20px;
+    }
+    
+    :host ::ng-deep .ant-statistic-title {
+        font-size: 12px;
+    }
+    
+    /* Tabla más compacta */
+    :host ::ng-deep .ant-table {
+        min-width: 350px;
+        font-size: 12px;
+    }
+    
+    :host ::ng-deep .ant-table-thead > tr > th,
+    :host ::ng-deep .ant-table-tbody > tr > td {
+        padding: 8px 6px;
+        font-size: 11px;
+    }
+    
+    /* Stock chart responsivo */
+    .stock-chart {
+        margin-top: 12px;
+    }
+    
+    .stock-bar-container {
+        height: 20px;
+    }
+    
+    .stock-bar {
+        font-size: 11px;
+        min-width: 20px;
+    }
+    
+    .stock-bar-legend {
+        gap: 12px;
+        justify-content: space-around;
+    }
+    
+    .legend-item {
+        font-size: 11px;
+    }
+    
+    .legend-color {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+/* Móviles grandes */
+@media (max-width: 576px) {
+    .stats-container {
+        padding: 8px 0;
+        gap: 10px;
+    }
+    
+    .chart-card,
+    .stock-info-card {
+        margin-top: 10px;
+    }
+    
+    :host ::ng-deep .ant-card-head {
+        padding: 8px 10px;
+    }
+    
+    :host ::ng-deep .ant-card-body {
+        padding: 10px;
+    }
+    
+    :host ::ng-deep .ant-card-head-title {
+        font-size: 14px;
+    }
+    
+    :host ::ng-deep .ant-statistic-content {
+        font-size: 18px;
+    }
+    
+    :host ::ng-deep .ant-statistic-title {
+        font-size: 11px;
+    }
+    
+    /* Tabla muy compacta para móvil */
+    :host ::ng-deep .ant-table {
+        min-width: 300px;
+        font-size: 11px;
+    }
+    
+    :host ::ng-deep .ant-table-thead > tr > th,
+    :host ::ng-deep .ant-table-tbody > tr > td {
+        padding: 6px 4px;
+        font-size: 10px;
+    }
+    
+    /* Stats items más compactos */
+    .stat-item {
+        margin-bottom: 8px;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        margin-bottom: 2px;
+    }
+    
+    .stat-value {
+        font-size: 14px;
+    }
+    
+    /* Stock chart móvil */
+    .stock-chart {
+        margin-top: 10px;
+    }
+    
+    .stock-bar-label {
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+    
+    .stock-bar-container {
+        height: 18px;
+    }
+    
+    .stock-bar {
+        font-size: 10px;
+        min-width: 18px;
+    }
+    
+    .stock-bar-legend {
+        gap: 8px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+    
+    .legend-item {
+        font-size: 10px;
+        gap: 3px;
+    }
+    
+    .legend-color {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+/* Móviles muy pequeños */
+@media (max-width: 480px) {
+    .stats-container {
+        padding: 6px 0;
+        gap: 8px;
+    }
+    
+    :host ::ng-deep .ant-card-head {
+        padding: 6px 8px;
+    }
+    
+    :host ::ng-deep .ant-card-body {
+        padding: 8px;
+    }
+    
+    :host ::ng-deep .ant-card-head-title {
+        font-size: 13px;
+    }
+    
+    :host ::ng-deep .ant-statistic-content {
+        font-size: 16px;
+    }
+    
+    :host ::ng-deep .ant-statistic-title {
+        font-size: 10px;
+    }
+    
+    /* Tabla extremadamente compacta */
+    :host ::ng-deep .ant-table {
+        min-width: 280px;
+        font-size: 10px;
+    }
+    
+    :host ::ng-deep .ant-table-thead > tr > th,
+    :host ::ng-deep .ant-table-tbody > tr > td {
+        padding: 4px 3px;
+        font-size: 9px;
+    }
+    
+    /* Stats grid en columna única */
+    .stat-item {
+        margin-bottom: 6px;
+    }
+    
+    .stat-label {
+        font-size: 11px;
+    }
+    
+    .stat-value {
+        font-size: 13px;
+    }
+    
+    /* Stock chart muy compacto */
+    .stock-bar-container {
+        height: 16px;
+    }
+    
+    .stock-bar {
+        font-size: 9px;
+        min-width: 16px;
+    }
+    
+    .stock-bar-label {
+        font-size: 12px;
+    }
+    
+    .legend-item {
+        font-size: 9px;
+    }
+    
+    .legend-color {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+/* ==================== 5️⃣ SCROLLBAR PERSONALIZADA ==================== */
+
+/* Scrollbar para el contenedor principal */
+.stats-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.stats-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.stats-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.stats-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Scrollbar para las tablas */
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #d9d9d9;
+    border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #bfbfbf;
+}
+
+/* ==================== 6️⃣ ANIMACIONES Y TRANSICIONES ==================== */
+
+/* Animaciones suaves para las cards */
+.chart-card,
+.stock-info-card {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Hover effects mejorados */
+.stat-item:hover {
+    background-color: #f8f8f8;
+    border-radius: 4px;
+    padding: 4px;
+    transition: all 0.2s ease;
+}
+
+/* ==================== 7️⃣ MEJORAS DE ACCESIBILIDAD ==================== */
+
+/* Focus visible */
+:host ::ng-deep .ant-table-tbody > tr:focus {
+    outline: 2px solid #1890ff;
+    outline-offset: 2px;
+}
+
+/* Mejor contraste para textos */
+.stat-label {
+    color: #595959;
+}
+
+.stat-value {
+    color: #262626;
+}
+
+/* ==================== 8️⃣ UTILIDADES ADICIONALES ==================== */
+
+/* Estado de carga mejorado */
+.loading-container {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.loading-container::after {
+    content: 'Cargando estadísticas...';
+    font-size: 14px;
+    color: #8c8c8c;
+    margin-top: 8px;
+}
+
+/* Mensaje de error o vacío */
+:host ::ng-deep .ant-empty {
+    margin: 32px 0;
+}
+
+:host ::ng-deep .ant-empty-description {
+    color: #8c8c8c;
+    font-size: 14px;
+}
+
+/* Mejoras en rating */
+:host ::ng-deep .ant-rate {
+    font-size: 16px;
+    color: #fadb14;
+}
+
+@media (max-width: 576px) {
+    :host ::ng-deep .ant-rate {
+        font-size: 14px;
+    }
+}
+
+/* Indicadores de estado mejorados */
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.status-indicator.success {
+    background-color: #52c41a;
+}
+
+.status-indicator.warning {
+    background-color: #faad14;
+}
+
+.status-indicator.error {
     background-color: #ff4d4f;
 }
