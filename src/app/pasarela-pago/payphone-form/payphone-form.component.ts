@@ -31,6 +31,7 @@ import {
 import { ErrorUtil } from '../../utils/error-util';
 import { UsersService } from '../../services/users/users.service';
 import { NzCollapseModule } from 'ng-zorro-antd/collapse';
+import { ActivityLogService } from '../../services/admin/activityLog/activity-log.service';
 
 // Interfaces (sin cambios)
 interface PayphoneInitData {
@@ -119,7 +120,8 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
     private cartService: CartService,
     private http: HttpClient,
     private modalService: NzModalService,
-    private usersService: UsersService
+    private usersService: UsersService,
+    private activityLogService: ActivityLogService
   ) {
     this.cartSummary$ = this.cartService.cart$;
   }
@@ -394,8 +396,6 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       this.setLoading(true);
       this.setCurrentStep(2);
-
-      // ✅ AGREGAR: Limpiar errores previos
       this.setError(null);
 
       console.log('🔄 Confirmando pago con backend...', response);
@@ -419,9 +419,20 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (shouldClearCart) {
         console.log('✅ Inventario procesado exitosamente, limpiando carrito...');
-        this.cartService.clearCart();
 
-        // ✅ MOSTRAR TICKET integrado
+        // ✅ AGREGAR: Obtener datos del carrito ANTES de limpiarlo
+        const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
+        const transactionId = response['id'] || response.transactionId || this.transactionId;
+
+        // ✅ AGREGAR: Registrar compra
+        try {
+          await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
+          console.log('💰 Compra registrada exitosamente');
+        } catch (error) {
+          console.warn('Error registrando compra:', error);
+        }
+
+        this.cartService.clearCart();
         this.setPaymentResult(confirmationResponse);
         this.setLoading(false);
 

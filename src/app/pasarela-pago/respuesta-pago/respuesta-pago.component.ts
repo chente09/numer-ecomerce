@@ -14,8 +14,9 @@ import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
-import { Subject, takeUntil } from 'rxjs';
+import { firstValueFrom, Subject, take, takeUntil } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { ActivityLogService } from '../../services/admin/activityLog/activity-log.service';
 
 interface PaymentResult {
   transactionStatus: string;
@@ -67,7 +68,8 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     private location: Location,
     private router: Router,
     private cartService: CartService,
-    private message: NzMessageService
+    private message: NzMessageService,
+    private activityLogService: ActivityLogService
   ) { }
 
   ngOnInit(): void {
@@ -109,7 +111,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
   }
 
 
-  private checkAndClearCart(confirmationResponse: any): void {
+  private async checkAndClearCart(confirmationResponse: any): Promise<void> {
     const shouldClearCart = confirmationResponse && (
       confirmationResponse.inventoryProcessed === true ||
       confirmationResponse.transactionStatus === 'Approved'
@@ -117,6 +119,21 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
 
     if (shouldClearCart) {
       console.log('✅ Pago confirmado, limpiando carrito...');
+
+      // ✅ AGREGAR: Obtener datos del carrito ANTES de limpiarlo
+      const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
+      const transactionId = confirmationResponse.transactionId;
+
+      // ✅ AGREGAR: Registrar compra (solo si hay items en el carrito)
+      if (currentCart && currentCart.items.length > 0) {
+        try {
+          await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
+          console.log('💰 Compra registrada exitosamente desde respuesta-pago');
+        } catch (error) {
+          console.warn('Error registrando compra:', error);
+        }
+      }
+
       this.cartService.clearCart();
     } else {
       console.warn('⚠️ Pago no confirmado');

@@ -13,6 +13,7 @@ import { ProductInventoryService, SaleItem, StockTransfer, StockUpdate, LowStock
 import { ProductPriceService } from '../price/product-price.service';
 import { ProductVariantService } from '../productVariante/product-variant.service';
 import { ProductImageService } from '../image/product-image.service';
+import { ActivityLogService } from '../activityLog/activity-log.service';
 
 // Utilidades
 import { ErrorUtil } from '../../../utils/error-util';
@@ -46,6 +47,7 @@ export class ProductService {
     private variantService: ProductVariantService,
     private imageService: ProductImageService,
     private cacheService: CacheService,
+    private activityLogService: ActivityLogService
   ) {
   }
 
@@ -328,13 +330,12 @@ export class ProductService {
 
           return this.enrichSingleProductWithRealTimeStock(product).pipe(
             switchMap(enrichedProduct =>
-              // ✅ Registramos la vista sin bloquear el flujo principal
-              from(this.incrementProductView(productId)).pipe(
+              from(this.trackProductView(productId, enrichedProduct?.name)).pipe(
                 catchError(viewError => {
                   console.warn('Vista no registrada:', viewError);
-                  return of(null); // ✅ Continuar flujo aunque falle el conteo de vista
+                  return of(null);
                 }),
-                map(() => enrichedProduct) // ✅ Retornar el producto enriquecido
+                map(() => enrichedProduct)
               )
             )
           );
@@ -345,6 +346,35 @@ export class ProductService {
       );
     });
   }
+
+  /**
+ * 👁️ Registra vista de producto (NUEVO MÉTODO)
+ */
+  private async trackProductView(productId: string, productName?: string): Promise<void> {
+    try {
+      // Throttling mejorado
+      const viewKey = `view_${productId}`;
+      const lastView = this.viewedInSession.has(productId);
+
+      if (lastView) {
+        return; // Ya visto en esta sesión
+      }
+
+      this.viewedInSession.add(productId);
+
+      // 1. Incrementar contador en el producto
+      await firstValueFrom(
+        this.inventoryService.incrementProductViews(productId).pipe(take(1))
+      );
+
+      // 2. ✅ NUEVO: Registrar en user_activity_logs
+      await this.activityLogService.logProductView(productId, productName);
+
+    } catch (error) {
+      console.warn('❌ Error registrando vista:', error);
+    }
+  }
+
 
   // ==================== MÉTODOS PARA CALCULAR STOCK EN TIEMPO REAL ====================
 
@@ -1992,65 +2022,149 @@ export class ProductService {
   // ==================== MÉTODOS DE ESTADÍSTICAS REALES ====================
 
   /**
-   * 📊 Obtiene historial de ventas de un producto
-   */
+ * 📊 Obtiene historial de ventas REAL desde inventoryMovements
+ */
   getProductSalesHistory(productId: string, days: number = 30): Observable<{ date: Date, sales: number }[]> {
-    const cacheKey = `${this.productsCacheKey}_sales_${productId}_${days}`;
+    const cacheKey = `products_sales_${productId}_${days}`;
 
     return this.cacheService.getCached<{ date: Date, sales: number }[]>(cacheKey, () => {
-      // TODO: Implementar con datos reales de Firestore
-      // Por ahora simulamos datos
-      const salesHistory: { date: Date, sales: number }[] = [];
-      const today = new Date();
+      console.log(`📊 [ANALYTICS] Obteniendo ventas reales para ${productId} (${days} días)`);
 
-      for (let i = days - 1; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
 
-        // Simulación: ventas aleatorias
-        const sales = Math.floor(Math.random() * 10);
-        salesHistory.push({ date, sales });
-      }
+      // Usar tu colección inventoryMovements
+      const movementsRef = collection(this.firestore, 'inventoryMovements');
+      const q = query(
+        movementsRef,
+        where('productId', '==', productId),
+        where('type', '==', 'sale'), // Ajusta según tu estructura
+        where('createdAt', '>=', startDate),
+        where('createdAt', '<=', endDate)
+      );
 
-      return of(salesHistory);
+      return from(getDocs(q)).pipe(
+        map(querySnapshot => {
+          const salesByDate = new Map<string, number>();
+
+          // Inicializar todos los días con 0
+          for (let i = 0; i < days; i++) {
+            const date = new Date(startDate);
+            date.setDate(date.getDate() + i);
+            const dateKey = date.toISOString().split('T')[0];
+            salesByDate.set(dateKey, 0);
+          }
+
+          // Procesar movimientos reales
+          querySnapshot.forEach(doc => {
+            const movement = doc.data();
+            const movementDate = movement['createdAt'].toDate();
+            const dateKey = movementDate.toISOString().split('T')[0];
+            const quantity = Math.abs(movement['quantity'] || 0);
+
+            const currentSales = salesByDate.get(dateKey) || 0;
+            salesByDate.set(dateKey, currentSales + quantity);
+          });
+
+          // Convertir a array
+          const salesHistory: { date: Date, sales: number }[] = [];
+          salesByDate.forEach((sales, dateKey) => {
+            salesHistory.push({ date: new Date(dateKey), sales });
+          });
+
+          return salesHistory.sort((a, b) => a.date.getTime() - b.date.getTime());
+        }),
+        catchError(error => {
+          console.error(`❌ Error obteniendo ventas reales:`, error);
+          return this.getFallbackSalesHistory(productId, days);
+        })
+      );
     });
   }
 
   /**
-   * 👁️ Obtiene datos de vistas por período
-   */
+ * 👁️ Obtiene datos de vistas REALES usando user_activity_logs
+ */
   getProductViewsData(productId: string): Observable<{ period: string, count: number }[]> {
-    const cacheKey = `${this.productsCacheKey}_views_${productId}`;
+    const cacheKey = `products_views_${productId}`;
 
     return this.cacheService.getCached<{ period: string, count: number }[]>(cacheKey, () => {
-      // TODO: Implementar con datos reales
-      const viewsData = [
-        { period: 'Hoy', count: Math.floor(Math.random() * 50) + 10 },
-        { period: 'Ayer', count: Math.floor(Math.random() * 40) + 5 },
-        { period: 'Última semana', count: Math.floor(Math.random() * 200) + 50 },
-        { period: 'Último mes', count: Math.floor(Math.random() * 800) + 200 }
+      console.log(`👁️ [ANALYTICS] Obteniendo vistas reales para ${productId}`);
+
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const monthAgo = new Date(today);
+      monthAgo.setDate(monthAgo.getDate() - 30);
+
+      const activityRef = collection(this.firestore, 'user_activity_logs');
+
+      const queries = [
+        // Hoy
+        query(activityRef,
+          where('action', '==', 'product_view'),
+          where('metadata.productId', '==', productId),
+          where('timestamp', '>=', this.getStartOfDay(today))
+        ),
+        // Ayer  
+        query(activityRef,
+          where('action', '==', 'product_view'),
+          where('metadata.productId', '==', productId),
+          where('timestamp', '>=', this.getStartOfDay(yesterday)),
+          where('timestamp', '<', this.getStartOfDay(today))
+        ),
+        // Última semana
+        query(activityRef,
+          where('action', '==', 'product_view'),
+          where('metadata.productId', '==', productId),
+          where('timestamp', '>=', this.getStartOfDay(weekAgo))
+        ),
+        // Último mes
+        query(activityRef,
+          where('action', '==', 'product_view'),
+          where('metadata.productId', '==', productId),
+          where('timestamp', '>=', this.getStartOfDay(monthAgo))
+        )
       ];
 
-      return of(viewsData);
+      return forkJoin(queries.map(q => from(getDocs(q)))).pipe(
+        map(([todaySnap, yesterdaySnap, weekSnap, monthSnap]) => {
+          return [
+            { period: 'Hoy', count: todaySnap.size },
+            { period: 'Ayer', count: yesterdaySnap.size },
+            { period: 'Última semana', count: weekSnap.size },
+            { period: 'Último mes', count: monthSnap.size }
+          ];
+        }),
+        catchError(error => {
+          console.error(`❌ Error obteniendo vistas reales:`, error);
+          return this.getFallbackViewsData(productId);
+        })
+      );
     });
   }
 
   /**
-   * 📈 Obtiene estadísticas completas de un producto
-   */
+ * 📈 Obtiene estadísticas completas usando tus colecciones reales
+ */
   getProductCompleteStats(productId: string): Observable<{
     product: Product;
     salesHistory: { date: Date, sales: number }[];
     viewsData: { period: string, count: number }[];
     stockData: any;
+    promotionData?: any;
   }> {
     return forkJoin({
       product: this.forceRefreshProduct(productId),
       salesHistory: this.getProductSalesHistory(productId),
-      viewsData: this.getProductViewsData(productId)
+      viewsData: this.getProductViewsData(productId),
+      promotionData: this.getProductPromotionData(productId)
     }).pipe(
       take(1),
-      map(({ product, salesHistory, viewsData }) => {
+      map(({ product, salesHistory, viewsData, promotionData }) => {
         if (!product) {
           throw new Error('Producto no encontrado');
         }
@@ -2066,12 +2180,101 @@ export class ProductService {
           product,
           salesHistory,
           viewsData,
-          stockData
+          stockData,
+          promotionData
         };
       }),
       catchError(error => {
         console.error(`❌ Error obteniendo estadísticas para ${productId}:`, error);
         return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * 🏷️ Obtiene datos de promociones usando appliedPromotions
+   */
+  public getProductPromotionData(productId: string): Observable<any> {
+    const promotionsRef = collection(this.firestore, 'appliedPromotions');
+    const q = query(
+      promotionsRef,
+      where('targetId', '==', productId),
+      where('target', '==', 'product')
+    );
+
+    return from(getDocs(q)).pipe(
+      map(querySnapshot => {
+        const activePromotions: any[] = [];
+        const now = new Date();
+
+        querySnapshot.forEach(doc => {
+          const promo = doc.data();
+          const expiresAt = promo['expiresAt'].toDate();
+
+          if (expiresAt > now) {
+            activePromotions.push({
+              id: doc.id,
+              ...promo,
+              expiresAt
+            });
+          }
+        });
+
+        return {
+          hasActivePromotions: activePromotions.length > 0,
+          activePromotions,
+          count: activePromotions.length
+        };
+      }),
+      catchError(error => {
+        console.error(`❌ Error obteniendo promociones:`, error);
+        return of({ hasActivePromotions: false, activePromotions: [], count: 0 });
+      })
+    );
+  }
+
+  // ==================== MÉTODOS AUXILIARES ====================
+
+  private getStartOfDay(date: Date): Date {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
+  private getFallbackSalesHistory(productId: string, days: number): Observable<{ date: Date, sales: number }[]> {
+    return this.getProductById(productId).pipe(
+      map(product => {
+        const totalSales = product?.sales || 0;
+        const salesHistory: { date: Date, sales: number }[] = [];
+        const today = new Date();
+
+        for (let i = days - 1; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+
+          // Distribución más realista
+          const dayWeight = i === 0 ? 0.3 : i <= 7 ? 0.5 : 0.2;
+          const sales = Math.floor((totalSales / days) * dayWeight);
+
+          salesHistory.push({ date, sales });
+        }
+
+        return salesHistory;
+      })
+    );
+  }
+
+  private getFallbackViewsData(productId: string): Observable<{ period: string, count: number }[]> {
+    return this.getProductById(productId).pipe(
+      map(product => {
+        const totalViews = product?.views || 0;
+
+        return [
+          { period: 'Hoy', count: Math.floor(totalViews * 0.05) },
+          { period: 'Ayer', count: Math.floor(totalViews * 0.03) },
+          { period: 'Última semana', count: Math.floor(totalViews * 0.25) },
+          { period: 'Último mes', count: totalViews }
+        ];
       })
     );
   }
