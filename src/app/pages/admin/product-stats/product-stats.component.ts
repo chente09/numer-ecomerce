@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, NgZone, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { PromotionStateService, PromotionChangeEvent } from '../../../services/admin/promotionState/promotion-state.service';
@@ -58,10 +58,12 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
   constructor(
     private productService: ProductService,
     private promotionStateService: PromotionStateService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) { }
 
   ngOnInit(): void {
+    
     // 🔗 Registrar componente para actualizaciones de promociones
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
 
@@ -104,7 +106,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
       this.promotionStateService.onProductPromotionChange(this.product.id)
         .pipe(takeUntil(this.destroy$))
         .subscribe(event => {
-          console.log(`📊 [STATS] Cambio de promoción en producto ${this.product?.id}:`, event);
           this.refreshProductStats();
         });
     }
@@ -118,7 +119,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
 
     // Solo actualizar si afecta a nuestro producto
     if (this.product && this.affectsCurrentProduct(event)) {
-      console.log(`📊 [STATS] Actualizando estadísticas por cambio de promoción`);
       this.refreshProductStats();
     }
   }
@@ -161,21 +161,24 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
       )
       .subscribe({
         next: (stats) => {
-          console.log(`📊 [STATS] Estadísticas cargadas:`, stats);
+          // Forzar la actualización dentro de la zona de Angular
+          this.ngZone.run(() => {
 
-          this.salesHistory = stats.salesHistory;
-          this.viewsData = stats.viewsData;
-          this.stockData = stats.stockData;
+            this.salesHistory = stats.salesHistory;
+            this.viewsData = stats.viewsData;
+            this.stockData = stats.stockData;
 
-          // 🚀 Verificar cambios y emitir
-          if (this.hasStatsChanged(stats.product)) {
-            this.statsChanged.emit({
-              productId: stats.product.id,
-              updatedProduct: stats.product
-            });
-          }
+            // 🚀 Verificar cambios y emitir
+            if (this.hasStatsChanged(stats.product)) {
+              this.statsChanged.emit({
+                productId: stats.product.id,
+                updatedProduct: stats.product
+              });
+            }
 
-          this.cdr.markForCheck();
+            // Forzar detección de cambios
+            this.cdr.detectChanges(); // Cambiar de markForCheck a detectChanges
+          });
         },
         error: (error) => {
           console.error('❌ [STATS] Error al cargar estadísticas:', error);
@@ -187,7 +190,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
 
   // Agregar método fallback
   private loadFallbackData(): void {
-    console.log('📊 [STATS] Cargando datos simulados como fallback');
 
     // Datos simulados básicos
     this.salesHistory = Array.from({ length: 7 }, (_, i) => ({
@@ -210,6 +212,9 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
         totalVariants: this.product.variants?.length || 0
       };
     }
+    
+    // Asegurar actualización de la vista
+    this.cdr.detectChanges();
   }
 
   /**
@@ -218,7 +223,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
   private refreshProductStats(): void {
     if (!this.product) return;
 
-    console.log(`🔄 [STATS] Refrescando estadísticas del producto ${this.product.id}`);
     this.loadProductStats();
   }
 
@@ -237,15 +241,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
       this.product.currentPrice !== updatedProduct.currentPrice
     );
 
-    if (hasChanges) {
-      console.log(`📊 [STATS] Cambios detectados en estadísticas:`, {
-        views: `${this.product.views} → ${updatedProduct.views}`,
-        sales: `${this.product.sales} → ${updatedProduct.sales}`,
-        totalStock: `${this.product.totalStock} → ${updatedProduct.totalStock}`,
-        discountPercentage: `${this.product.discountPercentage} → ${updatedProduct.discountPercentage}`
-      });
-    }
-
     return hasChanges;
   }
 
@@ -253,6 +248,12 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
    * 📅 Formateo de datos para visualización
    */
   formatDate(date: Date): string {
+    // Asegurar que date es un objeto Date válido
+    if (!(date instanceof Date)) {
+      console.warn('⚠️ [COMPONENT] formatDate recibió un valor no-Date:', date);
+      date = new Date(date);
+    }
+    
     return new Intl.DateTimeFormat('es-ES', {
       day: '2-digit',
       month: '2-digit',

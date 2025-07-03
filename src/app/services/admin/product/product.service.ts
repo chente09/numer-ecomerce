@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import {
   Firestore, collection, collectionData, doc, getDoc, where, query, deleteDoc, getDocs,
-  writeBatch, runTransaction,
+  writeBatch, Timestamp ,
   increment
 } from '@angular/fire/firestore';
+
 import { Observable, from, of, forkJoin, throwError, firstValueFrom } from 'rxjs';
 import { map, catchError, switchMap, tap, take, shareReplay, finalize } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
@@ -177,7 +178,6 @@ export class ProductService {
    */
   // REEMPLAZAR tu método existente forceRefreshProduct con esta versión mejorada:
   forceRefreshProduct(productId: string): Observable<Product | null> {
-    console.log(`🔄 [PRODUCT SERVICE] Forzando recarga completa del producto ${productId}...`);
 
     // Invalidar TODOS los cachés relacionados con este producto
     this.cacheService.invalidateProductCache(productId);
@@ -191,18 +191,14 @@ export class ProductService {
       switchMap(product => {
         if (!product) return of(null);
 
-        console.log(`📦 [PRODUCT SERVICE] Producto base obtenido, obteniendo variantes frescas...`);
-
         // ✅ NUEVO: Obtener variantes frescas usando el método sin caché
         return this.inventoryService.getVariantsByProductIdNoCache(productId).pipe(
           take(1),
           map(variants => {
-            console.log(`🧬 [PRODUCT SERVICE] Variantes frescas obtenidas: ${variants.length}`);
 
             // Verificar si hay variantes con promociones
             const variantsWithPromotions = variants.filter(v => v.promotionId);
             if (variantsWithPromotions.length > 0) {
-              console.log(`🏷️ [PRODUCT SERVICE] Variantes con promociones encontradas: ${variantsWithPromotions.length}`);
               variantsWithPromotions.forEach(v => {
                 console.log(`   - ${v.colorName}-${v.sizeName}: Promoción ${v.promotionId}`);
               });
@@ -213,8 +209,6 @@ export class ProductService {
 
             // Calcular precios con las promociones aplicadas
             const productWithPricing = this.priceService.calculateDiscountedPrice(enrichedProduct);
-
-            console.log(`✅ [PRODUCT SERVICE] Producto enriquecido con variantes frescas completado`);
             return productWithPricing;
           }),
           catchError(error => {
@@ -715,7 +709,6 @@ export class ProductService {
 
     // Si forceRefresh es true, NO usar caché en absoluto
     if (forceRefresh) {
-      console.log('🔄 [PRODUCT SERVICE] Forzando recarga de productos con descuento...');
 
       // Limpiar caché para futuras llamadas
       this.cacheService.invalidate(cacheKey);
@@ -725,7 +718,6 @@ export class ProductService {
       return this.getProductsNoCache().pipe(
         take(1),
         switchMap(products => {
-          console.log(`📊 Total productos obtenidos sin caché: ${products.length}`);
           return this.priceService.calculateDiscountedPrices(products).pipe(take(1));
         }),
         map(products => {
@@ -754,8 +746,6 @@ export class ProductService {
 
             return getDiscountPercent(b) - getDiscountPercent(a);
           });
-
-          console.log(`📊 Productos con descuento encontrados: ${sorted.length}`);
 
           return sorted.slice(0, limit);
         }),
@@ -804,7 +794,6 @@ export class ProductService {
 
   // En ProductService, agrega este método:
   getDiscountedProductsForceRefresh(limit: number = 8): Observable<Product[]> {
-    console.log('🔄 [PRODUCT SERVICE] Forzando recarga de productos con descuento...');
 
     // Limpiar caché específico
     this.cacheService.invalidate(`${this.productsCacheKey}_discounted_${limit}`);
@@ -814,7 +803,6 @@ export class ProductService {
     return this.getProductsNoCache().pipe(
       take(1),
       switchMap(products => {
-        console.log(`📊 Total productos obtenidos: ${products.length}`);
         return this.priceService.calculateDiscountedPrices(products).pipe(take(1));
       }),
       map(products => {
@@ -831,18 +819,8 @@ export class ProductService {
 
           const includeProduct = hasDirectDiscount || hasPriceReduction || hasVariantPromotion;
 
-          if (includeProduct) {
-            console.log(`✅ Incluyendo producto con descuento: ${product.name}`, {
-              hasDirectDiscount,
-              hasPriceReduction,
-              hasVariantPromotion
-            });
-          }
-
           return includeProduct;
         });
-
-        console.log(`📊 Productos con descuento encontrados: ${discounted.length}`);
 
         return discounted.slice(0, limit);
       }),
@@ -1613,7 +1591,6 @@ export class ProductService {
       views[`${productId}_lastView`] = new Date().toISOString();
 
       localStorage.setItem(viewsKey, JSON.stringify(views));
-      console.log(`📱 Vista local registrada: ${views[productId]}`);
     } catch (error) {
       console.error('❌ Error en registro local:', error);
     }
@@ -2003,7 +1980,6 @@ export class ProductService {
     return collectionData(productsRef, { idField: 'id' }).pipe(
       take(1), // ✅ Una sola emisión
       map(data => {
-        console.log(`📦 ProductService: Productos frescos después de pago: ${data.length}`);
         return data as Product[];
       }),
       switchMap(products => this.enrichProductsWithRealTimeStock(products)),
@@ -2024,64 +2000,86 @@ export class ProductService {
   /**
  * 📊 Obtiene historial de ventas REAL desde inventoryMovements
  */
-  getProductSalesHistory(productId: string, days: number = 30): Observable<{ date: Date, sales: number }[]> {
-    const cacheKey = `products_sales_${productId}_${days}`;
+  // En ProductService
+getProductSalesHistory(productId: string, days: number = 30): Observable<{ date: Date, sales: number }[]> {
+  const cacheKey = `products_sales_${productId}_${days}`;
 
-    return this.cacheService.getCached<{ date: Date, sales: number }[]>(cacheKey, () => {
-      console.log(`📊 [ANALYTICS] Obteniendo ventas reales para ${productId} (${days} días)`);
+  return this.cacheService.getCached<{ date: Date, sales: number }[]>(cacheKey, () => {
 
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
 
-      // Usar tu colección inventoryMovements
-      const movementsRef = collection(this.firestore, 'inventoryMovements');
-      const q = query(
-        movementsRef,
-        where('productId', '==', productId),
-        where('type', '==', 'sale'), // Ajusta según tu estructura
-        where('createdAt', '>=', startDate),
-        where('createdAt', '<=', endDate)
-      );
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
 
-      return from(getDocs(q)).pipe(
-        map(querySnapshot => {
-          const salesByDate = new Map<string, number>();
+    const movementsRef = collection(this.firestore, 'inventoryMovements');
+    
+    // IMPORTANTE: Usar Timestamp de Firestore, no Date
+    const q = query(
+      movementsRef,
+      where('productId', '==', productId),
+      where('type', '==', 'sale'),
+      where('timestamp', '>=', Timestamp.fromDate(startDate)),
+      where('timestamp', '<=', Timestamp.fromDate(endDate))
+    );
 
-          // Inicializar todos los días con 0
-          for (let i = 0; i < days; i++) {
-            const date = new Date(startDate);
-            date.setDate(date.getDate() + i);
-            const dateKey = date.toISOString().split('T')[0];
-            salesByDate.set(dateKey, 0);
+    return from(getDocs(q)).pipe(
+      map(querySnapshot => {
+        
+        const salesByDate = new Map<string, number>();
+
+        // Inicializar todos los días con 0
+        for (let i = 0; i < days; i++) {
+          const date = new Date(startDate);
+          date.setDate(date.getDate() + i);
+          const dateKey = date.toISOString().split('T')[0];
+          salesByDate.set(dateKey, 0);
+        }
+
+        // Procesar movimientos reales
+        querySnapshot.forEach(doc => {
+          const movement = doc.data();
+
+          // Manejar el timestamp correctamente
+          let movementDate: Date;
+          
+          if (movement['timestamp'] && movement['timestamp'].toDate) {
+            // Es un Firestore Timestamp
+            movementDate = movement['timestamp'].toDate();
+          } else if (movement['timestamp'] && movement['timestamp'].seconds) {
+            // Es un objeto con seconds
+            movementDate = new Date(movement['timestamp'].seconds * 1000);
+          } else if (movement['timestamp'] instanceof Date) {
+            // Ya es un Date
+            movementDate = movement['timestamp'];
+          } else {
+            console.error('❌ Formato de timestamp no reconocido:', movement['timestamp']);
+            return;
           }
 
-          // Procesar movimientos reales
-          querySnapshot.forEach(doc => {
-            const movement = doc.data();
-            const movementDate = movement['createdAt'].toDate();
-            const dateKey = movementDate.toISOString().split('T')[0];
-            const quantity = Math.abs(movement['quantity'] || 0);
+          const dateKey = movementDate.toISOString().split('T')[0];
+          const quantity = Math.abs(movement['quantity'] || 0);
 
-            const currentSales = salesByDate.get(dateKey) || 0;
-            salesByDate.set(dateKey, currentSales + quantity);
-          });
+          const currentSales = salesByDate.get(dateKey) || 0;
+          salesByDate.set(dateKey, currentSales + quantity);
+        });
 
-          // Convertir a array
-          const salesHistory: { date: Date, sales: number }[] = [];
-          salesByDate.forEach((sales, dateKey) => {
-            salesHistory.push({ date: new Date(dateKey), sales });
-          });
+        // Convertir a array
+        const salesHistory: { date: Date, sales: number }[] = [];
+        salesByDate.forEach((sales, dateKey) => {
+          salesHistory.push({ date: new Date(dateKey), sales });
+        });
 
-          return salesHistory.sort((a, b) => a.date.getTime() - b.date.getTime());
-        }),
-        catchError(error => {
-          console.error(`❌ Error obteniendo ventas reales:`, error);
-          return this.getFallbackSalesHistory(productId, days);
-        })
-      );
-    });
-  }
+        return salesHistory.sort((a, b) => a.date.getTime() - b.date.getTime());
+      }),
+      catchError(error => {
+        console.error(`❌ Error obteniendo ventas reales:`, error);
+        return this.getFallbackSalesHistory(productId, days);
+      })
+    );
+  });
+}
 
   /**
  * 👁️ Obtiene datos de vistas REALES usando user_activity_logs
@@ -2090,7 +2088,6 @@ export class ProductService {
     const cacheKey = `products_views_${productId}`;
 
     return this.cacheService.getCached<{ period: string, count: number }[]>(cacheKey, () => {
-      console.log(`👁️ [ANALYTICS] Obteniendo vistas reales para ${productId}`);
 
       const today = new Date();
       const yesterday = new Date(today);
