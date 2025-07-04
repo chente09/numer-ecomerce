@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import {
   Firestore, collection, collectionData, doc, getDoc, where, query, deleteDoc, getDocs,
-  writeBatch, Timestamp ,
-  increment
+  writeBatch, Timestamp,
+  increment,
+  updateDoc
 } from '@angular/fire/firestore';
 
 import { Observable, from, of, forkJoin, throwError, firstValueFrom } from 'rxjs';
@@ -342,8 +343,8 @@ export class ProductService {
   }
 
   /**
- * 👁️ Registra vista de producto (NUEVO MÉTODO)
- */
+* 👁️ Registra vista de producto (NUEVO MÉTODO)
+*/
   private async trackProductView(productId: string, productName?: string): Promise<void> {
     try {
       // Throttling mejorado
@@ -445,7 +446,7 @@ export class ProductService {
       totalStock,
       colors: updatedColors,
       sizes: updatedSizes,
-      variants: variants  // ✅ CRÍTICO: Asignar array de objetos, NO IDs
+      variants: variants // ✅ CRÍTICO: Asignar array de objetos, NO IDs
     };
 
     return enrichedProduct;
@@ -1133,8 +1134,8 @@ export class ProductService {
   }
 
   /**
- * 🔧 NUEVO: Sanitiza datos para Firestore eliminando campos undefined
- */
+* 🔧 NUEVO: Sanitiza datos para Firestore eliminando campos undefined
+*/
   private sanitizeForFirestore(data: any): any {
     const sanitized: any = {};
 
@@ -1148,8 +1149,8 @@ export class ProductService {
   }
 
   /**
- * 🔧 NUEVO: Método público para sanitizar (uso desde componentes)
- */
+* 🔧 NUEVO: Método público para sanitizar (uso desde componentes)
+*/
   public sanitizeDataForFirestore(data: any): any {
     return this.sanitizeForFirestore(data);
   }
@@ -1965,11 +1966,11 @@ export class ProductService {
   }
 
   /**
- * 🆕 MÉTODO: Forzar recarga después de transacción exitosa
- */
+* 🆕 MÉTODO: Forzar recarga después de transacción exitosa
+*/
   /**
- * 🆕 MÉTODO: Forzar recarga después de transacción exitosa
- */
+* 🆕 MÉTODO: Forzar recarga después de transacción exitosa
+*/
   forceReloadAfterPayment(): Observable<Product[]> {
 
     // Limpiar TODO el caché relacionado con productos
@@ -1998,92 +1999,203 @@ export class ProductService {
   // ==================== MÉTODOS DE ESTADÍSTICAS REALES ====================
 
   /**
- * 📊 Obtiene historial de ventas REAL desde inventoryMovements
- */
-  // En ProductService
-getProductSalesHistory(productId: string, days: number = 30): Observable<{ date: Date, sales: number }[]> {
-  const cacheKey = `products_sales_${productId}_${days}`;
+* 📊 Obtiene historial de ventas REAL desde inventoryMovements
+*/
 
-  return this.cacheService.getCached<{ date: Date, sales: number }[]>(cacheKey, () => {
+  getProductSalesHistory(productId: string, days: number = 30): Observable<{ date: Date, sales: number }[]> {
+    const cacheKey = `products_sales_${productId}_${days}`;
 
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
+    return this.cacheService.getCached<{ date: Date, sales: number }[]>(cacheKey, () => {
+      console.log(`📊 [ANALYTICS] Obteniendo ventas reales para ${productId} (${days} días)`);
 
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    startDate.setHours(0, 0, 0, 0);
+      // Calcular endDate al final del día de HOY en la zona horaria LOCAL
+      const endDateLocal = new Date();
+      endDateLocal.setHours(23, 59, 59, 999); // Fin del día actual, hora local
 
-    const movementsRef = collection(this.firestore, 'inventoryMovements');
-    
-    // IMPORTANTE: Usar Timestamp de Firestore, no Date
-    const q = query(
-      movementsRef,
-      where('productId', '==', productId),
-      where('type', '==', 'sale'),
-      where('timestamp', '>=', Timestamp.fromDate(startDate)),
-      where('timestamp', '<=', Timestamp.fromDate(endDate))
-    );
+      // Calcular un startDate LOCAL inicial que sea lo suficientemente amplio
+      // para capturar ventas de la ventana deseada y un poco más allá.
+      // Por ejemplo, si 'days' es 30, retrocedemos 60 días para la base del historial.
+      const initialStartDateLocal = new Date();
+      initialStartDateLocal.setDate(initialStartDateLocal.getDate() - (days * 2)); // Retrocede el doble de días para el rango inicial
+      initialStartDateLocal.setHours(0, 0, 0, 0); // Inicio del día, hora local
 
-    return from(getDocs(q)).pipe(
-      map(querySnapshot => {
-        
-        const salesByDate = new Map<string, number>();
 
-        // Inicializar todos los días con 0
-        for (let i = 0; i < days; i++) {
-          const date = new Date(startDate);
-          date.setDate(date.getDate() + i);
-          const dateKey = date.toISOString().split('T')[0];
-          salesByDate.set(dateKey, 0);
-        }
+      // Para la consulta de Firestore, necesitamos fechas UTC.
+      // La consulta debe abarcar desde el inicio del día más antiguo (en UTC)
+      // hasta el final del día más reciente (en UTC).
+      const queryStartDate = new Date(initialStartDateLocal);
+      queryStartDate.setHours(queryStartDate.getHours() - 24); // Retrocede un día completo en UTC para la consulta
 
-        // Procesar movimientos reales
-        querySnapshot.forEach(doc => {
-          const movement = doc.data();
+      const queryEndDate = new Date(endDateLocal);
+      queryEndDate.setHours(queryEndDate.getHours() + 24); // Avanza un día completo en UTC para la consulta
 
-          // Manejar el timestamp correctamente
-          let movementDate: Date;
-          
-          if (movement['timestamp'] && movement['timestamp'].toDate) {
-            // Es un Firestore Timestamp
-            movementDate = movement['timestamp'].toDate();
-          } else if (movement['timestamp'] && movement['timestamp'].seconds) {
-            // Es un objeto con seconds
-            movementDate = new Date(movement['timestamp'].seconds * 1000);
-          } else if (movement['timestamp'] instanceof Date) {
-            // Ya es un Date
-            movementDate = movement['timestamp'];
-          } else {
-            console.error('❌ Formato de timestamp no reconocido:', movement['timestamp']);
-            return;
+
+      // --- INICIO DE LOGS DE DEPURACIÓN DE FECHAS ---
+      console.log(`DEBUG FECHAS (CONSULTA Firestore): startDate = ${queryStartDate.toISOString()}, endDate = ${queryEndDate.toISOString()}`);
+      console.log(`DEBUG FECHAS (RANGO LOCAL INICIAL): startDateLocal = ${initialStartDateLocal.toLocaleString()}, endDateLocal = ${endDateLocal.toLocaleString()}`);
+      // --- FIN DE LOGS DE DEPURACIÓN DE FECHAS ---
+
+      const movementsRef = collection(this.firestore, 'inventoryMovements');
+
+      const q = query(
+        movementsRef,
+        where('productId', '==', productId),
+        where('type', '==', 'sale'),
+        where('timestamp', '>=', Timestamp.fromDate(queryStartDate)),
+        where('timestamp', '<=', Timestamp.fromDate(queryEndDate))
+      );
+
+      return from(getDocs(q)).pipe(
+        map(querySnapshot => {
+          console.log(`📊 [DEBUG] Documentos encontrados: ${querySnapshot.size} para getProductSalesHistory`);
+
+          const salesByDate = new Map<string, number>();
+
+          // Inicializar todos los días en el rango LOCAL deseado con 0 ventas
+          // Las claves del mapa deben ser consistentes con la fecha LOCAL
+          for (let d = new Date(initialStartDateLocal); d <= endDateLocal; d.setDate(d.getDate() + 1)) {
+            const year = d.getFullYear();
+            const month = (d.getMonth() + 1).toString().padStart(2, '0'); // Mes como cadena 01-12
+            const day = d.getDate().toString().padStart(2, '0'); // Día como cadena 01-31
+            const dateKey = `${year}-${month}-${day}`;
+            salesByDate.set(dateKey, 0);
           }
 
-          const dateKey = movementDate.toISOString().split('T')[0];
-          const quantity = Math.abs(movement['quantity'] || 0);
 
-          const currentSales = salesByDate.get(dateKey) || 0;
-          salesByDate.set(dateKey, currentSales + quantity);
-        });
+          querySnapshot.forEach(doc => {
+            const movement = doc.data();
 
-        // Convertir a array
-        const salesHistory: { date: Date, sales: number }[] = [];
-        salesByDate.forEach((sales, dateKey) => {
-          salesHistory.push({ date: new Date(dateKey), sales });
-        });
+            let movementDate: Date; // Esto será un objeto Date en la zona horaria LOCAL del navegador
 
-        return salesHistory.sort((a, b) => a.date.getTime() - b.date.getTime());
-      }),
-      catchError(error => {
-        console.error(`❌ Error obteniendo ventas reales:`, error);
-        return this.getFallbackSalesHistory(productId, days);
-      })
-    );
-  });
-}
+            if (movement['timestamp'] && typeof movement['timestamp'].toDate === 'function') {
+              movementDate = movement['timestamp'].toDate();
+            } else if (movement['timestamp'] instanceof Date) {
+              movementDate = movement['timestamp'];
+            } else if (movement['timestamp'] && typeof movement['timestamp'].seconds === 'number') {
+              movementDate = new Date(movement['timestamp'].seconds * 1000);
+            } else {
+              console.error('❌ Formato de timestamp no reconocido en getProductSalesHistory:', movement['timestamp']);
+              return;
+            }
+
+            // Obtener la clave de fecha en base a la fecha LOCAL (día, mes, año)
+            const year = movementDate.getFullYear();
+            const month = (movementDate.getMonth() + 1).toString().padStart(2, '0'); // Mes como cadena 01-12
+            const day = (movementDate.getDate()).toString().padStart(2, '0'); // Día como cadena 01-31
+            const dateKey = `${year}-${month}-${day}`; // Clave 'YYYY-MM-DD' basada en la fecha LOCAL
+
+            const quantity = Math.abs(movement['quantity'] || 0);
+
+            // --- INICIO DE LOGS DE DEPURACIÓN DE DOCUMENTOS ---
+            console.log(`DEBUG DOC: ID=${doc.id}, timestamp_raw=${JSON.stringify(movement['timestamp'])}, movementDate_LOCAL=${movementDate.toLocaleString()}, dateKey=${dateKey}, quantity=${quantity}`);
+            // --- FIN DE LOGS DE DEPURACIÓN DE DOCUMENTOS ---
+
+            const currentSales = salesByDate.get(dateKey) || 0;
+            salesByDate.set(dateKey, currentSales + quantity);
+          });
+
+          // Paso 2: Determinar el rango FINAL de fechas para la visualización
+          // Este rango debe ser los 'days' más recientes, pero asegurando que
+          // se incluyan las ventas que ocurrieron en esos días.
+
+          let finalStartDateLocal = new Date(endDateLocal);
+          finalStartDateLocal.setDate(finalStartDateLocal.getDate() - (days - 1)); // Calcula los 'days' días hacia atrás desde hoy
+          finalStartDateLocal.setHours(0, 0, 0, 0);
+
+          // Si la venta más antigua encontrada es anterior a este 'finalStartDateLocal',
+          // ajustamos 'finalStartDateLocal' para incluirla (dentro del rango inicial amplio)
+          let minDateInSales = new Date(); // Inicializar con una fecha muy reciente
+          let hasSalesData = false;
+
+          salesByDate.forEach((sales, dateKey) => {
+              if (sales > 0) {
+                  const parts = dateKey.split('-').map(Number);
+                  // Crear la fecha al inicio del día en la zona horaria local
+                  const saleDate = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+                  if (saleDate < minDateInSales) {
+                      minDateInSales = saleDate;
+                  }
+                  hasSalesData = true;
+              }
+          });
+
+          // Si hay ventas y la venta más antigua es anterior al inicio de la ventana de 'days',
+          // ajustamos el inicio de la ventana para incluirla.
+          // Pero solo si está dentro del 'initialStartDateLocal' para evitar rangos absurdos.
+          if (hasSalesData && minDateInSales < finalStartDateLocal && minDateInSales >= initialStartDateLocal) {
+              finalStartDateLocal = minDateInSales;
+          }
+
+
+          // Paso 3: Construir el historial de ventas para la UI
+          const salesHistory: { date: Date, sales: number }[] = [];
+          for (let d = new Date(finalStartDateLocal); d <= endDateLocal; d.setDate(d.getDate() + 1)) {
+            const year = d.getFullYear();
+            const month = d.getMonth(); // Mes como índice (0-11)
+            const day = d.getDate();
+            
+            // Crear la fecha al inicio del día en la zona horaria local
+            salesHistory.push({ date: new Date(year, month, day, 0, 0, 0, 0), sales: salesByDate.get(`${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`) || 0 });
+          }
+
+          // Ordenar por fecha (más reciente primero)
+          salesHistory.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+          console.log(`📊 [DEBUG] Días con ventas (filtrados por rango FINAL DINÁMICO): ${salesHistory.length}`);
+          console.log(`DEBUG RANGO FINAL: startDate = ${finalStartDateLocal.toLocaleString()}, endDate = ${endDateLocal.toLocaleString()}`);
+
+
+          return salesHistory;
+        }),
+        catchError(error => {
+          console.error(`❌ Error obteniendo ventas reales:`, error);
+          return of([]); // Retornar array vacío en caso de error
+        })
+      );
+    });
+  }
+
+
+  // Método para sincronizar el contador de ventas
+  async syncProductSalesCount(productId: string): Promise<void> {
+    try {
+      // Obtener todas las ventas del producto
+      const movementsRef = collection(this.firestore, 'inventoryMovements');
+      const q = query(
+        movementsRef,
+        where('productId', '==', productId),
+        where('type', '==', 'sale')
+      );
+
+      // --- INICIO DE LOGS DE DEPURACIÓN DE SYNC ---
+      console.log(`📊 [DEBUG] Sincronizando ventas para ${productId} (consulta sin filtro de fecha)`);
+      // --- FIN DE LOGS DE DEPURACIÓN DE SYNC ---
+
+      const snapshot = await getDocs(q);
+      const totalSales = snapshot.docs.reduce((sum, doc) => {
+        const quantity = Math.abs(doc.data()['quantity'] || 0);
+        return sum + quantity;
+      }, 0);
+
+      // Actualizar el contador en el producto
+      const productRef = doc(this.firestore, 'products', productId);
+      await updateDoc(productRef, {
+        sales: totalSales,
+        updatedAt: new Date()
+      });
+
+      console.log(`✅ Contador de ventas actualizado: ${totalSales}`);
+      // Invalidar caché específico del producto después de la sincronización
+      this.cacheService.invalidateProductCache(productId);
+      this.cacheService.invalidate(`products_sales_${productId}_30`); // Invalidar caché del historial de ventas
+    } catch (error) {
+      console.error('❌ Error sincronizando ventas:', error);
+    }
+  }
 
   /**
- * 👁️ Obtiene datos de vistas REALES usando user_activity_logs
- */
+* 👁️ Obtiene datos de vistas REALES usando user_activity_logs
+*/
   getProductViewsData(productId: string): Observable<{ period: string, count: number }[]> {
     const cacheKey = `products_views_${productId}`;
 
@@ -2106,7 +2218,7 @@ getProductSalesHistory(productId: string, days: number = 30): Observable<{ date:
           where('metadata.productId', '==', productId),
           where('timestamp', '>=', this.getStartOfDay(today))
         ),
-        // Ayer  
+        // Ayer
         query(activityRef,
           where('action', '==', 'product_view'),
           where('metadata.productId', '==', productId),
@@ -2145,8 +2257,8 @@ getProductSalesHistory(productId: string, days: number = 30): Observable<{ date:
   }
 
   /**
- * 📈 Obtiene estadísticas completas usando tus colecciones reales
- */
+* 📈 Obtiene estadísticas completas usando tus colecciones reales
+*/
   getProductCompleteStats(productId: string): Observable<{
     product: Product;
     salesHistory: { date: Date, sales: number }[];

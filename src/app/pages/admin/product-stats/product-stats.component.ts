@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { PromotionStateService, PromotionChangeEvent } from '../../../services/admin/promotionState/promotion-state.service';
 import { Product } from '../../../models/models';
-import { finalize, Subject, takeUntil, switchMap, take, debounceTime } from 'rxjs';
+import { finalize, Subject, takeUntil, switchMap, take, debounceTime, firstValueFrom } from 'rxjs';
 
 // Importar módulos ng-zorro necesarios
 import { NzStatisticModule } from 'ng-zorro-antd/statistic';
@@ -17,6 +17,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzRateModule } from 'ng-zorro-antd/rate';
 import { FormsModule } from '@angular/forms';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 
 @Component({
   selector: 'app-product-stats',
@@ -34,7 +36,8 @@ import { FormsModule } from '@angular/forms';
     NzTagModule,
     NzRateModule,
     FormsModule,
-    NzIconModule
+    NzIconModule,
+    NzButtonModule
   ],
   templateUrl: './product-stats.component.html',
   styleUrls: ['./product-stats.component.css'],
@@ -51,6 +54,7 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
   salesHistory: { date: Date, sales: number }[] = [];
   stockData: any = null;
   viewsData: { period: string, count: number }[] = [];
+  syncingCount = false;
 
   private destroy$ = new Subject<void>();
   private readonly COMPONENT_NAME = 'ProductStatsComponent';
@@ -59,25 +63,29 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
     private productService: ProductService,
     private promotionStateService: PromotionStateService,
     private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private message: NzMessageService
   ) { }
 
   ngOnInit(): void {
-    
-    // 🔗 Registrar componente para actualizaciones de promociones
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
-
-    // 📡 Suscribirse a cambios de promociones
     this.subscribeToPromotionChanges();
-
     if (this.product) {
       this.loadProductStats();
     }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['product'] && this.product) {
-      this.loadProductStats();
+    // Solo recargar si el ID del producto cambia o si el producto pasa de null a un objeto
+    if (changes['product']) {
+      const currentProduct = changes['product'].currentValue;
+      const previousProduct = changes['product'].previousValue;
+
+      // Importante: Solo recargar si el producto cambia o si el ID es diferente
+      // y no si solo es una referencia de objeto diferente pero con el mismo ID
+      if (currentProduct && (!previousProduct || currentProduct.id !== previousProduct.id)) {
+        this.loadProductStats();
+      }
     }
   }
 
@@ -88,20 +96,51 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   /**
+   * 🔄 Sincronizar contador de ventas
+   */
+  async syncSalesCount(): Promise<void> {
+    if (!this.product) return;
+
+    this.syncingCount = true;
+    console.log(`🔄 [STATS] Sincronizando contador de ventas para ${this.product.id}`);
+
+    try {
+      await this.productService.syncProductSalesCount(this.product.id);
+
+      // Después de sincronizar, el valor en Firebase estará actualizado.
+      // Emitir el evento para que el componente padre (ProductManagementComponent)
+      // fuerce la recarga del producto completo desde el servicio.
+      this.statsChanged.emit({
+        productId: this.product.id,
+        // No pasamos updatedProduct aquí, ya que el padre lo recargará
+        // Esto evita que el padre intente actualizar el producto localmente
+        // con un objeto que podría no ser el más fresco después de la sincronización.
+      });
+
+      this.message.success('Contador de ventas actualizado. La vista se refrescará.');
+
+    } catch (error) {
+      console.error('❌ [STATS] Error sincronizando ventas:', error);
+      this.message.error('Error al sincronizar ventas');
+    } finally {
+      this.syncingCount = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /**
    * 📡 Suscribirse a cambios de promociones
    */
   private subscribeToPromotionChanges(): void {
-    // Escuchar cambios globales de promociones
     this.promotionStateService.onGlobalUpdate()
       .pipe(
         takeUntil(this.destroy$),
-        debounceTime(500) // Evitar spam de actualizaciones
+        debounceTime(500)
       )
       .subscribe(globalUpdate => {
         this.handlePromotionUpdate(globalUpdate);
       });
 
-    // Escuchar cambios específicos del producto
     if (this.product) {
       this.promotionStateService.onProductPromotionChange(this.product.id)
         .pipe(takeUntil(this.destroy$))
@@ -116,8 +155,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
    */
   private handlePromotionUpdate(globalUpdate: any): void {
     const event = globalUpdate.data;
-
-    // Solo actualizar si afecta a nuestro producto
     if (this.product && this.affectsCurrentProduct(event)) {
       this.refreshProductStats();
     }
@@ -128,18 +165,11 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
    */
   private affectsCurrentProduct(event: PromotionChangeEvent): boolean {
     if (!this.product) return false;
-
-    // Verificar si es el producto específico
     if (event.productId === this.product.id) return true;
-
-    // Verificar si está en la lista de productos afectados
     if (event.affectedProducts?.includes(this.product.id)) return true;
-
-    // Para eventos globales, asumir que puede afectar
     if (['activated', 'deactivated', 'updated'].includes(event.type) && !event.productId) {
       return true;
     }
-
     return false;
   }
 
@@ -150,8 +180,9 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
     if (!this.product) return;
 
     this.loading = true;
+    const productId = this.product.id;
 
-    this.productService.getProductCompleteStats(this.product.id)
+    this.productService.getProductCompleteStats(productId)
       .pipe(
         take(1),
         finalize(() => {
@@ -161,28 +192,56 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
       )
       .subscribe({
         next: (stats) => {
-          // Forzar la actualización dentro de la zona de Angular
-          this.ngZone.run(() => {
-
+          this.ngZone.run(async () => {
             this.salesHistory = stats.salesHistory;
             this.viewsData = stats.viewsData;
             this.stockData = stats.stockData;
 
-            // 🚀 Verificar cambios y emitir
-            if (this.hasStatsChanged(stats.product)) {
+            // FIX: Actualizar el producto del componente con los datos frescos de las estadísticas
+            // Clonar para asegurar la detección de cambios por OnPush
+            const oldProductSales = this.product ? this.product.sales || 0 : 0; // Guardar el valor actual de sales del componente
+            this.product = { ...stats.product }; // Asignar el producto completo de las stats
+
+            // 🔍 VERIFICAR DISCREPANCIAS
+            const realSalesCount = this.salesHistory.reduce((sum, day) => sum + day.sales, 0);
+            const storedSalesCount = this.product.sales || 0; // Usar el product actualizado del componente
+
+            if (realSalesCount !== storedSalesCount) {
+              console.warn(`⚠️ [STATS] Discrepancia detectada (después de carga):
+              Ventas reales (historial): ${realSalesCount},
+              Ventas almacenadas (producto): ${storedSalesCount}. Sincronizando...`);
+
+              // Sincronizar automáticamente.
+              await this.productService.syncProductSalesCount(productId);
+
+              // Después de la sincronización, el valor en Firebase estará actualizado.
+              // Emitir el evento para que el componente padre (ProductManagementComponent)
+              // fuerce la recarga del producto completo desde el servicio.
               this.statsChanged.emit({
-                productId: stats.product.id,
-                updatedProduct: stats.product
+                productId: this.product.id,
+                // No pasamos updatedProduct aquí, ya que el padre lo recargará
+              });
+
+              // Es importante no llamar a loadProductStats() aquí para evitar el bucle.
+              // La recarga debe ser manejada por el componente padre o por el onChanges
+              // cuando el input 'product' cambie.
+              return; // Salir para evitar procesamiento duplicado y bucle
+            }
+
+            // Si no hay discrepancia o ya se sincronizó, emitir cambios si los hay
+            // Comparar el estado actual (this.product) con el valor de sales que tenía antes de esta carga
+            if (this.product.sales !== oldProductSales) { // Solo emitir si el sales ha cambiado
+              this.statsChanged.emit({
+                productId: this.product.id,
+                updatedProduct: this.product
               });
             }
 
-            // Forzar detección de cambios
-            this.cdr.detectChanges(); // Cambiar de markForCheck a detectChanges
+            this.cdr.detectChanges();
           });
         },
         error: (error) => {
           console.error('❌ [STATS] Error al cargar estadísticas:', error);
-          // Fallback con datos simulados
           this.loadFallbackData();
         }
       });
@@ -190,20 +249,16 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
 
   // Agregar método fallback
   private loadFallbackData(): void {
-
-    // Datos simulados básicos
     this.salesHistory = Array.from({ length: 7 }, (_, i) => ({
       date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000),
       sales: Math.floor(Math.random() * 10)
     }));
-
     this.viewsData = [
       { period: 'Hoy', count: Math.floor(Math.random() * 20) + 5 },
       { period: 'Ayer', count: Math.floor(Math.random() * 15) + 3 },
       { period: 'Última semana', count: Math.floor(Math.random() * 100) + 20 },
       { period: 'Último mes', count: Math.floor(Math.random() * 400) + 100 }
     ];
-
     if (this.product) {
       this.stockData = {
         totalStock: this.product.totalStock || 0,
@@ -212,8 +267,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
         totalVariants: this.product.variants?.length || 0
       };
     }
-    
-    // Asegurar actualización de la vista
     this.cdr.detectChanges();
   }
 
@@ -222,25 +275,25 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
    */
   private refreshProductStats(): void {
     if (!this.product) return;
-
     this.loadProductStats();
   }
 
   /**
    * 🔍 Verificar si las estadísticas han cambiado
    */
-  private hasStatsChanged(updatedProduct: Product): boolean {
+  private hasStatsChanged(oldProductState: Product): boolean {
+    // Este método ya no se usa directamente para el bucle de sales,
+    // pero se mantiene para otras comparaciones si son necesarias.
     if (!this.product) return false;
 
     const hasChanges = (
-      this.product.views !== updatedProduct.views ||
-      this.product.sales !== updatedProduct.sales ||
-      this.product.totalStock !== updatedProduct.totalStock ||
-      this.product.popularityScore !== updatedProduct.popularityScore ||
-      this.product.discountPercentage !== updatedProduct.discountPercentage ||
-      this.product.currentPrice !== updatedProduct.currentPrice
+      this.product.views !== oldProductState.views ||
+      this.product.sales !== oldProductState.sales || // Mantener esta línea si quieres detectar cambios en sales
+      this.product.totalStock !== oldProductState.totalStock ||
+      this.product.popularityScore !== oldProductState.popularityScore ||
+      this.product.discountPercentage !== oldProductState.discountPercentage ||
+      this.product.currentPrice !== oldProductState.currentPrice
     );
-
     return hasChanges;
   }
 
@@ -248,12 +301,10 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
    * 📅 Formateo de datos para visualización
    */
   formatDate(date: Date): string {
-    // Asegurar que date es un objeto Date válido
     if (!(date instanceof Date)) {
       console.warn('⚠️ [COMPONENT] formatDate recibió un valor no-Date:', date);
       date = new Date(date);
     }
-    
     return new Intl.DateTimeFormat('es-ES', {
       day: '2-digit',
       month: '2-digit',
@@ -268,25 +319,20 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
     conversionRate: number;
     viewsToSalesRatio: number;
     stockTurnover: string;
-    salesVelocity: number; // Nuevo
+    salesVelocity: number;
   } {
     if (!this.product) {
       return { conversionRate: 0, viewsToSalesRatio: 0, stockTurnover: 'N/A', salesVelocity: 0 };
     }
-
     const views = this.product.views || 0;
     const sales = this.product.sales || 0;
     const totalStock = this.product.totalStock || 0;
-
     const conversionRate = views > 0 ? (sales / views) * 100 : 0;
     const viewsToSalesRatio = sales > 0 ? views / sales : 0;
-
-    // Velocidad de ventas basada en los últimos 7 días
     const recentSales = this.salesHistory
       .slice(-7)
       .reduce((sum, day) => sum + day.sales, 0);
-    const salesVelocity = recentSales / 7; // Promedio diario
-
+    const salesVelocity = recentSales / 7;
     let stockTurnover = 'Bajo';
     if (totalStock === 0) {
       stockTurnover = 'Agotado';
@@ -295,7 +341,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
       if (daysToSellOut < 30) stockTurnover = 'Alto';
       else if (daysToSellOut < 90) stockTurnover = 'Medio';
     }
-
     return {
       conversionRate: Number(conversionRate.toFixed(2)),
       viewsToSalesRatio: Number(viewsToSalesRatio.toFixed(1)),
@@ -309,7 +354,6 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
    */
   hasActivePromotions(): boolean {
     if (!this.product) return false;
-
     return this.promotionStateService.hasActivePromotions(this.product.id) ||
       (typeof this.product.discountPercentage === 'number' && this.product.discountPercentage > 0);
   }
@@ -319,17 +363,13 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
    */
   getPromotionInfo(): string {
     if (!this.product) return '';
-
     const promotions = this.promotionStateService.getProductPromotions(this.product.id);
-
     if (promotions.length > 0) {
       return `${promotions.length} promoción(es) activa(s)`;
     }
-
     if (this.product.discountPercentage && this.product.discountPercentage > 0) {
       return `Descuento directo: ${this.product.discountPercentage}%`;
     }
-
     return 'Sin promociones activas';
   }
 }

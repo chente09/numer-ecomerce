@@ -5,69 +5,56 @@
     </div>
 
     <!-- Contenido principal de estadísticas -->
-    <div *ngIf="!loading && product">
+    <div *ngIf="!loading && product as p">
         <!-- Cards con stats principales - Grid responsivo mejorado -->
         <div nz-row [nzGutter]="[16, 16]" class="stats-grid">
             <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6" [nzLg]="6" [nzXl]="6">
                 <nz-card>
-                    <nz-statistic 
-                        [nzValue]="product.totalStock || 0" 
-                        [nzTitle]="'Stock Total'"
-                        [nzValueStyle]="{ 
-                            color: product.totalStock > 5 ? '#3f8600' : (product.totalStock > 0 ? '#faad14' : '#cf1322') 
-                        }">
+                    <nz-statistic [nzValue]="p.totalStock || 0" [nzTitle]="'Stock Total'" [nzValueStyle]="{
+                                color: (p.totalStock || 0) > 5 ? '#3f8600' : ((p.totalStock || 0) > 0 ? '#faad14' : '#cf1322')
+                            }">
                         <ng-template #nzPrefix>
-                            <span 
-                                nz-icon 
-                                [nzType]="product.totalStock > 5 ? 'check-circle' : (product.totalStock > 0 ? 'exclamation-circle' : 'close-circle')"
-                                class="status-indicator"
-                                [class.success]="product.totalStock > 5"
-                                [class.warning]="product.totalStock > 0 && product.totalStock <= 5"
-                                [class.error]="product.totalStock === 0">
+                            <span nz-icon
+                                [nzType]="(p.totalStock || 0) > 5 ? 'check-circle' : ((p.totalStock || 0) > 0 ? 'exclamation-circle' : 'close-circle')"
+                                class="status-indicator" [class.success]="(p.totalStock || 0) > 5"
+                                [class.warning]="(p.totalStock || 0) > 0 && (p.totalStock || 0) <= 5"
+                                [class.error]="(p.totalStock || 0) === 0">
                             </span>
                         </ng-template>
                     </nz-statistic>
                 </nz-card>
             </div>
-            
+
             <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6" [nzLg]="6" [nzXl]="6">
                 <nz-card>
-                    <nz-statistic 
-                        [nzValue]="product.sales || 0" 
-                        [nzTitle]="'Ventas Totales'">
+                    <!-- Usar p.sales que ahora debería estar sincronizado -->
+                    <nz-statistic [nzValue]="p.sales || 0" [nzTitle]="'Ventas Totales'">
                         <ng-template #nzPrefix>
                             <span nz-icon nzType="shopping-cart"></span>
                         </ng-template>
                     </nz-statistic>
+                    <button nz-button nzType="text" nzSize="small" (click)="syncSalesCount()" [nzLoading]="syncingCount"
+                        style="margin-top: 8px; width: 100%;">
+                        <span nz-icon nzType="sync"></span>
+                        Sincronizar contador
+                    </button>
                 </nz-card>
             </div>
-            
+
             <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6" [nzLg]="6" [nzXl]="6">
                 <nz-card>
-                    <nz-statistic 
-                        [nzValue]="product.views || 0" 
-                        [nzTitle]="'Vistas'">
+                    <nz-statistic [nzValue]="p.views || 0" [nzTitle]="'Vistas'">
                         <ng-template #nzPrefix>
                             <span nz-icon nzType="eye"></span>
                         </ng-template>
                     </nz-statistic>
                 </nz-card>
             </div>
-            
+
             <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6" [nzLg]="6" [nzXl]="6">
                 <nz-card>
-                    <nz-statistic 
-                        [nzValue]="product.rating" 
-                        [nzTitle]="'Calificación'"
-                        [nzSuffix]="ratingSuffix">
+                    <nz-statistic [nzValue]="p.rating" [nzTitle]="'Calificación'" [nzSuffix]="ratingSuffix">
                     </nz-statistic>
-                    <ng-template #ratingSuffix>
-                        <nz-rate 
-                            [ngModel]="product.rating" 
-                            nzDisabled 
-                            [nzAllowHalf]="true">
-                        </nz-rate>
-                    </ng-template>
                 </nz-card>
             </div>
         </div>
@@ -75,11 +62,8 @@
         <!-- Historial de ventas - Con wrapper responsivo -->
         <nz-card nzTitle="Historial de Ventas Recientes" class="chart-card">
             <div class="table-responsive">
-                <nz-table 
-                    #salesTable 
-                    [nzData]="salesHistory" 
-                    [nzShowPagination]="false" 
-                    [nzSize]="'small'">
+                <nz-table #salesTable [nzData]="salesHistory" [nzShowPagination]="false" [nzSize]="'small'"
+                    [nzNoResult]="noDataTemplate">
                     <thead>
                         <tr>
                             <th>Fecha</th>
@@ -87,6 +71,7 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <!-- Mostrar todas las entradas, incluyendo las de 0 ventas -->
                         <tr *ngFor="let sale of salesTable.data">
                             <td>{{ formatDate(sale.date) }}</td>
                             <td>
@@ -96,6 +81,16 @@
                         </tr>
                     </tbody>
                 </nz-table>
+
+                <!-- Template para cuando no hay datos -->
+                <ng-template #noDataTemplate>
+                    <nz-empty nzNotFoundContent="No hay ventas registradas en los últimos 30 días"
+                        [nzNotFoundImage]="'simple'">
+                        <ng-template #nzNotFoundFooter>
+                            <span>Selecciona un producto para ver sus estadísticas</span>
+                        </ng-template>
+                    </nz-empty>
+                </ng-template>
             </div>
         </nz-card>
 
@@ -116,9 +111,9 @@
                     <div class="stat-item">
                         <div class="stat-label">Porcentaje con Stock:</div>
                         <div class="stat-value">
-                            {{ stockData.totalVariants > 0 ? 
-                                ((stockData.variantsWithStock / stockData.totalVariants) * 100).toFixed(1) + '%' : 
-                                '0%' 
+                            {{ stockData.totalVariants > 0 ?
+                            ((stockData.variantsWithStock / stockData.totalVariants) * 100).toFixed(1) + '%' :
+                            '0%'
                             }}
                         </div>
                     </div>
@@ -127,17 +122,16 @@
                     <div class="stock-chart">
                         <div class="stock-bar-label">Distribución de Stock por Variante</div>
                         <div class="stock-bar-container" *ngIf="stockData.totalVariants > 0">
-                            <div 
-                                class="stock-bar with-stock"
+                            <div class="stock-bar with-stock"
                                 [style.width.%]="(stockData.variantsWithStock / stockData.totalVariants) * 100"
                                 [title]="stockData.variantsWithStock + ' variantes con stock'">
                                 <span *ngIf="stockData.variantsWithStock > 0">{{ stockData.variantsWithStock }}</span>
                             </div>
-                            <div 
-                                class="stock-bar without-stock"
+                            <div class="stock-bar without-stock"
                                 [style.width.%]="(stockData.variantsWithoutStock / stockData.totalVariants) * 100"
                                 [title]="stockData.variantsWithoutStock + ' variantes sin stock'">
-                                <span *ngIf="stockData.variantsWithoutStock > 0">{{ stockData.variantsWithoutStock }}</span>
+                                <span *ngIf="stockData.variantsWithoutStock > 0">{{ stockData.variantsWithoutStock
+                                    }}</span>
                             </div>
                         </div>
                         <div class="stock-bar-legend">
@@ -158,11 +152,7 @@
         <!-- Estadística de vistas - Con wrapper responsivo -->
         <nz-card nzTitle="Estadísticas de Vistas" class="chart-card">
             <div class="table-responsive">
-                <nz-table 
-                    #viewsTable 
-                    [nzData]="viewsData" 
-                    [nzShowPagination]="false" 
-                    [nzSize]="'small'">
+                <nz-table #viewsTable [nzData]="viewsData" [nzShowPagination]="false" [nzSize]="'small'">
                     <thead>
                         <tr>
                             <th>Período</th>
@@ -177,9 +167,7 @@
                                 <strong>{{ viewStat.count }}</strong>
                             </td>
                             <td class="hide-mobile">
-                                <span 
-                                    nz-icon 
-                                    [nzType]="i === 0 ? 'arrow-up' : (i === 1 ? 'arrow-down' : 'minus')"
+                                <span nz-icon [nzType]="i === 0 ? 'arrow-up' : (i === 1 ? 'arrow-down' : 'minus')"
                                     [style.color]="i === 0 ? '#52c41a' : (i === 1 ? '#ff4d4f' : '#8c8c8c')">
                                 </span>
                             </td>
@@ -191,12 +179,15 @@
     </div>
 
     <!-- Mensaje si no hay producto seleccionado -->
-    <nz-empty 
-        *ngIf="!loading && !product" 
-        nzNotFoundContent="No hay datos disponibles"
-        [nzNotFoundImage]="'simple'">
+    <nz-empty *ngIf="!loading && !product" nzNotFoundContent="No hay datos disponibles" [nzNotFoundImage]="'simple'">
         <ng-template #nzNotFoundFooter>
             <span>Selecciona un producto para ver sus estadísticas</span>
         </ng-template>
     </nz-empty>
 </div>
+
+<!-- Mover la plantilla ratingSuffix fuera de nz-statistic -->
+<ng-template #ratingSuffix>
+    <nz-rate *ngIf="product as p" [ngModel]="p.rating" nzDisabled [nzAllowHalf]="true">
+    </nz-rate>
+</ng-template>
