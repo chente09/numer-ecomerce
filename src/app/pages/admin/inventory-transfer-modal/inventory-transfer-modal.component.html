@@ -1,0 +1,54 @@
+<form nz-form [formGroup]="transferForm" (ngSubmit)="submitForm()">
+
+    <nz-form-item>
+        <nz-form-label nzRequired nzFor="variant">Variante de Producto</nz-form-label>
+        <nz-form-control nzErrorTip="Por favor, seleccione una variante.">
+            <nz-select formControlName="variant" nzPlaceHolder="Seleccione una variante" nzShowSearch
+                [nzDisabled]="isLoading">
+                <nz-option *ngFor="let variant of (variants$ | async)" [nzValue]="variant.id"
+                    [nzLabel]="formatVariantLabel(variant)">
+                </nz-option>
+            </nz-select>
+        </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+        <nz-form-label nzRequired nzFor="distributor">Distribuidor</nz-form-label>
+        <nz-form-control nzErrorTip="Por favor, seleccione un distribuidor.">
+            <nz-select formControlName="distributor" nzPlaceHolder="Seleccione un distribuidor" nzShowSearch
+                [nzDisabled]="isLoading">
+                <nz-option *ngFor="let distributor of (distributors$ | async)" [nzValue]="distributor.uid"
+                    [nzLabel]="formatDistributorLabel(distributor)">
+                </nz-option>
+            </nz-select>
+        </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+        <nz-form-label nzRequired nzFor="quantity">Cantidad a Transferir</nz-form-label>
+        <nz-form-control [nzErrorTip]="
+            transferForm.get('quantity')?.hasError('min') ? 'La cantidad debe ser al menos 1.' :
+            transferForm.get('quantity')?.hasError('max') ? 'Stock insuficiente. Disponible: ' + (selectedVariant?.stock || 0) :
+            'Por favor, ingrese una cantidad válida.'
+        ">
+            <nz-input-number formControlName="quantity" [nzMin]="1" [nzMax]="selectedVariant?.stock || 0"
+                [nzStep]="1" [nzDisabled]="!selectedVariant || isLoading" nzPlaceHolder="Ingrese cantidad">
+            </nz-input-number>
+            <div *ngIf="selectedVariant" style="margin-top: 4px;">
+                <small nz-typography nzType="secondary">
+                    Stock disponible: {{ selectedVariant.stock }} unidades
+                </small>
+            </div>
+        </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+        <nz-form-label nzFor="notes">Notas</nz-form-label>
+        <nz-form-control>
+            <textarea nz-input formControlName="notes" placeholder="Notas sobre la transferencia (opcional)"
+                [nzAutosize]="{ minRows: 2, maxRows: 4 }" [disabled]="isLoading">
+            </textarea>
+        </nz-form-control>
+    </nz-form-item>
+
+</form>

@@ -1,3 +1,4 @@
+// src/app/pages/admin/product-inventory/product-inventory.component.ts
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostListener, Input, NgZone, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -20,7 +21,7 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
-import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzModalModule, NzModalService, NzModalRef } from 'ng-zorro-antd/modal';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
@@ -31,6 +32,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzGridModule } from 'ng-zorro-antd/grid';
+import { InventoryTransferModalComponent } from '../inventory-transfer-modal/inventory-transfer-modal.component';// 🆕 Importar el nuevo modal
 
 // 🚀 Interfaces para filtros y selección
 interface FilterOption {
@@ -108,6 +110,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
   promotions: Promotion[] = [];
   selectedVariantForPromotion: ProductVariant | null = null;
   promotionModalVisible = false;
+
+
 
   // 🚀 Control de operaciones optimistas
   private pendingOperations = new Map<string, OptimisticOperation>();
@@ -779,6 +783,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
       }
 
       const stockChange = newStock - (variant.stock || 0);
+
 
       if (stockChange !== 0) {
         const update: StockUpdate = {
@@ -1517,32 +1522,63 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
     this.rollbackPromotionChanges(variantId);
   }
 
-  // ==================== RESTO DE MÉTODOS SIN CAMBIOS ====================
+  // ==================== MÉTODOS DE TRANSFERENCIA DE STOCK ====================
 
-  confirmTransferStock(variant: ProductVariant): void {
+  /**
+   * 🆕 Abre el modal de transferencia de stock para una variante específica.
+   * @param variant La variante de producto a transferir.
+   */
+  openTransferModal(variant: ProductVariant): void {
     if (!this.product) return;
 
-    this.modal.create({
-      nzTitle: 'Transferir Stock',
-      nzContent: 'Implementar modal de transferencia de stock con selección de variante destino',
+    let modalRef: NzModalRef;
+
+    modalRef = this.modal.create({
+      nzTitle: 'Transferir Stock a Distribuidor',
+      nzContent: InventoryTransferModalComponent,
+      nzWidth: this.getModalWidth(),
+      nzMaskClosable: false,
+      nzData: {
+        productId: this.product.id,
+        variantId: variant.id
+      },
       nzFooter: [
         {
           label: 'Cancelar',
-          onClick: () => {
-            // Cerrar modal
-          }
+          onClick: () => modalRef.destroy()
         },
         {
-          label: 'Transferir',
+          label: 'Transferir Stock',
           type: 'primary',
-          onClick: () => {
-            // Implementar lógica de transferencia
-            this.message.info('Funcionalidad de transferencia a implementar');
-          }
+          loading: () => modalRef.componentInstance?.isLoading || false,
+          disabled: () => !modalRef.componentInstance?.transferForm.valid,
+          onClick: () => modalRef.componentInstance?.submitForm()
         }
       ]
     });
+
+    // Escuchamos cuando el modal se cierra
+    modalRef.afterClose.subscribe((result: any) => {
+      if (result) {
+        this.onTransferSuccess();
+      }
+    });
   }
+
+  /**
+ * 🆕 Maneja el evento de éxito de la transferencia desde el modal.
+ * Recarga las variantes para reflejar los cambios en el stock principal.
+ */
+  onTransferSuccess(): void {
+    this.message.success('Stock transferido correctamente. Actualizando inventario...');
+    this.loadVariants(); // Recargar variantes para reflejar el stock actualizado
+    if (this.product) {
+      this.inventoryChanged.emit({ productId: this.product.id });
+    }
+  }
+
+
+
 
   // Formateo y utilidades
   getStockStatusColor(stock: number): string {

@@ -3,7 +3,7 @@ import {
   Firestore, collection, collectionData, doc, getDoc, where, query, deleteDoc, getDocs,
   writeBatch, Timestamp,
   increment,
-  updateDoc
+  updateDoc, FieldValue // Importar FieldValue
 } from '@angular/fire/firestore';
 
 import { Observable, from, of, forkJoin, throwError, firstValueFrom } from 'rxjs';
@@ -11,7 +11,7 @@ import { map, catchError, switchMap, tap, take, shareReplay, finalize } from 'rx
 import { v4 as uuidv4 } from 'uuid';
 
 // Servicios de productos
-import { ProductInventoryService, SaleItem, StockTransfer, StockUpdate, LowStockProduct, InventorySummary } from '../inventario/product-inventory.service';
+import { ProductInventoryService, StockTransfer, StockUpdate, LowStockProduct, InventorySummary, InventoryMovement } from '../inventario/product-inventory.service'; // Importar InventoryMovement
 import { ProductPriceService } from '../price/product-price.service';
 import { ProductVariantService } from '../productVariante/product-variant.service';
 import { ProductImageService } from '../image/product-image.service';
@@ -22,7 +22,7 @@ import { ErrorUtil } from '../../../utils/error-util';
 import { CacheService } from '../cache/cache.service';
 
 // Modelos
-import { Product, ProductVariant, Color, Size, Review, Promotion } from '../../../models/models';
+import { Product, ProductVariant, Color, Size, Review, Promotion, SaleItem } from '../../../models/models'; // Importar SaleItem
 import { Auth, signInAnonymously } from '@angular/fire/auth';
 
 // Interfaces para estrategias de invalidación
@@ -37,7 +37,6 @@ interface CacheInvalidationStrategy {
   providedIn: 'root'
 })
 export class ProductService {
-  // 🔧 CORRECCIÓN: Usar inject() para Firestore
   private firestore = inject(Firestore);
   private productsCollection = 'products';
   private readonly productsCacheKey = 'products';
@@ -177,7 +176,6 @@ export class ProductService {
   /**
    * Fuerza la actualización de un producto específico
    */
-  // REEMPLAZAR tu método existente forceRefreshProduct con esta versión mejorada:
   forceRefreshProduct(productId: string): Observable<Product | null> {
 
     // Invalidar TODOS los cachés relacionados con este producto
@@ -1548,55 +1546,6 @@ export class ProductService {
     );
   }
 
-  /**
-   * Incrementa contador de vistas (privado, uso interno)
-   */
-  private async incrementProductView(productId: string): Promise<void> {
-    try {
-      // ✅ Throttling mejorado con tu lógica existente
-      const viewKey = `view_${productId}`;
-      const lastView = this.viewedInSession.has(productId);
-
-      if (lastView) {
-        return; // Ya visto en esta sesión
-      }
-
-      this.viewedInSession.add(productId);
-
-      // ✅ DELEGAR AL INVENTORY SERVICE (mejor arquitectura)
-      await firstValueFrom(
-        this.inventoryService.incrementProductViews(productId).pipe(
-          take(1),
-          catchError(error => {
-            console.warn('Vista no registrada via service:', error);
-            return of(void 0);
-          })
-        )
-      );
-
-      // ✅ Siempre trackear localmente también
-      this.trackProductViewLocally(productId);
-
-    } catch (error) {
-      console.warn('❌ Error registrando vista:', error);
-      this.trackProductViewLocally(productId);
-    }
-  }
-
-  private trackProductViewLocally(productId: string): void {
-    try {
-      const viewsKey = 'product_views_local';
-      const views = JSON.parse(localStorage.getItem(viewsKey) || '{}');
-
-      views[productId] = (views[productId] || 0) + 1;
-      views[`${productId}_lastView`] = new Date().toISOString();
-
-      localStorage.setItem(viewsKey, JSON.stringify(views));
-    } catch (error) {
-      console.error('❌ Error en registro local:', error);
-    }
-  }
-
 
   // -------------------- MÉTODOS DE INFORMES --------------------
 
@@ -2016,7 +1965,10 @@ export class ProductService {
       // para capturar ventas de la ventana deseada y un poco más allá.
       // Por ejemplo, si 'days' es 30, retrocedemos 60 días para la base del historial.
       const initialStartDateLocal = new Date();
-      initialStartDateLocal.setDate(initialStartDateLocal.getDate() - (days * 2)); // Retrocede el doble de días para el rango inicial
+      // Retrocede el doble de días para el rango inicial de la consulta a Firestore.
+      // Esto asegura que capturemos ventas que puedan estar ligeramente fuera de la ventana 'days'
+      // debido a las zonas horarias o si el usuario espera ver ventas un poco más antiguas.
+      initialStartDateLocal.setDate(initialStartDateLocal.getDate() - (days * 2)); 
       initialStartDateLocal.setHours(0, 0, 0, 0); // Inicio del día, hora local
 
 
@@ -2051,17 +2003,7 @@ export class ProductService {
 
           const salesByDate = new Map<string, number>();
 
-          // Inicializar todos los días en el rango LOCAL deseado con 0 ventas
-          // Las claves del mapa deben ser consistentes con la fecha LOCAL
-          for (let d = new Date(initialStartDateLocal); d <= endDateLocal; d.setDate(d.getDate() + 1)) {
-            const year = d.getFullYear();
-            const month = (d.getMonth() + 1).toString().padStart(2, '0'); // Mes como cadena 01-12
-            const day = d.getDate().toString().padStart(2, '0'); // Día como cadena 01-31
-            const dateKey = `${year}-${month}-${day}`;
-            salesByDate.set(dateKey, 0);
-          }
-
-
+          // Paso 1: Procesar todos los documentos recuperados por Firestore
           querySnapshot.forEach(doc => {
             const movement = doc.data();
 
@@ -2099,16 +2041,17 @@ export class ProductService {
           // se incluyan las ventas que ocurrieron en esos días.
 
           let finalStartDateLocal = new Date(endDateLocal);
-          finalStartDateLocal.setDate(finalStartDateLocal.getDate() - (days - 1)); // Calcula los 'days' días hacia atrás desde hoy
+          // Calcula el inicio de la ventana de 'days' días hacia atrás desde hoy.
+          finalStartDateLocal.setDate(finalStartDateLocal.getDate() - (days - 1)); 
           finalStartDateLocal.setHours(0, 0, 0, 0);
 
-          // Si la venta más antigua encontrada es anterior a este 'finalStartDateLocal',
-          // ajustamos 'finalStartDateLocal' para incluirla (dentro del rango inicial amplio)
-          let minDateInSales = new Date(); // Inicializar con una fecha muy reciente
+          // Si hay ventas registradas, ajusta 'finalStartDateLocal' para incluir la venta más antigua
+          // siempre y cuando esté dentro del rango amplio de la consulta inicial.
+          let minDateInSales = new Date(endDateLocal); // Inicializar con la fecha más reciente posible
           let hasSalesData = false;
 
           salesByDate.forEach((sales, dateKey) => {
-              if (sales > 0) {
+              if (sales > 0) { // Solo consideramos días con ventas reales
                   const parts = dateKey.split('-').map(Number);
                   // Crear la fecha al inicio del día en la zona horaria local
                   const saleDate = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
@@ -2119,9 +2062,9 @@ export class ProductService {
               }
           });
 
-          // Si hay ventas y la venta más antigua es anterior al inicio de la ventana de 'days',
-          // ajustamos el inicio de la ventana para incluirla.
-          // Pero solo si está dentro del 'initialStartDateLocal' para evitar rangos absurdos.
+          // Si se encontraron ventas y la venta más antigua es anterior al 'finalStartDateLocal' calculado,
+          // y esa venta más antigua no es excesivamente vieja (es decir, está dentro de initialStartDateLocal),
+          // entonces ajustamos 'finalStartDateLocal' para que empiece en la fecha de esa venta.
           if (hasSalesData && minDateInSales < finalStartDateLocal && minDateInSales >= initialStartDateLocal) {
               finalStartDateLocal = minDateInSales;
           }

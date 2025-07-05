@@ -1,0 +1,90 @@
+<div class="user-roles-container">
+    <nz-card nzTitle="Gestión de Roles de Usuario" class="mb-4">
+        <div class="card-actions">
+            <button nz-button nzType="default" (click)="loadUsers()" [nzLoading]="loading">
+                <span nz-icon nzType="reload"></span>
+                Recargar Usuarios
+            </button>
+        </div>
+    </nz-card>
+
+    <nz-card class="mb-4">
+        <div nz-row [nzGutter]="[16, 16]">
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+                <nz-input-group [nzSuffix]="suffixIconSearch">
+                    <input type="text" nz-input [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
+                        placeholder="Buscar por nombre o email...">
+                </nz-input-group>
+                <ng-template #suffixIconSearch>
+                    <span nz-icon nzType="search"></span>
+                </ng-template>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+                <nz-select [(ngModel)]="selectedRoleFilter" nzPlaceHolder="Filtrar por rol"
+                    (ngModelChange)="applyFilters()">
+                    <nz-option [nzValue]="null" nzLabel="Todos los roles"></nz-option>
+                    <nz-option *ngFor="let role of availableRoles" [nzValue]="role"
+                        [nzLabel]="role | titlecase"></nz-option>
+                </nz-select>
+            </div>
+        </div>
+    </nz-card>
+
+    <nz-card>
+        <nz-table #userTable [nzData]="filteredUsers" [nzLoading]="loading" [nzShowPagination]="true" [nzPageSize]="10">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Último Login</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let user of userTable.data">
+                    <td>
+                        <div class="user-info">
+                            <nz-avatar [nzSrc]="user.photoURL || 'assets/default-avatar.png'"
+                                nzSize="small"></nz-avatar>
+                            <span class="user-display-name">{{ user.displayName || user.firstName + ' ' + user.lastName
+                                || 'N/A' }}</span>
+                        </div>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        <nz-tag *ngFor="let role of user.roles" [nzColor]="getRoleColor(role)">
+                            {{ role | titlecase }}
+                        </nz-tag>
+                    </td>
+                    <td>{{ formatDate(user.lastLogin) }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <span nz-tooltip [nzTooltipTitle]="user.roles.includes('distributor') ? 'Quitar rol de distribuidor' : 'Asignar rol de distribuidor'">
+                                <button nz-button nzSize="small" nzType="default" (click)="toggleDistributorRole(user)"
+                                    [nzLoading]="loading">
+                                    <span nz-icon
+                                        [nzType]="user.roles.includes('distributor') ? 'user-delete' : 'user-add'"></span>
+                                    {{ user.roles.includes('distributor') ? 'Quitar Distribuidor' : 'Hacer Distribuidor' }}
+                                </button>
+                            </span>
+                            <span nz-tooltip [nzTooltipTitle]="user.roles.includes('admin') ? 'Quitar rol de administrador' : 'Asignar rol de administrador'">
+                                <button nz-button nzSize="small" nzType="default" (click)="toggleAdminRole(user)"
+                                    [nzLoading]="loading">
+                                    <span nz-icon
+                                        [nzType]="user.roles.includes('admin') ? 'user-delete' : 'user-add'"></span>
+                                    {{ user.roles.includes('admin') ? 'Quitar Admin' : 'Hacer Admin' }}
+                                </button>
+                            </span>
+                            <button nz-button nzSize="small" nzDanger="true" nz-popconfirm
+                                nzPopconfirmTitle="¿Está seguro de eliminar este usuario?" nzPopconfirmPlacement="top"
+                                (nzOnConfirm)="deleteUser(user.uid)" [nzLoading]="loading">
+                                <span nz-icon nzType="delete"></span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+    </nz-card>
+</div>

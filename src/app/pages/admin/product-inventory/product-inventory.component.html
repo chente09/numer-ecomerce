@@ -268,9 +268,8 @@
                                     <span nz-icon nzType="delete" style="color: #ff4d4f;"></span>
                                 </button>
 
-                                <!-- Botón de transferir stock -->
-                                <button nz-button nzType="default" nzSize="small"
-                                    (click)="confirmTransferStock(variant)"
+                                <!-- 🆕 Botón de transferir stock -->
+                                <button nz-button nzType="default" nzSize="small" (click)="openTransferModal(variant)"
                                     [disabled]="(variant.stock || 0) <= 0 || editingVariantId !== null" nz-tooltip
                                     nzTooltipTitle="Transferir Stock">
                                     <span nz-icon nzType="swap"></span>

@@ -167,6 +167,12 @@ export interface PaginatedResult<T> {
     hasMore: boolean;
 }
 
+export interface SaleItem {
+    variantId: string;
+    quantity: number;
+    unitPrice?: number; // 🆕 Añadido unitPrice
+}
+
 export interface Review {
     id?: string;
     name: string;
@@ -188,4 +194,30 @@ export interface NavigationItem {
     isExternal?: boolean;
     isActive?: boolean;
     order?: number;
+}
+
+// 🆕 Interfaz para el perfil de usuario (extiende User de Firebase para roles y otros campos)
+// FIX: Las propiedades de fecha son Timestamp | Date, ya que FieldValue solo es para escritura
+// y al leer de Firestore, serverTimestamp() ya se habrá resuelto a un Timestamp.
+import { Timestamp } from '@angular/fire/firestore'; // Asegurarse de importar Timestamp aquí
+
+export interface UserProfile {
+    uid: string;
+    email: string | null;
+    displayName?: string | null;
+    photoURL?: string | null;
+    emailVerified: boolean;
+    isAnonymous: boolean;
+    createdAt: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
+    lastLogin: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
+    roles: string[]; // 'admin', 'customer', 'distributor'
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    birthDate?: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
+    documentType?: string;
+    documentNumber?: string;
+    profileCompleted?: boolean;
+    defaultAddress?: any; // Considerar definir una interfaz para Address
+    updatedAt?: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
 }

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, updateDoc, getDoc, writeBatch, increment, DocumentReference, collection, query, where, getDocs, DocumentData } from '@angular/fire/firestore';
+import { Firestore, doc, updateDoc, getDoc, writeBatch, increment, DocumentReference, collection, query, where, getDocs, DocumentData, addDoc, serverTimestamp, Timestamp, FieldValue } from '@angular/fire/firestore';
 import { Observable, from, throwError, of, forkJoin } from 'rxjs';
 import { map, catchError, switchMap, tap, take, finalize } from 'rxjs/operators';
 
@@ -9,7 +9,7 @@ import { TimestampUtil } from '../../../utils/timestamp-util';
 import { CacheService } from '../cache/cache.service';
 
 // Importar modelos
-import { Product, ProductVariant } from '../../../models/models';
+import { Product, ProductVariant, SaleItem } from '../../../models/models';
 import { getAuth, signInAnonymously } from '@angular/fire/auth';
 
 // Interfaces para el servicio de inventario
@@ -17,11 +17,6 @@ export interface StockUpdate {
   productId: string;
   variantId: string;
   quantity: number; // Positivo para incrementar, negativo para decrementar
-}
-
-export interface SaleItem {
-  variantId: string;
-  quantity: number;
 }
 
 export interface StockCheckResult {
@@ -60,6 +55,21 @@ export interface LowStockProduct {
   }[];
 }
 
+// 🆕 Interfaz para el log de movimiento de inventario
+export interface InventoryMovement {
+  productId: string;
+  variantId: string;
+  quantity: number; // Cantidad del movimiento (positiva para entrada, negativa para salida)
+  type: 'sale' | 'restock' | 'transfer_out' | 'transfer_in' | 'adjustment' | 'return';
+  timestamp: Timestamp | FieldValue; // Puede ser Timestamp o FieldValue (serverTimestamp)
+  performedByUid?: string; // UID del usuario que realizó el movimiento
+  notes?: string;
+  orderId?: string; // Si aplica a una venta/pedido
+  distributorId?: string; // Si aplica a una transferencia a/desde distribuidor
+  metadata?: any; // Cualquier dato adicional relevante
+}
+
+
 @Injectable({
   providedIn: 'root'
 })
@@ -68,6 +78,7 @@ export class ProductInventoryService {
   private firestore = inject(Firestore);
   private productsCollection = 'products';
   private variantsCollection = 'productVariants';
+  private inventoryMovementsCollection = 'inventoryMovements'; // Colección para logs de movimientos
   private readonly lowStockThreshold = 5;
 
   // Claves de caché
@@ -79,6 +90,42 @@ export class ProductInventoryService {
     private cacheService: CacheService
   ) {
   }
+
+  /**
+   * 🆕 MÉTODO: Registra un movimiento de inventario en la colección 'inventoryMovements'.
+   * @param productId ID del producto.
+   * @param variantId ID de la variante.
+   * @param quantity Cantidad del movimiento (positiva para entrada, negativa para salida).
+   * @param type Tipo de movimiento (ej. 'sale', 'restock', 'transfer_out').
+   * @param performedByUid UID del usuario que realizó el movimiento.
+   * @param metadata Datos adicionales para el log.
+   */
+  async logInventoryMovement(
+    productId: string,
+    variantId: string,
+    quantity: number,
+    type: InventoryMovement['type'],
+    performedByUid?: string,
+    metadata?: any
+  ): Promise<void> {
+    try {
+      const movement: InventoryMovement = {
+        productId,
+        variantId,
+        quantity,
+        type,
+        timestamp: serverTimestamp(), // Usar serverTimestamp para la fecha en Firestore
+        performedByUid,
+        ...metadata // Incluir cualquier metadata adicional (orderId, distributorId, notes)
+      };
+      await addDoc(collection(this.firestore, this.inventoryMovementsCollection), movement);
+      console.log(`📝 Movimiento de inventario registrado: ${type} para ${variantId}, Cantidad: ${quantity}`);
+    } catch (error) {
+      console.error('❌ Error registrando movimiento de inventario:', error);
+      // No lanzar el error para no bloquear la operación principal si el log falla
+    }
+  }
+
 
   /**
    * 🚀 CORREGIDO: Verifica la disponibilidad de stock para un conjunto de variantes
@@ -172,6 +219,15 @@ export class ProductInventoryService {
         });
         totalQuantity += item.quantity;
 
+        // Registrar movimiento de venta individual
+        await this.logInventoryMovement(
+          productId,
+          item.variantId,
+          -item.quantity, // Cantidad negativa para venta
+          'sale',
+          undefined, // performedByUid (si no hay usuario específico para la venta)
+          { orderId: 'TODO_ORDER_ID', unitPrice: item.unitPrice } // Puedes pasar el orderId aquí
+        );
       }
 
       // Actualizar el producto
@@ -234,6 +290,16 @@ export class ProductInventoryService {
 
       await batch.commit();
 
+      // Registrar movimiento de ajuste de stock
+      await this.logInventoryMovement(
+        update.productId,
+        update.variantId,
+        update.quantity,
+        'adjustment',
+        undefined, // performedByUid (si no hay usuario específico)
+        { notes: 'Ajuste manual de stock' }
+      );
+
       // Invalidar caché relacionado al inventario
       this.invalidateInventoryCache(update.variantId, update.productId);
     })()).pipe(
@@ -270,6 +336,15 @@ export class ProductInventoryService {
         const currentChange = productStockChanges.get(update.productId) || 0;
         productStockChanges.set(update.productId, currentChange + update.quantity);
 
+        // Registrar movimiento de ajuste de stock para cada variante
+        await this.logInventoryMovement(
+          update.productId,
+          update.variantId,
+          update.quantity,
+          'adjustment',
+          undefined, // performedByUid
+          { notes: 'Ajuste masivo de stock' }
+        );
       }
 
       // Actualizar los productos con el cambio acumulado
@@ -766,7 +841,6 @@ export class ProductInventoryService {
             id: doc.id,
             ...data
           } as ProductVariant;
-
 
 
           return variant;

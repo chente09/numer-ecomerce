@@ -20,10 +20,15 @@ import { ClientesComponent } from './pages/admin/clientes/clientes.component';
 import { UbicacionesComponent } from './pages/ubicaciones/ubicaciones.component';
 import { EmbajadoresAtletasComponent } from './pages/embajadores-atletas/embajadores-atletas.component';
 import { SitemapAdminComponent } from './pages/admin/sitemap-admin/sitemap-admin.component';
+import { UserRolesManagementComponent } from './pages/admin/user-roles-management/user-roles-management.component';
+import { DistributorManagementComponent } from './pages/admin/distributor-management/distributor-management.component';
+import { DashboardComponent } from './pages/admin/dashboard/dashboard.component';
+import { MyInventoryComponent } from './pages/admin/distributors/my-inventory/my-inventory.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
 import { adminGuardGuard } from './guards/admin-guard.guard';
+import { adminOnlyGuard } from './guards/admin-only.guard';
 
 
 export const routes: Routes = [
@@ -48,15 +53,18 @@ export const routes: Routes = [
     {
         path: 'admin',
         component: LayoutComponent,
-        canActivate: [authGuard, adminGuardGuard],
+        canActivate: [adminGuardGuard],
         children: [
-            { path: '', redirectTo: 'products', pathMatch: 'full' },
-            { path: 'products', component: ProductManagementComponent },
-            { path: 'categories', component: CategoriasComponent },
-            { path: 'heroes', component: HeroesComponent },
-            { path: 'reviews', component: ReviewManagementComponent },
-            { path: 'clientes', component: ClientesComponent },
-            { path: 'sitemap', component: SitemapAdminComponent },
+            { path: '', component: DashboardComponent }, 
+            { path: 'products', component: ProductManagementComponent, canActivate: [adminOnlyGuard] },
+            { path: 'categories', component: CategoriasComponent, canActivate: [adminOnlyGuard] },
+            { path: 'distributors', component: DistributorManagementComponent, canActivate: [adminOnlyGuard] },
+            { path: 'heroes', component: HeroesComponent, canActivate: [adminOnlyGuard] },
+            { path: 'reviews', component: ReviewManagementComponent, canActivate: [adminOnlyGuard] },
+            { path: 'clientes', component: ClientesComponent, canActivate: [adminOnlyGuard] },
+            { path: 'sitemap', component: SitemapAdminComponent, canActivate: [adminOnlyGuard] },
+            { path: 'user-roles', component: UserRolesManagementComponent, canActivate: [adminOnlyGuard] },
+            { path: 'my-inventory', component: MyInventoryComponent },
         ]
     },
 ];

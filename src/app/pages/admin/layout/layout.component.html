@@ -9,7 +9,7 @@
             </a>
         </div>
         <ul nz-menu nzTheme="dark" nzMode="inline" [nzInlineCollapsed]="isCollapsed">
-            <li nz-menu-item *ngFor="let item of menuItems" [routerLink]="item.path"
+            <li nz-menu-item *ngFor="let item of visibleMenuItems" [routerLink]="item.path"
                 routerLinkActive="ant-menu-item-selected">
                 <span nz-icon [nzType]="item.icon"></span>
                 <span>{{ item.title }}</span>
@@ -23,7 +23,7 @@
     </nz-sider>
 
     <div class="menu-overlay" (click)="closeMenu()"></div>
-    
+
     <nz-layout class="main-content-layout">
         <!-- Header -->
         <nz-header>

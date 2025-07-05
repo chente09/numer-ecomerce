@@ -1,0 +1,58 @@
+.user-roles-container {
+    padding: 16px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
+
+.card-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-display-name {
+    font-weight: 500;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .user-roles-container {
+        padding: 8px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .action-buttons button {
+        width: 100%;
+    }
+
+    .user-display-name {
+        font-size: 13px;
+    }
+
+    nz-table {
+        font-size: 12px;
+    }
+
+    nz-table th,
+    nz-table td {
+        padding: 8px 4px;
+    }
+}

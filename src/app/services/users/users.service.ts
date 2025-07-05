@@ -1,3 +1,4 @@
+// src/app/services/users/users.service.ts
 import { Injectable, inject } from '@angular/core';
 import {
   Auth,
@@ -6,16 +7,16 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
-  User,
-  deleteUser,
+  deleteUser as firebaseDeleteUser, // Renombrar para evitar conflicto con el método del servicio
   authState,
   setPersistence,
   browserSessionPersistence,
   browserLocalPersistence,
   sendEmailVerification,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  User // Importar User de @angular/fire/auth
 } from '@angular/fire/auth';
-import { Firestore, query, where } from '@angular/fire/firestore';
+import { Firestore, query, where, FieldValue } from '@angular/fire/firestore'; // Importar FieldValue
 import {
   addDoc,
   collection,
@@ -25,40 +26,59 @@ import {
   getDocs,
   setDoc,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  updateDoc
 } from '@angular/fire/firestore';
-import { getFunctions, httpsCallable } from '@angular/fire/functions';
-import { Observable } from 'rxjs';
+import { Observable, from, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 
 export interface LoginInfo {
   email: string;
   password: string;
 }
 
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName?: string | null;
+  photoURL?: string | null;
+  emailVerified: boolean;
+  isAnonymous: boolean;
+  // FIX: Usar FieldValue para la escritura y Timestamp|Date para la lectura (la conversión se encarga)
+  createdAt: Timestamp | Date | FieldValue; 
+  lastLogin: Timestamp | Date | FieldValue;  
+  roles: string[]; // 'admin', 'customer', 'distributor'
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  birthDate?: Timestamp | Date | FieldValue; 
+  documentType?: string;
+  documentNumber?: string;
+  profileCompleted?: boolean;
+  defaultAddress?: any; // Considerar definir una interfaz para Address
+  updatedAt?: Timestamp | Date | FieldValue; 
+}
+
+
 @Injectable({
   providedIn: 'root'
 })
 export class UsersService {
-  // Observable para el estado de autenticación
   user$: Observable<User | null>;
 
-  // ✅ CORRECCIÓN: Inyectar Firestore correctamente
   private firestore = inject(Firestore);
 
   constructor(private auth: Auth) {
     this.user$ = authState(this.auth);
     this.user$.subscribe(user => {
-      // ✅ SOLUCIÓN: Solo guardar usuarios reales (no anónimos)
       if (user && !user.isAnonymous) {
         this.saveUserData(user);
       }
     });
   }
 
-  // Método para guardar datos del usuario en Firestore
   private async saveUserData(user: User): Promise<void> {
     try {
-      // ✅ VERIFICACIÓN ADICIONAL: Asegurar que no es anónimo
       if (user.isAnonymous) {
         return;
       }
@@ -73,7 +93,7 @@ export class UsersService {
           displayName: user.displayName,
           photoURL: user.photoURL,
           emailVerified: user.emailVerified,
-          isAnonymous: false, // ✅ Marcar explícitamente como no anónimo
+          isAnonymous: false,
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
           roles: ['customer']
@@ -88,7 +108,6 @@ export class UsersService {
     }
   }
 
-  // Métodos de registro y autenticación
   register({ email, password }: LoginInfo): Promise<any> {
     return createUserWithEmailAndPassword(this.auth, email, password);
   }
@@ -106,7 +125,6 @@ export class UsersService {
     return signOut(this.auth);
   }
 
-  // Gestión de persistencia
   setSessionPersistence(): Promise<void> {
     return setPersistence(this.auth, browserSessionPersistence);
   }
@@ -115,7 +133,6 @@ export class UsersService {
     return setPersistence(this.auth, browserLocalPersistence);
   }
 
-  // Información de usuario
   getCurrentUser(): User | null {
     return this.auth.currentUser;
   }
@@ -128,7 +145,6 @@ export class UsersService {
     return null;
   }
 
-  // Verificación de email
   sendVerificationEmail(): Promise<void> {
     const user = this.auth.currentUser;
     if (user) {
@@ -141,20 +157,15 @@ export class UsersService {
     return this.auth.currentUser?.emailVerified || false;
   }
 
-  // Restablecimiento de contraseña
   resetPassword(email: string): Promise<void> {
     return sendPasswordResetEmail(this.auth, email);
   }
 
-  // Gestión de roles y permisos
   async getUserRoles(): Promise<string[]> {
     const user = this.auth.currentUser;
-
-    // ✅ MEJORA: Validar que no sea anónimo
     if (!user || user.isAnonymous) {
       return [];
     }
-
     try {
       const userDoc = await getDoc(doc(this.firestore, 'users', user.uid));
       return userDoc.exists() ? userDoc.data()?.['roles'] || [] : [];
@@ -169,32 +180,88 @@ export class UsersService {
     return roles.includes(role);
   }
 
-  // Eliminación de usuarios
-  async deleteRegister(uid: string): Promise<any> {
-    const currentUser = this.auth.currentUser;
+  getUsers(role?: string): Observable<UserProfile[]> {
+    const usersRef = collection(this.firestore, 'users');
+    let q = query(usersRef);
 
-    // Solo permite eliminar si es el mismo usuario o es un admin
-    if (currentUser?.uid === uid || await this.hasRole('admin')) {
-      if (currentUser?.uid === uid) {
-        // Si es el propio usuario
-        return deleteUser(currentUser);
-      } else {
-        // Si es admin eliminando a otro usuario, utiliza una Cloud Function
-        const functions = getFunctions();
-        const deleteUserFunc = httpsCallable(functions, 'deleteUser');
-        await deleteUserFunc({ uid });
-        return Promise.resolve();
-      }
+    if (role) {
+      q = query(usersRef, where('roles', 'array-contains', role));
     }
 
-    return Promise.reject('No autorizado para eliminar este usuario');
+    return from(getDocs(q)).pipe(
+      map(snapshot => {
+        return snapshot.docs.map(doc => {
+          const data = doc.data();
+          return this.convertTimestampsToDates({ id: doc.id, ...data }) as UserProfile;
+        });
+      }),
+      catchError(error => {
+        console.error('Error obteniendo usuarios:', error);
+        return of([]);
+      })
+    );
   }
 
-  // Método para verificar si el usuario tiene acceso a una ruta específica
+  async updateUserRoles(uid: string, newRoles: string[]): Promise<void> {
+    const currentUser = this.auth.currentUser;
+    if (!currentUser || !(await this.hasRole('admin'))) {
+      throw new Error('Acceso denegado: Solo los administradores pueden modificar roles.');
+    }
+
+    try {
+      const userRef = doc(this.firestore, 'users', uid);
+      await updateDoc(userRef, {
+        roles: newRoles,
+        updatedAt: serverTimestamp()
+      });
+      console.log(`✅ Roles de usuario ${uid} actualizados a: ${newRoles.join(', ')}`);
+    } catch (error) {
+      console.error(`❌ Error actualizando roles para ${uid}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteRegister(uid: string): Promise<void> {
+    const currentUser = this.auth.currentUser;
+
+    if (!currentUser) {
+      throw new Error('No hay usuario autenticado para realizar esta operación.');
+    }
+
+    const isAdmin = await this.hasRole('admin');
+
+    if (currentUser.uid === uid) {
+      try {
+        await firebaseDeleteUser(currentUser);
+        await deleteDoc(doc(this.firestore, 'users', uid));
+        console.log(`✅ Usuario ${uid} eliminado (auto-eliminación).`);
+      } catch (error: any) {
+        if (error.code === 'auth/requires-recent-login') {
+          throw new Error('Por favor, vuelve a iniciar sesión para eliminar tu cuenta.');
+        }
+        console.error(`❌ Error al auto-eliminar usuario ${uid}:`, error);
+        throw error;
+      }
+    } else if (isAdmin) {
+      try {
+        await deleteDoc(doc(this.firestore, 'users', uid));
+        console.log(`✅ Documento de usuario ${uid} eliminado por admin. (Cuenta de Auth debe eliminarse manualmente).`);
+      } catch (error) {
+        console.error(`❌ Error al eliminar documento de usuario ${uid} por admin:`, error);
+        throw error;
+      }
+    } else {
+      throw new Error('No autorizado para eliminar este usuario.');
+    }
+  }
+
+
   async canAccessRoute(route: string): Promise<boolean> {
     const routePermissions: { [key: string]: string[] } = {
       '/admin': ['admin'],
       '/procesos': ['admin', 'editor'],
+      '/admin/distributors': ['admin'],
+      '/admin/users': ['admin']
     };
 
     if (!routePermissions[route]) return true;
@@ -203,15 +270,11 @@ export class UsersService {
     return routePermissions[route].some(role => roles.includes(role));
   }
 
-  // ✅ CORRECCIÓN: Método para registrar actividad usando user_activity_logs
   async logUserActivity(action: string, resource: string, details?: any): Promise<void> {
     const user = this.auth.currentUser;
-
-    // ✅ MEJORA: No registrar actividad de usuarios anónimos
     if (!user || user.isAnonymous) {
       return;
     }
-
     try {
       const logData = {
         userId: user.uid,
@@ -221,7 +284,6 @@ export class UsersService {
         details: details === undefined ? null : details,
         timestamp: serverTimestamp()
       };
-
       const logCollection = collection(this.firestore, 'user_activity_logs');
       await addDoc(logCollection, logData);
     } catch (error) {
@@ -229,26 +291,17 @@ export class UsersService {
     }
   }
 
-  // Guardar perfil de usuario
   async saveUserProfile(userData: any): Promise<void> {
     const user = this.auth.currentUser;
     if (!user) throw new Error('No hay usuario autenticado');
-
     try {
-      // ✅ USAR: this.firestore
       const userRef = doc(this.firestore, 'users', user.uid);
-
-      // ✅ CORRECCIÓN: Procesar fechas correctamente
       const dataToSave = {
         ...userData,
         updatedAt: serverTimestamp(),
-        createdAt: userData.createdAt || serverTimestamp()
+        createdAt: serverTimestamp() // Siempre usar serverTimestamp para createdAt si no existe
       };
-
-      // Actualizar datos de usuario
       await setDoc(userRef, dataToSave, { merge: true });
-
-      // Registrar actividad
       await this.logUserActivity('update_profile', 'user_data');
     } catch (error) {
       console.error('Error guardando perfil:', error);
@@ -256,22 +309,15 @@ export class UsersService {
     }
   }
 
-  // ✅ CORRECCIÓN: Obtener datos completos del perfil con conversión de timestamps
-  async getUserProfile(): Promise<any> {
-    const user = this.auth.currentUser;
-
-    // ✅ MEJORA: Validar que no sea anónimo
-    if (!user || user.isAnonymous) {
-      return null;
-    }
-
+  async getUserProfile(uid?: string): Promise<UserProfile | null> {
+    const targetUid = uid || this.auth.currentUser?.uid;
+    if (!targetUid) return null;
     try {
-      const userRef = doc(this.firestore, 'users', user.uid);
+      const userRef = doc(this.firestore, 'users', targetUid);
       const userSnap = await getDoc(userRef);
-
       if (userSnap.exists()) {
         const data = userSnap.data();
-        return this.convertFirebaseTimestamps(data);
+        return this.convertTimestampsToDates({ id: userSnap.id, ...data }) as UserProfile;
       }
       return null;
     } catch (error) {
@@ -280,38 +326,43 @@ export class UsersService {
     }
   }
 
-  // ✅ NUEVO: Método para convertir timestamps de Firebase
-  private convertFirebaseTimestamps(data: any): any {
+  // 🆕 MÉTODO: Convertir Timestamps de Firebase a objetos Date (AHORA PÚBLICO)
+  // ✅ CORRECCIÓN: Asegurar que el método es público
+  public convertTimestampsToDates(data: any): any {
     const converted = { ...data };
-
-    // Lista de campos que pueden ser timestamps
     const timestampFields = ['birthDate', 'createdAt', 'updatedAt', 'lastLogin'];
-
     timestampFields.forEach(field => {
       if (converted[field]) {
         try {
           if (converted[field] instanceof Timestamp) {
             converted[field] = converted[field].toDate();
-          } else if (converted[field].seconds !== undefined) {
-            converted[field] = new Date(converted[field].seconds * 1000);
+          } else if (typeof converted[field] === 'object' && converted[field].seconds !== undefined && converted[field].nanoseconds !== undefined) { 
+            // Esto maneja objetos { seconds: ..., nanoseconds: ... } que no son instancias de Timestamp
+            converted[field] = new Date(converted[field].seconds * 1000 + converted[field].nanoseconds / 1000000); 
           } else if (typeof converted[field] === 'string') {
             converted[field] = new Date(converted[field]);
+          } else if (typeof converted[field] === 'object' && converted[field] !== null && (converted[field] as any)._methodName) { 
+            // Si es un FieldValue (como deleteField() o serverTimestamp() sin resolver)
+            converted[field] = null;
           }
+          // Si es un FieldValue de serverTimestamp(), se espera que ya se haya resuelto a Timestamp
+          // al ser leído de Firestore. Si no, significa un problema de sincronización o lectura.
+          // Por lo tanto, si llega como FieldValue y no es un Timestamp, no lo convertimos.
+          // El HTML debe manejar el caso de que sea null.
+
         } catch (error) {
           console.warn(`Error convirtiendo timestamp del campo ${field}:`, error);
           converted[field] = null;
         }
       }
     });
-
     return converted;
   }
 
-  // Verificar si el perfil está completo
+
   async isProfileComplete(): Promise<boolean> {
     try {
       const userData = await this.getUserProfile();
-
       const basicFieldsComplete = userData?.firstName &&
         userData?.lastName &&
         userData?.phone &&
@@ -319,32 +370,23 @@ export class UsersService {
         userData?.documentType &&
         userData?.documentNumber &&
         userData?.profileCompleted === true;
-
       if (!basicFieldsComplete) return false;
-
-      // Verificar dirección completa
       const hasCompleteAddress = userData?.defaultAddress?.address &&
         userData?.defaultAddress?.city &&
         userData?.defaultAddress?.province &&
         userData?.defaultAddress?.canton;
-
       if (hasCompleteAddress) return true;
-
-      // Verificar en subcolección de direcciones
       const addresses = await this.getUserAddresses();
       const hasValidAddress = addresses.some(addr =>
         addr['address'] && addr['city'] && addr['province'] && addr['canton']
       );
-
       return hasValidAddress;
-
     } catch (error) {
       console.error('Error verificando perfil:', error);
       return false;
     }
   }
 
-  // Método específico para checkout
   async isProfileCompleteForCheckout(): Promise<{
     complete: boolean;
     missingFields: string[];
@@ -354,18 +396,13 @@ export class UsersService {
       const userData = await this.getUserProfile();
       const missingFields: string[] = [];
       let missingAddress = false;
-
-      // Verificar campos básicos del perfil
       if (!userData?.firstName) missingFields.push('Nombre');
       if (!userData?.lastName) missingFields.push('Apellido');
       if (!userData?.phone) missingFields.push('Teléfono');
       if (!userData?.birthDate) missingFields.push('Fecha de nacimiento');
       if (!userData?.documentType) missingFields.push('Tipo de documento');
       if (!userData?.documentNumber) missingFields.push('Número de documento');
-
-      // Verificar dirección de envío
       let hasValidAddress = false;
-
       if (userData?.defaultAddress) {
         hasValidAddress = !!(
           userData.defaultAddress.address &&
@@ -374,24 +411,20 @@ export class UsersService {
           userData.defaultAddress.canton
         );
       }
-
       if (!hasValidAddress) {
         const addresses = await this.getUserAddresses();
         hasValidAddress = addresses.some(addr =>
           addr.address && addr.city && addr.province && addr.canton
         );
       }
-
       if (!hasValidAddress) {
         missingAddress = true;
       }
-
       return {
         complete: missingFields.length === 0 && !missingAddress,
         missingFields,
         missingAddress
       };
-
     } catch (error) {
       console.error('Error verificando perfil para checkout:', error);
       return {
@@ -405,18 +438,13 @@ export class UsersService {
   async saveUserAddress(addressData: any): Promise<void> {
     const user = this.auth.currentUser;
     if (!user) throw new Error('No hay usuario autenticado');
-
     try {
-      // ✅ USAR: this.firestore
       const addressesRef = collection(this.firestore, `users/${user.uid}/addresses`);
-
       await addDoc(addressesRef, {
         ...addressData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-
-      // Si es la primera dirección, también guardarla en el perfil principal
       if (addressData.isDefault) {
         const userRef = doc(this.firestore, 'users', user.uid);
         await setDoc(userRef, {
@@ -424,7 +452,6 @@ export class UsersService {
           updatedAt: serverTimestamp()
         }, { merge: true });
       }
-
       console.log('✅ Dirección guardada exitosamente');
     } catch (error) {
       console.error('❌ Error guardando dirección:', error);
@@ -435,17 +462,12 @@ export class UsersService {
   async updateUserAddress(addressId: string, addressData: any): Promise<void> {
     const user = this.auth.currentUser;
     if (!user) throw new Error('No hay usuario autenticado');
-
     try {
-      // ✅ USAR: this.firestore
       const addressRef = doc(this.firestore, `users/${user.uid}/addresses`, addressId);
-
       await setDoc(addressRef, {
         ...addressData,
         updatedAt: serverTimestamp()
       }, { merge: true });
-
-      // Si es la dirección por defecto, actualizar en el perfil principal
       if (addressData.isDefault) {
         const userRef = doc(this.firestore, 'users', user.uid);
         await setDoc(userRef, {
@@ -453,7 +475,6 @@ export class UsersService {
           updatedAt: serverTimestamp()
         }, { merge: true });
       }
-
       console.log('✅ Dirección actualizada exitosamente');
     } catch (error) {
       console.error('❌ Error actualizando dirección:', error);
@@ -464,12 +485,9 @@ export class UsersService {
   async getUserAddresses(): Promise<any[]> {
     const user = this.auth.currentUser;
     if (!user) return [];
-
     try {
-      // ✅ USAR: this.firestore
       const addressesRef = collection(this.firestore, `users/${user.uid}/addresses`);
       const snapshot = await getDocs(addressesRef);
-
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -483,21 +501,16 @@ export class UsersService {
   async deleteUserAddress(addressId: string): Promise<void> {
     const user = this.auth.currentUser;
     if (!user) throw new Error('No hay usuario autenticado');
-
     try {
-      // ✅ USAR: this.firestore
       const addressRef = doc(this.firestore, `users/${user.uid}/addresses`, addressId);
       await deleteDoc(addressRef);
-
       console.log('✅ Dirección eliminada exitosamente');
     } catch (error) {
       console.error('❌ Error eliminando dirección:', error);
       throw error;
     }
   }
-  /**
-   * 📧 NEWSLETTER: Guardar suscripción al newsletter
-   */
+
   async saveNewsletterSubscription(subscriptionData: {
     email: string;
     subscribedAt: Date;
@@ -507,16 +520,12 @@ export class UsersService {
   }): Promise<void> {
     try {
       const subscriptionsRef = collection(this.firestore, 'newsletter_subscriptions');
-
-      // Verificar si ya existe una suscripción con este email
       const existingQuery = query(
         subscriptionsRef,
         where('email', '==', subscriptionData.email)
       );
       const existingSnap = await getDocs(existingQuery);
-
       if (!existingSnap.empty) {
-        // Actualizar suscripción existente
         const docRef = existingSnap.docs[0].ref;
         await setDoc(docRef, {
           ...subscriptionData,
@@ -524,37 +533,28 @@ export class UsersService {
           resubscribedAt: serverTimestamp(),
           resubscribeCount: (existingSnap.docs[0].data()['resubscribeCount'] || 0) + 1
         }, { merge: true });
-
         console.log('✅ Suscripción al newsletter actualizada');
       } else {
-        // Crear nueva suscripción
         await addDoc(subscriptionsRef, {
           ...subscriptionData,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           resubscribeCount: 0
         });
-
         console.log('✅ Nueva suscripción al newsletter creada');
       }
-
-      // Registrar actividad del usuario (si está logueado)
       if (subscriptionData.userId) {
         await this.logUserActivity('newsletter_subscription', 'newsletter', {
           email: subscriptionData.email,
           source: subscriptionData.source
         });
       }
-
     } catch (error) {
       console.error('❌ Error guardando suscripción al newsletter:', error);
       throw new Error(`Error al suscribirse al newsletter: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
 
-  /**
-   * 📧 NEWSLETTER: Verificar si un email ya está suscrito
-   */
   async isEmailSubscribedToNewsletter(email: string): Promise<boolean> {
     try {
       const subscriptionsRef = collection(this.firestore, 'newsletter_subscriptions');
@@ -563,7 +563,6 @@ export class UsersService {
         where('email', '==', email.toLowerCase().trim()),
         where('isActive', '==', true)
       );
-
       const snapshot = await getDocs(q);
       return !snapshot.empty;
     } catch (error) {
@@ -572,15 +571,11 @@ export class UsersService {
     }
   }
 
-  /**
-   * 📧 NEWSLETTER: Desuscribirse del newsletter
-   */
   async unsubscribeFromNewsletter(email: string): Promise<void> {
     try {
       const subscriptionsRef = collection(this.firestore, 'newsletter_subscriptions');
       const q = query(subscriptionsRef, where('email', '==', email.toLowerCase().trim()));
       const snapshot = await getDocs(q);
-
       if (!snapshot.empty) {
         const docRef = snapshot.docs[0].ref;
         await setDoc(docRef, {
@@ -588,13 +583,10 @@ export class UsersService {
           unsubscribedAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         }, { merge: true });
-
-        // Registrar actividad si hay usuario logueado
         const user = this.getCurrentUser();
         if (user) {
           await this.logUserActivity('newsletter_unsubscription', 'newsletter', { email });
         }
-
         console.log('✅ Usuario desuscrito del newsletter');
       }
     } catch (error) {

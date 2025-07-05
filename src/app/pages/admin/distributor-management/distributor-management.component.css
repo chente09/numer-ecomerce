@@ -1,0 +1,50 @@
+.distributor-management-container {
+    padding: 16px;
+}
+
+.mt-4 {
+    margin-top: 16px;
+}
+
+.product-info-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.product-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.product-model {
+    font-size: 12px;
+    color: #888;
+}
+
+/* ✅ AÑADIDO: Estilos para la tabla agrupada */
+.product-row {
+    background-color: #fafafa;
+    font-weight: 500;
+}
+
+.variant-row.hidden-row {
+    display: none;
+}
+
+.variant-details-cell {
+    display: flex;
+    align-items: center;
+}
+
+.variant-indent {
+    display: inline-block;
+    width: 52px; /* Ancho del botón de expandir + espaciado */
+    height: 1px;
+    flex-shrink: 0;
+}

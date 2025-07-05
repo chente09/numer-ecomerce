@@ -1,0 +1,84 @@
+<div class="my-inventory-container">
+    <nz-card nzTitle="Mi Inventario">
+        <p>Aquí puedes ver todos los productos y variantes que tienes en stock para la venta.</p>
+    </nz-card>
+
+    <nz-card class="mt-4" *ngIf="inventoryStats && !isLoading">
+        <div nz-row [nzGutter]="16">
+            <div nz-col [nzXs]="24" [nzSm]="8">
+                <nz-statistic [nzValue]="inventoryStats.totalUniqueProducts" nzTitle="Productos Únicos"></nz-statistic>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="8">
+                <nz-statistic [nzValue]="inventoryStats.totalVariants" nzTitle="Total de Variantes"></nz-statistic>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="8">
+                <nz-statistic [nzValue]="inventoryStats.totalStock" nzTitle="Unidades Totales"></nz-statistic>
+            </div>
+        </div>
+    </nz-card>
+
+    <nz-card class="mt-4">
+        <nz-spin [nzSpinning]="isLoading">
+            <div class="table-container">
+                <nz-table #inventoryTable [nzData]="groupedInventory" [nzShowPagination]="groupedInventory.length > 10"
+                    [nzPageSize]="10">
+                    <thead>
+                        <tr>
+                            <th>Producto / Variante</th>
+                            <th>Stock Disponible</th>
+                            <th nzAlign="right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <ng-container *ngFor="let product of inventoryTable.data">
+                            <tr class="product-row">
+                                <td [nzExpand]="product.expand" (nzExpandChange)="product.expand = !product.expand">
+                                    <div class="product-info-cell">
+                                        <nz-avatar [nzShape]="'square'" [nzSize]="48" [nzSrc]="product.variantImageUrl"
+                                            nzIcon="file-image"></nz-avatar>
+                                        <div class="product-details">
+                                            <span class="product-name">{{ product.productName }}</span>
+                                            <span class="product-model">Modelo: {{ product.productModel }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><nz-tag nzColor="blue"><strong>{{ product.totalStockForDistributor }}
+                                            Total</strong></nz-tag></td>
+                                <td nzAlign="right">-</td>
+                            </tr>
+                            <tr *ngFor="let variant of product.children" [class.hidden-row]="!product.expand"
+                                class="variant-row">
+                                <td class="variant-details-cell">
+                                    <span class="variant-indent"></span>{{ variant.colorName }} / {{ variant.sizeName }}
+                                </td>
+                                <td>
+                                    <nz-tag nzColor="purple"><strong>{{ variant.stock }}</strong></nz-tag>
+                                </td>
+                                <td nzAlign="right">
+                                    <button nz-button nzType="primary" nzSize="small" (click)="registerSale(variant)"
+                                        [disabled]="variant.stock <= 0" nz-tooltip
+                                        nzTooltipTitle="Registrar una venta de este item">
+                                        <span nz-icon nzType="shopping-cart"></span>
+                                        <span class="button-text">Registrar Venta</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </ng-container>
+                    </tbody>
+                </nz-table>
+            </div>
+            <nz-empty *ngIf="groupedInventory.length === 0 && !isLoading"
+                nzNotFoundContent="Aún no tienes inventario asignado."></nz-empty>
+        </nz-spin>
+    </nz-card>
+</div>
+
+<ng-template #saleModalContent let-item>
+    <div>
+        <p>Variante: <strong>{{ item.colorName }} / {{ item.sizeName }}</strong></p>
+        <p>Tu stock actual: <strong>{{ item.stock }}</strong></p>
+        <p>¿Cuántas unidades vendiste?</p>
+        <nz-input-number [(ngModel)]="quantityToSell" [nzMin]="1" [nzMax]="item.stock || 1" style="width: 100%;">
+        </nz-input-number>
+    </div>
+</ng-template>

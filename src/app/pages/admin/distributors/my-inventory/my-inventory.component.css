@@ -1,0 +1,103 @@
+/* Estilos base existentes */
+.my-inventory-container {
+    padding: 16px;
+}
+
+.mt-4 {
+    margin-top: 16px;
+}
+
+.product-info-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.product-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-name {
+    font-weight: 500;
+}
+
+.product-model {
+    font-size: 12px;
+    color: #888;
+}
+
+.variant-row.hidden-row {
+    display: none;
+}
+
+.variant-details-cell {
+    display: flex;
+    align-items: center;
+}
+
+.variant-indent {
+    display: inline-block;
+    width: 24px;
+    height: 1px;
+    flex-shrink: 0;
+}
+
+/* =============================================== */
+/* ========= INICIO DE ESTILOS RESPONSIVOS ========= */
+/* =============================================== */
+
+/* ✅ Contenedor para forzar el scroll horizontal de la tabla */
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Para un scroll más suave en iOS */
+}
+
+/* ✅ Forzar un ancho mínimo para la tabla para que no se rompa */
+.table-container nz-table {
+    min-width: 500px; /* Ajusta este valor si necesitas más o menos espacio */
+}
+
+
+@media (max-width: 768px) {
+    .my-inventory-container {
+        padding: 8px;
+    }
+
+    :host ::ng-deep .ant-table-tbody > tr > td {
+        font-size: 12px;
+        padding: 10px 8px; /* Un poco más de padding lateral */
+    }
+
+    .product-info-cell {
+        gap: 8px;
+    }
+
+    :host ::ng-deep .product-info-cell .ant-avatar {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px;
+    }
+
+    .product-name {
+        font-size: 13px;
+        white-space: nowrap; /* Evita que el nombre del producto se parta */
+    }
+
+    .button-text {
+        transition: all 0.2s ease-in-out;
+    }
+}
+
+@media (max-width: 480px) {
+    .button-text {
+        display: none; /* Oculta el texto del botón y deja solo el ícono */
+    }
+
+    :host ::ng-deep .ant-statistic-title {
+        font-size: 12px;
+    }
+    :host ::ng-deep .ant-statistic-content {
+        font-size: 20px;
+    }
+}
