@@ -1,5 +1,5 @@
 import { CommonModule, Location } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CartService } from '../services/cart/cart.service';
@@ -17,6 +17,8 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
 import { firstValueFrom, Subject, take, takeUntil } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ActivityLogService } from '../../services/admin/activityLog/activity-log.service';
+import { UsersService } from '../../services/users/users.service';
+import { NzModalService } from 'ng-zorro-antd/modal';
 
 interface PaymentResult {
   transactionStatus: string;
@@ -69,39 +71,115 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     private router: Router,
     private cartService: CartService,
     private message: NzMessageService,
-    private activityLogService: ActivityLogService
+    private activityLogService: ActivityLogService,
+    private usersService: UsersService,  // ✅ AGREGAR
+    private modalService: NzModalService 
   ) { }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.route.queryParams.pipe(
       takeUntil(this.destroy$)
-    ).subscribe(params => {
+    ).subscribe(async params => {
       const id = +params['id'] || 0;
       const clientTxId = params['clientTransactionId'] || '';
 
-      // ✅ AGREGAR validación
+      // ✅ VALIDACIÓN
       if (!id && !clientTxId) {
         this.error = 'Parámetros de transacción inválidos';
         this.loading = false;
         return;
       }
 
-      this.http.post<any>(
-        'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
-        { id, clientTxId }
-      ).subscribe({
-        next: res => {
-          this.resultado = res;
-          this.currencyCode = res.currency || this.currencyCode;
+      try {
+        // ✅ VERIFICAR AUTENTICACIÓN
+        const currentUser = this.usersService.getCurrentUser();
+        if (!currentUser || currentUser.isAnonymous) {
+          this.error = 'Debes iniciar sesión para ver los detalles del pago';
           this.loading = false;
-          this.checkAndClearCart(res);
-        },
-        error: err => {
-          console.error('Error en confirmación:', err); // ✅ AGREGAR log
-          this.error = err.error || err;
-          this.loading = false;
+          
+          // Redirigir a login después de 2 segundos
+          setTimeout(() => {
+            this.router.navigate(['/login'], {
+              queryParams: { 
+                returnUrl: '/respuesta-pago',
+                id: id,
+                clientTransactionId: clientTxId
+              }
+            });
+          }, 2000);
+          return;
         }
-      });
+
+        // ✅ OBTENER TOKEN
+        let idToken: string | null = null;
+        try {
+          idToken = await this.usersService.getIdToken();
+          console.log('✅ Token obtenido para confirmación');
+        } catch (tokenError) {
+          console.error('❌ Error obteniendo token:', tokenError);
+          this.error = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
+          this.loading = false;
+          return;
+        }
+
+        if (!idToken) {
+          this.error = 'No se pudo verificar la autenticación';
+          this.loading = false;
+          return;
+        }
+
+        // ✅ CREAR HEADERS CON AUTENTICACIÓN
+        const headers = new HttpHeaders({
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        });
+
+        // ✅ LLAMAR A LA API CON AUTENTICACIÓN
+        this.http.post<any>(
+          'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
+          { id, clientTxId },
+          { headers }  // ✅ IMPORTANTE: Incluir headers
+        ).subscribe({
+          next: res => {
+            this.resultado = res;
+            this.currencyCode = res.currency || this.currencyCode;
+            this.loading = false;
+            this.checkAndClearCart(res);
+          },
+          error: err => {
+            console.error('❌ Error en confirmación:', err);
+            
+            // ✅ MEJORAR MANEJO DE ERRORES
+            if (err.status === 401 || err.status === 403) {
+              this.error = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
+              
+              // Modal de error
+              this.modalService.error({
+                nzTitle: 'Sesión Expirada',
+                nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+                nzOnOk: () => {
+                  this.router.navigate(['/login'], {
+                    queryParams: { 
+                      returnUrl: '/respuesta-pago',
+                      id: id,
+                      clientTransactionId: clientTxId
+                    }
+                  });
+                }
+              });
+            } else {
+              this.error = err.error?.error || 'Error al confirmar el pago';
+            }
+            
+            this.loading = false;
+          }
+        });
+
+      } catch (error) {
+        console.error('❌ Error general:', error);
+        this.error = 'Error inesperado. Por favor, intenta nuevamente.';
+        this.loading = false;
+      }
     });
   }
 
@@ -120,11 +198,11 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     if (shouldClearCart) {
       console.log('✅ Pago confirmado, limpiando carrito...');
 
-      // ✅ AGREGAR: Obtener datos del carrito ANTES de limpiarlo
+      // Obtener datos del carrito ANTES de limpiarlo
       const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
       const transactionId = confirmationResponse.transactionId;
 
-      // ✅ AGREGAR: Registrar compra (solo si hay items en el carrito)
+      // Registrar compra (solo si hay items en el carrito)
       if (currentCart && currentCart.items.length > 0) {
         try {
           await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
