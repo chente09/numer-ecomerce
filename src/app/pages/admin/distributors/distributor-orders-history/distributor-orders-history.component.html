@@ -1,0 +1,30 @@
+<div class="orders-history-container">
+    <nz-spin [nzSpinning]="isLoading">
+        <div class="table-container">
+            <nz-table #ordersTable [nzData]="(orders$ | async)!" [nzPageSize]="10" [nzShowPagination]="true">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>ID de Orden</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let order of ordersTable.data">
+                        <td>{{ order.createdAt.toDate() | date:'dd/MM/yyyy, h:mm a' }}</td>
+                        <td><code>{{ order.orderId }}</code></td>
+                        <td>{{ order.total | currency:'USD' }}</td>
+                        <td>
+                            <nz-tag [nzColor]="getStatusTag(order.status)">
+                                {{ order.status.replace('_', ' ') | titlecase }}
+                            </nz-tag>
+                        </td>
+                    </tr>
+                </tbody>
+            </nz-table>
+        </div>
+        <nz-empty *ngIf="!(orders$ | async)?.length && !isLoading"
+            nzNotFoundContent="No se encontraron pedidos."></nz-empty>
+    </nz-spin>
+</div>

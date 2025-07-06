@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CartService, CartItem, Cart } from '../services/cart/cart.service';
-import { Subject, takeUntil, firstValueFrom, take, catchError, of, debounceTime } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom, take, catchError, of, debounceTime, switchMap } from 'rxjs';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -50,6 +50,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
   errorMessage: string | null = null;
   categoryLoadError = false;
   isLoggingIn = false;
+  isDistributor = false;
 
   currentUser: User | null = null;
   canCheckout = false;
@@ -76,12 +77,18 @@ export class CarritoComponent implements OnInit, OnDestroy {
 
     // ✅ CORRECCIÓN: Usar takeUntil para evitar memory leaks
     this.usersService.user$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(user => {
-      this.currentUser = user;
-      this.updateCheckoutStatus();
+      takeUntil(this.destroy$),
+      switchMap(user => {
+        this.currentUser = user;
+        this.updateCheckoutStatus();
+        // Si hay usuario, obtenemos sus roles
+        // 🛠️ CORRECCIÓN AQUÍ: Especificamos el tipo del array vacío
+        return user ? this.usersService.getUserRoles() : of<string[]>([]);
+      })
+    ).subscribe(roles => {
+      // Ahora 'roles' será de tipo string[] y el error desaparecerá
+      this.isDistributor = roles.includes('distributor');
     });
-
 
     // ✅ CORRECCIÓN: Usar takeUntil para la suscripción del carrito
     this.cartService.cart$.pipe(
@@ -330,63 +337,58 @@ export class CarritoComponent implements OnInit, OnDestroy {
 
   // ✅ NUEVA IMPLEMENTACIÓN: Checkout completo con descuento de inventario
   async proceedToCheckout(): Promise<void> {
+    // 1. Validación inicial unificada
     if (!this.cart || this.cart.items.length === 0) {
       this.message.warning('Tu carrito está vacío.');
       return;
     }
-
     if (!this.canCheckout) {
-      if (!this.currentUser) {
-        this.router.navigate(['/welcome'], {
-          queryParams: { returnUrl: '/carrito' }
-        });
-      } else if (this.currentUser.isAnonymous) {
-        this.router.navigate(['/completar-perfil'], {
-          queryParams: { returnUrl: '/carrito' }
-        });
-      }
+      this.message.warning(this.checkoutMessage || 'No cumples los requisitos para proceder.');
+      // Redirigir si es necesario
+      if (!this.currentUser) this.router.navigate(['/welcome'], { queryParams: { returnUrl: '/carrito' } });
+      else if (this.currentUser.isAnonymous) this.router.navigate(['/completar-perfil'], { queryParams: { returnUrl: '/carrito' } });
       return;
     }
 
     this.processingCheckout = true;
 
     try {
-      console.log('🛒 Validando stock disponible para checkout...');
+      // 2. Lógica condicional basada en el rol
+      if (this.isDistributor) {
+        // --- FLUJO PARA DISTRIBUIDOR ---
+        this.message.info('Registrando pedido de distribuidor...');
+        const result = await this.cartService.createDistributorOrder();
 
-      // ✅ SOLO VALIDAR disponibilidad (sin descontar)
-      for (const item of this.cart.items) {
-        // Verificar stock en tiempo real
-        const currentVariant = await firstValueFrom(
-          this.cartService.getVariantById(item.variantId).pipe(take(1))
-        );
+        if (result.success) {
+          this.cartService.clearCart(); // Limpiamos el carrito primero
 
-        if (!currentVariant || currentVariant.stock < item.quantity) {
-          throw new Error(`❌ Stock insuficiente para ${item.product?.name}. Disponible: ${currentVariant?.stock || 0}, Solicitado: ${item.quantity}`);
+          // ✅ USAMOS UN MODAL DE ÉXITO EN LUGAR DE REDIRIGIR
+          this.modal.success({
+            nzTitle: '¡Pedido Registrado Exitosamente!',
+            nzContent: `Tu pedido #${result.orderId} ha sido creado. Nos pondremos en contacto para coordinar la entrega.`,
+            nzOkText: 'Entendido',
+            nzOnOk: () => this.router.navigate(['/shop']) // Opcional: redirigir a la tienda al cerrar
+          });
         }
+
+      } else {
+        // --- FLUJO PARA CLIENTE NORMAL ---
+        for (const item of this.cart.items) {
+          const currentVariant = await firstValueFrom(this.cartService.getVariantById(item.variantId));
+          if (!currentVariant || currentVariant.stock < item.quantity) {
+            throw new Error(`Stock insuficiente para ${item.product?.name}.`);
+          }
+        }
+        this.router.navigate(['/pago']);
       }
-
-      // ✅ VALIDACIÓN EXITOSA: Redirigir al proceso de pago
-      console.log('✅ Stock validado, redirigiendo al pago...');
-
-      this.router.navigate(['/pago'], {
-        queryParams: {
-          transId: `order-${Date.now()}`,
-          referencia: 'Compra desde carrito'
-        }
-      });
-
     } catch (error: any) {
-      console.error('❌ Error en validación:', error);
-
-      this.modal.error({
-        nzTitle: 'Problema con el stock',
-        nzContent: error.message || 'Algunos productos no tienen suficiente stock disponible.',
-        nzOkText: 'Revisar carrito'
-      });
+      console.error('❌ Error en el checkout:', error);
+      this.message.error(error.message || 'Ocurrió un error al procesar el pedido.');
     } finally {
       this.processingCheckout = false;
     }
   }
+
 
   // ✅ NUEVO: Verificar si un item tiene stock suficiente
   hasValidStock(item: CartItem): boolean {

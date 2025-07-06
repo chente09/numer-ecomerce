@@ -1,0 +1,56 @@
+<div class="movement-history-container">
+    <!-- ✅ BARRA DE BÚSQUEDA AÑADIDA -->
+    <nz-card class="filter-card">
+        <nz-input-group [nzSuffix]="suffixIconSearch">
+            <input 
+                type="text" 
+                nz-input 
+                placeholder="Buscar por producto, variante o notas..."
+                [(ngModel)]="searchTerm"
+                (ngModelChange)="applyFilters()"
+            />
+        </nz-input-group>
+        <ng-template #suffixIconSearch>
+            <span nz-icon nzType="search"></span>
+        </ng-template>
+    </nz-card>
+
+    <nz-spin [nzSpinning]="isLoading">
+        <!-- ✅ CONTENEDOR PARA SCROLL RESPONSIVO -->
+        <div class="table-container">
+            <!-- 🔄 La tabla ahora usa 'filteredMovements' -->
+            <nz-table #historyTable [nzData]="filteredMovements" [nzShowPagination]="true" [nzPageSize]="10">
+                <thead>
+                    <tr>
+                        <th nzWidth="120px">Fecha</th>
+                        <th>Tipo</th>
+                        <th>Producto</th>
+                        <th>Variante</th>
+                        <th nzAlign="center">Cantidad</th>
+                        <th>Notas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let item of historyTable.data">
+                        <td>{{ formatDate(item.timestamp) }}</td>
+                        <td>
+                            <nz-tag [nzColor]="getMovementTag(item.type).color">
+                                <span nz-icon [nzType]="getMovementTag(item.type).icon"></span>
+                                <span class="tag-text">{{ getMovementTag(item.type).text }}</span>
+                            </nz-tag>
+                        </td>
+                        <td>{{ item.productName }}</td>
+                        <td>{{ item.variantInfo }}</td>
+                        <td nzAlign="center">
+                            <strong [ngClass]="{'sale': item.type === 'distributor_sale' || item.type === 'transfer_in', 'transfer': item.type === 'transfer_out'}">
+                                {{ item.type === 'transfer_out' ? '+' : '-' }}{{ item.quantity }}
+                            </strong>
+                        </td>
+                        <td>{{ item.notes }}</td>
+                    </tr>
+                </tbody>
+            </nz-table>
+        </div>
+        <nz-empty *ngIf="!filteredMovements.length && !isLoading" nzNotFoundContent="No se encontraron movimientos que coincidan con tu búsqueda."></nz-empty>
+    </nz-spin>
+</div>

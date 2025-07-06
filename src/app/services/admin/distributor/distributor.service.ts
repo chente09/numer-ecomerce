@@ -14,7 +14,8 @@ import {
   increment,
   serverTimestamp,
   Timestamp,
-  FieldValue // Importar FieldValue
+  FieldValue, // Importar FieldValue
+  orderBy
 } from '@angular/fire/firestore';
 import { Observable, from, of, forkJoin, throwError } from 'rxjs';
 import { map, catchError, switchMap, take, tap } from 'rxjs/operators';
@@ -22,7 +23,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { UserProfile, UsersService } from '../../users/users.service'; // Importar UserProfile
 import { ProductInventoryService } from '../inventario/product-inventory.service';
-import { ProductVariant } from '../../../models/models'; // Importar ProductVariant
+import { ProductVariant, Order } from '../../../models/models'; // Importar ProductVariant
 import { CacheService } from '../cache/cache.service';
 import { ErrorUtil } from '../../../utils/error-util'; // Asegúrate de tener esta utilidad
 
@@ -464,4 +465,27 @@ export class DistributorService {
     // 4. Ejecutar la transacción
     await batch.commit();
   }
+
+  /**
+   * Obtiene todos los pedidos realizados por un distribuidor específico.
+   */
+  getDistributorOrders(distributorId: string): Observable<Order[]> {
+    const ordersRef = collection(this.firestore, 'orders');
+    const q = query(
+      ordersRef,
+      where('distributorId', '==', distributorId),
+      orderBy('createdAt', 'desc')
+    );
+
+    return from(getDocs(q)).pipe(
+      map(snapshot => {
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      }),
+      catchError(error => {
+        console.error('Error obteniendo los pedidos del distribuidor:', error);
+        return of([]);
+      })
+    );
+  }
+
 }

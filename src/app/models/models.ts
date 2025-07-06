@@ -67,7 +67,7 @@ export interface ProductVariant {
     discountValue?: number;  // Valor del descuento
     discountedPrice?: number;  // Precio con descuento calculado
     originalPrice?: number;  // Precio original antes del descuento
-    checked?: boolean; 
+    checked?: boolean;
 }
 export interface AdditionalImageItem {
     file?: File;           // Solo para nuevas imágenes
@@ -220,4 +220,19 @@ export interface UserProfile {
     profileCompleted?: boolean;
     defaultAddress?: any; // Considerar definir una interfaz para Address
     updatedAt?: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
+}
+
+import { CartItem } from '../pasarela-pago/services/cart/cart.service';
+
+export interface Order {
+    id: string; // El ID del documento de Firestore
+    orderId: string; // El ID que generamos (ej. dist-order-12345)
+    distributorId?: string; // UID del distribuidor
+    userId?: string; // UID del cliente normal
+    items: CartItem[];
+    total: number;
+    status: 'pending_distributor_payment' | 'pending_payment' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'completed';
+    paymentMethod: 'distributor_credit' | 'payphone' | string;
+    createdAt: Timestamp; // Usamos Timestamp de Firestore
+    updatedAt?: Timestamp;
 }

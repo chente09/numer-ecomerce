@@ -57,7 +57,8 @@
                   [attr.aria-label]="'Color: ' + (item.variant.colorName || 'No especificado')">
                 </div>
                 <span class="variant-text">
-                  {{ (item.variant.colorName || 'Color no especificado') + ' / ' + (item.variant.sizeName || 'Talla no especificada') }}
+                  {{ (item.variant.colorName || 'Color no especificado') + ' / ' + (item.variant.sizeName || 'Talla no
+                  especificada') }}
                 </span>
               </div>
               <!-- Fallback si no hay variant -->
@@ -167,16 +168,25 @@
 
         <!-- Usuario registrado -->
         <div class="checkout-actions">
-          <button class="mobile-clear" (click)="clearCart()" [disabled]="updating">
-            Limpiar
-          </button>
           <div *ngIf="currentUser && !currentUser.isAnonymous">
             <button class="checkout-btn" [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout"
               (click)="proceedToCheckout()">
-              <span *ngIf="!processingCheckout">Botón de pago</span>
+              <span *ngIf="!processingCheckout">
+                <!-- ✅ Lógica condicional para el texto -->
+                <ng-container *ngIf="!isDistributor; else distributorText">Botón de pago</ng-container>
+                <ng-template #distributorText>Registrar Pedido</ng-template>
+              </span>
               <span *ngIf="processingCheckout">Procesando...</span>
             </button>
           </div>
+        </div>
+
+        <div *ngIf="cart && cart.items.length > 0" class="mobile-actions">
+          <button class="mobile-checkout" (click)="proceedToCheckout()"
+            [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout">
+            <ng-container *ngIf="!isDistributor; else mobileDistributorText">Pagar ${{ cart.total | number:'1.2-2'}}</ng-container>
+            <ng-template #mobileDistributorText>Registrar Pedido</ng-template>
+          </button>
         </div>
       </div>
     </div>

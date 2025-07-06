@@ -1,0 +1,37 @@
+.filter-card {
+    margin-bottom: 16px;
+}
+
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-container nz-table {
+    min-width: 600px; /* Ancho mínimo para evitar que las columnas se rompan */
+}
+
+.sale {
+    color: #cf1322; /* Rojo para ventas y devoluciones (salidas de stock) */
+}
+
+.transfer {
+    color: #096dd9; /* Azul para transferencias (entradas de stock) */
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+    .movement-history-container {
+        padding: 8px;
+    }
+
+    .tag-text {
+        display: none; /* Oculta el texto en las etiquetas en móvil, deja solo el ícono */
+    }
+
+    :host ::ng-deep .ant-table-tbody > tr > td,
+    :host ::ng-deep .ant-table-thead > tr > th {
+        padding: 8px 6px;
+        font-size: 12px;
+    }
+}

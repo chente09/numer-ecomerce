@@ -25,6 +25,10 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { FormsModule } from '@angular/forms';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { MovementHistoryComponent } from "../movement-history-component/movement-history-component.component";
+import { NzTabsModule } from 'ng-zorro-antd/tabs';
+import { DistributorOrdersHistoryComponent } from "../distributor-orders-history/distributor-orders-history.component";
 
 // Reutilizamos las mismas interfaces
 export interface EnrichedDistributorInventoryItem extends DistributorInventoryItem {
@@ -69,8 +73,12 @@ export interface GroupedInventoryProduct {
     NzToolTipModule,
     NzInputNumberModule,
     FormsModule,
-    NzModalModule
-  ],
+    NzModalModule,
+    NzInputModule,
+    NzTabsModule,
+    MovementHistoryComponent,
+    DistributorOrdersHistoryComponent
+],
   templateUrl: './my-inventory.component.html',
   styleUrl: './my-inventory.component.css'
 })
@@ -82,6 +90,13 @@ export class MyInventoryComponent implements OnInit {
   currentUserId: string | null = null;
   @ViewChild('saleModalContent', { static: false }) saleModalContent!: TemplateRef<any>;
   quantityToSell: number = 1;
+
+  // Almacena la lista original sin filtrar
+  private originalGroupedInventory: GroupedInventoryProduct[] = []; 
+  // La lista que se mostrará en la tabla (ya filtrada)
+  filteredGroupedInventory: GroupedInventoryProduct[] = [];
+  // El término de búsqueda del input
+  searchTerm: string = '';
 
   constructor(
     private distributorService: DistributorService,
@@ -106,7 +121,7 @@ export class MyInventoryComponent implements OnInit {
     this.isLoading = true;
     this.distributorService.getDistributorInventory(distributorId).pipe(
       switchMap(inventoryItems => {
-        if (inventoryItems.length === 0) return of({ enriched: [], grouped: [], stats: null });
+        if (inventoryItems.length === 0) return of({ grouped: [], stats: null });
 
         const productIds = [...new Set(inventoryItems.map(item => item.productId))];
         const productObservables = productIds.map(id => this.productService.getProductById(id).pipe(catchError(() => of(null))));
@@ -127,10 +142,9 @@ export class MyInventoryComponent implements OnInit {
               };
             });
 
-            // Procesamos los datos
             const stats = this.calculateStats(enriched);
             const grouped = this.groupInventoryByProduct(enriched);
-            return { enriched, grouped, stats };
+            return { grouped, stats };
           })
         );
       }),
@@ -141,7 +155,9 @@ export class MyInventoryComponent implements OnInit {
     ).subscribe({
       next: (result) => {
         this.inventoryStats = result.stats;
-        this.groupedInventory = result.grouped;
+        // Guardamos la lista completa y la filtrada
+        this.originalGroupedInventory = result.grouped;
+        this.applyFilters(); // Aplicamos los filtros
       },
       error: (err) => {
         this.message.error(`Error al cargar tu inventario.`);
@@ -149,6 +165,43 @@ export class MyInventoryComponent implements OnInit {
       }
     });
   }
+
+  // ✅ 5. AÑADE EL MÉTODO PARA APLICAR LOS FILTROS
+  applyFilters(): void {
+    const term = this.searchTerm.toLowerCase().trim();
+
+    // Si no hay término de búsqueda, mostramos todo
+    if (!term) {
+      this.filteredGroupedInventory = [...this.originalGroupedInventory];
+      return;
+    }
+
+    // Filtramos la lista original
+    this.filteredGroupedInventory = this.originalGroupedInventory
+      .map(product => {
+        // Creamos una copia del producto para no modificar el original
+        const newProduct = { ...product };
+        
+        // Filtramos las variantes (hijos) que coincidan con la búsqueda
+        newProduct.children = product.children.filter(variant => 
+          variant.productName?.toLowerCase().includes(term) ||
+          variant.productModel?.toLowerCase().includes(term) ||
+          variant.colorName.toLowerCase().includes(term) ||
+          variant.sizeName.toLowerCase().includes(term) ||
+          variant.sku.toLowerCase().includes(term)
+        );
+        
+        return newProduct;
+      })
+      // Mantenemos en la lista final solo los productos cuyo nombre coincida
+      // O que tengan al menos una variante que coincida.
+      .filter(product => 
+        product.productName?.toLowerCase().includes(term) || 
+        product.productModel?.toLowerCase().includes(term) ||
+        product.children.length > 0
+      );
+  }
+
 
   registerSale(item: EnrichedDistributorInventoryItem): void {
     // Reseteamos la cantidad a 1 cada vez que se abre el modal

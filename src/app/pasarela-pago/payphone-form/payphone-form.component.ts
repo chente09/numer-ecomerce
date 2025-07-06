@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CartService, Cart } from '../services/cart/cart.service';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -280,7 +280,8 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private callPayphoneAPI(data: PayphoneInitData): Observable<any> {
     return this.cartService.cart$.pipe(
       take(1),
-      switchMap(cart => {
+      // Usamos switchMap para poder usar async/await y obtener el token
+      switchMap(async (cart) => {
         const cartItems = cart.items.map(item => ({
           productId: item.productId,
           variantId: item.variantId,
@@ -290,11 +291,23 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           variantName: `${item.variant?.colorName}-${item.variant?.sizeName}`
         }));
 
-        return this.http.post(PAYPHONE_CONFIG.API_ENDPOINT, {
-          ...data,
-          cartItems, // ✅ Enviar items al backend
-          userId: this.getCurrentUserId() || 'anonymous'
+        // ✅ 1. Obtenemos el token de autenticación
+        const idToken = await this.usersService.getIdToken();
+        if (!idToken) {
+          throw new Error('Usuario no autenticado');
+        }
+
+        // ✅ 2. Creamos las cabeceras con el token
+        const headers = new HttpHeaders({
+          'Authorization': `Bearer ${idToken}`
         });
+
+        // ✅ 3. Ya no enviamos el userId en el cuerpo
+        const payload = { ...data, cartItems };
+
+        return firstValueFrom(
+          this.http.post(PAYPHONE_CONFIG.API_ENDPOINT, payload, { headers })
+        );
       }),
       catchError(error => {
         throw ErrorUtil.handleCatchError(error, 'PayphoneAPI');
@@ -398,7 +411,11 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       this.setCurrentStep(2);
       this.setError(null);
 
-      console.log('🔄 Confirmando pago con backend...', response);
+      // ✅ Obtenemos el token para la llamada de confirmación
+      const idToken = await this.usersService.getIdToken();
+      const headers = new HttpHeaders({
+        'Authorization': `Bearer ${idToken}`
+      });
 
       const confirmationResponse = await firstValueFrom(
         this.http.post<ConfirmationResponse>(
@@ -406,12 +423,13 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           {
             id: response['id'] || response.transactionId,
             clientTxId: response.clientTransactionId || this.transactionId
-          }
+          },
+          { headers } // ✅ Enviamos las cabeceras seguras
         )
       );
 
+      // ... el resto de tu lógica de confirmación no cambia
       console.log('📋 Respuesta de confirmación:', confirmationResponse);
-
       const shouldClearCart = confirmationResponse && (
         confirmationResponse.inventoryProcessed === true ||
         confirmationResponse.transactionStatus === 'Approved'
@@ -419,23 +437,17 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (shouldClearCart) {
         console.log('✅ Inventario procesado exitosamente, limpiando carrito...');
-
-        // ✅ AGREGAR: Obtener datos del carrito ANTES de limpiarlo
         const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
         const transactionId = response['id'] || response.transactionId || this.transactionId;
-
-        // ✅ AGREGAR: Registrar compra
         try {
           await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
           console.log('💰 Compra registrada exitosamente');
         } catch (error) {
           console.warn('Error registrando compra:', error);
         }
-
         this.cartService.clearCart();
         this.setPaymentResult(confirmationResponse);
         this.setLoading(false);
-
       } else {
         console.warn('⚠️ Pago no confirmado:', confirmationResponse);
         this.setCurrentStep(1);
