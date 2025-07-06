@@ -277,43 +277,92 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ✅ PRESERVADO: Llamada a API (sin cambios)
-  private callPayphoneAPI(data: PayphoneInitData): Observable<any> {
-    return this.cartService.cart$.pipe(
-      take(1),
-      // Usamos switchMap para poder usar async/await y obtener el token
-      switchMap(async (cart) => {
-        const cartItems = cart.items.map(item => ({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          productName: item.product?.name,
-          variantName: `${item.variant?.colorName}-${item.variant?.sizeName}`
-        }));
+  // En tu PayphoneFormComponent, modifica el método callPayphoneAPI:
 
-        // ✅ 1. Obtenemos el token de autenticación
-        const idToken = await this.usersService.getIdToken();
-        if (!idToken) {
-          throw new Error('Usuario no autenticado');
-        }
+private callPayphoneAPI(data: PayphoneInitData): Observable<any> {
+  return this.cartService.cart$.pipe(
+    take(1),
+    switchMap(async (cart) => {
+      // 🔍 DEBUG: Verificar usuario actual
+      const currentUser = this.usersService.getCurrentUser();
+      console.log('🔍 Usuario actual:', {
+        isAuthenticated: !!currentUser,
+        uid: currentUser?.uid,
+        email: currentUser?.email,
+        isAnonymous: currentUser?.isAnonymous
+      });
 
-        // ✅ 2. Creamos las cabeceras con el token
-        const headers = new HttpHeaders({
-          'Authorization': `Bearer ${idToken}`
+      // ✅ Verificar que el usuario no sea anónimo
+      if (!currentUser || currentUser.isAnonymous) {
+        throw new Error('Debes iniciar sesión para continuar con el pago');
+      }
+
+      const cartItems = cart.items.map(item => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        productName: item.product?.name,
+        variantName: `${item.variant?.colorName}-${item.variant?.sizeName}`
+      }));
+
+      // ✅ Obtener el token con manejo de errores mejorado
+      let idToken: string | null = null;
+      try {
+        idToken = await this.usersService.getIdToken();
+        console.log('✅ Token obtenido:', idToken ? 'Sí' : 'No');
+        console.log('📏 Longitud del token:', idToken?.length || 0);
+      } catch (error) {
+        console.error('❌ Error obteniendo token:', error);
+        throw new Error('Error de autenticación. Por favor, inicia sesión nuevamente.');
+      }
+
+      if (!idToken) {
+        throw new Error('No se pudo obtener el token de autenticación');
+      }
+
+      // ✅ Crear headers con el token
+      const headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      });
+
+      // 🔍 DEBUG: Log de headers
+      console.log('📤 Enviando request con headers:', {
+        hasAuth: headers.has('Authorization'),
+        authLength: headers.get('Authorization')?.length
+      });
+
+      const payload = { 
+        ...data, 
+        cartItems,
+        userId: currentUser.uid // Agregar userId al payload
+      };
+
+      return firstValueFrom(
+        this.http.post(PAYPHONE_CONFIG.API_ENDPOINT, payload, { headers })
+      );
+    }),
+    catchError(error => {
+      console.error('❌ Error en callPayphoneAPI:', error);
+      
+      // Mejorar mensajes de error
+      if (error.message.includes('autenticación')) {
+        this.modalService.error({
+          nzTitle: 'Error de Autenticación',
+          nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+          nzOnOk: () => {
+            this.router.navigate(['/login'], { 
+              queryParams: { returnUrl: '/pago' } 
+            });
+          }
         });
-
-        // ✅ 3. Ya no enviamos el userId en el cuerpo
-        const payload = { ...data, cartItems };
-
-        return firstValueFrom(
-          this.http.post(PAYPHONE_CONFIG.API_ENDPOINT, payload, { headers })
-        );
-      }),
-      catchError(error => {
-        throw ErrorUtil.handleCatchError(error, 'PayphoneAPI');
-      })
-    );
-  }
+      }
+      
+      throw ErrorUtil.handleCatchError(error, 'PayphoneAPI');
+    })
+  );
+}
 
   private getCurrentUserId(): string | null {
     const user = this.usersService.getCurrentUser();
@@ -405,63 +454,137 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ✅ NUEVO: Método para confirmar pago y limpiar carrito
-  private async confirmPaymentAndCleanCart(response: PayphoneResponse): Promise<void> {
+  // En PayphoneFormComponent, actualiza el método confirmPaymentAndCleanCart:
+
+private async confirmPaymentAndCleanCart(response: PayphoneResponse): Promise<void> {
+  try {
+    this.setLoading(true);
+    this.setCurrentStep(2);
+    this.setError(null);
+
+    // 🔍 DEBUG: Verificar estado de autenticación
+    const currentUser = this.usersService.getCurrentUser();
+    console.log('🔍 Usuario en confirmación:', {
+      isAuthenticated: !!currentUser,
+      uid: currentUser?.uid,
+      email: currentUser?.email
+    });
+
+    // ✅ Obtener token con mejor manejo de errores
+    let idToken: string | null = null;
     try {
-      this.setLoading(true);
-      this.setCurrentStep(2);
-      this.setError(null);
-
-      // ✅ Obtenemos el token para la llamada de confirmación
-      const idToken = await this.usersService.getIdToken();
-      const headers = new HttpHeaders({
-        'Authorization': `Bearer ${idToken}`
-      });
-
-      const confirmationResponse = await firstValueFrom(
-        this.http.post<ConfirmationResponse>(
-          'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
-          {
-            id: response['id'] || response.transactionId,
-            clientTxId: response.clientTransactionId || this.transactionId
-          },
-          { headers } // ✅ Enviamos las cabeceras seguras
-        )
-      );
-
-      // ... el resto de tu lógica de confirmación no cambia
-      console.log('📋 Respuesta de confirmación:', confirmationResponse);
-      const shouldClearCart = confirmationResponse && (
-        confirmationResponse.inventoryProcessed === true ||
-        confirmationResponse.transactionStatus === 'Approved'
-      );
-
-      if (shouldClearCart) {
-        console.log('✅ Inventario procesado exitosamente, limpiando carrito...');
-        const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
-        const transactionId = response['id'] || response.transactionId || this.transactionId;
-        try {
-          await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
-          console.log('💰 Compra registrada exitosamente');
-        } catch (error) {
-          console.warn('Error registrando compra:', error);
+      idToken = await this.usersService.getIdToken();
+      console.log('✅ Token para confirmación obtenido:', !!idToken);
+    } catch (tokenError) {
+      console.error('❌ Error obteniendo token para confirmación:', tokenError);
+      
+      // Intentar reautenticar
+      this.modalService.error({
+        nzTitle: 'Sesión Expirada',
+        nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+        nzOnOk: () => {
+          this.router.navigate(['/login'], { 
+            queryParams: { 
+              returnUrl: '/pago',
+              transId: this.transactionId 
+            } 
+          });
         }
-        this.cartService.clearCart();
-        this.setPaymentResult(confirmationResponse);
-        this.setLoading(false);
-      } else {
-        console.warn('⚠️ Pago no confirmado:', confirmationResponse);
-        this.setCurrentStep(1);
-        this.setError('Pago pendiente de confirmación');
-      }
-
-    } catch (error: any) {
-      console.error('❌ Error confirmando pago:', error);
-      this.setCurrentStep(1);
-      this.setError(`Error en confirmación: ${error.message}`);
-    } finally {
-      this.setLoading(false);
+      });
+      return;
     }
+
+    if (!idToken) {
+      throw new Error('No se pudo obtener token de autenticación');
+    }
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${idToken}`
+    });
+
+    // 🔍 DEBUG: Log del request
+    const confirmationPayload = {
+      id: response['id'] || response.transactionId,
+      clientTxId: response.clientTransactionId || this.transactionId
+    };
+    
+    console.log('📤 Enviando confirmación:', {
+      url: 'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
+      payload: confirmationPayload,
+      hasAuth: headers.has('Authorization')
+    });
+
+    const confirmationResponse = await firstValueFrom(
+      this.http.post<ConfirmationResponse>(
+        'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
+        confirmationPayload,
+        { headers }
+      ).pipe(
+        catchError(error => {
+          console.error('❌ Error HTTP en confirmación:', error);
+          
+          // Analizar el tipo de error
+          if (error.status === 401) {
+            throw new Error('Error de autenticación. Por favor, inicia sesión nuevamente.');
+          } else if (error.status === 403) {
+            throw new Error('Token inválido o expirado. Por favor, inicia sesión nuevamente.');
+          } else if (error.status === 0) {
+            throw new Error('Error de conexión. Verifica tu conexión a internet.');
+          }
+          
+          throw error;
+        })
+      )
+    );
+
+    console.log('📋 Respuesta de confirmación:', confirmationResponse);
+    
+    const shouldClearCart = confirmationResponse && (
+      confirmationResponse.inventoryProcessed === true ||
+      confirmationResponse.transactionStatus === 'Approved'
+    );
+
+    if (shouldClearCart) {
+      console.log('✅ Inventario procesado exitosamente, limpiando carrito...');
+      const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
+      const transactionId = response['id'] || response.transactionId || this.transactionId;
+      
+      try {
+        await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
+        console.log('💰 Compra registrada exitosamente');
+      } catch (error) {
+        console.warn('Error registrando compra:', error);
+      }
+      
+      this.cartService.clearCart();
+      this.setPaymentResult(confirmationResponse);
+      this.setLoading(false);
+    } else {
+      console.warn('⚠️ Pago no confirmado:', confirmationResponse);
+      this.setCurrentStep(1);
+      this.setError('Pago pendiente de confirmación');
+    }
+
+  } catch (error: any) {
+    console.error('❌ Error en confirmación:', error);
+    this.setCurrentStep(1);
+    
+    // Mejorar el mensaje de error basado en el tipo
+    let errorMessage = 'Error en confirmación';
+    if (error.message.includes('autenticación') || error.message.includes('Token')) {
+      errorMessage = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
+    } else if (error.message.includes('conexión')) {
+      errorMessage = 'Error de conexión. Por favor, verifica tu internet e intenta nuevamente.';
+    } else {
+      errorMessage = `Error: ${error.message}`;
+    }
+    
+    this.setError(errorMessage);
+  } finally {
+    this.setLoading(false);
   }
+}
 
   // ✅ NUEVOS métodos auxiliares
   private setCurrentStep(step: number): void {
