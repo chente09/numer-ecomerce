@@ -18,7 +18,7 @@ import { firstValueFrom, Subject, take, takeUntil } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ActivityLogService } from '../../services/admin/activityLog/activity-log.service';
 import { UsersService } from '../../services/users/users.service';
-import { NzModalService } from 'ng-zorro-antd/modal';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 
 interface PaymentResult {
   transactionStatus: string;
@@ -42,6 +42,8 @@ interface PaymentResult {
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
+    // Módulos que ya tenías
     NzSpinModule,
     NzResultModule,
     NzButtonModule,
@@ -51,7 +53,7 @@ interface PaymentResult {
     NzAlertModule,
     NzIconModule,
     NzStepsModule,
-    RouterLink
+    NzModalModule
   ],
   templateUrl: './respuesta-pago.component.html',
   styleUrl: './respuesta-pago.component.css'
