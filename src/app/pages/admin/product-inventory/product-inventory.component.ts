@@ -33,6 +33,7 @@ import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { InventoryTransferModalComponent } from '../inventory-transfer-modal/inventory-transfer-modal.component';// 🆕 Importar el nuevo modal
+import { DistributorLedgerService } from '../../../services/admin/distributorLedger/distributor-ledger.service';
 
 // 🚀 Interfaces para filtros y selección
 interface FilterOption {
@@ -163,7 +164,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
     private promotionService: PromotionService,
     private productPriceService: ProductPriceService,
     private promotionStateService: PromotionStateService,
-    private zone: NgZone
+    private zone: NgZone,
+    private ledgerService: DistributorLedgerService
   ) {
     // 🆕 DETECTAR TAMAÑO DE PANTALLA
     this.checkScreenSize();
@@ -1529,37 +1531,32 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
    * @param variant La variante de producto a transferir.
    */
   openTransferModal(variant: ProductVariant): void {
-    if (!this.product) return;
+    if (!this.product) {
+      this.message.error('No se pudo obtener la información del producto');
+      return;
+    }
 
-    let modalRef: NzModalRef;
+    console.log('🔍 Debug - Abriendo modal con:', {
+      product: this.product,
+      variant: variant
+    });
 
-    modalRef = this.modal.create({
+    const modalRef = this.modal.create({
       nzTitle: 'Transferir Stock a Distribuidor',
       nzContent: InventoryTransferModalComponent,
       nzWidth: this.getModalWidth(),
       nzMaskClosable: false,
+      // ✅ CORRECCIÓN: Pasar objetos completos, no solo IDs
       nzData: {
-        productId: this.product.id,
-        variantId: variant.id
+        product: this.product,     // ✅ Objeto completo del producto
+        variant: variant           // ✅ Objeto completo de la variante
       },
-      nzFooter: [
-        {
-          label: 'Cancelar',
-          onClick: () => modalRef.destroy()
-        },
-        {
-          label: 'Transferir Stock',
-          type: 'primary',
-          loading: () => modalRef.componentInstance?.isLoading || false,
-          disabled: () => !modalRef.componentInstance?.transferForm.valid,
-          onClick: () => modalRef.componentInstance?.submitForm()
-        }
-      ]
+      nzFooter: null  // ✅ El modal maneja sus propios botones
     });
 
-    // Escuchamos cuando el modal se cierra
+    // Escuchamos cuando el modal se cierra exitosamente
     modalRef.afterClose.subscribe((result: any) => {
-      if (result) {
+      if (result && result.success) {
         this.onTransferSuccess();
       }
     });

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { addDoc, collection, collectionData, deleteDoc, doc, Firestore, getDoc, updateDoc } from '@angular/fire/firestore';
+import { addDoc, collection, collectionData, deleteDoc, doc, Firestore, getDoc, getDocs, updateDoc } from '@angular/fire/firestore';
 import { CacheService } from '../cache/cache.service';
-import { catchError, from, map, Observable, of, throwError, take, finalize } from 'rxjs';
+import { catchError, from, map, Observable, of, throwError, take } from 'rxjs';
 import { Promotion } from '../../../models/models';
 
 @Injectable({
@@ -12,9 +12,6 @@ export class PromotionService {
   private firestore = inject(Firestore);
   private collectionName = 'promotions';
 
-  // Claves de caché
-  private readonly promotionsCacheKey = 'promotions';
-  private readonly activePromotionsCacheKey = 'active_promotions';
 
   constructor(
     private cacheService: CacheService
@@ -22,151 +19,134 @@ export class PromotionService {
   }
 
   /**
-   * 🚀 CORREGIDO: Obtiene todas las promociones
+   * Obtiene todas las promociones directamente desde Firestore, sin caché.
+   * @returns Un Observable que emite un array de objetos Promotion.
    */
   getPromotions(): Observable<Promotion[]> {
-    return this.cacheService.getCached<Promotion[]>(this.promotionsCacheKey, () => {
-      
-      const promotionsRef = collection(this.firestore, this.collectionName);
-      return collectionData(promotionsRef, { idField: 'id' }).pipe(
-        take(1), // ✅ CRÍTICO: Forzar que se complete después del primer emit
-        map(data => {
-          
-          return (data as any[]).map(promo => {
-            // Convertir fechas desde Firestore
-            let startDate: Date;
-            let endDate: Date;
+    const promotionsRef = collection(this.firestore, this.collectionName);
 
-            try {
-              // Para Timestamp de Firestore
-              if (promo.startDate && typeof promo.startDate === 'object' && 'seconds' in promo.startDate) {
-                startDate = new Date(promo.startDate.seconds * 1000);
-              } else if (promo.startDate) {
-                startDate = new Date(promo.startDate);
-              } else {
-                startDate = new Date();
-              }
+    return from(getDocs(promotionsRef)).pipe(
+      map(snapshot => {
+        return snapshot.docs.map(doc => {
+          const promo = doc.data(); // promo es de tipo DocumentData
+          let startDate: Date;
+          let endDate: Date;
 
-              if (promo.endDate && typeof promo.endDate === 'object' && 'seconds' in promo.endDate) {
-                endDate = new Date(promo.endDate.seconds * 1000);
-              } else if (promo.endDate) {
-                endDate = new Date(promo.endDate);
-              } else {
-                // Fecha de fin predeterminada: 30 días después de la fecha de inicio
-                endDate = new Date(startDate);
-                endDate.setDate(endDate.getDate() + 30);
-              }
-            } catch (e) {
-              console.error(`❌ PromotionService: Error procesando fechas para promoción ${promo.id}:`, e);
+          try {
+            // ✅ Cambio aquí: usa promo['startDate'] en lugar de promo.startDate
+            if (promo['startDate'] && typeof promo['startDate'].toDate === 'function') {
+              startDate = promo['startDate'].toDate();
+            } else if (promo['startDate']) {
+              startDate = new Date(promo['startDate']);
+            } else {
               startDate = new Date();
-              endDate = new Date();
-              endDate.setDate(endDate.getDate() + 30);
             }
 
-            const promotion = {
-              ...promo,
-              startDate,
-              endDate
-            } as Promotion;
-            // Retornar objeto promoción con fechas convertidas
-            return promotion;
-          });
-        }),
-        catchError(error => {
-          console.error('❌ PromotionService: Error al obtener promociones:', error);
-          return of([]);
-        }),
-      );
-    });
+            // ✅ Cambio aquí: usa promo['endDate'] en lugar de promo.endDate
+            if (promo['endDate'] && typeof promo['endDate'].toDate === 'function') {
+              endDate = promo['endDate'].toDate();
+            } else if (promo['endDate']) {
+              endDate = new Date(promo['endDate']);
+            } else {
+              endDate = new Date(startDate);
+              endDate.setDate(endDate.getDate() + 30);
+            }
+          } catch (e) {
+            console.error(`❌ Error al procesar fechas para la promoción ${doc.id}:`, e);
+            startDate = new Date();
+            endDate = new Date();
+            endDate.setDate(endDate.getDate() + 30);
+          }
+          
+          return {
+            id: doc.id,
+            ...promo,
+            startDate,
+            endDate
+          } as Promotion;
+        });
+      }),
+      catchError(error => {
+        console.error('❌ PromotionService: Error al obtener promociones:', error);
+        return of([]);
+      }),
+    );
   }
 
   /**
-   * 🚀 CORREGIDO: Obtiene una promoción por ID
+   * Obtiene una promoción específica por su ID, sin usar caché.
+   * @param id El ID del documento de la promoción a obtener.
+   * @returns Un Observable que emite un objeto Promotion o null si no se encuentra.
    */
   getPromotionById(id: string): Observable<Promotion | null> {
     if (!id) {
       return of(null);
     }
+    
+    const docRef = doc(this.firestore, this.collectionName, id);
 
-    const cacheKey = `${this.promotionsCacheKey}_${id}`;
+    return from(getDoc(docRef)).pipe(
+      map(docSnap => {
+        if (!docSnap.exists()) {
+          console.warn(`PromotionService: No se encontró promoción con ID: ${id}`);
+          return null;
+        }
 
-    return this.cacheService.getCached<Promotion | null>(cacheKey, () => {      
-      const docRef = doc(this.firestore, this.collectionName, id);
+        const data = docSnap.data(); // data es de tipo DocumentData
+        let startDate: Date;
+        let endDate: Date;
 
-      return from(getDoc(docRef)).pipe(
-        map(doc => {
-          if (!doc.exists()) {
-            console.log(`❌ PromotionService: No se encontró promoción con ID: ${id}`);
-            return null;
-          }
-
-          const data = doc.data();
-
-          // Convertir fechas de manera más robusta
-          let startDate: Date;
-          let endDate: Date;
-
-          try {
-            // Para objetos Timestamp de Firestore
-            if (data['startDate'] && typeof data['startDate'] === 'object' && 'seconds' in data['startDate']) {
-              startDate = new Date(data['startDate'].seconds * 1000);
-            } else if (data['startDate']) {
-              startDate = new Date(data['startDate']);
-            } else {
-              startDate = new Date();
-            }
-
-            if (data['endDate'] && typeof data['endDate'] === 'object' && 'seconds' in data['endDate']) {
-              endDate = new Date(data['endDate'].seconds * 1000);
-            } else if (data['endDate']) {
-              endDate = new Date(data['endDate']);
-            } else {
-              endDate = new Date();
-              endDate.setDate(endDate.getDate() + 30);
-            }
-          } catch (e) {
-            console.error(`❌ PromotionService: Error procesando fechas para promoción ${id}:`, e);
+        try {
+          // ✅ Cambio aquí: usa data['startDate'] en lugar de data.startDate
+          if (data['startDate'] && typeof data['startDate'].toDate === 'function') {
+            startDate = data['startDate'].toDate();
+          } else if (data['startDate']) {
+            startDate = new Date(data['startDate']);
+          } else {
             startDate = new Date();
-            endDate = new Date();
+          }
+          
+          // ✅ Cambio aquí: usa data['endDate'] en lugar de data.endDate
+          if (data['endDate'] && typeof data['endDate'].toDate === 'function') {
+            endDate = data['endDate'].toDate();
+          } else if (data['endDate']) {
+            endDate = new Date(data['endDate']);
+          } else {
+            endDate = new Date(startDate);
             endDate.setDate(endDate.getDate() + 30);
           }
+        } catch (e) {
+          console.error(`❌ Error al procesar fechas para la promoción ${id}:`, e);
+          startDate = new Date();
+          endDate = new Date();
+          endDate.setDate(endDate.getDate() + 30);
+        }
 
-          const promotion = {
-            id: doc.id,
-            ...data,
-            startDate,
-            endDate,
-            // Asegurar que isActive sea un booleano
-            isActive: data['isActive'] === true
-          } as Promotion;
-
-          return promotion;
-        }),
-        catchError(error => {
-          console.error(`❌ PromotionService: Error al obtener promoción ${id}:`, error);
-          return of(null);
-        }),
-      );
-    });
+        return {
+          id: docSnap.id,
+          ...data,
+          startDate,
+          endDate,
+          // ✅ Cambio aquí: usa data['isActive']
+          isActive: data['isActive'] === true
+        } as Promotion;
+      }),
+      catchError(error => {
+        console.error(`❌ PromotionService: Error al obtener promoción ${id}:`, error);
+        return of(null);
+      }),
+    );
   }
+
+
 
   /**
    * 🚀 CORREGIDO: Crea una nueva promoción
    */
   createPromotion(promotion: Promotion): Observable<string> {
-    
     const promotionsRef = collection(this.firestore, this.collectionName);
-    return from(addDoc(promotionsRef, {
-      ...promotion,
-      createdAt: new Date()
-    })).pipe(
-      map(docRef => {
-        
-        // Invalidar caché después de crear
-        this.invalidatePromotionCache();
-        
-        return docRef.id;
-      }),
+    return from(addDoc(promotionsRef, { ...promotion, createdAt: new Date() })).pipe(
+      map(docRef => docRef.id), // ✅ No se necesita invalidar caché
       catchError(error => {
         console.error('❌ PromotionService: Error al crear promoción:', error);
         return throwError(() => error);
@@ -178,19 +158,9 @@ export class PromotionService {
    * 🚀 CORREGIDO: Actualiza una promoción existente
    */
   updatePromotion(id: string, promotion: Partial<Promotion>): Observable<void> {
-    if (!id) {
-      return throwError(() => new Error('ID de promoción no proporcionado'));
-    }
-    
     const docRef = doc(this.firestore, this.collectionName, id);
-    return from(updateDoc(docRef, {
-      ...promotion,
-      updatedAt: new Date()
-    })).pipe(
-      map(() => {        
-        // Invalidar caché después de actualizar
-        this.invalidatePromotionCache(id);
-      }),
+    return from(updateDoc(docRef, { ...promotion, updatedAt: new Date() })).pipe(
+      map(() => { }), // ✅ No se necesita invalidar caché
       catchError(error => {
         console.error(`❌ PromotionService: Error al actualizar promoción ${id}:`, error);
         return throwError(() => error);
@@ -202,17 +172,9 @@ export class PromotionService {
    * 🚀 CORREGIDO: Elimina una promoción
    */
   deletePromotion(id: string): Observable<void> {
-    if (!id) {
-      return throwError(() => new Error('ID de promoción no proporcionado'));
-    }
-    
     const docRef = doc(this.firestore, this.collectionName, id);
     return from(deleteDoc(docRef)).pipe(
-      map(() => {
-        
-        // Invalidar caché después de eliminar
-        this.invalidatePromotionCache(id);
-      }),
+      map(() => { }), // ✅ No se necesita invalidar caché
       catchError(error => {
         console.error(`❌ PromotionService: Error al eliminar promoción ${id}:`, error);
         return throwError(() => error);
@@ -221,58 +183,39 @@ export class PromotionService {
   }
 
   /**
-   * 🚀 CORREGIDO: Obtiene promociones activas
+   * Obtiene las promociones que están activas y dentro de su rango de fechas válido.
+   * Este método reutiliza getPromotions() para obtener los datos frescos.
+   * @returns Un Observable que emite un array de objetos Promotion activos.
    */
   getActivePromotions(): Observable<Promotion[]> {
-    return this.cacheService.getCached<Promotion[]>(this.activePromotionsCacheKey, () => {
-      
-      const now = new Date();
+    // Llama al método principal que ya no usa caché.
+    return this.getPromotions().pipe(
+      map(allPromotions => {
+        const now = new Date();
 
-      return this.getPromotions().pipe(
-        take(1), // ✅ NUEVO: Forzar completar
-        map(allPromotions => {
+        // Filtra el array de promociones en el cliente.
+        const activePromotions = allPromotions.filter(promo => {
+          // Asegura que las fechas son objetos Date válidos antes de comparar.
+          // (getPromotions ya se encarga de la conversión inicial)
+          const startDate = promo.startDate;
+          const endDate = promo.endDate;
 
-          // Filtrar por promociones activas con fechas válidas
-          const activePromotions = allPromotions.filter(promo => {
-            // Asegurarnos de que las fechas son instancias de Date
-            const startDate = promo.startDate instanceof Date ?
-              promo.startDate : new Date(promo.startDate);
-            const endDate = promo.endDate instanceof Date ?
-              promo.endDate : new Date(promo.endDate);
+          const isCurrentlyActive = promo.isActive === true &&
+            now >= startDate &&
+            now <= endDate;
 
-            // Verificar si la promoción está activa
-            const isActive = promo.isActive === true;
-            // Verificar si la fecha actual está dentro del rango
-            const isInDateRange = now >= startDate && now <= endDate;
-            // Verificar si la fecha de fin es mayor que la fecha actual (compatibilidad con lógica anterior)
-            const hasValidDate = endDate > now;
+          return isCurrentlyActive;
+        });
 
-            const isValidPromotion = isActive && isInDateRange && hasValidDate;
-
-            return isValidPromotion;
-          });
-
-          console.log(`✅ PromotionService: Promociones activas filtradas: ${activePromotions.length}`);
-          
-          if (activePromotions.length === 0) {
-            console.log('ℹ️ PromotionService: No se encontraron promociones activas');
-          } else {
-            activePromotions.forEach(promo => {
-              const discountDisplay = promo.discountType === 'percentage' 
-                ? `${promo.discountValue}%` 
-                : `${promo.discountValue}`;
-              console.log(`   🎯 ${promo.name} - Descuento: ${discountDisplay}`);
-            });
-          }
-
-          return activePromotions;
-        }),
-        catchError(error => {
-          console.error('❌ PromotionService: Error al obtener promociones activas:', error);
-          return of([]);
-        }),
-      );
-    });
+        return activePromotions;
+      }),
+      catchError(error => {
+        // Aunque getPromotions ya maneja errores, es una buena práctica
+        // tener un catch aquí también para cualquier error en el mapeo.
+        console.error('❌ PromotionService: Error al filtrar promociones activas:', error);
+        return of([]);
+      })
+    );
   }
 
   /**
@@ -288,9 +231,9 @@ export class PromotionService {
       map(activePromotions => {
         const categoryPromotions = activePromotions.filter(promo => {
           // Verificar si la promoción aplica a esta categoría
-          return promo.applicableCategories?.includes(categoryId) || 
-                 promo.applicableCategories?.includes('all') ||
-                 !promo.applicableCategories; // Si no especifica categorías, aplica a todas
+          return promo.applicableCategories?.includes(categoryId) ||
+            promo.applicableCategories?.includes('all') ||
+            !promo.applicableCategories; // Si no especifica categorías, aplica a todas
         });
 
         return categoryPromotions;
@@ -316,8 +259,8 @@ export class PromotionService {
         const productPromotions = activePromotions.filter(promo => {
           // Verificar si la promoción aplica a este producto específico
           return promo.applicableProductIds?.includes(productId) ||
-                 promo.applicableProductIds?.includes('all') ||
-                 !promo.applicableProductIds; // Si no especifica productos, aplica a todos
+            promo.applicableProductIds?.includes('all') ||
+            !promo.applicableProductIds; // Si no especifica productos, aplica a todos
         });
 
         return productPromotions;
@@ -345,9 +288,9 @@ export class PromotionService {
         }
 
         const now = new Date();
-        const startDate = promotion.startDate instanceof Date ? 
+        const startDate = promotion.startDate instanceof Date ?
           promotion.startDate : new Date(promotion.startDate);
-        const endDate = promotion.endDate instanceof Date ? 
+        const endDate = promotion.endDate instanceof Date ?
           promotion.endDate : new Date(promotion.endDate);
 
         const isActive = promotion.isActive === true;
@@ -365,35 +308,20 @@ export class PromotionService {
   }
 
   /**
-   * Invalida los cachés de promociones
-   */
-  private invalidatePromotionCache(promotionId?: string): void {    
-    // Invalidar cachés principales
-    this.cacheService.invalidate(this.promotionsCacheKey);
-    this.cacheService.invalidate(this.activePromotionsCacheKey);
-
-    // Invalidar caché específico si se proporciona ID
-    if (promotionId) {
-      this.cacheService.invalidate(`${this.promotionsCacheKey}_${promotionId}`);
-    }
-
-  }
-
-  /**
    * 🆕 NUEVO: Método de debugging para ver el estado de promociones
    */
   debugPromotions(): void {
-    
+
     this.getPromotions().pipe(
       take(1)
     ).subscribe({
       next: (promotions) => {
-        
+
         if (promotions.length > 0) {
           const summary = promotions.map(promo => {
             const now = new Date();
-            const isCurrentlyActive = promo.isActive && 
-              now >= promo.startDate && 
+            const isCurrentlyActive = promo.isActive &&
+              now >= promo.startDate &&
               now <= promo.endDate;
 
             return {
@@ -401,8 +329,8 @@ export class PromotionService {
               name: promo.name,
               discountType: promo.discountType,
               discountValue: promo.discountValue || 0,
-              discountDisplay: promo.discountType === 'percentage' 
-                ? `${promo.discountValue}%` 
+              discountDisplay: promo.discountType === 'percentage'
+                ? `${promo.discountValue}%`
                 : `${promo.discountValue}`,
               isActive: promo.isActive ? '✅' : '❌',
               currentlyValid: isCurrentlyActive ? '✅' : '❌',
@@ -410,9 +338,9 @@ export class PromotionService {
               endDate: promo.endDate.toLocaleDateString()
             };
           });
-          
+
           console.table(summary);
-          
+
           // Estadísticas
           const stats = {
             activas: promotions.filter(p => p.isActive).length,
@@ -429,7 +357,7 @@ export class PromotionService {
               return p.startDate > now;
             }).length
           };
-          
+
           console.log('📈 Estadísticas:', stats);
         } else {
           console.log('🤷‍♂️ No hay promociones disponibles');
@@ -439,7 +367,7 @@ export class PromotionService {
         console.error('❌ Error obteniendo promociones para debug:', error);
       }
     });
-    
+
     console.groupEnd();
   }
 
@@ -447,10 +375,7 @@ export class PromotionService {
    * 🆕 NUEVO: Fuerza la recarga de promociones (sin caché)
    */
   forceRefreshPromotions(): Observable<Promotion[]> {
-    
-    // Limpiar caché
-    this.invalidatePromotionCache();
-    
+
     // Obtener promociones frescas
     return this.getPromotions();
   }

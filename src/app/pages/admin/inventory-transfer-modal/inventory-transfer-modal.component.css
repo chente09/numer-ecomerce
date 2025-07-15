@@ -1,3 +1,38 @@
+/* ==================== CONTENEDOR PRINCIPAL ==================== */
+.transfer-modal-container {
+  padding: 16px;
+  max-width: 500px;
+}
+
+/* ==================== INFORMACIÓN DEL PRODUCTO ==================== */
+.product-info {
+  margin-bottom: 24px;
+}
+
+/* ==================== INFORMACIÓN DE VARIANTE FIJA ==================== */
+.variant-info-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #e8e8e8;
+}
+
+.variant-info-display nz-tag {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+/* ==================== FORMULARIO ==================== */
+nz-form-item {
+  margin-bottom: 20px;
+}
+
 nz-input-number {
   width: 100%;
 }
@@ -8,4 +43,104 @@ nz-select {
 
 textarea {
   resize: vertical; /* Permite redimensionar verticalmente */
+}
+
+.form-help-text {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-help-text strong {
+  color: #1890ff;
+}
+
+/* ==================== BOTONES ==================== */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 24px;
+}
+
+.modal-footer button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+  justify-content: center;
+}
+
+/* ==================== ESTADOS DE CARGA ==================== */
+nz-spin {
+  min-height: 200px;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+@media (max-width: 480px) {
+  .transfer-modal-container {
+    padding: 12px;
+  }
+  
+  .variant-info-display {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .variant-info-display nz-tag {
+    justify-content: center;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .modal-footer button {
+    width: 100%;
+  }
+}
+
+/* ==================== ANIMACIONES ==================== */
+.transfer-modal-container {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==================== VALIDACIONES VISUALES ==================== */
+.ant-form-item-has-error .variant-info-display {
+  border-color: #ff4d4f;
+  background-color: #fff2f0;
+}
+
+.ant-input-number-disabled {
+  cursor: not-allowed !important;
+}
+
+/* ==================== MEJORAS VISUALES ==================== */
+nz-alert {
+  margin-bottom: 16px;
+}
+
+nz-form-label {
+  font-weight: 500;
+}
+
+.ant-form-item-control-input {
+  min-height: 32px;
 }

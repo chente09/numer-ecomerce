@@ -72,7 +72,7 @@
                                 <th>Nombre</th>
                                 <th nzWidth="100px">Precio</th>
                                 <th nzWidth="80px" class="hide-sm">Stock</th>
-                                <th nzWidth="120px" class="hide-md">Categoría</th>
+                                <th nzWidth="120px" class="hide-md">Categorías</th>
                                 <th nzWidth="100px" class="hide-md">SKU</th>
                                 <th nzWidth="120px">Acciones</th>
                             </tr>
@@ -127,7 +127,18 @@
                                     </nz-tag>
                                 </td>
                                 <td class="hide-md">
-                                    {{ getCategoryName(product.category) }}
+                                    <div class="categories-tags-container">
+                                        <ng-container
+                                            *ngIf="product.categories && product.categories.length > 0; else noCategories">
+                                            <nz-tag *ngFor="let categoryId of product.categories" class="category-tag">
+                                                {{ getCategoryName(categoryId) }}
+                                            </nz-tag>
+                                        </ng-container>
+
+                                        <ng-template #noCategories>
+                                            <span class="no-categories-text">Sin categorías</span>
+                                        </ng-template>
+                                    </div>
                                 </td>
                                 <td class="hide-md">{{ product.sku }}</td>
                                 <td>

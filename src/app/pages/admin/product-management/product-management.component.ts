@@ -484,13 +484,13 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
   // ✅ MODIFICAR en ProductManagementComponent
+
   loadProducts(): void {
     this.loading = true;
     this.originalProductsBackup = [...this.products];
 
     const filterValues = this.filterForm.value;
 
-    // ✅ VALIDAR Y LIMPIAR FILTROS
     const filter = {
       searchQuery: filterValues.searchQuery?.trim() || '',
       categories: Array.isArray(filterValues.categories) ? filterValues.categories : [],
@@ -501,11 +501,9 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       limit: this.pageSize
     };
 
-
-    // Resto del código igual...
-    const products$ = filter.searchQuery
-      ? this.productService.searchProducts(filter.searchQuery)
-      : this.productService.forceReloadProducts();
+    // ✅ CAMBIO DEFINITIVO: Usar getProductsNoCache() para ignorar SIEMPRE el caché.
+    // Este método está diseñado específicamente para no usar el CacheService.
+    const products$ = this.productService.getProductsNoCache();
 
     products$
       .pipe(takeUntil(this.destroy$),
@@ -513,10 +511,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (products) => {
-
           const validProducts = this.validateFilterData(products);
           const filteredProducts = this.applyClientSideFilters(validProducts, filter);
-
 
           this.products = filteredProducts;
           this.total = this.products.length;

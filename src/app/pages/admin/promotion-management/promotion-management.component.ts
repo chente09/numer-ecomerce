@@ -121,7 +121,7 @@ export class PromotionManagementComponent implements OnInit {
     this.loading = true;
     this.cdr.detectChanges();
 
-    this.promotionService.getPromotions()
+    this.promotionService.forceRefreshPromotions()
       .subscribe({
         next: (result) => {
           this.promotions = result;

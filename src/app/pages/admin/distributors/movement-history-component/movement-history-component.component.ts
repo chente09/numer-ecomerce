@@ -94,8 +94,16 @@ export class MovementHistoryComponent implements OnInit, OnChanges {
       })
     ).subscribe({
       next: (enrichedMovements) => {
+        // ✅ LÓGICA DE ORDENAMIENTO CORREGIDA
+        enrichedMovements.sort((a, b) => {
+          // Usamos el método .toDate() del objeto Timestamp de Firebase
+          const dateA = a.timestamp.toDate();
+          const dateB = b.timestamp.toDate();
+          return dateB.getTime() - dateA.getTime(); // Ordena del más reciente al más antiguo
+        });
+        
         this.originalMovements = enrichedMovements;
-        this.applyFilters(); // Aplicar filtros al cargar
+        this.applyFilters();
       },
       error: (err) => {
         this.message.error('No se pudo cargar el historial de movimientos.');

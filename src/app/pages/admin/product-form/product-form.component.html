@@ -31,6 +31,21 @@
                             <nz-form-control nzErrorTip="Por favor ingrese un precio válido">
                                 <nz-input-number formControlName="price" [nzMin]="0" [nzStep]="0.01"
                                     [nzPlaceHolder]="'0.00'" [nzPrecision]="2" style="width: 100%"></nz-input-number>
+                                <div class="form-help-text">
+                                    Precio para el cliente (sin IVA)
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <!-- Precio Distribuidor -->
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Costo para Distribuidores</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingrese el costo para distribuidores">
+                                <nz-input-number formControlName="distributorCost" [nzMin]="0" [nzStep]="0.01"
+                                    [nzPlaceHolder]="'0.00'" [nzPrecision]="2" style="width: 100%"></nz-input-number>
+                                <div class="form-help-text">
+                                    Precio especial para distribuidores (sin IVA)
+                                </div>
                             </nz-form-control>
                         </nz-form-item>
 

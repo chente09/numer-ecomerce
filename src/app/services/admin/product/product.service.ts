@@ -76,25 +76,20 @@ export class ProductService {
 
   // ✅ AGREGAR en ProductService
   forceReloadProducts(): Observable<Product[]> {
-
-    // Invalidar caché
+    // Invalidar caché para otras partes de la app
     this.cacheService.invalidate(this.productsCacheKey);
 
-    // Obtener productos frescos
-    const productsRef = collection(this.firestore, this.productsCollection);
-    return collectionData(productsRef, { idField: 'id' }).pipe(
-      take(1),
-      map(data => {
-        return data as Product[];
-      }),
-      switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+    // ✅ Usar internamente el método que no usa caché
+    return this.getProductsNoCache().pipe(
       tap(products => {
-        // Actualizar caché con nuevos datos
+        // Opcional: Actualizar el caché con los datos frescos para que
+        // otras partes de la app (ej. la tienda pública) se beneficien,
+        // pero la carga inicial siempre será fresca.
         this.cacheService.getCached(this.productsCacheKey, () => of(products));
       }),
       catchError(error => ErrorUtil.handleError(error, 'forceReloadProducts'))
     );
-  }
+  } 
 
   /**
    * 🚀 CORREGIDO: Obtiene todos los productos SIN caché cuando se force

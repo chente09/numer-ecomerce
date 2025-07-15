@@ -1,9 +1,9 @@
 <div class="distributor-management-container">
-    <nz-card nzTitle="Gestión de Inventario de Distribuidores">
+    <nz-card nzTitle="Gestión Financiera y de Inventario de Distribuidores">
         <div nz-row [nzGutter]="[16, 16]">
-            <div nz-col [nzXs]="24" [nzSm]="12">
+            <div nz-col [nzXs]="24">
                 <nz-select [(ngModel)]="selectedDistributorId" (ngModelChange)="onDistributorChange($event)"
-                    nzPlaceHolder="Seleccione un distribuidor para ver su inventario"
+                    nzPlaceHolder="Seleccione un distribuidor para ver su información"
                     [nzLoading]="isLoadingDistributors" nzShowSearch nzAllowClear style="width: 100%;">
                     <nz-option *ngFor="let distributor of (distributors$ | async)" [nzValue]="distributor.uid"
                         [nzLabel]="distributor.displayName || distributor.email!"></nz-option>
@@ -12,85 +12,198 @@
         </div>
     </nz-card>
 
-    <nz-card class="mt-4" *ngIf="inventoryStats && !isLoadingInventory">
-        <div nz-row [nzGutter]="16">
-            <div nz-col [nzXs]="24" [nzSm]="8">
-                <nz-statistic [nzValue]="inventoryStats.totalUniqueProducts" nzTitle="Productos Únicos"></nz-statistic>
-            </div>
-            <div nz-col [nzXs]="24" [nzSm]="8">
-                <nz-statistic [nzValue]="inventoryStats.totalVariants" nzTitle="Total de Variantes"></nz-statistic>
-            </div>
-            <div nz-col [nzXs]="24" [nzSm]="8">
-                <nz-statistic [nzValue]="inventoryStats.totalStock" nzTitle="Unidades Totales en Stock"></nz-statistic>
-            </div>
-        </div>
-    </nz-card>
+    <div *ngIf="selectedDistributorId; else noDistributorSelected">
+        <nz-tabset class="mt-4">
 
-    <nz-card class="mt-4" *ngIf="selectedDistributorId">
-        <nz-spin [nzSpinning]="isLoadingInventory">
-            <nz-table #inventoryTable [nzData]="groupedInventory" [nzShowPagination]="groupedInventory.length > 10"
-                [nzPageSize]="10" *ngIf="groupedInventory.length > 0">
-                <thead>
-                    <tr>
-                        <th>Producto / Variante</th>
-                        <th>Stock</th>
-                        <th>Última Transferencia</th>
-                        <th nzAlign="right">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <ng-container *ngFor="let product of inventoryTable.data">
-                        <tr class="product-row">
-                            <td [nzExpand]="product.expand" (nzExpandChange)="product.expand = !product.expand">
-                                <div class="product-info-cell">
-                                    <nz-avatar [nzShape]="'square'" [nzSize]="48" [nzSrc]="product.variantImageUrl"
-                                        nzIcon="file-image"></nz-avatar>
-                                    <div class="product-details">
-                                        <span class="product-name">{{ product.productName }}</span>
-                                        <span class="product-model">Modelo: {{ product.productModel }}</span>
-                                    </div>
+            <!-- Pestaña 1: Estado de Cuenta (NUEVA) -->
+            <nz-tab nzTitle="Estado de Cuenta">
+                <ng-template nz-tab>
+                    <nz-spin [nzSpinning]="isLoadingLedger">
+                        <nz-card class="mt-4" *ngIf="ledgerSummary">
+                            <div nz-row [nzGutter]="16">
+                                <div nz-col [nzXs]="24" [nzSm]="8">
+                                    <nz-statistic [nzValue]="ledgerSummary.totalDebit" nzTitle="Total Adeudado"
+                                        [nzPrefix]="'$'"></nz-statistic>
                                 </div>
-                            </td>
-                            <td>
-                                <nz-tag nzColor="blue"><strong>{{ product.totalStockForDistributor }}
-                                        Total</strong></nz-tag>
-                            </td>
-                            <td>-</td>
-                            <td nzAlign="right">-</td>
-                        </tr>
-                        <tr *ngFor="let variant of product.children" [class.hidden-row]="!product.expand"
-                            class="variant-row">
-                            <td class="variant-details-cell">
-                                <span class="variant-indent"></span> {{ variant.colorName }} / {{ variant.sizeName }}
-                                (SKU: {{variant.sku}})
-                            </td>
-                            <td>
-                                <nz-tag nzColor="purple"><strong>{{ variant.stock }}</strong></nz-tag>
-                            </td>
-                            <td>{{ formatDate(variant.lastTransferDate) }}</td>
-                            <td nzAlign="right">
-                                <button nz-button nzType="default" nzSize="small" (click)="revertTransfer(variant)"
-                                    [disabled]="variant.stock <= 0" nz-tooltip
-                                    nzTooltipTitle="Devolver stock al almacén principal">
-                                    <span nz-icon nzType="rollback"></span>
-                                    Revertir
-                                </button>
-                            </td>
-                        </tr>
-                    </ng-container>
-                </tbody>
-            </nz-table>
+                                <div nz-col [nzXs]="24" [nzSm]="8">
+                                    <nz-statistic [nzValue]="ledgerSummary.totalCredit" nzTitle="Total Pagado"
+                                        [nzPrefix]="'$'" [nzValueStyle]="{ 'color': '#3f8600' }"></nz-statistic>
+                                </div>
+                                <div nz-col [nzXs]="24" [nzSm]="8">
+                                    <nz-statistic [nzValue]="ledgerSummary.balance" nzTitle="Saldo Pendiente"
+                                        [nzPrefix]="'$'"
+                                        [nzValueStyle]="{ 'color': ledgerSummary.balance > 0 ? '#cf1322' : '#3f8600' }"></nz-statistic>
+                                </div>
+                            </div>
+                            <button nz-button nzType="primary" (click)="openRegisterPaymentModal()" class="mt-4">
+                                <span nz-icon nzType="dollar"></span>
+                                Registrar Pago
+                            </button>
+                        </nz-card>
 
-            <nz-empty *ngIf="groupedInventory.length === 0 && hasSearched && !isLoadingInventory"
-                nzNotFoundContent="Este distribuidor no tiene inventario asignado."></nz-empty>
-        </nz-spin>
-    </nz-card>
+                        <nz-card class="mt-4" nzTitle="Historial de Transacciones">
+                            <nz-table #ledgerTable [nzData]="ledgerEntries" [nzPageSize]="10" [nzShowPagination]="true">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Descripción</th>
+                                        <th nzAlign="right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let entry of ledgerTable.data">
+                                        <td>{{ formatDate(entry.createdAt) }}</td>
+                                        <td>
+                                            <nz-tag [nzColor]="entry.type === 'debit' ? 'red' : 'green'">
+                                                {{ entry.type === 'debit' ? 'Deuda' : 'Pago' }}
+                                            </nz-tag>
+                                        </td>
+                                        <td>{{ entry.description }}</td>
+                                        <td nzAlign="right">
+                                            <strong [style.color]="entry.type === 'debit' ? '#cf1322' : '#3f8600'">
+                                                {{ entry.type === 'debit' ? '+' : '-' }}{{ entry.amount | currency:'USD'
+                                                }}
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </nz-table>
+                            <nz-empty *ngIf="ledgerEntries.length === 0 && !isLoadingLedger"
+                                nzNotFoundContent="No hay transacciones registradas."></nz-empty>
+                        </nz-card>
+                    </nz-spin>
+                </ng-template>
+            </nz-tab>
 
-    <nz-card class="mt-4" *ngIf="!selectedDistributorId">
-        <nz-empty nzNotFoundContent="Por favor, seleccione un distribuidor para comenzar."></nz-empty>
-    </nz-card>
+            <!-- Pestaña 2: Inventario Actual -->
+            <nz-tab nzTitle="Inventario Actual">
+                <ng-template nz-tab>
+                    <nz-card class="mt-4" *ngIf="inventoryStats && !isLoadingInventory">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzXs]="24" [nzSm]="6"><nz-statistic
+                                    [nzValue]="inventoryStats.totalUniqueProducts"
+                                    nzTitle="Productos Únicos"></nz-statistic></div>
+                            <div nz-col [nzXs]="24" [nzSm]="6"><nz-statistic [nzValue]="inventoryStats.totalVariants"
+                                    nzTitle="Total de Variantes"></nz-statistic></div>
+                            <div nz-col [nzXs]="24" [nzSm]="6"><nz-statistic [nzValue]="inventoryStats.totalStock"
+                                    nzTitle="Unidades Totales"></nz-statistic></div>
+                            <div nz-col [nzXs]="24" [nzSm]="6"><nz-statistic [nzValue]="inventoryValue"
+                                    nzTitle="Valor del Inventario (Costo)" [nzPrefix]="'$'"></nz-statistic></div>
+                        </div>
+                    </nz-card>
+                    <nz-card class="mt-4">
+                        <nz-spin [nzSpinning]="isLoadingInventory">
+                            <nz-table #inventoryTable [nzData]="groupedInventory"
+                                [nzShowPagination]="groupedInventory.length > 10" [nzPageSize]="10">
+                                <thead>
+                                    <tr>
+                                        <th>Producto / Variante</th>
+                                        <th>Stock</th>
+                                        <th>Última Transferencia</th>
+                                        <th nzAlign="right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <ng-container *ngFor="let product of inventoryTable.data">
+                                        <tr class="product-row">
+                                            <td [nzExpand]="product.expand"
+                                                (nzExpandChange)="product.expand = !product.expand">
+                                                <div class="product-info-cell">
+                                                    <nz-avatar [nzShape]="'square'" [nzSize]="48"
+                                                        [nzSrc]="product.variantImageUrl"
+                                                        nzIcon="file-image"></nz-avatar>
+                                                    <div class="product-details">
+                                                        <span class="product-name">{{ product.productName }}</span>
+                                                        <span class="product-model">Modelo: {{ product.productModel
+                                                            }}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td><nz-tag nzColor="blue"><strong>{{ product.totalStockForDistributor }}
+                                                        Total</strong></nz-tag></td>
+                                            <td>-</td>
+                                            <td nzAlign="right">-</td>
+                                        </tr>
+                                        <tr *ngFor="let variant of product.children"
+                                            [class.hidden-row]="!product.expand" class="variant-row">
+                                            <td class="variant-details-cell"><span class="variant-indent"></span>{{
+                                                variant.colorName }} / {{ variant.sizeName }} (SKU: {{variant.sku}})
+                                            </td>
+                                            <td><nz-tag nzColor="purple"><strong>{{ variant.stock }}</strong></nz-tag>
+                                            </td>
+                                            <td>{{ formatDate(variant.lastTransferDate) }}</td>
+                                            <td nzAlign="right">
+                                                <button nz-button nzType="default" nzSize="small"
+                                                    (click)="revertTransfer(variant)" [disabled]="variant.stock <= 0"
+                                                    nz-tooltip nzTooltipTitle="Devolver stock al almacén principal">
+                                                    <span nz-icon nzType="rollback"></span> Revertir
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </ng-container>
+                                </tbody>
+                            </nz-table>
+                            <nz-empty *ngIf="groupedInventory.length === 0 && hasSearched && !isLoadingInventory"
+                                nzNotFoundContent="Este distribuidor no tiene inventario asignado."></nz-empty>
+                        </nz-spin>
+                    </nz-card>
+                </ng-template>
+            </nz-tab>
+
+            <!-- Pestaña 3: Historial de Movimientos -->
+            <nz-tab nzTitle="Historial de Movimientos">
+                <ng-template nz-tab>
+                    <app-movement-history-component
+                        [distributorId]="selectedDistributorId"></app-movement-history-component>
+                </ng-template>
+            </nz-tab>
+
+            <!-- Pestaña 4: Pedidos en Tienda -->
+            <nz-tab nzTitle="Pedidos en Tienda">
+                <ng-template nz-tab>
+                    <app-distributor-orders-history
+                        [distributorId]="selectedDistributorId"></app-distributor-orders-history>
+                </ng-template>
+            </nz-tab>
+
+        </nz-tabset>
+    </div>
 </div>
 
+<!-- Template para cuando no se ha seleccionado distribuidor -->
+<ng-template #noDistributorSelected>
+    <nz-card class="mt-4">
+        <nz-empty nzNotFoundContent="Por favor, seleccione un distribuidor para comenzar."></nz-empty>
+    </nz-card>
+</ng-template>
+
+<!-- Modal para registrar un pago -->
+<nz-modal [(nzVisible)]="isPaymentModalVisible" nzTitle="Registrar Nuevo Pago" (nzOnCancel)="handleCancelPaymentModal()"
+    (nzOnOk)="handleRegisterPayment()" [nzOkLoading]="isRegisteringPayment" nzOkText="Registrar Pago"
+    nzCancelText="Cancelar">
+    <ng-container *nzModalContent>
+        <div class="payment-modal-content">
+            <nz-form-item>
+                <nz-form-label nzFor="paymentAmount" nzRequired>Monto del Pago</nz-form-label>
+                <nz-form-control nzErrorTip="Por favor ingrese un monto válido.">
+                    <nz-input-number [(ngModel)]="paymentAmount" [nzMin]="0.01" [nzStep]="1" [nzPrecision]="2"
+                        id="paymentAmount" style="width: 100%;" nzPlaceHolder="0.00">
+                    </nz-input-number>
+                </nz-form-control>
+            </nz-form-item>
+            <nz-form-item>
+                <nz-form-label nzFor="paymentDescription" nzRequired>Descripción</nz-form-label>
+                <nz-form-control nzErrorTip="Por favor ingrese una descripción.">
+                    <input nz-input [(ngModel)]="paymentDescription" id="paymentDescription"
+                        placeholder="Ej. Abono semanal, Pago factura #123">
+                </nz-form-control>
+            </nz-form-item>
+        </div>
+    </ng-container>
+</nz-modal>
+
+<!-- Template para revertir stock (sin cambios) -->
 <ng-template #revertModalContent let-item>
     <div class="revert-modal-content">
         <p>Variante: <strong>{{ item.colorName }} / {{ item.sizeName }}</strong></p>

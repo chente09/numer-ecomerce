@@ -2,20 +2,20 @@
 import { Component, OnInit, Input, Output, EventEmitter, inject, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { NzModalRef, NzModalModule } from 'ng-zorro-antd/modal';
-import { NzMessageService } from 'ng-zorro-antd/message'; // Aseguramos que NzMessageModule esté aquí para la importación
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { Observable, of, forkJoin } from 'rxjs';
-import { catchError, filter, map, switchMap, take, tap } from 'rxjs/operators';
+import { catchError, filter, finalize, map, switchMap, take, tap } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 
-// ✅ Tus importaciones exactas, confirmadas que funcionan en tu entorno
-import { ProductVariant } from '../../../models/models';
-import { DistributorService, TransferDetails, DistributorInventoryItem } from '../../../services/admin/distributor/distributor.service';
+// Tus importaciones exactas
+import { Product, ProductVariant } from '../../../models/models';
+import { DistributorService, TransferDetails } from '../../../services/admin/distributor/distributor.service';
 import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
-import { UsersService, UserProfile } from '../../../services/users/users.service';// Usaremos UsersService para obtener el UID del usuario
+import { UsersService, UserProfile } from '../../../services/users/users.service';
 import { ProductService } from '../../../services/admin/product/product.service';
+import { DistributorLedgerService } from '../../../services/admin/distributorLedger/distributor-ledger.service';
 
-
-// Importaciones de Ng-Zorro adicionales necesarias para el HTML
+// Módulos NG-Zorro
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
@@ -23,32 +23,26 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzTypographyModule } from 'ng-zorro-antd/typography';
-
+import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 
 @Component({
   selector: 'app-inventory-transfer-modal',
   standalone: true,
   imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    NzModalModule,
-    NzFormModule,
-    NzSelectModule,
-    NzInputNumberModule,
-    NzButtonModule,
-    NzInputModule,
-    NzIconModule,
-    NzTypographyModule
+    CommonModule, ReactiveFormsModule, NzModalModule, NzFormModule, NzSelectModule,
+    NzInputNumberModule, NzButtonModule, NzInputModule, NzIconModule, NzTypographyModule,
+    NzSpinModule, NzAlertModule, NzTagModule
   ],
   templateUrl: './inventory-transfer-modal.component.html',
-  styleUrls: ['./inventory-transfer-modal.component.css'] // ✅ Corregido a 'styleUrls' (plural)
+  styleUrls: ['./inventory-transfer-modal.component.css']
 })
 export class InventoryTransferModalComponent implements OnInit {
 
+  @Input() product?: Product;
+  @Input() variant?: ProductVariant;
   @Output() transferSuccess = new EventEmitter<void>();
-
-  productId?: string;
-  variantId?: string;
 
   transferForm!: FormGroup;
   variants$: Observable<ProductVariant[]> = of([]);
@@ -56,6 +50,10 @@ export class InventoryTransferModalComponent implements OnInit {
   selectedVariant: ProductVariant | undefined;
   currentAdminUid: string | null = null;
   isLoading = false;
+  isSubmitting = false;
+
+  private readonly VAT_RATE = 0.15;
+  private readonly DISTRIBUTOR_DISCOUNT_PERCENTAGE = 0.30;
 
   private fb = inject(FormBuilder);
   private distributorService = inject(DistributorService);
@@ -65,128 +63,101 @@ export class InventoryTransferModalComponent implements OnInit {
   private modalRef = inject(NzModalRef);
   private message = inject(NzMessageService);
   private cdr = inject(ChangeDetectorRef);
+  private ledgerService = inject(DistributorLedgerService);
 
   ngOnInit(): void {
-    // ✅ Obtener datos desde los component params inyectados
-    this.productId = this.modalRef.getConfig().nzData?.['productId'];
-    this.variantId = this.modalRef.getConfig().nzData?.['variantId'];
+    // 🔧 CORRECCIÓN: Obtener datos desde nzData del modal
+    const modalData = this.modalRef.getConfig().nzData;
 
-    console.log('🚀 InventoryTransferModal - ngOnInit iniciado', {
-      productId: this.productId,
-      variantId: this.variantId
+    console.log('🔍 Debug - Modal recibió datos:', modalData);
+
+    if (modalData?.product) this.product = modalData.product;
+    if (modalData?.variant) this.variant = modalData.variant;
+
+    console.log('🔍 Debug - Datos asignados:', {
+      product: this.product,
+      variant: this.variant
     });
 
-    this.transferForm = this.fb.group({
-      variant: [this.variantId, [Validators.required]], // Pre-seleccionar si viene
-      distributor: [null, [Validators.required]],
-      quantity: [1, [Validators.required, Validators.min(1)]],
-      notes: ['']
-    });
+    this.initializeForm();
+    this.loadDistributors();
+    this.getCurrentAdmin();
 
-    // Si la variante ya está seleccionada, cárgala
-    if (this.variantId) {
-      this.onVariantSelected(this.variantId);
+    // 🔧 CORRECCIÓN: Solo cargar variantes si NO se pasó una variante específica
+    if (!this.variant && this.product) {
+      this.loadVariants();
     }
-
-    this.transferForm.get('variant')?.valueChanges.subscribe(variantId => {
-      if (variantId) {
-        this.onVariantSelected(variantId);
-      }
-    });
-
-    this.usersService.user$.pipe(
-      filter(user => !!user),
-      take(1),
-      map(user => user!.uid)
-    ).subscribe(uid => {
-      this.currentAdminUid = uid;
-      this.cdr.markForCheck();
-    });
-
-    this.loadInitialData();
   }
 
+  private initializeForm(): void {
+    // 🔧 CORRECCIÓN: Inicializar formulario según si hay variante fija o no
+    if (this.variant) {
+      // ✅ VARIANTE FIJA: No incluir el campo variant en el formulario
+      this.transferForm = this.fb.group({
+        distributorId: [null, [Validators.required]],
+        quantity: [1, [Validators.required, Validators.min(1), Validators.max(this.variant.stock || 0)]],
+        notes: ['']
+      });
 
-  loadInitialData(): void {
-    console.log('📊 Cargando datos iniciales...');
+      this.selectedVariant = this.variant;
+    } else {
+      // ⚠️ MODO SELECTOR: Incluir el campo variant (fallback)
+      this.transferForm = this.fb.group({
+        variant: [null, [Validators.required]],
+        distributorId: [null, [Validators.required]],
+        quantity: [1, [Validators.required, Validators.min(1)]],
+        notes: ['']
+      });
+
+      // Escuchar cambios en la selección de variante
+      this.transferForm.get('variant')?.valueChanges.subscribe(variantId => {
+        if (variantId) this.onVariantSelected(variantId);
+      });
+    }
+  }
+
+  private loadVariants(): void {
+    if (!this.product?.id) return;
+
     this.isLoading = true;
-
-    // ✅ FORZAR DETECCIÓN antes de cargar
-    this.cdr.detectChanges();
-
-    this.distributors$ = this.distributorService.getDistributors().pipe(
-      tap((distributors) => {
-        console.log('📋 Distribuidores cargados:', distributors.length);
-        // ✅ FORZAR DETECCIÓN después de cargar distribuidores
+    this.variants$ = this.productService.getProductVariants(this.product.id).pipe(
+      map(variants => variants.filter(v => (v.stock || 0) > 0)),
+      finalize(() => {
+        this.isLoading = false;
         this.cdr.detectChanges();
-      }),
+      })
+    );
+  }
+
+  private loadDistributors(): void {
+    this.distributors$ = this.distributorService.getDistributors().pipe(
       catchError(error => {
-        this.message.error('Error al cargar distribuidores.');
         console.error('Error cargando distribuidores:', error);
+        this.message.error('Error al cargar distribuidores');
         return of([]);
       })
     );
-
-    if (this.productId) {
-      this.variants$ = this.productInventoryService.getVariantsByProductId(this.productId).pipe(
-        tap((variants) => {
-          console.log('🧬 Variantes cargadas:', variants.length);
-          // ✅ FORZAR DETECCIÓN después de cargar variantes
-          this.cdr.detectChanges();
-        }),
-        catchError(error => {
-          this.message.error('Error al cargar variantes del producto.');
-          console.error('Error cargando variantes:', error);
-          return of([]);
-        })
-      );
-    } else {
-      this.variants$ = this.productService.getProducts().pipe(
-        map(products => products.flatMap(p => p.variants || [])),
-        tap((variants) => {
-          console.log('🧬 Todas las variantes cargadas:', variants.length);
-          // ✅ FORZAR DETECCIÓN después de cargar todas las variantes
-          this.cdr.detectChanges();
-        }),
-        catchError(error => {
-          this.message.error('Error al cargar todas las variantes.');
-          console.error('Error cargando todas las variantes:', error);
-          return of([]);
-        })
-      );
-    }
-
-    if (this.variantId) {
-      this.productInventoryService.getVariantById(this.variantId).pipe(
-        take(1),
-        filter(variant => !!variant)
-      ).subscribe(variant => {
-        console.log('🎯 Variante específica cargada:', variant);
-        this.selectedVariant = variant;
-        this.transferForm.patchValue({ variant: variant?.id });
-        this.updateQuantityValidators(variant?.stock || 0);
-        this.isLoading = false;
-
-        // ✅ FORZAR DETECCIÓN después de cargar variante específica
-        this.cdr.detectChanges();
-      });
-    } else {
-      this.isLoading = false;
-      // ✅ FORZAR DETECCIÓN al finalizar carga
-      this.cdr.detectChanges();
-    }
   }
 
-  onVariantSelected(variantId: string): void {
-    this.productInventoryService.getVariantById(variantId).pipe(
+  private getCurrentAdmin(): void {
+    this.usersService.user$.pipe(
+      filter(user => !!user && !user.isAnonymous),
       take(1)
-    ).subscribe(variant => {
-      this.selectedVariant = variant;
-      this.updateQuantityValidators(variant?.stock || 0);
+    ).subscribe(user => {
+      this.currentAdminUid = user!.uid;
     });
   }
 
-  updateQuantityValidators(maxStock: number): void {
+  private onVariantSelected(variantId: string): void {
+    this.variants$.pipe(take(1)).subscribe(variants => {
+      this.selectedVariant = variants.find(v => v.id === variantId);
+      if (this.selectedVariant) {
+        this.updateQuantityValidators(this.selectedVariant.stock || 0);
+      }
+    });
+  }
+
+  private updateQuantityValidators(maxStock: number): void {
     const quantityControl = this.transferForm.get('quantity');
     if (quantityControl) {
       quantityControl.setValidators([
@@ -203,42 +174,67 @@ export class InventoryTransferModalComponent implements OnInit {
       Object.values(this.transferForm.controls).forEach(control => {
         if (control.invalid) {
           control.markAsDirty();
-          control.updateValueAndValidity({ onlySelf: true });
+          control.updateValueAndValidity({ onlySelf: false });
         }
       });
-      return;
-    }
-    if (!this.currentAdminUid) {
-      this.message.error('No se pudo determinar el usuario administrador. Refresque la página.');
+      this.message.warning('Por favor, complete todos los campos requeridos.');
       return;
     }
 
-    this.isLoading = true;
-    const { variant, distributor, quantity, notes } = this.transferForm.value;
+    // 🔧 CORRECCIÓN: Verificar que tenemos la variante correcta
+    if (!this.selectedVariant) {
+      this.message.error('No se pudo determinar la variante a transferir.');
+      return;
+    }
+
+    this.isSubmitting = true;
+    const { distributorId, quantity, notes } = this.transferForm.value;
 
     const transferDetails: TransferDetails = {
-      distributorId: distributor,
-      variantId: variant,
-      quantity: quantity,
-      productId: this.selectedVariant!.productId,
-      performedByUid: this.currentAdminUid,
-      notes: notes
+      distributorId: distributorId,
+      variantId: this.selectedVariant.id,
+      productId: this.product!.id,
+      quantity,
+      performedByUid: this.currentAdminUid!,
+      notes: notes || `Transferencia de ${quantity} x ${this.product!.name}`
     };
 
     this.distributorService.transferStockToDistributor(transferDetails).subscribe({
-      next: () => {
-        // No necesitas emitir aquí si el padre lo maneja desde la referencia
-        this.modalRef.close(true); // Cerrar el modal y pasar un resultado 'true'
+      next: async () => {
+        try {
+          // 🔧 CORRECCIÓN: Usar la variante seleccionada o la variante fija
+          const price = this.selectedVariant!.price || this.product!.price;
+          const priceWithoutVAT = price / (1 + this.VAT_RATE);
+          const distributorCost = priceWithoutVAT * (1 - this.DISTRIBUTOR_DISCOUNT_PERCENTAGE);
+          const totalDebitAmount = distributorCost * quantity;
+          const transferId = `transfer-${Date.now()}`;
+
+          await this.ledgerService.registerDebit(
+            distributorId,
+            totalDebitAmount,
+            `Transferencia de ${quantity} x ${this.product!.name} (${this.selectedVariant!.colorName}/${this.selectedVariant!.sizeName})`,
+            transferId,
+            'transfer'
+          );
+
+          this.message.success('Stock transferido y deuda registrada exitosamente.');
+          this.modalRef.close({ success: true });
+
+        } catch (ledgerError: any) {
+          this.message.error(`Stock transferido, pero falló el registro de la deuda: ${ledgerError.message}.`);
+          this.modalRef.close({ success: true, warning: 'ledger_failed' });
+        }
       },
       error: (err) => {
-        this.message.error(`Error en la transferencia: ${err.message || 'Error desconocido'}`);
-        this.isLoading = false;
-        this.cdr.markForCheck();
+        this.message.error(`Error al transferir el stock: ${err.message}`);
+      },
+      complete: () => {
+        this.isSubmitting = false;
       }
     });
   }
 
-  cancel(): void {
+  destroyModal(): void {
     this.modalRef.destroy();
   }
 
@@ -247,6 +243,34 @@ export class InventoryTransferModalComponent implements OnInit {
   }
 
   formatDistributorLabel(distributor: UserProfile): string {
-    return `${distributor.displayName || distributor.email} (Email: ${distributor.email})`;
+    return `${distributor.displayName || distributor.email}`;
+  }
+
+  // 🆕 MÉTODOS AUXILIARES PARA EL TEMPLATE
+
+  getProductInfoDescription(): string {
+    if (!this.product) return '';
+
+    if (this.variant) {
+      return `Producto: ${this.product.name} | Variante: ${this.variant.colorName}/${this.variant.sizeName} | Stock disponible: ${this.variant.stock}`;
+    } else {
+      return `Producto: ${this.product.name} | Seleccione una variante para continuar`;
+    }
+  }
+
+  getQuantityErrorTip(): string {
+    const quantityControl = this.transferForm.get('quantity');
+
+    if (quantityControl?.hasError('required')) {
+      return 'La cantidad es requerida.';
+    }
+    if (quantityControl?.hasError('min')) {
+      return 'La cantidad debe ser al menos 1.';
+    }
+    if (quantityControl?.hasError('max')) {
+      return `Stock insuficiente. Disponible: ${this.selectedVariant?.stock || 0}`;
+    }
+
+    return 'Cantidad inválida.';
   }
 }

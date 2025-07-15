@@ -1,31 +1,10 @@
-import {
-  AfterViewInit,
-  ChangeDetectorRef,
-  Component,
-  EventEmitter,
-  Input,
-  OnChanges,
-  OnInit,
-  Output,
-  SimpleChanges,
-} from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  FormBuilder,
-  FormGroup,
-  FormArray,
-  Validators,
-  ReactiveFormsModule,
-} from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { Category } from '../../../services/admin/category/category.service';
-import {
-  Product,
-  Color,
-  Size,
-  AdditionalImageItem,
-} from '../../../models/models';
+import { Product, Color, Size,AdditionalImageItem, } from '../../../models/models';
 import { finalize, take } from 'rxjs';
 
 // Importar módulos de ng-zorro necesarios
@@ -256,6 +235,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       name: ['', [Validators.required]],
       model: ['', [Validators.required]],
       price: [0, [Validators.required, Validators.min(0)]],
+      distributorCost: [0, [Validators.required, Validators.min(0)]],
       categories: [[], [Validators.required]],
       description: [''],
       sku: ['', this.autoGenerateSku ? [] : [Validators.required]],
@@ -701,6 +681,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       name: this.product.name || '',
       model: this.product.model || this.product.name || '',
       price: this.product.price || 0,
+      distributorCost: this.product.distributorCost || 0, 
       categories:
         this.product.categories ||
         (this.product.category ? [this.product.category] : []),
@@ -1112,6 +1093,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
         name: formData.name,
         model: formData.model || formData.name,
         price: formData.price,
+        distributorCost: formData.distributorCost,
         categories: formData.categories || [],
         category:
           formData.categories && formData.categories.length > 0

@@ -1,3 +1,6 @@
+import { Timestamp } from '@angular/fire/firestore';
+import { CartItem } from '../pasarela-pago/services/cart/cart.service';
+
 export interface Color {
     id: string;
     name: string;
@@ -7,20 +10,20 @@ export interface Color {
 }
 
 export interface ColorStock {
-    colorName: string;   // Nombre del color
-    quantity: number;    // Cantidad disponible
+    colorName: string;
+    quantity: number;
 }
 
 export interface Size {
     id: string;
-    name: string;        // S, M, L, XL, etc.
-    stock?: number;       // Cantidad disponible
-    imageUrl?: string;   // URL de la imagen representativa de la talla
-    description?: string; // Descripción de la talla
+    name: string;
+    stock?: number;
+    imageUrl?: string;
+    description?: string;
     active: boolean;
-    categories?: string[]; // Categorías a las que pertenece la talla
-    order?: number;       // Orden de visualización
-    colorStocks?: {      // Stock específico por color y talla
+    categories?: string[];
+    order?: number;
+    colorStocks?: {
         colorName: string;
         quantity: number;
     }[];
@@ -35,46 +38,47 @@ export interface Promotion {
     startDate: Date;
     endDate: Date;
     isActive: boolean;
-    applicableProductIds?: string[]; // IDs de productos a los que aplica la promoción
-    applicableCategories?: string[]; // Categorías a las que aplica la promoción
-    minPurchaseAmount?: number;      // Monto mínimo de compra para aplicar
-    maxDiscountAmount?: number;      // Límite máximo del descuento (para porcentajes)
-    usageLimit?: number;             // Límite de usos totales
-    perCustomerLimit?: number;       // Límite de usos por cliente
+    applicableProductIds?: string[];
+    applicableCategories?: string[];
+    minPurchaseAmount?: number;
+    maxDiscountAmount?: number;
+    usageLimit?: number;
+    perCustomerLimit?: number;
 }
 
 export interface AppliedPromotion {
     promotionId: string;
     appliedAt: Date;
-    appliedBy: string; // userId del admin
+    appliedBy: string;
     target: 'product' | 'variant';
-    targetId: string; // productId o variantId
+    targetId: string;
     expiresAt: Date;
 }
 
 export interface ProductVariant {
     id: string;
-    productId: string;  // ID del producto al que pertenece
+    productId: string;
     colorName: string;
     colorCode: string;
     sizeName: string;
     stock: number;
     sku: string;
-    price?: number;  // Precio específico de la variante (opcional)
+    price?: number;
+    distributorCost?: number; 
     imageUrl?: string;
-    promotionId?: string;  // ID de la promoción aplicada
-    discountType?: 'percentage' | 'fixed';  // Tipo de descuento
-    discountValue?: number;  // Valor del descuento
-    discountedPrice?: number;  // Precio con descuento calculado
-    originalPrice?: number;  // Precio original antes del descuento
+    promotionId?: string;
+    discountType?: 'percentage' | 'fixed';
+    discountValue?: number;
+    discountedPrice?: number;
+    originalPrice?: number;
     checked?: boolean;
 }
 export interface AdditionalImageItem {
-    file?: File;           // Solo para nuevas imágenes
-    url: string;          // URL para mostrar (blob local o Firebase URL)
-    id: string;           // ID único
-    isExisting: boolean;  // true = existe en Firebase, false = nueva
-    toDelete?: boolean;   // true = marcar para eliminar
+    file?: File;
+    url: string;
+    id: string;
+    isExisting: boolean;
+    toDelete?: boolean;
 }
 
 export interface Product {
@@ -82,6 +86,7 @@ export interface Product {
     name: string;
     model: string;
     price: number;
+    distributorCost?: number;
     gender?: 'man' | 'woman' | 'boy' | 'girl' | 'unisex';
     originalPrice?: number;
     currentPrice?: number;
@@ -100,21 +105,21 @@ export interface Product {
     totalStock: number;
     sku: string;
     barcode?: string;
-    season?: string;           // 'Spring 2025', 'Summer 2025', etc.
-    collection?: string;       // 'Casual', 'Formal', 'Sport', etc.
-    releaseDate?: Date;        // Fecha de lanzamiento del producto
-    views: number;             // Número de veces que se ha visto
-    sales: number;             // Número de unidades vendidas
-    lastRestockDate?: Date;    // Última fecha de reabastecimiento
-    popularityScore?: number;  // Puntuación calculada de popularidad
+    season?: string;
+    collection?: string;
+    releaseDate?: Date;
+    views: number;
+    sales: number;
+    lastRestockDate?: Date;
+    popularityScore?: number;
     variants: ProductVariant[];
     tags: string[];
     metaTitle?: string;
     metaDescription?: string;
     searchKeywords?: string[];
     features?: string[];
-    createdAt?: Date;          // Fecha de creación del producto
-    updatedAt?: Date;          // Fecha de última actualización del producto
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface ProductCreate {
@@ -135,7 +140,7 @@ export interface ProductCreate {
     sizes: Size[];
     tags?: string[];
     searchKeywords?: string[];
-    rating: number;  // Añade estas propiedades faltantes
+    rating: number;
     totalStock: number;
     views: number;
     sales: number;
@@ -163,14 +168,14 @@ export interface ProductFilter {
 export interface PaginatedResult<T> {
     items: T[];
     totalCount: number;
-    lastDoc?: any;  // Para la paginación de Firestore
+    lastDoc?: any;
     hasMore: boolean;
 }
 
 export interface SaleItem {
     variantId: string;
     quantity: number;
-    unitPrice?: number; // 🆕 Añadido unitPrice
+    unitPrice?: number;
 }
 
 export interface Review {
@@ -182,7 +187,7 @@ export interface Review {
     avatarUrl?: string;
     approved?: boolean;
     createdAt: Date;
-    productId?: string; // Opcional, si quieres asociar reseñas a productos específicos
+    productId?: string;
 }
 
 export interface NavigationItem {
@@ -196,11 +201,6 @@ export interface NavigationItem {
     order?: number;
 }
 
-// 🆕 Interfaz para el perfil de usuario (extiende User de Firebase para roles y otros campos)
-// FIX: Las propiedades de fecha son Timestamp | Date, ya que FieldValue solo es para escritura
-// y al leer de Firestore, serverTimestamp() ya se habrá resuelto a un Timestamp.
-import { Timestamp } from '@angular/fire/firestore'; // Asegurarse de importar Timestamp aquí
-
 export interface UserProfile {
     uid: string;
     email: string | null;
@@ -208,31 +208,48 @@ export interface UserProfile {
     photoURL?: string | null;
     emailVerified: boolean;
     isAnonymous: boolean;
-    createdAt: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
-    lastLogin: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
-    roles: string[]; // 'admin', 'customer', 'distributor'
+    createdAt: Timestamp | Date;
+    lastLogin: Timestamp | Date;
+    roles: string[];
     firstName?: string;
     lastName?: string;
     phone?: string;
-    birthDate?: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
+    birthDate?: Timestamp | Date;
     documentType?: string;
     documentNumber?: string;
     profileCompleted?: boolean;
-    defaultAddress?: any; // Considerar definir una interfaz para Address
-    updatedAt?: Timestamp | Date; // FIX: No FieldValue aquí, es para lectura
+    defaultAddress?: any;
+    updatedAt?: Timestamp | Date;
 }
 
-import { CartItem } from '../pasarela-pago/services/cart/cart.service';
-
 export interface Order {
-    id: string; // El ID del documento de Firestore
-    orderId: string; // El ID que generamos (ej. dist-order-12345)
-    distributorId?: string; // UID del distribuidor
-    userId?: string; // UID del cliente normal
+    id: string;
+    orderId: string;
+    distributorId?: string;
+    userId?: string;
     items: CartItem[];
     total: number;
     status: 'pending_distributor_payment' | 'pending_payment' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'completed';
     paymentMethod: 'distributor_credit' | 'payphone' | string;
-    createdAt: Timestamp; // Usamos Timestamp de Firestore
+    createdAt: Timestamp;
     updatedAt?: Timestamp;
+}
+
+// ✅ NUEVAS INTERFACES PARA EL LIBRO CONTABLE
+export interface LedgerEntry {
+    id?: string;
+    distributorId: string;
+    type: 'debit' | 'credit'; // debit = deuda, credit = pago
+    amount: number;
+    description: string;
+    sourceId: string;
+    sourceType: 'distributor_order' | 'manual_payment' | 'transfer';
+    createdAt: Timestamp;
+    createdBy: string; // UID del admin o 'system'
+}
+
+export interface LedgerSummary {
+    totalDebit: number;  // Total adeudado
+    totalCredit: number; // Total pagado
+    balance: number;     // Saldo pendiente
 }

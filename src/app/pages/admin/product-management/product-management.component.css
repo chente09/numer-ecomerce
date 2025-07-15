@@ -323,3 +323,18 @@
         font-size: 13px;
     }
 }
+
+.categories-tags-container {
+  display: flex;
+  flex-wrap: wrap; /* Permite que las etiquetas pasen a la siguiente línea si no caben */
+  gap: 4px;      /* Espacio entre etiquetas */
+}
+
+.category-tag {
+  margin: 0 !important; /* Resetea el margen por defecto de nz-tag */
+}
+
+.no-categories-text {
+  color: #999;
+  font-style: italic;
+}

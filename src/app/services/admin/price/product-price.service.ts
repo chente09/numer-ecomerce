@@ -1,14 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import {
-  Firestore, collection, collectionData,
-  query, where, getDocs, doc, getDoc,
-  updateDoc, deleteField
-} from '@angular/fire/firestore';
+import { Firestore, collection, collectionData,query, where, getDocs, doc, getDoc, updateDoc, deleteField } from '@angular/fire/firestore';
 import { Observable, of, from, throwError, firstValueFrom } from 'rxjs';
 import { map, catchError, take, tap } from 'rxjs/operators';
 
 // Importar utilidades
 import { CacheService } from '../cache/cache.service';
+import { PromotionService } from '../promotion/promotion.service';
 
 // Importar modelos
 import { Product, Promotion } from '../../../models/models';
@@ -19,13 +16,12 @@ import { Product, Promotion } from '../../../models/models';
 export class ProductPriceService {
   private firestore = inject(Firestore);
 
-  private promotionsCollection = 'promotions';
   private productsCollection = 'products';
 
-  // Claves de caché
-  private readonly activePromotionsCacheKey = 'active_promotions';
-
-  constructor(private cacheService: CacheService) { }
+  constructor(
+    private cacheService: CacheService,
+    private promotionService: PromotionService
+  ) { }
 
   /**
    * Calcula precios con descuento para array de productos
@@ -85,37 +81,6 @@ export class ProductPriceService {
     };
   }
 
-  /**
-   * Obtiene todas las promociones activas
-   */
-  getActivePromotions(): Observable<Promotion[]> {
-    return this.cacheService.getCached<Promotion[]>(this.activePromotionsCacheKey, () => {
-      const now = new Date();
-      const promotionsRef = collection(this.firestore, this.promotionsCollection);
-      const q = query(promotionsRef, where('isActive', '==', true));
-
-      return collectionData(q, { idField: 'id' }).pipe(
-        take(1),
-        map(promotions => {
-          // Filtrar por fecha en el cliente
-          return (promotions as any[])
-            .filter(promo => {
-              const endDate = this.convertTimestampToDate(promo.endDate);
-              return endDate > now;
-            })
-            .map(promo => ({
-              ...promo,
-              startDate: this.convertTimestampToDate(promo.startDate),
-              endDate: this.convertTimestampToDate(promo.endDate)
-            })) as Promotion[];
-        }),
-        catchError(error => {
-          console.error('Error obteniendo promociones activas:', error);
-          return of([]);
-        })
-      );
-    });
-  }
 
   /**
    * Calcula el precio de un producto con una promoción específica
@@ -190,7 +155,7 @@ export class ProductPriceService {
     return this.cacheService.getCached<Promotion | null>(cacheKey, () => {
       return from((async () => {
         try {
-          const promotionDoc = doc(this.firestore, this.promotionsCollection, promotionId);
+          const promotionDoc = doc(this.firestore, promotionId);
           const promotionSnap = await getDoc(promotionDoc);
 
           if (promotionSnap.exists()) {
@@ -243,13 +208,6 @@ export class ProductPriceService {
   }
 
   /**
-   * Invalida el caché de promociones
-   */
-  invalidatePromotionsCache(): void {
-    this.cacheService.invalidate(this.activePromotionsCacheKey);
-  }
-
-  /**
    * Aplica promoción a variante
    */
   applyPromotionToVariant(
@@ -285,9 +243,6 @@ export class ProductPriceService {
           originalPrice: originalPrice,
           updatedAt: new Date()
         });
-
-        // Invalidar caché
-        this.invalidatePromotionsCache();
         this.cacheService.invalidate(`products_${productId}`);
 
         return;
@@ -324,8 +279,6 @@ export class ProductPriceService {
           updatedAt: new Date()
         });
 
-        // Invalidar caché
-        this.invalidatePromotionsCache();
         this.cacheService.invalidate(`products_${productId}`);
 
         return;
@@ -352,38 +305,6 @@ export class ProductPriceService {
     return new Date();
   }
 
-  /**
-   * Método de debugging para ver promociones
-   */
-  debugPromotions(): void {
-
-    this.getActivePromotions().pipe(
-      take(1)
-    ).subscribe({
-      next: (promotions) => {
-        console.log(`📊 Total promociones activas: ${promotions.length}`);
-
-        if (promotions.length > 0) {
-          console.table(promotions.map(promo => ({
-            id: promo.id,
-            name: promo.name,
-            discountType: promo.discountType,
-            discountValue: promo.discountValue,
-            startDate: promo.startDate.toLocaleDateString(),
-            endDate: promo.endDate.toLocaleDateString(),
-            isActive: promo.isActive ? '✅' : '❌'
-          })));
-        } else {
-          console.log('🤷‍♂️ No hay promociones activas');
-        }
-      },
-      error: (error) => {
-        console.error('❌ Error obteniendo promociones:', error);
-      }
-    });
-
-    console.groupEnd();
-  }
 
   async addPromotionsToProduct(product: Product): Promise<Product> {
     if (!product.variants || product.variants.length === 0) {
@@ -392,7 +313,7 @@ export class ProductPriceService {
 
     try {
       // Obtener promociones activas que puedan aplicar al producto
-      const activePromotions = await firstValueFrom(this.getActivePromotions());
+      const activePromotions = await firstValueFrom(this.promotionService.getActivePromotions());
 
       // Enriquecer cada variante con sus promociones
       const enrichedVariants = await Promise.all(

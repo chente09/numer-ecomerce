@@ -27,7 +27,6 @@
     color: #888;
 }
 
-/* ✅ AÑADIDO: Estilos para la tabla agrupada */
 .product-row {
     background-color: #fafafa;
     font-weight: 500;
@@ -44,7 +43,14 @@
 
 .variant-indent {
     display: inline-block;
-    width: 52px; /* Ancho del botón de expandir + espaciado */
+    width: 52px;
     height: 1px;
     flex-shrink: 0;
+}
+
+/* ✅ NUEVO: Estilos para el modal de pago */
+.payment-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }

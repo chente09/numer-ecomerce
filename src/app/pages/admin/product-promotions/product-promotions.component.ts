@@ -160,7 +160,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
   }
 
   loadAllPromotions(): void {
-    this.promotionService.getPromotions()
+    this.promotionService.forceRefreshPromotions()
       .pipe(
         take(1),
         finalize(() => this.cdr.markForCheck())

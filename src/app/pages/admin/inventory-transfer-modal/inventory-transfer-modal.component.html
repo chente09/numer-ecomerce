@@ -1,54 +1,104 @@
-<form nz-form [formGroup]="transferForm" (ngSubmit)="submitForm()">
+<div class="transfer-modal-container">
+    <!-- ✅ INFORMACIÓN DEL PRODUCTO Y VARIANTE (SIEMPRE MOSTRAR) -->
+    <div *ngIf="product" class="product-info">
+        <nz-alert 
+            nzType="info" 
+            [nzMessage]="variant ? 'Transferencia de Variante Específica' : 'Selección de Variante'" 
+            [nzDescription]="getProductInfoDescription()" 
+            nzShowIcon>
+        </nz-alert>
+    </div>
 
-    <nz-form-item>
-        <nz-form-label nzRequired nzFor="variant">Variante de Producto</nz-form-label>
-        <nz-form-control nzErrorTip="Por favor, seleccione una variante.">
-            <nz-select formControlName="variant" nzPlaceHolder="Seleccione una variante" nzShowSearch
-                [nzDisabled]="isLoading">
-                <nz-option *ngFor="let variant of (variants$ | async)" [nzValue]="variant.id"
-                    [nzLabel]="formatVariantLabel(variant)">
-                </nz-option>
-            </nz-select>
-        </nz-form-control>
-    </nz-form-item>
+    <nz-spin [nzSpinning]="isLoading">
+        <form nz-form [formGroup]="transferForm" (ngSubmit)="submitForm()">
 
-    <nz-form-item>
-        <nz-form-label nzRequired nzFor="distributor">Distribuidor</nz-form-label>
-        <nz-form-control nzErrorTip="Por favor, seleccione un distribuidor.">
-            <nz-select formControlName="distributor" nzPlaceHolder="Seleccione un distribuidor" nzShowSearch
-                [nzDisabled]="isLoading">
-                <nz-option *ngFor="let distributor of (distributors$ | async)" [nzValue]="distributor.uid"
-                    [nzLabel]="formatDistributorLabel(distributor)">
-                </nz-option>
-            </nz-select>
-        </nz-form-control>
-    </nz-form-item>
+            <!-- ❌ ELIMINAR: El selector de variante ya no aparece cuando hay variante fija -->
+            <!-- Solo mostrar selector si NO hay variante predefinida -->
+            <nz-form-item *ngIf="!variant">
+                <nz-form-label nzRequired nzFor="variant">Variante de Producto</nz-form-label>
+                <nz-form-control nzErrorTip="Por favor, seleccione una variante.">
+                    <nz-select formControlName="variant" nzPlaceHolder="Buscar y seleccionar una variante" nzShowSearch>
+                        <nz-option *ngFor="let v of (variants$ | async)" [nzValue]="v.id"
+                            [nzLabel]="formatVariantLabel(v)"></nz-option>
+                    </nz-select>
+                </nz-form-control>
+            </nz-form-item>
 
-    <nz-form-item>
-        <nz-form-label nzRequired nzFor="quantity">Cantidad a Transferir</nz-form-label>
-        <nz-form-control [nzErrorTip]="
-            transferForm.get('quantity')?.hasError('min') ? 'La cantidad debe ser al menos 1.' :
-            transferForm.get('quantity')?.hasError('max') ? 'Stock insuficiente. Disponible: ' + (selectedVariant?.stock || 0) :
-            'Por favor, ingrese una cantidad válida.'
-        ">
-            <nz-input-number formControlName="quantity" [nzMin]="1" [nzMax]="selectedVariant?.stock || 0"
-                [nzStep]="1" [nzDisabled]="!selectedVariant || isLoading" nzPlaceHolder="Ingrese cantidad">
-            </nz-input-number>
-            <div *ngIf="selectedVariant" style="margin-top: 4px;">
-                <small nz-typography nzType="secondary">
-                    Stock disponible: {{ selectedVariant.stock }} unidades
-                </small>
+            <!-- ✅ INFORMACIÓN DE LA VARIANTE FIJA (NUEVA SECCIÓN) -->
+            <nz-form-item *ngIf="variant">
+                <nz-form-label>Variante a Transferir</nz-form-label>
+                <nz-form-control>
+                    <div class="variant-info-display">
+                        <nz-tag nzColor="blue">
+                            <span nz-icon nzType="tag"></span>
+                            {{ variant.colorName }} / {{ variant.sizeName }}
+                        </nz-tag>
+                        <nz-tag nzColor="green">
+                            <span nz-icon nzType="database"></span>
+                            Stock: {{ variant.stock }}
+                        </nz-tag>
+                    </div>
+                </nz-form-control>
+            </nz-form-item>
+
+            <!-- ✅ SELECTOR DE DISTRIBUIDOR -->
+            <nz-form-item>
+                <nz-form-label nzRequired nzFor="distributorId">Distribuidor</nz-form-label>
+                <nz-form-control nzErrorTip="Por favor, seleccione un distribuidor.">
+                    <nz-select formControlName="distributorId" nzPlaceHolder="Seleccionar distribuidor" nzShowSearch>
+                        <nz-option *ngFor="let d of (distributors$ | async)" [nzValue]="d.uid"
+                            [nzLabel]="formatDistributorLabel(d)"></nz-option>
+                    </nz-select>
+                </nz-form-control>
+            </nz-form-item>
+
+            <!-- ✅ CANTIDAD A TRANSFERIR -->
+            <nz-form-item>
+                <nz-form-label nzRequired nzFor="quantity">Cantidad a Transferir</nz-form-label>
+                <nz-form-control [nzErrorTip]="getQuantityErrorTip()">
+                    <nz-input-number 
+                        formControlName="quantity" 
+                        [nzMin]="1" 
+                        [nzMax]="selectedVariant?.stock || 0"
+                        [nzStep]="1" 
+                        style="width: 100%;" 
+                        [nzDisabled]="!selectedVariant"
+                        nzPlaceHolder="Ingrese cantidad">
+                    </nz-input-number>
+                    <div class="form-help-text" *ngIf="selectedVariant">
+                        Stock disponible: <strong>{{ selectedVariant.stock }}</strong> unidades
+                    </div>
+                </nz-form-control>
+            </nz-form-item>
+
+            <!-- ✅ NOTAS OPCIONALES -->
+            <nz-form-item>
+                <nz-form-label nzFor="notes">Notas (Opcional)</nz-form-label>
+                <nz-form-control>
+                    <textarea 
+                        nz-input 
+                        formControlName="notes" 
+                        placeholder="Ej. Envío para reposición de stock, Transferencia urgente..."
+                        [nzAutosize]="{ minRows: 2, maxRows: 4 }">
+                    </textarea>
+                </nz-form-control>
+            </nz-form-item>
+
+            <!-- ✅ BOTONES DEL MODAL -->
+            <div class="modal-footer">
+                <button nz-button type="button" (click)="destroyModal()">
+                    <span nz-icon nzType="close"></span>
+                    Cancelar
+                </button>
+                <button 
+                    nz-button 
+                    nzType="primary" 
+                    [nzLoading]="isSubmitting" 
+                    [disabled]="transferForm.invalid || !selectedVariant">
+                    <span nz-icon nzType="swap"></span>
+                    Confirmar Transferencia
+                </button>
             </div>
-        </nz-form-control>
-    </nz-form-item>
-
-    <nz-form-item>
-        <nz-form-label nzFor="notes">Notas</nz-form-label>
-        <nz-form-control>
-            <textarea nz-input formControlName="notes" placeholder="Notas sobre la transferencia (opcional)"
-                [nzAutosize]="{ minRows: 2, maxRows: 4 }" [disabled]="isLoading">
-            </textarea>
-        </nz-form-control>
-    </nz-form-item>
-
-</form>
+        </form>
+    </nz-spin>
+</div>
