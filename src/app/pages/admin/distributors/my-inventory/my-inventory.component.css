@@ -1,30 +1,96 @@
-/* Estilos base existentes */
+/* =============================================== */
+/* ========= ESTILOS BASE Y LAYOUT ========= */
+/* =============================================== */
+
 .my-inventory-container {
     padding: 16px;
+    /* Prevenir overflow horizontal del contenedor principal */
+    overflow-x: hidden;
 }
 
-.mt-4 {
-    margin-top: 16px;
+/* Utilidades de margen reutilizables */
+.mt-4 { margin-top: 16px; }
+.mt-3 { margin-top: 16px; }
+.ml-2 { margin-left: 8px; }
+.mb-3 { margin-bottom: 16px; }
+
+/* =============================================== */
+/* ========= CONTENEDOR DE TABLA RESPONSIVE ========= */
+/* =============================================== */
+
+/* ✅ Contenedor mejorado para scroll horizontal */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    /* Añadir sombras para indicar scroll */
+    position: relative;
 }
+
+/* Indicador visual de scroll disponible */
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* ✅ Forzar ancho mínimo para todas las tablas */
+.table-container table,
+.table-container .ant-table-container table {
+    min-width: 600px;
+    width: 100%;
+}
+
+/* Específico para tabla de estado de cuenta */
+.statement-table table {
+    min-width: 800px !important;
+}
+
+/* =============================================== */
+/* ========= ESTILOS DE TABLA Y PRODUCTOS ========= */
+/* =============================================== */
 
 .product-info-cell {
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 200px; /* Ancho mínimo para evitar compresión */
 }
 
 .product-details {
     display: flex;
     flex-direction: column;
+    min-width: 0; /* Permite que el texto se trunque si es necesario */
 }
 
 .product-name {
     font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
 }
 
 .product-model {
     font-size: 12px;
     color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
 }
 
 .variant-row.hidden-row {
@@ -34,6 +100,7 @@
 .variant-details-cell {
     display: flex;
     align-items: center;
+    white-space: nowrap;
 }
 
 .variant-indent {
@@ -44,33 +111,400 @@
 }
 
 /* =============================================== */
-/* ========= INICIO DE ESTILOS RESPONSIVOS ========= */
+/* ========= INFORMACIÓN FINANCIERA ========= */
 /* =============================================== */
 
-/* ✅ Contenedor para forzar el scroll horizontal de la tabla */
-.table-container {
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-label {
+    font-weight: 500;
+    color: #666;
+}
+
+.info-value {
+    color: #262626;
+    font-weight: 500;
+}
+
+.info-item-improved {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: #f6f6f6;
+    border-radius: 6px;
+}
+
+.info-label-improved {
+    font-weight: 600;
+    color: #666;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value-improved {
+    color: #262626;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+/* =============================================== */
+/* ========= CARDS COLLAPSIBLES ========= */
+/* =============================================== */
+
+.collapsible-card {
+    border: 1px solid #e8e8e8;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.collapsible-card:hover {
+    border-color: #40a9ff;
+    box-shadow: 0 2px 8px rgba(64, 169, 255, 0.1);
+}
+
+.collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease;
+    padding: 4px 0;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.collapsible-header:hover {
+    color: #40a9ff;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.header-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.toggle-text {
+    transition: color 0.3s ease;
+}
+
+.toggle-icon {
+    transition: transform 0.3s ease;
+    font-size: 16px;
+}
+
+.toggle-icon[nzType="up"] {
+    transform: rotate(180deg);
+}
+
+.collapsible-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
+    margin-top: 0;
+}
+
+.collapsible-content.expanded {
+    max-height: 2000px; /* Aumentado para contenido más largo */
+    margin-top: 16px;
+    overflow-x: auto; /* Permitir scroll horizontal si es necesario */
+}
+
+/* =============================================== */
+/* ========= CONTENIDO DE TABLAS ========= */
+/* =============================================== */
+
+.debt-description,
+.transfer-description,
+.payment-description,
+.transaction-description {
+    line-height: 1.4;
+    max-width: 300px;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.payment-date,
+.transaction-date {
+    font-size: 12px;
+    color: #666;
+    white-space: nowrap;
+    min-width: 100px;
+}
+
+.payment-notes {
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* =============================================== */
+/* ========= ESTADÍSTICAS ========= */
+/* =============================================== */
+
+.payments-stats,
+.statement-summary {
+    padding: 12px;
+    background: #fafafa;
+    border-radius: 6px;
+    margin-top: 16px;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch; /* Para un scroll más suave en iOS */
 }
 
-/* ✅ Forzar un ancho mínimo para la tabla para que no se rompa */
-.table-container nz-table {
-    min-width: 500px; /* Ajusta este valor si necesitas más o menos espacio */
+.stat-item,
+.summary-stat {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    gap: 4px;
+    padding: 8px;
+    min-width: 100px;
 }
 
+.stat-label {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #262626;
+}
+
+.stat-value.success { color: #52c41a; }
+.stat-value.debit-color { color: #fa8c16; }
+.stat-value.credit-color { color: #52c41a; }
+
+/* =============================================== */
+/* ========= ESTADO DE CUENTA ========= */
+/* =============================================== */
+
+.statement-filters {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #fafafa;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+.statement-filters nz-button-group {
+    display: inline-flex;
+    min-width: max-content;
+}
+
+.statement-filters nz-button-group button {
+    margin-right: 8px;
+}
+
+.statement-filters nz-button-group button:last-child {
+    margin-right: 0;
+}
+
+/* Wrapper para tabla de estado de cuenta */
+.statement-table {
+    margin-top: 12px;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Filas de transacciones */
+.debit-row {
+    background-color: #fff7e6 !important;
+    border-left: 3px solid #fa8c16;
+}
+
+.credit-row {
+    background-color: #f6ffed !important;
+    border-left: 3px solid #52c41a;
+}
+
+.debit-row:hover {
+    background-color: #ffefd2 !important;
+}
+
+.credit-row:hover {
+    background-color: #ebfde0 !important;
+}
+
+/* Indicadores de tipo de transacción */
+.transaction-type-cell {
+    text-align: center;
+    padding: 8px !important;
+    min-width: 60px;
+}
+
+.transaction-type-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin: 0 auto;
+}
+
+.debit-icon,
+.credit-icon {
+    font-size: 16px;
+    padding: 8px;
+    border-radius: 50%;
+    border-width: 2px;
+    border-style: solid;
+}
+
+.debit-icon {
+    color: #fa8c16;
+    background: #fff7e6;
+    border-color: #fa8c16;
+}
+
+.credit-icon {
+    color: #52c41a;
+    background: #f6ffed;
+    border-color: #52c41a;
+}
+
+.paid-amount-indicator {
+    font-size: 11px;
+    color: #52c41a;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.na-indicator {
+    color: #999;
+    font-style: italic;
+}
+
+/* =============================================== */
+/* ========= INFORMACIÓN DE PAGOS ========= */
+/* =============================================== */
+
+.payment-info-container {
+    padding: 8px 0;
+}
+
+.payment-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.payment-step {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #fafafa;
+    border-radius: 8px;
+    border-left: 4px solid #1890ff;
+    transition: all 0.3s ease;
+}
+
+.payment-step:hover {
+    background: #f0f9ff;
+    transform: translateX(4px);
+}
+
+.step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #1890ff;
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.step-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.step-content h4 {
+    margin: 0 0 4px 0;
+    color: #262626;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.step-content p {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.step-icon {
+    font-size: 20px;
+    color: #1890ff;
+    flex-shrink: 0;
+}
+
+/* =============================================== */
+/* ========= RESPONSIVO MEJORADO ========= */
+/* =============================================== */
 
 @media (max-width: 768px) {
     .my-inventory-container {
         padding: 8px;
     }
 
+    /* Ajustes de tabla para móvil */
     :host ::ng-deep .ant-table-tbody > tr > td {
         font-size: 12px;
-        padding: 10px 8px; /* Un poco más de padding lateral */
+        padding: 10px 8px;/* Mantener contenido en una línea */
     }
 
+    /* Ajuste de scroll para tablas en móvil */
+    .table-container {
+        margin: 0 -8px; /* Compensar padding del container */
+        padding: 0 8px;
+        width: calc(100% + 16px);
+    }
+
+    .statement-table {
+        margin: 12px -8px 0;
+        padding: 0 8px;
+        width: calc(100% + 16px);
+    }
+
+    /* Productos en tabla */
     .product-info-cell {
         gap: 8px;
+        min-width: 180px;
     }
 
     :host ::ng-deep .product-info-cell .ant-avatar {
@@ -79,25 +513,224 @@
         min-width: 40px;
     }
 
-    .product-name {
+    .product-name,
+    .product-model {
         font-size: 13px;
-        white-space: nowrap; /* Evita que el nombre del producto se parta */
+        max-width: 150px;
     }
 
+    /* Botones responsivos */
     .button-text {
+        display: inline-block;
         transition: all 0.2s ease-in-out;
+    }
+
+    /* Headers collapsibles */
+    .header-actions {
+        font-size: 12px;
+    }
+
+    .toggle-text {
+        font-size: 12px;
+    }
+
+    /* Descripciones en tablas */
+    .debt-description,
+    .transfer-description,
+    .payment-description,
+    .transaction-description {
+        font-size: 12px;
+        max-width: 200px;
+    }
+
+    /* Estadísticas */
+    .stat-item,
+    .summary-stat {
+        margin-bottom: 8px;
+        min-width: 80px;
+    }
+
+    /* Pasos de pago */
+    .payment-step {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+
+    .step-content {
+        text-align: center;
+    }
+
+    /* Financieros */
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    /* Filtros de estado de cuenta */
+    .statement-filters {
+        margin: 0 -8px 16px;
+        padding: 8px;
+        width: calc(100% + 16px);
+    }
+
+    .statement-filters nz-button-group {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+    }
+
+    .statement-filters nz-button-group button {
+        flex-shrink: 0;
+        min-width: 80px;
+    }
+
+    /* Columnas de tabla específicas para móvil */
+    :host ::ng-deep .statement-table th,
+    :host ::ng-deep .statement-table td {
+        min-width: 80px;
+    }
+
+    /* Mantener columnas importantes visibles */
+    :host ::ng-deep .statement-table th:nth-child(3),
+    :host ::ng-deep .statement-table td:nth-child(3) {
+        min-width: 150px; /* Descripción */
     }
 }
 
 @media (max-width: 480px) {
+    /* Ocultar texto en botones muy pequeños */
     .button-text {
-        display: none; /* Oculta el texto del botón y deja solo el ícono */
+        display: none;
     }
 
+    /* Ajustes de estadísticas */
     :host ::ng-deep .ant-statistic-title {
         font-size: 12px;
     }
+
     :host ::ng-deep .ant-statistic-content {
         font-size: 20px;
     }
+
+    :host ::ng-deep .ant-statistic-content-value {
+        font-size: 18px !important;
+    }
+
+    /* Productos más compactos */
+    .product-name,
+    .product-model {
+        max-width: 120px;
+        font-size: 12px;
+    }
+
+    /* Ajustes de tabla aún más agresivos */
+    .table-container table {
+        min-width: 500px;
+    }
+
+    .statement-table table {
+        min-width: 600px !important;
+    }
+
+    /* Pasos de pago más pequeños */
+    .payment-steps {
+        gap: 12px;
+    }
+
+    .payment-step {
+        padding: 12px;
+    }
+
+    .step-content h4 {
+        font-size: 14px;
+    }
+
+    .step-content p {
+        font-size: 13px;
+    }
+
+    /* Indicadores de transacción más pequeños */
+    .transaction-type-indicator {
+        width: 24px;
+        height: 24px;
+    }
+
+    .debit-icon,
+    .credit-icon {
+        font-size: 12px;
+        padding: 6px;
+    }
+
+    /* Botones de filtro más compactos */
+    .statement-filters nz-button-group button {
+        font-size: 12px;
+        padding: 4px 8px;
+        min-width: 70px;
+    }
+
+    /* Descripciones aún más compactas */
+    .transaction-description {
+        max-width: 150px;
+        font-size: 11px;
+    }
+
+    .transaction-date {
+        font-size: 10px;
+    }
+}
+
+/* =============================================== */
+/* ========= UTILIDADES ADICIONALES ========= */
+/* =============================================== */
+
+/* Prevenir desbordamiento de texto largo */
+.ant-table-cell {
+    word-break: keep-all;
+    overflow-wrap: normal;
+}
+
+/* Mejorar visibilidad del scroll en dispositivos táctiles */
+@media (hover: none) and (pointer: coarse) {
+    .table-container::-webkit-scrollbar,
+    .statement-table::-webkit-scrollbar {
+        height: 12px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb,
+    .statement-table::-webkit-scrollbar-thumb {
+        background: #666;
+    }
+}
+
+/* Indicador visual de que hay más contenido (opcional) */
+.table-container::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 30px;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.8));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.table-container.scrollable::after {
+    opacity: 1;
+}
+
+/* Fix para ant-design tables dentro de containers con scroll */
+:host ::ng-deep .ant-table-wrapper {
+    width: 100%;
+}
+
+:host ::ng-deep .ant-table {
+    width: 100%;
+}
+
+:host ::ng-deep .ant-table-container {
+    width: 100%;
 }

@@ -64,7 +64,7 @@ export interface ProductVariant {
     stock: number;
     sku: string;
     price?: number;
-    distributorCost?: number; 
+    distributorCost?: number;
     imageUrl?: string;
     promotionId?: string;
     discountType?: 'percentage' | 'fixed';
@@ -73,6 +73,7 @@ export interface ProductVariant {
     originalPrice?: number;
     checked?: boolean;
 }
+
 export interface AdditionalImageItem {
     file?: File;
     url: string;
@@ -235,7 +236,11 @@ export interface Order {
     updatedAt?: Timestamp;
 }
 
-// ✅ NUEVAS INTERFACES PARA EL LIBRO CONTABLE
+// =====================================
+// ✅ INTERFACES PARA EL LIBRO CONTABLE EXTENDIDO
+// =====================================
+
+// Interface base existente - EXTENDIDA
 export interface LedgerEntry {
     id?: string;
     distributorId: string;
@@ -246,10 +251,84 @@ export interface LedgerEntry {
     sourceType: 'distributor_order' | 'manual_payment' | 'transfer';
     createdAt: Timestamp;
     createdBy: string; // UID del admin o 'system'
+
+    // ✅ NUEVOS CAMPOS PARA CONTROL MEJORADO
+    paymentStatus?: 'pending' | 'paid' | 'partial' | 'overdue';
+    paidAmount?: number;
+    paymentDate?: Timestamp;
+    paymentVoucher?: string; // URL del comprobante subido
+    paymentNotes?: string;
+    dueDate?: Timestamp;
+    relatedTransferId?: string; // Vincula débitos con transferencias específicas
+
+    // Campos para pagos parciales
+    remainingAmount?: number;
+    isPartialPayment?: boolean;
+    parentDebitId?: string; // Para pagos parciales, referencia al débito original
 }
 
+// Interface base existente
 export interface LedgerSummary {
     totalDebit: number;  // Total adeudado
     totalCredit: number; // Total pagado
     balance: number;     // Saldo pendiente
+}
+
+// ✅ NUEVA: Interface para resumen extendido
+export interface EnhancedLedgerSummary extends LedgerSummary {
+    totalDebit: number;
+    totalCredit: number;
+    balance: number;
+
+    // Nuevos campos extendidos
+    pendingAmount: number;
+    paidAmount: number;
+    overdueAmount: number;
+    partialPayments: number;
+    totalTransactions: number;
+    averageDebtAge: number; // En días
+    oldestUnpaidDate?: Date;
+    lastPaymentDate?: Date;
+}
+
+// ✅ NUEVA: Interface para detalles extendidos de pagos
+export interface PaymentDetails {
+    id?: string;
+    ledgerEntryId: string;
+    distributorId: string;
+    amount: number;
+    voucherFile?: File;
+    voucherUrl?: string;
+    paymentMethod: 'cash' | 'bank_transfer' | 'check' | 'online' | 'other';
+    bankReference?: string;
+    notes: string;
+    paidDate: Date;
+    registeredBy: string;
+    createdAt: Timestamp;
+    updatedAt?: Timestamp;
+
+    // ✅ CAMPO PARA VINCULAR PAGOS PARCIALES
+    parentDebitId?: string; // Para pagos parciales, referencia al débito original
+}
+
+// ✅ NUEVA: Interface para filtros de reportes
+export interface PaymentReportFilter {
+    distributorId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    paymentStatus?: 'pending' | 'paid' | 'partial' | 'overdue' | 'all';
+    paymentMethod?: string;
+    sourceType?: 'distributor_order' | 'manual_payment' | 'transfer' | 'all';
+    minAmount?: number;
+    maxAmount?: number;
+}
+
+// ✅ NUEVA: Interface para datos de reporte
+export interface PaymentReportData {
+    entries: LedgerEntry[];
+    summary: EnhancedLedgerSummary;
+    distributorName?: string;
+    periodDescription: string;
+    generatedAt: Date;
+    generatedBy: string;
 }

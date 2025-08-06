@@ -15,7 +15,8 @@ import {
   serverTimestamp,
   Timestamp,
   FieldValue, // Importar FieldValue
-  orderBy
+  orderBy,
+  onSnapshot
 } from '@angular/fire/firestore';
 import { Observable, from, of, forkJoin, throwError } from 'rxjs';
 import { map, catchError, switchMap, take, tap } from 'rxjs/operators';
@@ -83,34 +84,40 @@ export class DistributorService {
   }
 
   /**
-   * 📦 Obtiene el inventario de un distribuidor específico.
-   * @param distributorId ID del distribuidor.
-   * @param productId Opcional: filtra el inventario por un producto específico.
-   */
-  getDistributorInventory(distributorId: string, productId?: string): Observable<DistributorInventoryItem[]> {
-    const cacheKey = `distributor_inventory_${distributorId}${productId ? `_${productId}` : ''}`;
+ * 📦 Obtiene el inventario de un distribuidor en TIEMPO REAL desde la colección principal.
+ * @param distributorId ID del distribuidor.
+ */
+  getDistributorInventory(distributorId: string): Observable<DistributorInventoryItem[]> {
+    if (!distributorId) {
+      return of([]);
+    }
 
-    return this.cacheService.getCached<DistributorInventoryItem[]>(cacheKey, () => {
-      const inventoryRef = collection(this.firestore, this.distributorInventoryCollection);
-      let q = query(inventoryRef, where('distributorId', '==', distributorId));
+    // ✅ CORRECCIÓN: Apuntar a la colección principal 'distributors_inventory'.
+    const inventoryRef = collection(this.firestore, 'distributors_inventory');
 
-      if (productId) {
-        q = query(q, where('productId', '==', productId));
-      }
+    // ✅ CORRECCIÓN: Aplicar el filtro 'where' para obtener solo el inventario del distribuidor correcto.
+    const q = query(inventoryRef, where('distributorId', '==', distributorId));
 
-      return from(getDocs(q)).pipe(
-        map(snapshot => {
-          return snapshot.docs.map(doc => {
+    return new Observable(subscriber => {
+      const unsubscribe = onSnapshot(q,
+        (snapshot) => {
+          const inventory = snapshot.docs.map(doc => {
             const data = doc.data();
-            // ✅ CORRECCIÓN: Usar el nombre correcto del método
+            // Mantenemos tu lógica de conversión de fechas que es importante.
             return this.usersService.convertTimestampsToDates({ id: doc.id, ...data }) as DistributorInventoryItem;
           });
-        }),
-        catchError(error => {
-          console.error(`❌ DistributorService: Error obteniendo inventario para ${distributorId}:`, error);
-          return ErrorUtil.handleError(error, 'getDistributorInventory');
-        })
+
+          // El componente recibirá la lista de inventario actualizada aquí.
+          subscriber.next(inventory);
+        },
+        (error) => {
+          console.error(`❌ DistributorService: Error en listener de inventario para ${distributorId}:`, error);
+          subscriber.error(error);
+        }
       );
+
+      // Limpieza al destruir el componente.
+      return () => unsubscribe();
     });
   }
 

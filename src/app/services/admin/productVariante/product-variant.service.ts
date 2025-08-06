@@ -255,7 +255,9 @@ export class ProductVariantService {
     colors: Color[],
     sizes: Size[],
     variantImages?: Map<string, File>,
-    productSku?: string
+    productSku?: string,
+    productPrice?: number,          // ✅ NUEVO: Precio del producto
+    distributorCost?: number        // ✅ NUEVO: Costo para distribuidores
   ): Promise<void> {
     if (!productId) {
       throw new Error('ProductId es requerido');
@@ -267,6 +269,13 @@ export class ProductVariantService {
         console.warn('⚠️ VariantService: No hay colores o tallas para crear variantes');
         return;
       }
+
+      console.log('💰 [VARIANT SERVICE] Creando variantes con distributorCost:', {
+        productId,
+        distributorCost,
+        productPrice,
+        hasDistributorCost: distributorCost !== undefined
+      });
 
       const batch = writeBatch(this.firestore);
       const variants: ProductVariant[] = [];
@@ -283,23 +292,33 @@ export class ProductVariantService {
           const variantStock = colorStock?.quantity || 0;
 
           if (variantStock > 0) {
-            const variantId = this.generateId(); // ✅ ID generado una sola vez
+            const variantId = this.generateId();
             const variantSKU = this.generateVariantSKU(productSku, color.name, size.name, variantId);
 
             const variant: ProductVariant = {
-              id: variantId, // ✅ USAR EL ID GENERADO, NO GENERAR OTRO
+              id: variantId,
               productId,
               colorName: color.name,
               colorCode: color.code,
               sizeName: size.name,
               stock: variantStock,
-              sku: variantSKU, // ✅ USAR LA VARIABLE variantSKU
-              imageUrl: color.imageUrl || '' // Imagen inicial (puede cambiar después)
+              sku: variantSKU,
+              imageUrl: color.imageUrl || '',
+              // ✅ NUEVO: Incluir precio y costo de distribuidor
+              price: productPrice,
+              distributorCost: distributorCost
             };
 
-            variants.push(variant); // ✅ SOLO AGREGAR UNA VEZ
-            totalStock += variantStock; // ✅ SOLO SUMAR UNA VEZ
+            variants.push(variant);
+            totalStock += variantStock;
             variantsCreated++;
+
+            // 🔍 DEBUG: Log de variante creada
+            console.log(`💰 [VARIANT] Creada: ${variant.colorName}-${variant.sizeName}`, {
+              price: variant.price,
+              distributorCost: variant.distributorCost,
+              stock: variant.stock
+            });
 
             // Procesar imagen de variante si existe
             const imagePromise = this.processVariantImage(
@@ -985,6 +1004,106 @@ export class ProductVariantService {
     } catch (error) {
       console.error('❌ Error obteniendo variantes sin caché:', error);
       return [];
+    }
+  }
+
+  // 🆕 AGREGAR en ProductVariantService
+
+  /**
+   * 🆕 Actualiza el distributorCost en todas las variantes de un producto
+   */
+  async updateDistributorCostForProduct(
+    productId: string,
+    distributorCost: number | undefined
+  ): Promise<void> {
+    if (!productId) {
+      throw new Error('ProductId es requerido');
+    }
+
+    try {
+      console.log('💰 [VARIANT SERVICE] Actualizando distributorCost para variantes:', {
+        productId,
+        distributorCost
+      });
+
+      // Obtener todas las variantes del producto
+      const variants = await this.getVariantsByProductId(productId);
+
+      if (variants.length === 0) {
+        console.log(`⚠️ No hay variantes para actualizar en producto ${productId}`);
+        return;
+      }
+
+      const batch = writeBatch(this.firestore);
+
+      // Actualizar cada variante
+      variants.forEach(variant => {
+        const variantRef = doc(this.firestore, this.variantsCollection, variant.id);
+        batch.update(variantRef, {
+          distributorCost: distributorCost,
+          updatedAt: new Date()
+        });
+      });
+
+      await batch.commit();
+
+      console.log(`✅ VariantService: distributorCost actualizado en ${variants.length} variantes`);
+
+    } catch (error) {
+      console.error(`❌ VariantService: Error actualizando distributorCost:`, error);
+      throw new Error(`Error al actualizar distributorCost: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
+  }
+
+  /**
+   * 🆕 Actualiza el precio y distributorCost en todas las variantes de un producto
+   */
+  async updatePricingForProduct(
+    productId: string,
+    price?: number,
+    distributorCost?: number
+  ): Promise<void> {
+    if (!productId) {
+      throw new Error('ProductId es requerido');
+    }
+
+    try {
+      console.log('💰 [VARIANT SERVICE] Actualizando precios para variantes:', {
+        productId,
+        price,
+        distributorCost
+      });
+
+      const variants = await this.getVariantsByProductId(productId);
+
+      if (variants.length === 0) {
+        console.log(`⚠️ No hay variantes para actualizar en producto ${productId}`);
+        return;
+      }
+
+      const batch = writeBatch(this.firestore);
+      const updateData: any = { updatedAt: new Date() };
+
+      if (price !== undefined) {
+        updateData.price = price;
+      }
+
+      if (distributorCost !== undefined) {
+        updateData.distributorCost = distributorCost;
+      }
+
+      variants.forEach(variant => {
+        const variantRef = doc(this.firestore, this.variantsCollection, variant.id);
+        batch.update(variantRef, updateData);
+      });
+
+      await batch.commit();
+
+      console.log(`✅ VariantService: Precios actualizados en ${variants.length} variantes`);
+
+    } catch (error) {
+      console.error(`❌ VariantService: Error actualizando precios:`, error);
+      throw new Error(`Error al actualizar precios: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
 }

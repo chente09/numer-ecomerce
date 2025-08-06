@@ -181,7 +181,6 @@ export class InventoryTransferModalComponent implements OnInit {
       return;
     }
 
-    // 🔧 CORRECCIÓN: Verificar que tenemos la variante correcta
     if (!this.selectedVariant) {
       this.message.error('No se pudo determinar la variante a transferir.');
       return;
@@ -202,22 +201,26 @@ export class InventoryTransferModalComponent implements OnInit {
     this.distributorService.transferStockToDistributor(transferDetails).subscribe({
       next: async () => {
         try {
-          // 🔧 CORRECCIÓN: Usar la variante seleccionada o la variante fija
-          const price = this.selectedVariant!.price || this.product!.price;
-          const priceWithoutVAT = price / (1 + this.VAT_RATE);
-          const distributorCost = priceWithoutVAT * (1 - this.DISTRIBUTOR_DISCOUNT_PERCENTAGE);
-          const totalDebitAmount = distributorCost * quantity;
+          // Calcular el costo base y el total de la deuda
+          const distributorCostBase = this.calculateDistributorCost();
+          const totalWithoutIVA = distributorCostBase * quantity;
+          const totalDebitAmount = totalWithoutIVA * (1 + this.VAT_RATE);
+
+          // ✅ CAMBIO CLAVE: Redondear el monto total de la deuda a 2 decimales.
+          const roundedTotalDebitAmount = Math.round(totalDebitAmount * 100) / 100;
+
           const transferId = `transfer-${Date.now()}`;
 
+          // Registrar el débito en el libro contable
           await this.ledgerService.registerDebit(
             distributorId,
-            totalDebitAmount,
-            `Transferencia de ${quantity} x ${this.product!.name} (${this.selectedVariant!.colorName}/${this.selectedVariant!.sizeName})`,
+            roundedTotalDebitAmount, // ✅ USAR EL VALOR YA REDONDEADO
+            `Transferencia de ${quantity} x ${this.product!.name} (${this.selectedVariant!.colorName}/${this.selectedVariant!.sizeName}) - Costo: $${distributorCostBase.toFixed(2)} + IVA`,
             transferId,
             'transfer'
           );
 
-          this.message.success('Stock transferido y deuda registrada exitosamente.');
+          this.message.success(`Stock transferido y deuda registrada: $${roundedTotalDebitAmount.toFixed(2)}`);
           this.modalRef.close({ success: true });
 
         } catch (ledgerError: any) {
@@ -232,6 +235,46 @@ export class InventoryTransferModalComponent implements OnInit {
         this.isSubmitting = false;
       }
     });
+  }
+
+  // ✅ NUEVO: Método para calcular el costo del distribuidor correctamente
+  private calculateDistributorCost(): number {
+    // 1️⃣ PRIORIDAD: distributorCost específico de la variante
+    if (this.selectedVariant!.distributorCost && this.selectedVariant!.distributorCost > 0) {
+      return this.selectedVariant!.distributorCost;
+    }
+
+    // 2️⃣ PRIORIDAD: distributorCost del producto
+    if (this.product!.distributorCost && this.product!.distributorCost > 0) {
+      return this.product!.distributorCost;
+    }
+
+    // 3️⃣ FALLBACK: Cálculo tradicional con descuentos
+    const price = this.selectedVariant!.price || this.product!.price;
+    const priceWithoutVAT = price / (1 + this.VAT_RATE);
+    return priceWithoutVAT * (1 - this.DISTRIBUTOR_DISCOUNT_PERCENTAGE);
+  }
+
+  // ✅ NUEVO: Método auxiliar para verificar si hay distributorCost directo
+  public getDistributorCostDirect(): number | null {
+    return this.selectedVariant!.distributorCost || this.product!.distributorCost || null;
+  }
+
+  // ✅ NUEVO: Método para mostrar información de precios en el template
+  getCalculatedCostInfo(): string {
+    if (!this.selectedVariant) return '';
+
+    const distributorCost = this.calculateDistributorCost();
+    const hasDirectCost = this.getDistributorCostDirect() !== null;
+    const quantity = this.transferForm.get('quantity')?.value || 1;
+    const totalWithoutIVA = distributorCost * quantity;
+    const totalWithIVA = totalWithoutIVA * (1 + this.VAT_RATE);
+
+    if (hasDirectCost) {
+      return `Costo distribuidor: $${distributorCost.toFixed(2)} x ${quantity} = $${totalWithoutIVA.toFixed(2)} + IVA (15%) = $${totalWithIVA.toFixed(2)}`;
+    } else {
+      return `Costo calculado (fallback): $${distributorCost.toFixed(2)} x ${quantity} = $${totalWithoutIVA.toFixed(2)} + IVA (15%) = $${totalWithIVA.toFixed(2)}`;
+    }
   }
 
   destroyModal(): void {

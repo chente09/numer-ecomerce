@@ -1,0 +1,363 @@
+/* =============================================== */
+/* 🎨 ESTILOS PARA EL COMPONENTE DE PAGOS MEJORADO */
+/* =============================================== */
+
+.enhanced-payment-management {
+    padding: 0;
+}
+
+/* =============================================== */
+/* 📊 TARJETA DE RESUMEN FINANCIERO */
+/* =============================================== */
+
+.summary-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.summary-card .ant-card-body {
+    padding: 24px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* =============================================== */
+/* 🔍 TARJETA DE FILTROS */
+/* =============================================== */
+
+.filters-card {
+    border-radius: 8px;
+    background-color: #fafafa;
+}
+
+.filters-card .ant-card-body {
+    padding: 16px 24px;
+}
+
+.filter-info {
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* =============================================== */
+/* 📋 TABLA DE TRANSACCIONES */
+/* =============================================== */
+
+.transactions-card {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.transactions-card .ant-table {
+    background: white;
+}
+
+/* Celdas especiales */
+.date-cell {
+    line-height: 1.4;
+}
+
+.overdue-label {
+    color: #cf1322;
+    font-weight: 500;
+    display: block;
+    margin-top: 2px;
+}
+
+.description-cell {
+    line-height: 1.4;
+}
+
+.main-description {
+    font-weight: 500;
+    color: #262626;
+}
+
+.payment-notes {
+    color: #666;
+    display: block;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.due-date {
+    color: #fa8c16;
+    display: block;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.amount-cell {
+    text-align: center;
+}
+
+.paid-amount {
+    margin-top: 4px;
+}
+
+.paid-amount small {
+    color: #3f8600;
+    font-weight: 500;
+}
+
+/* =============================================== */
+/* 🏷️ TAGS Y BADGES */
+/* =============================================== */
+
+.ant-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.ant-tag .anticon {
+    font-size: 12px;
+}
+
+/* =============================================== */
+/* 🔧 MODALES */
+/* =============================================== */
+
+.mark-paid-content {
+    padding: 8px 0;
+}
+
+.transaction-details {
+    padding: 8px 0;
+}
+
+.ant-descriptions-bordered .ant-descriptions-item-label {
+    background-color: #fafafa;
+    font-weight: 600;
+}
+
+.ant-descriptions-bordered .ant-descriptions-item-content {
+    background-color: white;
+}
+
+/* =============================================== */
+/* 📱 RESPONSIVIDAD */
+/* =============================================== */
+
+@media (max-width: 768px) {
+    .enhanced-payment-management {
+        padding: 0 8px;
+    }
+
+    .summary-card .ant-card-body {
+        padding: 16px;
+    }
+
+    .filters-card .ant-card-body {
+        padding: 12px 16px;
+    }
+
+    .action-buttons {
+        justify-content: center;
+    }
+
+    .ant-table-thead>tr>th {
+        padding: 8px 4px;
+        font-size: 12px;
+    }
+
+    .ant-table-tbody>tr>td {
+        padding: 8px 4px;
+        font-size: 13px;
+    }
+
+    .date-cell {
+        font-size: 11px;
+    }
+
+    .description-cell {
+        font-size: 12px;
+    }
+
+    .amount-cell {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 576px) {
+    .ant-modal {
+        margin: 16px;
+        max-width: calc(100vw - 32px);
+    }
+
+    .ant-modal-content {
+        border-radius: 8px;
+    }
+
+    .ant-descriptions-bordered {
+        font-size: 13px;
+    }
+
+    .ant-descriptions-item-label,
+    .ant-descriptions-item-content {
+        padding: 8px 12px;
+    }
+}
+
+/* =============================================== */
+/* 🎯 ESTADOS ESPECIALES */
+/* =============================================== */
+
+.text-muted {
+    color: #999;
+}
+
+.ml-1 {
+    margin-left: 4px;
+}
+
+.ml-2 {
+    margin-left: 8px;
+}
+
+.mt-4 {
+    margin-top: 16px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
+
+/* Estados de fila */
+tr.overdue-row {
+    background-color: #fff2f0 !important;
+}
+
+tr.partial-payment-row {
+    background-color: #f0f9ff !important;
+}
+
+tr.paid-row {
+    background-color: #f6ffed !important;
+}
+
+/* Animaciones suaves */
+.ant-table-tbody>tr {
+    transition: background-color 0.2s ease;
+}
+
+.ant-table-tbody>tr:hover {
+    background-color: #fafafa !important;
+}
+
+.ant-btn {
+    transition: all 0.2s ease;
+}
+
+.ant-tag {
+    transition: all 0.2s ease;
+}
+
+/* =============================================== */
+/* 🚨 ALERTAS Y NOTIFICACIONES VISUALES */
+/* =============================================== */
+
+.overdue-indicator {
+    position: relative;
+}
+
+.overdue-indicator::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 20px;
+    background-color: #cf1322;
+    border-radius: 2px;
+}
+
+.partial-payment-indicator {
+    position: relative;
+}
+
+.partial-payment-indicator::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 20px;
+    background-color: #1890ff;
+    border-radius: 2px;
+}
+
+/* =============================================== */
+/* 🎨 MEJORAS VISUALES ADICIONALES */
+/* =============================================== */
+
+.ant-statistic-content-value {
+    font-weight: 600;
+}
+
+.ant-statistic-title {
+    font-weight: 500;
+    color: #666;
+}
+
+.ant-card-head-title {
+    font-weight: 600;
+    color: #262626;
+}
+
+.ant-form-item-label>label {
+    font-weight: 500;
+    color: #262626;
+}
+
+/* Botones personalizados */
+.ant-btn-primary {
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.ant-btn-default {
+    border-radius: 6px;
+}
+
+/* Inputs y selects */
+.ant-input,
+.ant-select-selector,
+.ant-picker {
+    border-radius: 6px;
+}
+
+.ant-input-number {
+    border-radius: 6px;
+    width: 100%;
+}
+
+/* =============================================== */
+/* 🔄 ESTADOS DE CARGA Y VACÍO */
+/* =============================================== */
+
+.ant-spin-container {
+    min-height: 200px;
+}
+
+.ant-empty {
+    padding: 40px 20px;
+}
+
+.ant-empty-description {
+    color: #999;
+    font-size: 14px;
+}
+

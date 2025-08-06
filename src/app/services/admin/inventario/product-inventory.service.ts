@@ -827,31 +827,29 @@ export class ProductInventoryService {
       return of([]);
     }
 
-    const cacheKey = `${this.variantCacheKey}_product_${productId}`;
+    // ✅ ELIMINAR CACHE para obtener datos frescos siempre
+    return from((async () => {
+      const variantsRef = collection(this.firestore, this.variantsCollection);
+      const q = query(variantsRef, where('productId', '==', productId));
 
-    return this.cacheService.getCached<ProductVariant[]>(cacheKey, () => {
-      return from((async () => {
-        const variantsRef = collection(this.firestore, this.variantsCollection);
-        const q = query(variantsRef, where('productId', '==', productId));
+      const variantsSnap = await getDocs(q);
+      const variants = variantsSnap.docs.map(doc => {
+        const data = doc.data();
+        const variant = {
+          id: doc.id,
+          ...data
+        } as ProductVariant;
 
-        const variantsSnap = await getDocs(q);
-        const variants = variantsSnap.docs.map(doc => {
-          const data = doc.data();
-          const variant = {
-            id: doc.id,
-            ...data
-          } as ProductVariant;
+        return variant;
+      });
 
-
-          return variant;
-        });
-
-        return variants;
-      })()).pipe(
-        catchError(error => ErrorUtil.handleError(error, `getVariantsByProductId(${productId})`))
-      );
-    });
+      console.log(`📦 [VARIANTS] Cargadas ${variants.length} variantes (sin cache) para producto ${productId}`);
+      return variants;
+    })()).pipe(
+      catchError(error => ErrorUtil.handleError(error, `getVariantsByProductId(${productId})`))
+    );
   }
+
 
   /**
    * 🚀 CORREGIDO: Incrementa el contador de vistas de un producto

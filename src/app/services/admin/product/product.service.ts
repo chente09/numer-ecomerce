@@ -89,7 +89,7 @@ export class ProductService {
       }),
       catchError(error => ErrorUtil.handleError(error, 'forceReloadProducts'))
     );
-  } 
+  }
 
   /**
    * 🚀 CORREGIDO: Obtiene todos los productos SIN caché cuando se force
@@ -300,39 +300,39 @@ export class ProductService {
       return of(null);
     }
 
-    const cacheKey = `${this.productsCacheKey}_${productId}`;
+    // ✅ CAMBIO: Eliminar cache para datos frescos siempre
+    const productDoc = doc(this.firestore, this.productsCollection, productId);
 
-    return this.cacheService.getCached<Product | null>(cacheKey, () => {
-      const productDoc = doc(this.firestore, this.productsCollection, productId);
+    return from(getDoc(productDoc)).pipe(
+      take(1),
+      map(productSnap => {
+        if (!productSnap.exists()) {
+          return null;
+        }
 
-      return from(getDoc(productDoc)).pipe(
-        take(1), // ✅ Emitimos solo una vez
-        map(productSnap => {
-          if (!productSnap.exists()) {
-            return null;
-          }
-          return { id: productSnap.id, ...productSnap.data() } as Product;
-        }),
-        switchMap(product => {
-          if (!product) return of(null);
+        const productData = productSnap.data();
+        const product = { id: productSnap.id, ...productData } as Product;
+        return product;
+      }),
+      switchMap(product => {
+        if (!product) return of(null);
 
-          return this.enrichSingleProductWithRealTimeStock(product).pipe(
-            switchMap(enrichedProduct =>
-              from(this.trackProductView(productId, enrichedProduct?.name)).pipe(
-                catchError(viewError => {
-                  console.warn('Vista no registrada:', viewError);
-                  return of(null);
-                }),
-                map(() => enrichedProduct)
-              )
+        return this.enrichSingleProductWithRealTimeStock(product).pipe(
+          switchMap(enrichedProduct =>
+            from(this.trackProductView(productId, enrichedProduct?.name)).pipe(
+              catchError(viewError => {
+                console.warn('Vista no registrada:', viewError);
+                return of(null);
+              }),
+              map(() => enrichedProduct)
             )
-          );
-        }),
-        catchError(error =>
-          ErrorUtil.handleError(error, `getProductById(${productId})`)
-        )
-      );
-    });
+          )
+        );
+      }),
+      catchError(error =>
+        ErrorUtil.handleError(error, `getProductById(${productId})`)
+      )
+    );
   }
 
   /**
@@ -1019,6 +1019,7 @@ export class ProductService {
   /**
    * Lógica interna de creación de producto (SEPARADA para mejor manejo de errores)
    */
+
   private async createProductInternal(
     productId: string,
     productData: Omit<Product, 'id'>,
@@ -1056,6 +1057,8 @@ export class ProductService {
       // 4. Crear datos base del producto
       const productBaseData = {
         ...productData,
+        // ✅ CRÍTICO: Asegurar que distributorCost se incluya explícitamente
+        distributorCost: productData.distributorCost || 0,
         imageUrl,
         additionalImages: additionalImageUrls,
         colors: updatedColors,
@@ -1068,6 +1071,15 @@ export class ProductService {
         updatedAt: new Date()
       };
 
+      // 🔍 DEBUG: Verificar que distributorCost se esté guardando
+      console.log('💰 [CREATE] Creando producto con distributorCost:', {
+        productId,
+        name: productBaseData.name,
+        price: productBaseData.price,
+        distributorCost: productBaseData.distributorCost,
+        hasDistributorCost: productBaseData.distributorCost !== undefined
+      });
+
       // 5. Crear el producto base
       await this.variantService.createProductBase(productId, productBaseData);
 
@@ -1077,7 +1089,9 @@ export class ProductService {
         updatedColors,
         updatedSizes,
         variantImages,
-        productData.sku
+        productData.sku,
+        productData.price,           // ✅ Pasar precio del producto
+        productData.distributorCost  // ✅ Pasar costo del distribuidor
       );
 
       return productId;
@@ -1126,6 +1140,8 @@ export class ProductService {
     );
   }
 
+
+
   /**
 * 🔧 NUEVO: Sanitiza datos para Firestore eliminando campos undefined
 */
@@ -1151,6 +1167,8 @@ export class ProductService {
   /**
    * Lógica interna de actualización de producto (CORREGIDA)
    */
+
+
   private async updateProductInternal(
     productId: string,
     productData: Partial<Product>,
@@ -1165,6 +1183,21 @@ export class ProductService {
       ...productData,
       updatedAt: new Date()
     };
+
+    // ✅ CRÍTICO: Preservar distributorCost explícitamente
+    if (productData.distributorCost !== undefined) {
+      updateData.distributorCost = productData.distributorCost;
+    }
+
+    // 🔍 DEBUG: Verificar que distributorCost se esté actualizando
+    console.log('💰 [UPDATE] Actualizando producto con distributorCost:', {
+      productId,
+      name: updateData.name,
+      price: updateData.price,
+      distributorCost: updateData.distributorCost,
+      hasDistributorCost: updateData.distributorCost !== undefined,
+      isDistributorCostProvided: productData.distributorCost !== undefined
+    });
 
     // Validar datos antes de proceder
     this.validateProductData(updateData);
@@ -1232,7 +1265,29 @@ export class ProductService {
       await this.syncVariantsWithColorStocks(productId, updateData.colors, updateData.sizes);
     }
 
+
+    // ✅ NUEVO: Actualizar distributorCost en variantes si cambió
+    if (updateData.distributorCost !== undefined || updateData.price !== undefined) {
+      try {
+        await this.variantService.updatePricingForProduct(
+          productId,
+          updateData.price,
+          updateData.distributorCost
+        );
+        console.log('✅ ProductService: Precios actualizados en variantes');
+      } catch (error) {
+        console.error('❌ ProductService: Error actualizando precios en variantes:', error);
+        // No lanzar error para no interrumpir la actualización del producto
+      }
+    }
+
     const sanitizedData = this.sanitizeForFirestore(updateData);
+
+    // ✅ VERIFICACIÓN FINAL: Asegurar que distributorCost esté en datos sanitizados
+    if (updateData.distributorCost !== undefined && !sanitizedData.distributorCost) {
+      sanitizedData.distributorCost = updateData.distributorCost;
+    }
+
     await this.variantService.updateProductBase(productId, sanitizedData);
   }
 
@@ -1963,7 +2018,7 @@ export class ProductService {
       // Retrocede el doble de días para el rango inicial de la consulta a Firestore.
       // Esto asegura que capturemos ventas que puedan estar ligeramente fuera de la ventana 'days'
       // debido a las zonas horarias o si el usuario espera ver ventas un poco más antiguas.
-      initialStartDateLocal.setDate(initialStartDateLocal.getDate() - (days * 2)); 
+      initialStartDateLocal.setDate(initialStartDateLocal.getDate() - (days * 2));
       initialStartDateLocal.setHours(0, 0, 0, 0); // Inicio del día, hora local
 
 
@@ -2037,7 +2092,7 @@ export class ProductService {
 
           let finalStartDateLocal = new Date(endDateLocal);
           // Calcula el inicio de la ventana de 'days' días hacia atrás desde hoy.
-          finalStartDateLocal.setDate(finalStartDateLocal.getDate() - (days - 1)); 
+          finalStartDateLocal.setDate(finalStartDateLocal.getDate() - (days - 1));
           finalStartDateLocal.setHours(0, 0, 0, 0);
 
           // Si hay ventas registradas, ajusta 'finalStartDateLocal' para incluir la venta más antigua
@@ -2046,22 +2101,22 @@ export class ProductService {
           let hasSalesData = false;
 
           salesByDate.forEach((sales, dateKey) => {
-              if (sales > 0) { // Solo consideramos días con ventas reales
-                  const parts = dateKey.split('-').map(Number);
-                  // Crear la fecha al inicio del día en la zona horaria local
-                  const saleDate = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
-                  if (saleDate < minDateInSales) {
-                      minDateInSales = saleDate;
-                  }
-                  hasSalesData = true;
+            if (sales > 0) { // Solo consideramos días con ventas reales
+              const parts = dateKey.split('-').map(Number);
+              // Crear la fecha al inicio del día en la zona horaria local
+              const saleDate = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+              if (saleDate < minDateInSales) {
+                minDateInSales = saleDate;
               }
+              hasSalesData = true;
+            }
           });
 
           // Si se encontraron ventas y la venta más antigua es anterior al 'finalStartDateLocal' calculado,
           // y esa venta más antigua no es excesivamente vieja (es decir, está dentro de initialStartDateLocal),
           // entonces ajustamos 'finalStartDateLocal' para que empiece en la fecha de esa venta.
           if (hasSalesData && minDateInSales < finalStartDateLocal && minDateInSales >= initialStartDateLocal) {
-              finalStartDateLocal = minDateInSales;
+            finalStartDateLocal = minDateInSales;
           }
 
 
@@ -2071,7 +2126,7 @@ export class ProductService {
             const year = d.getFullYear();
             const month = d.getMonth(); // Mes como índice (0-11)
             const day = d.getDate();
-            
+
             // Crear la fecha al inicio del día en la zona horaria local
             salesHistory.push({ date: new Date(year, month, day, 0, 0, 0, 0), sales: salesByDate.get(`${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`) || 0 });
           }

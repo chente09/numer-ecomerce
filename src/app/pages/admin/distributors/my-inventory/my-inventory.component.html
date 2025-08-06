@@ -99,6 +99,360 @@
             </ng-template>
         </nz-tab>
 
+        <!-- =============================================== -->
+        <!-- ✅ NUEVA PESTAÑA: MI ESTADO FINANCIERO -->
+        <!-- =============================================== -->
+        <nz-tab nzTitle="Mi Estado Financiero">
+            <ng-template nz-tab>
+                <!-- Resumen Financiero Principal -->
+                <nz-card class="mt-4" *ngIf="enhancedSummary && !isLoadingFinancial">
+                    <div nz-card-title>
+                        <span nz-icon nzType="account-book" style="color: #1890ff;"></span>
+                        Resumen de Mi Cuenta
+
+                        <!-- Badge de Estado -->
+                        <nz-tag [nzColor]="getFinancialStatusBadge().color" class="ml-2">
+                            <span nz-icon [nzType]="getFinancialStatusBadge().icon"></span>
+                            {{ getFinancialStatusBadge().text }}
+                        </nz-tag>
+                    </div>
+
+                    <br>
+
+                    <!-- Primera fila: Métricas principales -->
+                    <div nz-row [nzGutter]="[16, 16]">
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                            <nz-statistic [nzValue]="getDistributorPendingAmount()" nzTitle="Saldo Pendiente"
+                                [nzPrefix]="'$'" [nzValueStyle]="{ 
+                                'color': getDistributorPendingAmount() > 0 ? '#fa8c16' : '#3f8600',
+                                'fontSize': '24px',
+                                'fontWeight': 'bold'
+                                }">
+                            </nz-statistic>
+                        </div>
+
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                            <nz-statistic [nzValue]="getDistributorTotalDebit()" nzTitle="Total Recibido"
+                                [nzPrefix]="'$'" [nzValueStyle]="{ 'color': '#1890ff' }">
+                            </nz-statistic>
+                        </div>
+
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                            <nz-statistic [nzValue]="getDistributorTotalPaid()" nzTitle="Total Pagado" [nzPrefix]="'$'"
+                                [nzValueStyle]="{ 'color': '#3f8600' }">
+                            </nz-statistic>
+                        </div>
+
+                        <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                            <nz-statistic [nzValue]="enhancedSummary.totalTransactions" nzTitle="Total Movimientos"
+                                [nzValueStyle]="{ 'color': '#722ed1' }">
+                            </nz-statistic>
+                        </div>
+                    </div>
+
+                    <!-- Segunda fila: Métricas adicionales -->
+                    <nz-divider></nz-divider>
+                    <div nz-row [nzGutter]="[16, 8]">
+                        <div nz-col [nzXs]="12" [nzSm]="8" [nzMd]="6">
+                            <nz-statistic [nzValue]="enhancedSummary.overdueAmount || 0" nzTitle="Vencido"
+                                [nzPrefix]="'$'" [nzValueStyle]="{ 
+                                    'color': (enhancedSummary.overdueAmount || 0) > 0 ? '#cf1322' : '#999',
+                                    'fontSize': '14px' 
+                                }">
+                            </nz-statistic>
+                        </div>
+
+                        <div nz-col [nzXs]="12" [nzSm]="8" [nzMd]="6">
+                            <nz-statistic [nzValue]="enhancedSummary.partialPayments || 0" nzTitle="Pagos Parciales"
+                                [nzValueStyle]="{ 'fontSize': '14px' }">
+                            </nz-statistic>
+                        </div>
+
+                        <div nz-col [nzXs]="12" [nzSm]="8" [nzMd]="6">
+                            <nz-statistic [nzValue]="enhancedSummary.averageDebtAge || 0" nzTitle="Antigüedad Promedio"
+                                [nzSuffix]="' días'" [nzValueStyle]="{ 'fontSize': '14px' }">
+                            </nz-statistic>
+                        </div>
+
+                        <div nz-col [nzXs]="12" [nzSm]="8" [nzMd]="6">
+                            <nz-statistic [nzValue]="recentTransfers.length" nzTitle="Transferencias Recientes"
+                                [nzValueStyle]="{ 'fontSize': '14px', 'color': '#1890ff' }">
+                            </nz-statistic>
+                        </div>
+                    </div>
+
+                    <!-- Información adicional -->
+                    <nz-divider nzDashed></nz-divider>
+                    <div nz-row [nzGutter]="16">
+                        <div nz-col [nzXs]="24" [nzSm]="12">
+                            <div *ngIf="enhancedSummary.lastPaymentDate" class="info-item-improved">
+                                <span class="info-label-improved">Último Pago:</span>
+                                <span class="info-value-improved">{{ formatDate(enhancedSummary.lastPaymentDate)
+                                    }}</span>
+                            </div>
+                        </div>
+                        <div nz-col [nzXs]="24" [nzSm]="12">
+                            <div *ngIf="enhancedSummary.oldestUnpaidDate" class="info-item-improved">
+                                <span class="info-label-improved">Deuda Más Antigua:</span>
+                                <span class="info-value-improved">{{ formatDate(enhancedSummary.oldestUnpaidDate)
+                                    }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </nz-card>
+
+                <!-- =============================================== -->
+                <!-- 📊 MI ESTADO DE CUENTA COMPLETO (UNIFICADO) -->
+                <!-- =============================================== -->
+                <nz-card class="mt-4 collapsible-card">
+                    <div nz-card-title class="collapsible-header" (click)="toggleCompleteStatement()">
+                        <div class="header-content">
+                            <span nz-icon nzType="account-book" style="color: #1890ff;"></span>
+                            <span class="header-title">Mi Estado de Cuenta Completo</span>
+                            <nz-badge [nzCount]="getAllTransactionsCount()" nzStatus="processing" [nzOffset]="[10, 0]">
+                            </nz-badge>
+                        </div>
+
+                        <div class="header-actions">
+                            <span class="toggle-text">
+                                {{ showCompleteStatement ? 'Ocultar' : 'Ver estado de cuenta' }}
+                            </span>
+                            <span nz-icon [nzType]="showCompleteStatement ? 'up' : 'down'" class="toggle-icon">
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="collapsible-content" [class.expanded]="showCompleteStatement">
+                        <nz-spin [nzSpinning]="isLoadingFinancial">
+                            <!-- Filtros rápidos -->
+                            <div class="statement-filters">
+                                <nz-button-group>
+                                    <button nz-button [nzType]="statementFilter === 'all' ? 'primary' : 'default'"
+                                        (click)="setStatementFilter('all')">
+                                        <span nz-icon nzType="bars"></span>
+                                        Todos
+                                    </button>
+                                    <button nz-button [nzType]="statementFilter === 'debit' ? 'primary' : 'default'"
+                                        (click)="setStatementFilter('debit')">
+                                        <span nz-icon nzType="arrow-up" style="color: #fa8c16;"></span>
+                                        Débitos
+                                    </button>
+                                    <button nz-button [nzType]="statementFilter === 'credit' ? 'primary' : 'default'"
+                                        (click)="setStatementFilter('credit')">
+                                        <span nz-icon nzType="arrow-down" style="color: #52c41a;"></span>
+                                        Créditos
+                                    </button>
+                                    <button nz-button [nzType]="statementFilter === 'pending' ? 'primary' : 'default'"
+                                        (click)="setStatementFilter('pending')">
+                                        <span nz-icon nzType="clock-circle" style="color: #fa8c16;"></span>
+                                        Pendientes
+                                    </button>
+                                </nz-button-group>
+                            </div>
+
+                            <!-- Tabla unificada del estado de cuenta -->
+                            <nz-table [nzData]="getFilteredTransactions()"
+                                [nzShowPagination]="getFilteredTransactions().length > 10" [nzPageSize]="10"
+                                [nzSize]="'middle'" class="statement-table">
+                                <thead>
+                                    <tr>
+                                        <th nzWidth="60px">Tipo</th>
+                                        <th nzWidth="120px">Fecha</th>
+                                        <th>Descripción</th>
+                                        <th nzAlign="center" nzWidth="100px">Monto</th>
+                                        <th nzAlign="center" nzWidth="100px">Estado</th>
+                                        <th nzAlign="center" nzWidth="100px">Pendiente</th>
+                                        <th nzAlign="center" nzWidth="80px">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let transaction of getFilteredTransactions(); trackBy: trackByTransactionId"
+                                        [class.debit-row]="transaction.type === 'debit'"
+                                        [class.credit-row]="transaction.type === 'credit'">
+
+                                        <!-- Tipo de transacción con icono -->
+                                        <td class="transaction-type-cell">
+                                            <div class="transaction-type-indicator">
+                                                <span *ngIf="transaction.type === 'debit'" nz-icon nzType="arrow-up"
+                                                    class="debit-icon" nz-tooltip
+                                                    nzTooltipTitle="Débito - Deuda generada">
+                                                </span>
+                                                <span *ngIf="transaction.type === 'credit'" nz-icon nzType="arrow-down"
+                                                    class="credit-icon" nz-tooltip
+                                                    nzTooltipTitle="Crédito - Pago realizado">
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        <!-- Fecha -->
+                                        <td class="transaction-date">
+                                            {{ formatDateWithTime(transaction.createdAt) }}
+                                        </td>
+
+                                        <!-- Descripción -->
+                                        <td>
+                                            <div class="transaction-description">
+                                                {{ transaction.description }}
+                                                <div *ngIf="transaction.paymentNotes" class="payment-notes">
+                                                    📝 {{ transaction.paymentNotes }}
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <!-- Monto -->
+                                        <td nzAlign="center">
+                                            <strong
+                                                [style.color]="transaction.type === 'debit' ? '#fa8c16' : '#52c41a'">
+                                                {{ formatCurrency(transaction.amount) }}
+                                            </strong>
+                                            <div *ngIf="transaction.type === 'debit' && (transaction.paidAmount || 0) > 0"
+                                                class="paid-amount-indicator">
+                                                Pagado: {{ formatCurrency(transaction.paidAmount || 0) }}
+                                            </div>
+                                        </td>
+
+                                        <!-- Estado -->
+                                        <td nzAlign="center">
+                                            <nz-tag *ngIf="transaction.paymentStatus === 'paid'" nzColor="green">
+                                                <span nz-icon nzType="check-circle"></span>
+                                                Pagado
+                                            </nz-tag>
+                                            <nz-tag *ngIf="transaction.paymentStatus === 'pending'" nzColor="orange">
+                                                <span nz-icon nzType="clock-circle"></span>
+                                                Pendiente
+                                            </nz-tag>
+                                            <nz-tag *ngIf="transaction.paymentStatus === 'partial'" nzColor="blue">
+                                                <span nz-icon nzType="pie-chart"></span>
+                                                Parcial
+                                            </nz-tag>
+                                            <nz-tag *ngIf="transaction.paymentStatus === 'overdue'" nzColor="red">
+                                                <span nz-icon nzType="exclamation-circle"></span>
+                                                Vencido
+                                            </nz-tag>
+                                            <nz-tag *ngIf="transaction.type === 'credit'" nzColor="green">
+                                                <span nz-icon nzType="dollar"></span>
+                                                Pago
+                                            </nz-tag>
+                                        </td>
+
+                                        <!-- Pendiente -->
+                                        <td nzAlign="center">
+                                            <strong *ngIf="transaction.type === 'debit'"
+                                                [style.color]="(transaction.remainingAmount || transaction.amount) > 0 ? '#fa8c16' : '#52c41a'">
+                                                {{ formatCurrency(transaction.remainingAmount || transaction.amount) }}
+                                            </strong>
+                                            <span *ngIf="transaction.type === 'credit'" class="na-indicator">–</span>
+                                        </td>
+
+                                        <!-- Acciones -->
+                                        <td nzAlign="center">
+                                            <button nz-button nzType="link" nzSize="small"
+                                                (click)="viewTransactionDetails(transaction)" nz-tooltip
+                                                nzTooltipTitle="Ver detalles">
+                                                <span nz-icon nzType="eye"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </nz-table>
+
+                            <nz-empty *ngIf="getFilteredTransactions().length === 0 && !isLoadingFinancial"
+                                nzNotFoundContent="No hay transacciones para mostrar." [nzNotFoundImage]="'simple'">
+                            </nz-empty>
+
+                            <!-- Resumen del filtro actual -->
+                            <div *ngIf="getFilteredTransactions().length > 0" class="statement-summary">
+                                <nz-divider nzDashed></nz-divider>
+                                <div nz-row [nzGutter]="16">
+                                    <div nz-col [nzXs]="24" [nzSm]="8">
+                                        <div class="summary-stat">
+                                            <span class="stat-label">Transacciones mostradas:</span>
+                                            <span class="stat-value">{{ getFilteredTransactions().length }}</span>
+                                        </div>
+                                    </div>
+                                    <div nz-col [nzXs]="24" [nzSm]="8">
+                                        <div class="summary-stat">
+                                            <span class="stat-label">Total débitos:</span>
+                                            <span class="stat-value debit-color">{{
+                                                formatCurrency(getFilteredDebitSum()) }}</span>
+                                        </div>
+                                    </div>
+                                    <div nz-col [nzXs]="24" [nzSm]="8">
+                                        <div class="summary-stat">
+                                            <span class="stat-label">Total créditos:</span>
+                                            <span class="stat-value credit-color">{{
+                                                formatCurrency(getFilteredCreditSum()) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </nz-spin>
+                    </div>
+                </nz-card>
+
+                <!-- =============================================== -->
+                <!-- 📞 INFORMACIÓN SOBRE PROCESO DE PAGOS -->
+                <!-- =============================================== -->
+                <nz-card class="mt-4" nzTitle="¿Cómo realizar mis pagos?">
+                    <div class="payment-info-container">
+                        <nz-alert nzType="info" nzMessage="Proceso de Pagos"
+                            nzDescription="Los pagos se coordinan directamente con el administrador. Sigue estos pasos:"
+                            nzShowIcon class="mb-3">
+                        </nz-alert>
+
+                        <div class="payment-steps">
+                            <div class="payment-step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Contacta al Administrador</h4>
+                                    <p>Comunícate por llamada directa o WhatsApp para coordinar tu pago.</p>
+                                </div>
+                                <span nz-icon nzType="phone" class="step-icon"></span>
+                            </div>
+
+                            <div class="payment-step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Realiza la Transferencia</h4>
+                                    <p>Efectúa el pago por el método acordado (transferencia, efectivo, etc.).</p>
+                                </div>
+                                <span nz-icon nzType="bank" class="step-icon"></span>
+                            </div>
+
+                            <div class="payment-step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Confirma el Pago</h4>
+                                    <p>Envía el comprobante al administrador para que registre tu pago en el sistema.
+                                    </p>
+                                </div>
+                                <span nz-icon nzType="file-done" class="step-icon"></span>
+                            </div>
+
+                            <div class="payment-step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h4>Verifica la Actualización</h4>
+                                    <p>Tu estado de cuenta se actualizará automáticamente una vez confirmado el pago.
+                                    </p>
+                                </div>
+                                <span nz-icon nzType="sync" class="step-icon"></span>
+                            </div>
+                        </div>
+
+                        <!-- Información de contacto -->
+                        <nz-divider nzText="Verificación de Pagos" nzOrientation="center"></nz-divider>
+
+                        <!-- Nota importante -->
+                        <nz-alert nzType="warning" nzMessage="Importante"
+                            nzDescription="Solo los pagos confirmados por el administrador se reflejarán en tu estado de cuenta. Asegúrate de enviar siempre el comprobante de tu pago."
+                            nzShowIcon class="mt-3">
+                        </nz-alert>
+                    </div>
+                </nz-card>
+            </ng-template>
+        </nz-tab>
+
         <nz-tab nzTitle="Historial de Movimientos">
             <ng-template nz-tab>
                 <app-movement-history-component [distributorId]="currentUserId"></app-movement-history-component>
