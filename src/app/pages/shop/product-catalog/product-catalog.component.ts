@@ -14,6 +14,7 @@ import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
 import { SeoService } from '../../../services/seo/seo.service';
 import { CacheService } from '../../../services/admin/cache/cache.service';
 import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
+import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 // Models
 import { Product, Color, Size, ProductVariant } from '../../../models/models';
 
@@ -170,6 +171,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private message: NzMessageService,
     private promotionStateService: PromotionStateService,
+    private promotionService: PromotionService,
     public cdr: ChangeDetectorRef,
     private seoService: SeoService
   ) {
@@ -364,28 +366,79 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     try {
-      // 🔧 MODIFICAR: Elegir método según forceRefresh
-      let products: Product[];
+      // 1. Obtener la lista base de productos
+      const productsObservable = forceRefresh && this.productService.getProductsNoCache
+        ? this.productService.getProductsNoCache()
+        : this.productService.getProducts();
 
-      if (forceRefresh && this.productService.getProductsNoCache) {
-        console.log('🔄 [CATALOG] Forzando recarga sin caché');
-        products = await firstValueFrom(this.productService.getProductsNoCache());
-      } else {
-        products = await firstValueFrom(this.productService.getProducts());
-      }
+      const baseProducts = await firstValueFrom(productsObservable);
 
-      // Calcular precios con promociones
-      const productsWithPrices = await firstValueFrom(
-        this.productPriceService.calculateDiscountedPrices(products)
-      );
+      // 2. ✅ CORRECCIÓN: Obtener promociones activas usando el método correcto
+      const activePromotions = await firstValueFrom(this.promotionService.getActivePromotions());
 
-      // Procesar productos
+      console.log('🏷️ [CATALOG] Promociones activas encontradas:', activePromotions.length);
+
+      // 3. ✅ CORRECCIÓN: Enriquecer cada producto con promociones de forma consistente
+      const productsWithPrices = baseProducts.map(product => {
+        // Usar el método oficial del servicio
+        const bestPromotion = this.promotionService.findBestPromotionForProduct(product, activePromotions);
+
+        if (bestPromotion) {
+          let discountedPrice = product.price;
+
+          // ✅ USAR LA MISMA LÓGICA QUE EL CART SERVICE
+          if (bestPromotion.discountType === 'percentage') {
+            const discount = product.price * (bestPromotion.discountValue / 100);
+            // Aplicar descuento máximo si está definido
+            const finalDiscount = bestPromotion.maxDiscountAmount
+              ? Math.min(discount, bestPromotion.maxDiscountAmount)
+              : discount;
+            discountedPrice = product.price - finalDiscount;
+          } else { // 'fixed'
+            discountedPrice = product.price - bestPromotion.discountValue;
+          }
+
+          // Asegurar que el precio no sea negativo
+          discountedPrice = Math.max(0, discountedPrice);
+
+          const discountPercentage = product.price > 0
+            ? Math.round(((product.price - discountedPrice) / product.price) * 100)
+            : 0;
+
+          console.log(`🏷️ [CATALOG] Promoción aplicada a ${product.name}: ${product.price} → ${discountedPrice} (${discountPercentage}%)`);
+
+          return {
+            ...product,
+            currentPrice: discountedPrice,
+            originalPrice: product.price,
+            discountPercentage: discountPercentage,
+            // ✅ AGREGAR: Información de la promoción para debugging
+            appliedPromotionId: bestPromotion.id,
+            appliedPromotionName: bestPromotion.name
+          };
+        }
+
+        // Si no hay promoción, devolver el producto sin cambios
+        return {
+          ...product,
+          currentPrice: product.price,
+          originalPrice: undefined,
+          discountPercentage: 0
+        };
+      });
+
+      console.log('🏷️ [CATALOG] Productos procesados:', {
+        total: productsWithPrices.length,
+        conPromociones: productsWithPrices.filter(p => p.discountPercentage > 0).length
+      });
+
+      // 4. ✅ CORRECCIÓN: Forzar detección de cambios después de procesar
       this.products = productsWithPrices.map(p => this.initializeProductVariantState(p));
       this.updatePriceRange();
-      this.validateCategoryConsistency();
-
-      // 🔑 CRÍTICO: Aplicar filtros al final
       this.applyFilters();
+
+      // ✅ FORZAR actualización de la UI
+      this.cdr.detectChanges();
 
     } catch (error) {
       console.error('❌ Error cargando productos:', error);
@@ -396,6 +449,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     }
   }
+
 
   private initializeProductVariantState(product: Product): ProductWithSelectedVariant {
     const productWithVariant: ProductWithSelectedVariant = {
@@ -1015,24 +1069,23 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     }
 
     try {
+      // ✅ CORRECCIÓN: Llamada al servicio solo con los 3 argumentos necesarios
       const success = await firstValueFrom(
         this.cartService.addToCart(
           product.id,
           product.selectedVariant.id,
-          1,
-          product,
-          product.selectedVariant
+          1 // La cantidad es 1 por defecto desde el catálogo
         )
       );
 
       if (success) {
         this.message.success(`${product.name} agregado al carrito`);
-      } else {
-        this.message.error('No se pudo agregar el producto al carrito');
       }
+      // Ya no se necesita un 'else', el servicio maneja el mensaje de error.
+
     } catch (error) {
-      console.error('Error adding to cart:', error);
-      this.message.error('Error al agregar al carrito');
+      console.error('Error al agregar al carrito desde el catálogo:', error);
+      // No mostramos un mensaje aquí porque el servicio ya lo hace.
     }
   }
 

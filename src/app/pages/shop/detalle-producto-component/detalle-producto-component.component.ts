@@ -13,12 +13,13 @@ import { FormsModule } from '@angular/forms';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
-import { Observable, Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
+import { Observable, Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, firstValueFrom, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
 import { CacheService } from '../../../services/admin/cache/cache.service';
 import { StockUpdate, StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { ProductCardComponent } from "../../../components/product-card/product-card.component";
 import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
+import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { ChangeDetectorRef } from '@angular/core';
 
 // 🆕 Interfaces para las nuevas funcionalidades
@@ -78,6 +79,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   selectedVariant: ProductVariant | undefined;
   quantity: number = 1;
   productsLoading: boolean = true;
+  displayedPriceInfo: any = null;
 
   private destroy$ = new Subject<void>();
   private promotionNamesCache = new Map<string, string>();
@@ -114,30 +116,33 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     private promotionStateService: PromotionStateService,
     private modalService: NzModalService,
     private cartService: CartService,
-    private cacheService: CacheService,
+    private promotionService: PromotionService,
     private message: NzMessageService,
     private seoService: SeoService,
     private cdr: ChangeDetectorRef,
   ) { }
 
+  // ✅ AGREGAR este método al ngOnInit (después de la línea que llama loadProduct):
   ngOnInit(): void {
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
-
     this.detectUserLocation();
 
-    // 🆕 ACTUALIZAR SUSCRIPCIÓN A PARÁMETROS
     this.route.paramMap.pipe(
       takeUntil(this.destroy$)
     ).subscribe(params => {
       const productId = params.get('id');
       if (productId) {
-        // 🚀 LLAMAR CON PARÁMETRO forceRefresh
-        this.loadProduct(productId, false); // false = carga normal inicial
+        this.loadProduct(productId, false);
+        // ✅ AGREGAR: Actualizar precios después de cargar
+        setTimeout(() => {
+          this.updateDisplayedPrice();
+        }, 100);
       } else {
         console.error('ID de producto no proporcionado');
         this.productsLoading = false;
       }
     });
+
     this.setupStockUpdateListener();
     this.setupPromotionUpdateListener();
   }
@@ -150,7 +155,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
 
   // 🆕 NUEVO: Configurar escucha de actualizaciones de promociones
   private setupPromotionUpdateListener(): void {
-    
+
 
     // 📡 Listener para updates globales
     this.promotionStateService.onGlobalUpdate()
@@ -349,38 +354,39 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
 
 
   // 🚀 MÉTODO ACTUALIZADO: loadProduct con soporte para forceRefresh
-loadProduct(productId: string, forceRefresh: boolean = false): void {
-  this.productsLoading = true;
+  loadProduct(productId: string, forceRefresh: boolean = false): void {
+    this.productsLoading = true;
 
-  // ✅ SOLUCIÓN: Usar el método correcto del ProductService según forceRefresh
-  const productObservable = forceRefresh 
-    ? this.productService.forceRefreshProduct(productId)
-    : this.productService.getCompleteProduct(productId);
+    // ✅ SOLUCIÓN: Usar el método correcto del ProductService según forceRefresh
+    const productObservable = forceRefresh
+      ? this.productService.forceRefreshProduct(productId)
+      : this.productService.getCompleteProduct(productId);
 
-  productObservable
-    .pipe(
-      take(1),
-      finalize(() => this.productsLoading = false)
-    )
-    .subscribe({
-      next: (product) => {
-        if (!product) {
-          this.handleProductNotFound();
-          return;
+    productObservable
+      .pipe(
+        take(1),
+        finalize(() => this.productsLoading = false)
+      )
+      .subscribe({
+        next: (product) => {
+          if (!product) {
+            this.handleProductNotFound();
+            return;
+          }
+
+
+          this.product = product as ExtendedProduct;
+          this.currentImageUrl = product.imageUrl;
+          this.updateDisplayedPrice();
+          this.continueProductSetup(product, productId);
+          this.loadRelatedProducts(product, forceRefresh);
+        },
+        error: (error) => {
+          console.error('❌ [DETALLE] Error cargando producto:', error);
+          this.handleProductError();
         }
-        
-
-        this.product = product as ExtendedProduct;
-        this.currentImageUrl = product.imageUrl;
-        this.continueProductSetup(product, productId);
-        this.loadRelatedProducts(product, forceRefresh);
-      },
-      error: (error) => {
-        console.error('❌ [DETALLE] Error cargando producto:', error);
-        this.handleProductError();
-      }
-    });
-}
+      });
+  }
 
   /**
  * 🏷️ Verifica si el producto tiene descuento
@@ -393,94 +399,23 @@ loadProduct(productId: string, forceRefresh: boolean = false): void {
    * 🎯 Verifica si el producto tiene promociones activas
    */
   hasActivePromotions(product: ExtendedProduct): boolean {
-    // Verificar por descuento calculado
-    if (this.hasDiscount(product)) {
-      return true;
-    }
-
-    // Verificar por currentPrice vs price
-    if (product.currentPrice && product.currentPrice < product.price) {
-      return true;
-    }
-
-    return false;
+    // ✅ Usar displayedPriceInfo en lugar de lógica duplicada
+    return this.displayedPriceInfo?.hasDiscount || false;
   }
 
   /**
    * 🏷️ Obtiene el texto de la promoción para mostrar
    */
   getPromotionText(product: ExtendedProduct): string {
-    if (!this.hasActivePromotions(product)) {
-      return '';
-    }
-
-    if (product.discountPercentage && product.discountPercentage > 0) {
-      return `${product.discountPercentage}% OFF`;
-    }
-
-    if (product.currentPrice && product.currentPrice < product.price) {
-      const discount = Math.round(((product.price - product.currentPrice) / product.price) * 100);
-      return `${discount}% OFF`;
-    }
-
-    return 'OFERTA ESPECIAL';
+    if (!this.displayedPriceInfo?.hasDiscount) return '';
+    return `${this.displayedPriceInfo.discountPercentage}% OFF`;
   }
 
   /**
    * 🔥 Obtiene el nombre de la promoción activa
    */
   getActivePromotionName(product: ExtendedProduct): string {
-    if (!this.hasActivePromotions(product)) {
-      return '';
-    }
-
-    // Verificar cache primero
-    const cacheKey = `${product.id}_promotion_name`;
-    if (this.promotionNamesCache.has(cacheKey)) {
-      return this.promotionNamesCache.get(cacheKey)!;
-    }
-
-    let promotionName = '';
-
-    // Lógica basada en descuentos
-    if (product.discountPercentage && product.discountPercentage > 0) {
-      if (product.discountPercentage >= 50) {
-        promotionName = 'MEGA DESCUENTO';
-      } else if (product.discountPercentage >= 30) {
-        promotionName = 'GRAN OFERTA';
-      } else if (product.discountPercentage >= 20) {
-        promotionName = 'DESCUENTO ESPECIAL';
-      } else {
-        promotionName = 'PRECIO REBAJADO';
-      }
-    } else if (product.currentPrice && product.currentPrice < product.price) {
-      promotionName = 'OFERTA LIMITADA';
-    } else {
-      promotionName = 'PROMOCIÓN ACTIVA';
-    }
-
-    // Personalizar según categoría ecuatoriana
-    if (product.category) {
-      const categoryPromotions: { [key: string]: string } = {
-        'outdoor': 'AVENTURA ESPECIAL',
-        'running': 'OFERTA RUNNING',
-        'casual': 'DESCUENTO CASUAL',
-        'deportivo': 'PROMO DEPORTIVA',
-        'trekking': 'OFERTA MONTAÑERA'
-      };
-
-      if (categoryPromotions[product.category.toLowerCase()]) {
-        promotionName = categoryPromotions[product.category.toLowerCase()];
-      }
-    }
-
-    // Guardar en cache por 5 minutos
-    this.promotionNamesCache.set(cacheKey, promotionName);
-    setTimeout(() => {
-      this.promotionNamesCache.delete(cacheKey);
-    }, 5 * 60 * 1000);
-
-    return promotionName;
+    return this.displayedPriceInfo?.promotionName || 'OFERTA ESPECIAL';
   }
 
   /**
@@ -921,6 +856,7 @@ loadProduct(productId: string, forceRefresh: boolean = false): void {
     // 🆕 Limpiar cache cuando cambia la variante
     this._cachedVariantPrice = null;
     this._lastVariantId = null;
+    this.updateDisplayedPrice();
 
     // 🆕 Forzar actualización de la vista cuando cambia la variante
     this.cdr.detectChanges();
@@ -984,6 +920,69 @@ loadProduct(productId: string, forceRefresh: boolean = false): void {
     this.activeTab = tabName;
   }
 
+  private async updateDisplayedPrice(): Promise<void> {
+    if (!this.product) return;
+
+    // 1. ✅ Precio base (producto o variante)
+    const basePrice = this.selectedVariant?.price || this.product.price;
+
+    // 2. ✅ Por defecto, no hay descuento
+    let finalPriceInfo = {
+      originalPrice: basePrice,
+      currentPrice: basePrice,
+      hasDiscount: false,
+      discountPercentage: 0,
+      savings: 0,
+      promotionName: ''
+    };
+
+    try {
+      // 3. ✅ USAR EL MISMO PATRÓN QUE CATALOG Y CART
+      const activePromotions = await firstValueFrom(this.promotionService.getActivePromotions());
+      const bestPromotion = this.promotionService.findBestPromotionForProduct(this.product, activePromotions);
+
+      if (bestPromotion) {
+        let discountedPrice = basePrice;
+
+        // ✅ USAR LA MISMA LÓGICA QUE OTROS COMPONENTES
+        if (bestPromotion.discountType === 'percentage') {
+          const discount = basePrice * (bestPromotion.discountValue / 100);
+          const finalDiscount = bestPromotion.maxDiscountAmount
+            ? Math.min(discount, bestPromotion.maxDiscountAmount)
+            : discount;
+          discountedPrice = basePrice - finalDiscount;
+        } else { // 'fixed'
+          discountedPrice = basePrice - bestPromotion.discountValue;
+        }
+
+        discountedPrice = Math.max(0, discountedPrice);
+
+        const discountPercentage = basePrice > 0
+          ? Math.round(((basePrice - discountedPrice) / basePrice) * 100)
+          : 0;
+
+        console.log(`🏷️ [DETALLE] Promoción aplicada: ${bestPromotion.name} - ${basePrice} → ${discountedPrice}`);
+
+        finalPriceInfo = {
+          originalPrice: basePrice,
+          currentPrice: discountedPrice,
+          hasDiscount: true,
+          discountPercentage: discountPercentage,
+          savings: basePrice - discountedPrice,
+          promotionName: bestPromotion.name
+        };
+      }
+    } catch (error) {
+      console.error("❌ [DETALLE] Error al calcular precio con promoción:", error);
+      // Continuar con precios sin promoción
+    }
+
+    // 4. ✅ Actualizar y forzar detección de cambios
+    this.displayedPriceInfo = finalPriceInfo;
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+  }
+
   // 🆕 Método mejorado para agregar al carrito con mensajes ecuatorianos
   addToCart(): void {
     if (!this.product || !this.selectedVariant) {
@@ -994,7 +993,7 @@ loadProduct(productId: string, forceRefresh: boolean = false): void {
       return;
     }
 
-    // 🆕 VALIDAR STOCK EN TIEMPO REAL
+    // Validación de stock en tiempo real (sin cambios)
     this.validateStockBeforeAddToCart().pipe(
       take(1),
       switchMap(hasStock => {
@@ -1006,18 +1005,17 @@ loadProduct(productId: string, forceRefresh: boolean = false): void {
           return of(false);
         }
 
+        // ✅ CORRECCIÓN AQUÍ: Llamamos al servicio solo con los 3 argumentos necesarios
         return this.cartService.addToCart(
           this.product!.id,
           this.selectedVariant!.id,
-          this.quantity,
-          this.product!,
-          this.selectedVariant!
+          this.quantity
         );
       })
     ).subscribe({
       next: (success: boolean) => {
         if (success) {
-          this.trackAddToCart(); // 🆕 AGREGAR ANALYTICS
+          this.trackAddToCart();
           this.message.success(`${this.product!.name} agregado al carrito`);
           this.quantity = 1;
         }

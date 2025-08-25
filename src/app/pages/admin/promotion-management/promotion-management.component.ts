@@ -2,15 +2,14 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Promotion } from '../../../models/models';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
-import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule, AbstractControl } from '@angular/forms';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { CategoryService, Category } from '../../../services/admin/category/category.service';
 import { addDays } from 'date-fns';
-
-// Importación de todos los módulos de NG-ZORRO necesarios
+import { PromotionDiagnosticService, OrphanedPromotionData } from './promotion-diagnostic/promotion-diagnostic.service';
+import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -29,35 +28,22 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzResultModule } from 'ng-zorro-antd/result';
+import { from, Observable } from 'rxjs';
 
 @Component({
   selector: 'app-promotion-management',
   standalone: true,
   imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    FormsModule,
-    NzTableModule,
-    NzButtonModule,
-    NzFormModule,
-    NzInputModule,
-    NzInputNumberModule,
-    NzSelectModule,
-    NzDatePickerModule,
-    NzSwitchModule,
-    NzCardModule,
-    NzModalModule,
-    NzTagModule,
-    NzIconModule,
-    NzToolTipModule,
-    NzPopconfirmModule,
-    NzSpinModule,
-    NzEmptyModule,
-    NzDividerModule,
-    NzRadioModule
+    CommonModule, ReactiveFormsModule, FormsModule, NzTableModule, NzButtonModule,
+    NzFormModule, NzInputModule, NzInputNumberModule, NzSelectModule,
+    NzDatePickerModule, NzSwitchModule, NzCardModule, NzModalModule, NzTagModule,
+    NzIconModule, NzToolTipModule, NzPopconfirmModule, NzSpinModule, NzEmptyModule,
+    NzDividerModule, NzRadioModule, NzAlertModule, NzResultModule
   ],
   templateUrl: './promotion-management.component.html',
-  styleUrl: './promotion-management.component.css'
+  styleUrls: ['./promotion-management.component.css']
 })
 export class PromotionManagementComponent implements OnInit {
   promotions: Promotion[] = [];
@@ -68,30 +54,33 @@ export class PromotionManagementComponent implements OnInit {
   formModalVisible = false;
   isEditMode = false;
   selectedPromotion: Promotion | null = null;
-
-  // Formulario para crear/editar promociones
+  diagnosticData: OrphanedPromotionData | null = null;
+  diagnosticModalVisible = false;
+  diagnosing = false;
+  orphanedVariantsData: any = null;
+  cleanupModalVisible = false;
+  cleaning = false;
   promotionForm!: FormGroup;
 
-  // Opciones para el formulario
-  discountTypes = [
-    { label: 'Porcentaje (%)', value: 'percentage' },
-    { label: 'Monto fijo ($)', value: 'fixed' }
+  couponTypes = [
+    { label: 'Envío Gratis', value: 'SHIPPING' },
+    { label: 'Referido (un uso)', value: 'REFERRAL' },
+    { label: 'Bienvenida (un uso)', value: 'WELCOME' },
+    { label: 'Estacional (múltiples usos)', value: 'SEASONAL' },
+    { label: 'VIP (múltiples usos)', value: 'VIP' },
+    { label: 'Por Compra Mínima', value: 'BULK' }
   ];
-
-  // Filtros y paginación
-  totalPromotions = 0;
-  pageSize = 10;
-  pageIndex = 1;
 
   constructor(
     private promotionService: PromotionService,
     private productService: ProductService,
     private categoryService: CategoryService,
-    private promotionStateService: PromotionStateService,
     private message: NzMessageService,
     private modal: NzModalService,
     private fb: FormBuilder,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private promotionDiagnosticService: PromotionDiagnosticService,
+    private notification: NzNotificationService
   ) { }
 
   ngOnInit(): void {
@@ -103,71 +92,97 @@ export class PromotionManagementComponent implements OnInit {
 
   initForm(): void {
     this.promotionForm = this.fb.group({
-      name: ['', [Validators.required]],
+      name: ['', [Validators.required, Validators.minLength(5)]],
       description: [''],
+      promotionType: ['standard', [Validators.required]],
       discountType: ['percentage', [Validators.required]],
       discountValue: [10, [Validators.required, Validators.min(0)]],
       startDate: [new Date(), [Validators.required]],
       endDate: [addDays(new Date(), 30), [Validators.required]],
       isActive: [true],
       maxDiscountAmount: [null, [Validators.min(0)]],
+      minPurchaseAmount: [null, [Validators.min(0)]],
       applicableProductIds: [[]],
       applicableCategories: [[]],
-      minPurchaseAmount: [null, [Validators.min(0)]]
+      couponCode: [{ value: '', disabled: true }, [Validators.required, Validators.minLength(4), this.couponCodeValidator]],
+      couponType: [{ value: null, disabled: true }],
+      usageLimits: this.fb.group({
+        global: [{ value: null, disabled: true }, [Validators.min(1)]],
+        perUser: [{ value: null, disabled: true }, [Validators.min(1)]]
+      })
     });
+
+    this.promotionForm.get('promotionType')?.valueChanges.subscribe(type => {
+      this.toggleCouponFields(type === 'coupon');
+    });
+
+    this.promotionForm.get('discountType')?.valueChanges.subscribe(type => {
+      this.handleDiscountTypeChange(type as string);
+    });
+  }
+
+  private toggleCouponFields(enable: boolean): void {
+    const fields = ['couponCode', 'couponType', 'usageLimits'];
+    fields.forEach(fieldName => {
+      const control = this.promotionForm.get(fieldName);
+      if (control) {
+        if (enable) {
+          control.enable();
+        } else {
+          control.disable();
+          control.reset();
+        }
+      }
+    });
+  }
+
+  private handleDiscountTypeChange(type: string): void {
+    const discountValueControl = this.promotionForm.get('discountValue');
+    if (type === 'shipping') {
+      discountValueControl?.setValue(0);
+      discountValueControl?.disable();
+    } else {
+      discountValueControl?.enable();
+    }
   }
 
   loadPromotions(): void {
     this.loading = true;
-    this.cdr.detectChanges();
-
-    this.promotionService.forceRefreshPromotions()
-      .subscribe({
-        next: (result) => {
-          this.promotions = result;
-          this.totalPromotions = result.length;
-          this.loading = false;
-          this.cdr.detectChanges();
-        },
-        error: (error) => {
-          console.error('Error al cargar promociones:', error);
-          this.message.error('Error al cargar promociones');
-          this.loading = false;
-          this.cdr.detectChanges();
-        }
-      });
+    this.promotionService.forceRefreshPromotions().subscribe({
+      next: (result) => {
+        this.promotions = result;
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.message.error('Error al cargar promociones');
+        this.loading = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   loadCategories(): void {
-    this.categoryService.getCategories()
-      .subscribe({
-        next: (categories) => {
-          this.categories = categories;
-          this.cdr.detectChanges();
-        },
-        error: (error) => {
-          console.error('Error al cargar categorías:', error);
-        }
-      });
+    this.categoryService.getCategories().subscribe({
+        next: (categories) => this.categories = categories,
+        error: (error) => console.error('Error al cargar categorías:', error)
+    });
   }
 
   loadProducts(): void {
-    this.productService.getProducts()
-      .subscribe({
+    this.productService.getProducts().subscribe({
         next: (products) => {
-          this.products = products.map(p => ({ id: p.id, name: p.name }));
-          this.cdr.detectChanges();
+            this.products = products.map(p => ({ id: p.id, name: p.name }));
         },
-        error: (error) => {
-          console.error('Error al cargar productos:', error);
-        }
-      });
+        error: (error) => console.error('Error al cargar productos:', error)
+    });
   }
 
   openCreatePromotionModal(): void {
     this.isEditMode = false;
     this.selectedPromotion = null;
     this.promotionForm.reset({
+      promotionType: 'standard',
       discountType: 'percentage',
       discountValue: 10,
       startDate: new Date(),
@@ -176,229 +191,274 @@ export class PromotionManagementComponent implements OnInit {
       applicableProductIds: [],
       applicableCategories: []
     });
+    this.toggleCouponFields(false);
     this.formModalVisible = true;
   }
 
   openEditPromotionModal(promotion: Promotion): void {
     this.isEditMode = true;
     this.selectedPromotion = promotion;
-
-    // Populate form with promotion data
     this.promotionForm.patchValue({
-      name: promotion.name,
-      description: promotion.description || '',
-      discountType: promotion.discountType,
-      discountValue: promotion.discountValue,
+      ...promotion,
       startDate: promotion.startDate instanceof Date ? promotion.startDate : new Date(promotion.startDate),
       endDate: promotion.endDate instanceof Date ? promotion.endDate : new Date(promotion.endDate),
-      isActive: promotion.isActive,
-      maxDiscountAmount: promotion.maxDiscountAmount || null,
-      applicableProductIds: promotion.applicableProductIds || [],
-      applicableCategories: promotion.applicableCategories || [],
-      minPurchaseAmount: promotion.minPurchaseAmount || null
+    });
+    this.toggleCouponFields(promotion.promotionType === 'coupon');
+    this.handleDiscountTypeChange(promotion.discountType);
+    this.formModalVisible = true;
+  }
+
+  submitForm(): void {
+    if (this.promotionForm.invalid) {
+      Object.values(this.promotionForm.controls).forEach(control => {
+        if (control instanceof FormGroup) {
+          Object.values(control.controls).forEach(innerControl => {
+            innerControl.markAsDirty();
+            innerControl.updateValueAndValidity();
+          });
+        } else {
+          control.markAsDirty();
+          control.updateValueAndValidity();
+        }
+      });
+      this.message.warning('Por favor, complete todos los campos requeridos correctamente.');
+      return;
+    }
+
+    this.submitting = true;
+    const formValue = this.promotionForm.getRawValue();
+
+    // ✅ SOLUCIÓN AL ERROR DE FIREBASE:
+    // Creamos un objeto limpio y eliminamos cualquier propiedad que sea `undefined`
+    // antes de enviarla a Firebase.
+    const promotionData: Partial<Promotion> = {
+      ...formValue,
+      startDate: formValue.startDate instanceof Date ? formValue.startDate : new Date(formValue.startDate),
+      endDate: formValue.endDate instanceof Date ? formValue.endDate : new Date(formValue.endDate),
+    };
+
+    // Limpiamos el objeto de claves 'undefined'
+    Object.keys(promotionData).forEach(key => {
+        const typedKey = key as keyof typeof promotionData;
+        if (promotionData[typedKey] === undefined) {
+            delete promotionData[typedKey];
+        }
     });
 
-    this.formModalVisible = true;
+    // Si no es un cupón, nos aseguramos de que los campos de cupón no existan
+    if (promotionData.promotionType !== 'coupon') {
+        delete promotionData.couponCode;
+        delete promotionData.couponType;
+        delete promotionData.usageLimits;
+    }
+
+
+    const operation$: Observable<void | string> = this.isEditMode && this.selectedPromotion
+      ? this.promotionService.updatePromotion(this.selectedPromotion.id, promotionData)
+      : this.promotionService.createPromotion(promotionData as Promotion);
+
+    operation$.subscribe({
+      next: () => {
+        this.message.success(`Promoción ${this.isEditMode ? 'actualizada' : 'creada'} correctamente.`);
+        this.closeFormModal();
+        this.loadPromotions();
+      },
+      error: (error: any) => {
+        console.error(`Error al ${this.isEditMode ? 'actualizar' : 'crear'} la promoción:`, error);
+        this.message.error(`Error al ${this.isEditMode ? 'actualizar' : 'crear'} la promoción.`);
+        this.submitting = false;
+        this.cdr.detectChanges();
+      },
+      complete: () => {
+        this.submitting = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   deletePromotion(id: string): void {
     this.modal.confirm({
       nzTitle: '¿Está seguro de eliminar esta promoción?',
-      nzContent: 'Esta acción no se puede deshacer.',
+      nzContent: 'Esta acción no se puede deshacer y se desaplicará de cualquier producto que la tenga.',
       nzOkText: 'Eliminar',
       nzOkType: 'primary',
       nzOkDanger: true,
       nzOnOk: () => {
         this.loading = true;
-        this.cdr.detectChanges();
-
-        this.promotionService.deletePromotion(id)
-          .subscribe({
+        this.promotionService.deletePromotion(id).subscribe({
             next: () => {
-              this.promotionStateService.notifyPromotionDeleted(id);
-              this.message.success('Promoción eliminada correctamente');
-              this.loadPromotions();
+                this.message.success('Promoción eliminada correctamente.');
+                this.loadPromotions();
             },
-            error: (error) => {
-              console.error('Error al eliminar promoción:', error);
-              this.message.error('Error al eliminar promoción');
-              this.loading = false;
-              this.cdr.detectChanges();
+            error: (error: any) => {
+                console.error('Error al eliminar la promoción:', error);
+                this.message.error('Error al eliminar la promoción.');
+                this.loading = false;
+                this.cdr.detectChanges();
             }
-          });
+        });
       }
     });
   }
 
-  submitForm(): void {
-    if (this.promotionForm.invalid) {
-      // Marcar todos los campos como touched para mostrar errores
-      Object.values(this.promotionForm.controls).forEach(control => {
-        control.markAsDirty();
-        control.updateValueAndValidity();
-      });
-
-      this.message.warning('Por favor complete todos los campos requeridos correctamente');
-      return;
-    }
-
-    this.submitting = true;
-    this.cdr.detectChanges();
-
-    const formData = this.promotionForm.value;
-
-    // Asegurarse de que las fechas son objetos Date
-    const promotionData: Partial<Promotion> = {
-      ...formData,
-      startDate: formData.startDate instanceof Date ? formData.startDate : new Date(formData.startDate),
-      endDate: formData.endDate instanceof Date ? formData.endDate : new Date(formData.endDate)
-    };
-
-    if (this.isEditMode && this.selectedPromotion) {
-      // Actualizar promoción existente
-      this.promotionService.updatePromotion(this.selectedPromotion.id, promotionData)
-        .subscribe({
-          next: () => {
-            this.promotionStateService.notifyPromotionUpdated(
-              this.selectedPromotion!.id,
-              promotionData as Promotion
-            );
-            this.message.success('Promoción actualizada correctamente');
-            this.closeFormModal();
-            this.loadPromotions();
-          },
-          error: (error) => {
-            console.error('Error al actualizar promoción:', error);
-            this.message.error('Error al actualizar promoción');
-            this.submitting = false;
-            this.cdr.detectChanges();
-          },
-          complete: () => {
-            this.submitting = false;
-            this.cdr.detectChanges();
-          }
-        });
-    } else {
-      // Crear nueva promoción
-      this.promotionService.createPromotion(promotionData as Promotion)
-        .subscribe({
-          next: (promotionId) => {
-            this.promotionStateService.notifyPromotionCreated({
-              ...promotionData,
-              id: promotionId
-            } as Promotion);
-            this.message.success('Promoción creada correctamente');
-            this.closeFormModal();
-            this.loadPromotions();
-          },
-          error: (error) => {
-            console.error('Error al crear promoción:', error);
-            this.message.error('Error al crear promoción');
-            this.submitting = false;
-            this.cdr.detectChanges();
-          },
-          complete: () => {
-            this.submitting = false;
-            this.cdr.detectChanges();
-          }
-        });
-    }
-  }
-
   closeFormModal(): void {
     this.formModalVisible = false;
-    this.isEditMode = false;
-    this.selectedPromotion = null;
     this.submitting = false;
   }
 
   disabledStartDate = (startValue: Date): boolean => {
-    if (!startValue) {
-      return false;
-    }
-    return startValue.getTime() < Date.now() - 8.64e7; // No permitir fechas anteriores al día actual
+    if (!startValue) return false;
+    return startValue.getTime() < Date.now() - 8.64e7;
   };
 
   disabledEndDate = (endValue: Date): boolean => {
-    if (!endValue) {
-      return false;
-    }
+    if (!endValue) return false;
     const startDate = this.promotionForm.get('startDate')?.value;
-    if (!startDate) {
-      return false;
-    }
-    return endValue.getTime() <= startDate.getTime();
+    return !!startDate && endValue.getTime() <= startDate.getTime();
   };
 
   formatDate(date: any): string {
-    try {
-      // Si no hay fecha, retornar un valor por defecto
-      if (!date) {
-        return 'Fecha no disponible';
-      }
+    if (!date) return 'N/A';
+    const dateObj = date.seconds ? new Date(date.seconds * 1000) : new Date(date);
+    if (isNaN(dateObj.getTime())) return 'Fecha inválida';
+    return new Intl.DateTimeFormat('es-EC').format(dateObj);
+  }
 
-      // Convertir a objeto Date si aún no lo es
-      let dateObj: Date;
+  formatDiscountValue(promotion: Promotion): string {
+    if (promotion.discountType === 'shipping') return 'Envío Gratis';
+    return promotion.discountType === 'percentage'
+      ? `${promotion.discountValue}%`
+      : `$${promotion.discountValue.toFixed(2)}`;
+  }
 
-      if (date instanceof Date) {
-        dateObj = date;
-      } else if (typeof date === 'string') {
-        // Intentar convertir desde string
-        dateObj = new Date(date);
-      } else if (typeof date === 'number') {
-        // Intentar convertir desde timestamp (milisegundos)
-        dateObj = new Date(date);
-      } else if (typeof date === 'object' && date.seconds) {
-        // Manejar fechas de Firestore específicamente
-        // Las fechas de Firestore a menudo tienen un formato {seconds: number, nanoseconds: number}
-        dateObj = new Date(date.seconds * 1000);
-      } else {
-        // Si no se puede determinar el formato, devolver un mensaje
-        return 'Formato de fecha no válido';
-      }
-
-      // Verificar si la conversión resultó en una fecha válida
-      if (isNaN(dateObj.getTime())) {
-        return 'Fecha no válida';
-      }
-
-      // Formatear la fecha utilizando Intl.DateTimeFormat
-      return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }).format(dateObj);
-    } catch (error) {
-      console.error('Error al formatear fecha:', error, 'Valor recibido:', date);
-      return 'Error en fecha';
+  couponCodeValidator(control: AbstractControl): { [key: string]: any } | null {
+    if (control.value && !/^[A-Z0-9]+$/.test(control.value)) {
+      return { 'pattern': true };
     }
+    return null;
   }
 
   getCategoryNames(categoryIds: string[]): string {
     if (!categoryIds || !categoryIds.length) return 'Todas';
-
-    return categoryIds.map(id => {
-      const category = this.categories.find(c => c.id === id);
-      return category ? category.name : id;
-    }).join(', ');
+    return categoryIds.map(id => this.categories.find(c => c.id === id)?.name || id).join(', ');
   }
 
   getProductNames(productIds: string[]): string {
     if (!productIds || !productIds.length) return 'Todos';
-
-    return productIds.map(id => {
-      const product = this.products.find(p => p.id === id);
-      return product ? product.name : id;
-    }).join(', ');
+    return productIds.map(id => this.products.find(p => p.id === id)?.name || id).join(', ');
   }
 
   formatDiscountType(type: string): string {
     return type === 'percentage' ? 'Porcentaje' : 'Monto fijo';
   }
 
-  formatDiscountValue(promotion: Promotion): string {
-    return promotion.discountType === 'percentage'
-      ? `${promotion.discountValue}%`
-      : `$${promotion.discountValue.toFixed(2)}`;
+  runPromotionDiagnostic(): void {
+    this.diagnosing = true;
+    this.cdr.detectChanges();
+    this.promotionDiagnosticService.diagnoseBrokenPromotions().subscribe({
+      next: (diagnosticData) => {
+        this.diagnosticData = diagnosticData;
+        this.diagnosticModalVisible = true;
+        this.diagnosing = false;
+        const { stats } = diagnosticData;
+        if (stats.totalOrphanedRecords > 0) {
+          this.message.warning(`⚠️ Se encontraron ${stats.totalOrphanedRecords} registros problemáticos.`);
+        } else {
+          this.message.success('✅ No se encontraron problemas en las promociones.');
+        }
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.message.error('Error al ejecutar diagnóstico: ' + error.message);
+        this.diagnosing = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  getCleanupPreview(): { actionsToTake: string[]; estimatedDeletions: number; estimatedUpdates: number; } | null {
+    if (!this.diagnosticData) return null;
+    return this.promotionDiagnosticService.previewCleanup(this.diagnosticData);
+  }
+
+  closeDiagnosticModal(): void {
+    this.diagnosticModalVisible = false;
+    this.diagnosticData = null;
+  }
+
+  getSeverityColor(count: number): string {
+    if (count === 0) return 'success';
+    if (count <= 5) return 'warning';
+    return 'error';
+  }
+
+  formatCleanupActions(): string[] {
+    const preview = this.getCleanupPreview();
+    return preview ? preview.actionsToTake : [];
+  }
+
+  diagnoseOrphanedVariants(): void {
+    this.diagnosing = true;
+    this.cdr.detectChanges();
+    from(this.promotionDiagnosticService.diagnoseOrphanedVariants()).subscribe({
+      next: (data) => {
+        this.orphanedVariantsData = data;
+        this.cleanupModalVisible = true;
+        this.diagnosing = false;
+        if (data.totalOrphans > 0) {
+          this.message.warning(`⚠️ Se encontraron ${data.totalOrphans} variantes con promociones inexistentes`);
+        } else {
+          this.message.success('✅ No se encontraron variantes huérfanas');
+        }
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.message.error('Error al diagnosticar variantes: ' + error.message);
+        this.diagnosing = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  executeCleanup(): void {
+    if (!this.orphanedVariantsData || this.orphanedVariantsData.totalOrphans === 0) {
+      this.message.info('No hay variantes para limpiar');
+      return;
+    }
+    this.modal.confirm({
+      nzTitle: '🧹 ¿Confirmar Limpieza?',
+      nzContent: `<p>Esta acción limpiará <strong>${this.orphanedVariantsData.totalOrphans} variantes</strong>.</p><p style="color: #d32f2f;"><strong>⚠️ Esta acción no se puede deshacer.</strong></p>`,
+      nzOkText: 'Limpiar Variantes',
+      nzOkType: 'primary',
+      nzOkDanger: true,
+      nzWidth: 500,
+      nzOnOk: () => {
+        this.cleaning = true;
+        this.cdr.detectChanges();
+        from(this.promotionDiagnosticService.cleanOrphanedVariants(this.orphanedVariantsData.orphanedVariants)).subscribe({
+          next: (result) => {
+            this.cleaning = false;
+            if (result.errors.length > 0) {
+              this.message.warning(`Limpieza completada con errores: ${result.cleanedCount} limpiadas, ${result.errors.length} errores`);
+            } else {
+              this.message.success(`✅ Limpieza exitosa: ${result.cleanedCount} variantes limpiadas`);
+            }
+            this.closeCleanupModal();
+            this.loadPromotions();
+            this.cdr.detectChanges();
+          },
+          error: (error) => {
+            this.message.error('Error durante la limpieza: ' + error.message);
+            this.cleaning = false;
+            this.cdr.detectChanges();
+          }
+        });
+      }
+    });
+  }
+
+  closeCleanupModal(): void {
+    this.cleanupModalVisible = false;
+    this.orphanedVariantsData = null;
   }
 }

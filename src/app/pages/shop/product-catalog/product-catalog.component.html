@@ -149,23 +149,23 @@
             <div *ngFor="let product of getDisplayedProducts(); trackBy: trackByProductId" class="product-card-section">
 
                 <!-- Badges -->
-                    <div class="badges-container">
-                        <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
-                        <span *ngIf="product.isBestSeller" class="new-badge">BESTSELLER</span>
-                        <span *ngIf="hasDiscount(product)" class="discount-badge">
-                            -{{ product.discountPercentage }}%
-                        </span>
-                    </div>
-                    
+                <div class="badges-container">
+                    <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
+                    <span *ngIf="product.isBestSeller" class="new-badge">BESTSELLER</span>
+                    <span *ngIf="hasDiscount(product)" class="discount-badge">
+                        -{{ product.discountPercentage }}%
+                    </span>
+                </div>
+
                 <!-- Imagen del producto -->
                 <div class="product-image-container" (click)="viewProductDetails(product.id)"
                     [attr.aria-label]="'Ver detalles de ' + product.name">
 
                     <img [src]="getProductDisplayImage(product)"
                         [alt]="product.name + (getActiveColorName(product) ? ' - Color: ' + getActiveColorName(product) : '')"
-                        class="product-image-section" (error)="handleImageError($event)" loading="lazy">
+                        class="product-image-section" loading="lazy">
 
-                    
+
                 </div>
 
                 <!-- Color Options -->

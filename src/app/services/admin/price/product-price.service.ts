@@ -94,12 +94,16 @@ export class ProductPriceService {
     const originalPrice = product.price;
     let discount = 0;
 
-    if (promotion.discountType === 'percentage') {
+    // ✅ SOLUCIÓN: Se añade un caso explícito para 'shipping'.
+    // Si la promoción es de envío, el descuento al precio del producto es 0.
+    if (promotion.discountType === 'shipping') {
+        discount = 0;
+    } else if (promotion.discountType === 'percentage') {
       discount = (originalPrice * promotion.discountValue) / 100;
       if (promotion.maxDiscountAmount && discount > promotion.maxDiscountAmount) {
         discount = promotion.maxDiscountAmount;
       }
-    } else {
+    } else { // 'fixed'
       discount = promotion.discountValue;
     }
 
@@ -136,7 +140,11 @@ export class ProductPriceService {
 
     // Verificar si aplica a la categoría
     if (promotion.applicableCategories && promotion.applicableCategories.length > 0) {
-      return promotion.applicableCategories.includes(product.category);
+      // ✅ GUARDIA: Asegurarse de que product.categories sea un array antes de usarlo.
+      // Si product.categories es undefined o null, se usará un array vacío [].
+      const productCategories = product.categories || [];
+      // Se usa `some` para ver si ALGUNA de las categorías del producto está en las de la promo.
+      return productCategories.some(catId => promotion.applicableCategories!.includes(catId));
     }
 
     return true; // Si no tiene restricciones, aplica a todos
@@ -307,37 +315,61 @@ export class ProductPriceService {
 
 
   async addPromotionsToProduct(product: Product): Promise<Product> {
-    if (!product.variants || product.variants.length === 0) {
+    // ✅ GUARDIA INICIAL: Si el producto no tiene variantes, no hay nada que hacer.
+    if (!product || !product.variants || product.variants.length === 0) {
       return product;
     }
 
     try {
-      // Obtener promociones activas que puedan aplicar al producto
       const activePromotions = await firstValueFrom(this.promotionService.getActivePromotions());
 
-      // Enriquecer cada variante con sus promociones
+      // Si no hay promociones activas, devolvemos el producto tal cual.
+      if (activePromotions.length === 0) {
+        return product;
+      }
+      
       const enrichedVariants = await Promise.all(
         product.variants.map(async (variant) => {
-          // Buscar si esta variante tiene una promoción específica
-          const variantRef = doc(this.firestore, 'productVariants', variant.id);
-          const variantSnap = await getDoc(variantRef);
+          
+          // Lógica para encontrar la mejor promoción para ESTA variante/producto
+          const applicablePromotions = activePromotions.filter(promo => {
+              
+              // ✅ GUARDIA DEFENSIVA #1: Asegurarse de que los arrays de la promoción existan.
+              const applicableCats = promo.applicableCategories || [];
+              const applicableProds = promo.applicableProductIds || [];
+              
+              // ✅ GUARDIA DEFENSIVA #2: Asegurarse de que el array de categorías del producto exista.
+              const productCats = product.categories || [];
 
-          if (variantSnap.exists()) {
-            const variantData = variantSnap.data();
+              // Condiciones de aplicabilidad
+              const appliesToAll = applicableCats.length === 0 && applicableProds.length === 0;
+              const appliesToProduct = applicableProds.includes(product.id);
+              // Usamos .some() para ver si alguna categoría del producto coincide.
+              const appliesToCategory = productCats.some(pCat => applicableCats.includes(pCat));
 
-            // Si tiene promoción aplicada, actualizar los datos
-            if (variantData['promotionId']) {
-              return {
-                ...variant,
-                promotionId: variantData['promotionId'],
-                discountType: variantData['discountType'],
-                discountValue: variantData['discountValue'],
-                discountedPrice: variantData['discountedPrice'],
-                originalPrice: variantData['originalPrice']
-              };
-            }
+              return appliesToAll || appliesToProduct || appliesToCategory;
+          });
+
+          if (applicablePromotions.length > 0) {
+            // Si hay varias, encontrar la mejor (la que ofrece mayor descuento)
+            const bestPromotion = applicablePromotions.sort((a, b) => 
+                this.calculatePriceWithPromotion(product, b).savings - this.calculatePriceWithPromotion(product, a).savings
+            )[0];
+
+            // Calcular el precio con la mejor promoción
+            const priceCalc = this.calculatePriceWithPromotion(product, bestPromotion);
+
+            return {
+              ...variant,
+              promotionId: bestPromotion.id,
+              discountType: bestPromotion.discountType,
+              discountValue: bestPromotion.discountValue,
+              discountedPrice: priceCalc.currentPrice,
+              originalPrice: variant.price || product.price
+            };
           }
-
+          
+          // Si no hay promoción aplicable, devolver la variante sin cambios.
           return variant;
         })
       );
@@ -346,9 +378,12 @@ export class ProductPriceService {
         ...product,
         variants: enrichedVariants
       };
+
     } catch (error) {
-      console.error('Error aplicando promociones:', error);
-      return product;
+      // ✅ Captura de error mejorada para dar más contexto.
+      console.error(`Error aplicando promociones al producto ${product.name} (ID: ${product.id}):`, error);
+      // Devolver el producto original si falla el proceso para no detener el flujo.
+      return product; 
     }
   }
 }

@@ -1,0 +1,65 @@
+<div class="modal-container">
+    <div class="modal-header">
+        <h2>Información de Envío</h2>
+        <p>Selecciona el destino para este pedido.</p>
+    </div>
+
+    <form nz-form [formGroup]="shippingForm" (ngSubmit)="submitForm()">
+        <nz-form-item>
+            <nz-form-label>Tipo de Envío</nz-form-label>
+            <nz-form-control>
+                <nz-radio-group formControlName="shippingType">
+                    <label nz-radio-button nzValue="store">
+                        <span nz-icon nzType="shop" nzTheme="outline"></span>
+                        Enviar a mi Tienda
+                    </label>
+                    <label nz-radio-button nzValue="client">
+                        <span nz-icon nzType="user" nzTheme="outline"></span>
+                        Enviar a un Cliente Final
+                    </label>
+                </nz-radio-group>
+            </nz-form-control>
+        </nz-form-item>
+
+        <div *ngIf="shippingType === 'client'" class="client-fields">
+            <nz-divider nzText="Datos del Cliente Final" nzOrientation="left"></nz-divider>
+
+            <nz-form-item>
+                <nz-form-label nzRequired>Nombre Completo del Cliente</nz-form-label>
+                <nz-form-control nzErrorTip="Por favor ingresa el nombre del cliente.">
+                    <input nz-input formControlName="clientName" placeholder="Ej: Juan Pérez" (keydown)="handleKeyDown($event)" />
+                </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+                <nz-form-label nzRequired>Teléfono de Contacto</nz-form-label>
+                <nz-form-control nzErrorTip="Ingresa un número de 10 dígitos.">
+                    <input nz-input formControlName="clientPhone" placeholder="Ej: 0991234567" type="tel" (keydown)="handleKeyDown($event)" />
+                </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+                <nz-form-label nzRequired>Dirección de Envío</nz-form-label>
+                <nz-form-control nzErrorTip="La dirección es requerida y debe ser detallada.">
+                    <textarea nz-input formControlName="clientAddress" rows="3"
+                        placeholder="Ej: Av. Amazonas N25-12 y Calle la Pinta, Edificio XYZ, Apto 5B, Quito" (keydown)="handleKeyDown($event)"></textarea>
+                </nz-form-control>
+            </nz-form-item>
+        </div>
+
+        <nz-form-item>
+            <nz-form-label>Notas Adicionales</nz-form-label>
+            <nz-form-control>
+                <textarea nz-input formControlName="shippingNotes" rows="2"
+                    placeholder="Instrucciones especiales para la entrega, referencias, etc." (keydown)="handleKeyDown($event)"></textarea>
+            </nz-form-control>
+        </nz-form-item>
+    </form>
+
+    <div *nzModalFooter>
+        <button nz-button nzType="default" (click)="closeModal()">Cancelar</button>
+        <button nz-button nzType="primary" (click)="submitForm()" [disabled]="shippingForm.invalid">
+            Confirmar Envío
+        </button>
+    </div>
+</div>

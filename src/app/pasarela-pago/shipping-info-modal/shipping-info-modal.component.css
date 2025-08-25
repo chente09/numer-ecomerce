@@ -1,0 +1,33 @@
+.modal-header {
+    margin-bottom: 24px;
+}
+
+.modal-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.modal-header p {
+    font-size: 14px;
+    color: #666;
+}
+
+.client-fields {
+    margin-top: 16px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Estilos para el footer del modal (se aplica automáticamente por `*nzModalFooter`) */

@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, takeUntil, filter, switchMap, take } from 'rxjs';
+import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, takeUntil, filter, switchMap, take, of, from, forkJoin } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 
@@ -43,7 +43,6 @@ import { FormsModule } from '@angular/forms';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
-import { PromotionManagementComponent } from "../promotion-management/promotion-management.component";
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 
 // 🚀 Interfaces para actualización optimista
@@ -90,7 +89,6 @@ interface OptimisticProductOperation {
     ProductStatsComponent,
     ProductInventoryComponent,
     ProductPromotionsComponent,
-    PromotionManagementComponent
   ],
   templateUrl: './product-management.component.html',
   styleUrls: ['./product-management.component.css']
@@ -395,8 +393,17 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
   // 🆕 NUEVO: Método para verificar promociones activas
   hasActivePromotions(product: Product): boolean {
-    return this.promotionStateService.hasActivePromotions(product.id) ||
-      this.hasDiscount(product);
+    // Verificar descuento directo en el producto
+    if (product.discountPercentage && product.discountPercentage > 0) {
+      return true;
+    }
+
+    // Verificar precio con descuento
+    if (product.currentPrice && product.currentPrice < product.price) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -408,9 +415,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
 
     return product.variants.some(variant =>
-      variant.promotionId &&
-      variant.discountType &&
-      variant.discountValue
+      variant.promotionId ||
+      (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice)
     );
   }
 
@@ -427,7 +433,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
 
     const promotedVariants = product.variants.filter(variant =>
-      variant.promotionId && variant.discountType && variant.discountValue
+      variant.promotionId ||
+      (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice)
     );
 
     return {
@@ -436,6 +443,41 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       promotedVariants: promotedVariants.map(v => `${v.colorName}-${v.sizeName}`)
     };
   }
+
+  /**
+ * Abre modal de gestión de promociones
+ */
+  openPromotionManagement(): void {
+  // Importación dinámica del componente
+  import('../promotion-management/promotion-management.component')
+    .then(module => {
+      const modalRef = this.modal.create({
+        nzTitle: 'Gestión de Promociones y Cupones',
+        nzContent: module.PromotionManagementComponent,
+        nzWidth: '90%',
+        nzStyle: { top: '20px' },
+        nzBodyStyle: {
+          padding: '16px',
+          maxHeight: 'calc(100vh - 100px)',
+          overflow: 'auto'
+        },
+        nzFooter: null,
+        nzMaskClosable: false
+      });
+
+      modalRef.afterClose.subscribe((result) => {
+        if (result && result.promotionChanged) {
+          this.message.info('Recargando productos para mostrar cambios en promociones...');
+          this.loadProducts();
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Error cargando componente de promociones:', error);
+      this.message.error('Error al abrir gestión de promociones');
+    });
+}
+
 
   initFilterForm(): void {
     this.filterForm = this.fb.group({
@@ -501,17 +543,30 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       limit: this.pageSize
     };
 
-    // ✅ CAMBIO DEFINITIVO: Usar getProductsNoCache() para ignorar SIEMPRE el caché.
-    // Este método está diseñado específicamente para no usar el CacheService.
     const products$ = this.productService.getProductsNoCache();
 
     products$
-      .pipe(takeUntil(this.destroy$),
-        switchMap(products => this.productPriceService.calculateDiscountedPrices(products))
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(products => this.productPriceService.calculateDiscountedPrices(products)),
+        // ✅ PASO ADICIONAL: Enriquecer cada producto con datos de promoción de variantes.
+        switchMap(productsWithPrices => {
+          // Si no hay productos, devolvemos un array vacío para evitar errores.
+          if (!productsWithPrices || productsWithPrices.length === 0) {
+            return of([]);
+          }
+          // Creamos un array de observables, uno para cada producto.
+          const enrichedProducts$ = productsWithPrices.map(p =>
+            // Convertimos la promesa de addPromotionsToProduct en un observable.
+            from(this.productPriceService.addPromotionsToProduct(p))
+          );
+          // forkJoin espera a que todos los observables se completen y emite un array con todos los resultados.
+          return forkJoin(enrichedProducts$);
+        })
       )
       .subscribe({
-        next: (products) => {
-          const validProducts = this.validateFilterData(products);
+        next: (enrichedProducts) => { // Ahora recibimos los productos completamente enriquecidos.
+          const validProducts = this.validateFilterData(enrichedProducts);
           const filteredProducts = this.applyClientSideFilters(validProducts, filter);
 
           this.products = filteredProducts;
@@ -1473,5 +1528,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       fontSize: '14px'
     };
   }
+
+  
 
 }

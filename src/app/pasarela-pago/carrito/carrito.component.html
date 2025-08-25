@@ -43,8 +43,7 @@
           [class.updating-item]="updating">
 
           <div class="item-image">
-            <img [src]="getVariantImage(item)" [alt]="item.product?.name" class="product-image"
-              (error)="handleImageError($event)" />
+            <img [src]="getVariantImage(item)" [alt]="item.product?.name" class="product-image"/>
           </div>
 
           <div class="item-details">
@@ -72,8 +71,35 @@
             </div>
 
             <div class="price-section">
-              <span class="unit-price">${{ item.unitPrice | number:'1.2-2' }}</span>
-              <span class="total-price">x{{ item.quantity }} = ${{ item.totalPrice | number:'1.2-2' }}</span>
+              <!-- ✅ Badge de promoción (si aplica) -->
+              <div *ngIf="hasItemDiscount(item)" class="promotion-badge-container">
+                <span class="promotion-badge">🏷️ {{ item.appliedPromotionTitle }}</span>
+              </div>
+
+              <!-- ✅ Precio unitario (con descuento si aplica) -->
+              <div class="unit-price-container">
+                <span *ngIf="hasItemDiscount(item)" class="original-unit-price">
+                  ${{ (item.originalUnitPrice || item.unitPrice) | number:'1.2-2' }}
+                </span>
+                <span class="unit-price" [class.discounted-price]="hasItemDiscount(item)">
+                  ${{ item.unitPrice | number:'1.2-2' }}
+                </span>
+              </div>
+
+              <!-- ✅ Total (manteniendo formato original) -->
+              <div class="total-price-container">
+                <span *ngIf="hasItemDiscount(item)" class="original-total-price">
+                  ${{ getItemOriginalTotal(item) | number:'1.2-2' }}
+                </span>
+                <span class="total-price" [class.discounted-total]="hasItemDiscount(item)">
+                  x{{ item.quantity }} = ${{ item.totalPrice | number:'1.2-2' }}
+                </span>
+              </div>
+
+              <!-- ✅ Ahorro (si aplica) -->
+              <div *ngIf="hasItemDiscount(item)" class="savings-info">
+                <small class="savings-text">AHORRAS: ${{ getItemSavings(item) | number:'1.2-2' }}</small>
+              </div>
             </div>
           </div>
 
@@ -81,8 +107,7 @@
             <div class="quantity-section">
               <span class="quantity-label">Cantidad</span>
               <div class="quantity-controls">
-                <button class="qty-btn" [disabled]="updating || item.quantity <= 1"
-                  (click)="updateQuantity(item, item.quantity - 1)">−</button>
+                <button class="qty-btn" [disabled]="updating || item.quantity <= 1" (click)="updateQuantity(item, item.quantity - 1)">−</button>
                 <input type="number" [(ngModel)]="item.quantity" [disabled]="updating"
                   (change)="updateQuantity(item, item.quantity)" min="1" [max]="item.variant?.stock || 10"
                   class="qty-input">
@@ -184,7 +209,8 @@
         <div *ngIf="cart && cart.items.length > 0" class="mobile-actions">
           <button class="mobile-checkout" (click)="proceedToCheckout()"
             [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout">
-            <ng-container *ngIf="!isDistributor; else mobileDistributorText">Pagar ${{ cart.total | number:'1.2-2'}}</ng-container>
+            <ng-container *ngIf="!isDistributor; else mobileDistributorText">Pagar ${{ cart.total |
+              number:'1.2-2'}}</ng-container>
             <ng-template #mobileDistributorText>Registrar Pedido</ng-template>
           </button>
         </div>
@@ -201,7 +227,9 @@
     </button>
     <button class="mobile-checkout" (click)="proceedToCheckout()"
       [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout">
-      Pagar ${{ cart.total | number:'1.2-2' }}
+      <ng-container *ngIf="!isDistributor; else mobileDistributorText">Pagar ${{ cart.total |
+        number:'1.2-2'}}</ng-container>
+      <ng-template #mobileDistributorText>Registrar Pedido</ng-template>
     </button>
   </div>
 </div>

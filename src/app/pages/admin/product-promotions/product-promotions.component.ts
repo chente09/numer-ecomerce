@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, inject, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductPriceService } from '../../../services/admin/price/product-price.service';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
@@ -8,6 +8,7 @@ import { AppliedPromotionsService } from '../../../services/admin/applied-promot
 import { Product, Promotion, ProductVariant, AppliedPromotion } from '../../../models/models';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { finalize, forkJoin, switchMap, take } from 'rxjs';
+import { Firestore, deleteField, doc, runTransaction, writeBatch } from '@angular/fire/firestore';
 
 // Importar módulos ng-zorro necesarios
 import { NzTableModule } from 'ng-zorro-antd/table';
@@ -49,6 +50,8 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     productId: string;
     updatedProduct?: Product;
   }>();
+
+  private firestore = inject(Firestore);
 
   promotions: Promotion[] = [];
   allPromotions: Promotion[] = [];
@@ -206,71 +209,73 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     });
   }
 
-  applyPromotion(promotionId: string): void {
+  async applyPromotion(promotionId: string): Promise<void> {
     if (!this.product) return;
 
     this.applying = true;
+    this.cdr.markForCheck();
 
     const promotion = this.allPromotions.find(p => p.id === promotionId);
     if (!promotion) {
       this.message.error('Promoción no encontrada');
       this.applying = false;
+      this.cdr.markForCheck();
       return;
     }
 
-    const pricing = this.productPriceService.calculatePriceWithPromotion(this.product, promotion);
+    // Definir las referencias a los documentos que vamos a modificar
+    const productRef = doc(this.firestore, 'products', this.product.id);
+    const appliedPromoRef = doc(this.firestore, 'appliedPromotions', `${this.product.id}_${promotionId}`);
 
-    this.appliedPromotionsService.applyPromotion(
-      promotionId,
-      'product',
-      this.product.id,
-      promotion.endDate,
-      'admin'
-    ).pipe(
-      take(1),
-      switchMap(() => {
-        return this.productPriceService.updateProductPricing(this.product!.id, {
+    try {
+      // ✅ CAMBIO CLAVE: Iniciar una transacción
+      await runTransaction(this.firestore, async (transaction) => {
+        // 1. Leer el estado actual del producto DENTRO de la transacción
+        const productDoc = await transaction.get(productRef);
+        if (!productDoc.exists()) {
+          throw new Error("El producto no existe.");
+        }
+        const currentProductData = productDoc.data() as Product;
+
+        // 2. Calcular el nuevo precio
+        const pricing = this.productPriceService.calculatePriceWithPromotion(currentProductData, promotion);
+
+        // 3. Preparar la actualización del producto
+        const productUpdatePayload = {
           currentPrice: pricing.currentPrice,
           discountPercentage: pricing.discountPercentage,
-          originalPrice: this.product!.price
-        });
-      }),
-      finalize(() => {
-        this.applying = false;
-        this.cdr.markForCheck();
-      })
-    ).subscribe({
-      next: () => {
-        // Actualizar producto local
-        this.product = {
-          ...this.product!,
-          currentPrice: pricing.currentPrice,
-          discountPercentage: pricing.discountPercentage,
-          originalPrice: this.product!.price
+          originalPrice: currentProductData.price
         };
+        transaction.update(productRef, productUpdatePayload);
 
-        // ✅ BROADCASTING EXISTENTE (mantener)
-        this.promotionStateService.notifyPromotionApplied(this.product.id, promotion);
-        this.promotionStateService.notifyPromotionActivated(promotionId, [this.product.id]);
-
-        // 🆕 NUEVO: Broadcasting mejorado con información específica
-        this.promotionStateService.notifyPromotionActivated(
+        // 4. Preparar la creación del registro de promoción aplicada
+        const appliedPromotionPayload: AppliedPromotion = {
           promotionId,
-          [this.product.id]
-        );
+          target: 'product',
+          targetId: this.product!.id,
+          appliedAt: new Date(),
+          expiresAt: promotion.endDate,
+          appliedBy: 'admin' // O el ID del admin actual si lo tienes
+        };
+        transaction.set(appliedPromoRef, appliedPromotionPayload);
+      });
 
-        this.promotionChanged.emit({
-          productId: this.product.id,
-          updatedProduct: this.product
-        });
+      // ✅ ÉXITO: Si la transacción se completa, actualiza el estado local y notifica
+      this.message.success(`Promoción "${promotion.name}" aplicada correctamente.`);
+      this.loadPromotions(); // Recargar la lista de promociones aplicadas
+      this.promotionStateService.notifyPromotionActivated(promotionId, [this.product.id]);
+      this.promotionChanged.emit({ productId: this.product.id });
 
-        this.loadPromotions();
-      },
-      error: (error) => {
-        console.error('❌ Error aplicando promoción:', error);
-        this.message.error('Error al aplicar promoción');
-      }
-    });
+
+    } catch (error) {
+      // ❌ FALLO: Si algo falla, la transacción se revierte automáticamente
+      console.error('❌ La transacción para aplicar la promoción falló:', error);
+      this.message.error('No se pudo aplicar la promoción. La base de datos está segura.');
+    } finally {
+      // Siempre se ejecuta, para detener el spinner
+      this.applying = false;
+      this.cdr.markForCheck();
+    }
   }
 
   removePromotion(promotionId: string): void {
@@ -302,106 +307,95 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     });
   }
 
-  private removePromotionFromVariants(promotionId: string, variants: ProductVariant[], promotionName: string): void {
-    const removeObservables = variants.map(variant =>
-      this.productPriceService.removePromotionFromVariant(this.product!.id, variant.id)
-    );
+  private async removePromotionFromVariants(promotionId: string, variants: ProductVariant[], promotionName: string): Promise<void> {
+    if (!this.product) return;
 
-    forkJoin(removeObservables)
-      .pipe(
-        take(1),
-        finalize(() => {
-          this.applying = false;
-          this.cdr.markForCheck();
-        })
-      )
-      .subscribe({
-        next: () => {
-          this.product = {
-            ...this.product!,
-            variants: this.product!.variants.map(v => {
-              if (v.promotionId === promotionId) {
-                const { promotionId: _, discountType, discountValue, discountedPrice, originalPrice, ...cleanVariant } = v;
-                return cleanVariant as ProductVariant;
-              }
-              return v;
-            })
-          };
+    // Usaremos un "Batch Write" que es como una transacción para múltiples documentos
+    const batch = writeBatch(this.firestore);
 
-          // ✅ BROADCASTING EXISTENTE (mantener)
-          this.promotionStateService.notifyPromotionRemoved(this.product.id, promotionId);
-
-          // 🆕 NUEVO: Broadcasting mejorado
-          this.promotionStateService.notifyPromotionDeactivated(
-            promotionId,
-            [this.product.id]
-          );
-
-          this.promotionChanged.emit({
-            productId: this.product.id,
-            updatedProduct: this.product
-          });
-
-          // 🆕 NUEVO: Mensaje mejorado
-          this.message.success(
-            `✅ "${promotionName}" eliminada de variantes - Clientes notificados automáticamente`
-          );
-
-          this.loadPromotions();
-        },
-        error: (error) => {
-          console.error('❌ Error eliminando promoción de variantes:', error);
-          this.message.error('Error al eliminar promoción');
-        }
+    variants.forEach(variant => {
+      // 1. Preparar la actualización para limpiar la variante
+      const variantRef = doc(this.firestore, 'productVariants', variant.id);
+      batch.update(variantRef, {
+        promotionId: deleteField(),
+        discountType: deleteField(),
+        discountValue: deleteField(),
+        discountedPrice: deleteField(),
+        originalPrice: deleteField()
       });
+
+      // 2. Preparar la eliminación del registro en appliedPromotions
+      const appliedPromoRef = doc(this.firestore, 'appliedPromotions', `${variant.id}_${promotionId}`);
+      batch.delete(appliedPromoRef);
+    });
+
+    try {
+      // 3. Ejecutar todas las operaciones del lote de forma atómica
+      await batch.commit();
+
+      // Éxito: notificar al usuario y actualizar el estado local
+      this.message.success(`Promoción "${promotionName}" removida de ${variants.length} variante(s).`);
+      this.loadPromotions(); // Recargar datos
+      this.promotionStateService.notifyPromotionDeactivated(promotionId, [this.product.id]);
+      this.promotionChanged.emit({ productId: this.product.id });
+
+    } catch (error) {
+      // Fallo: el lote se revierte, la base de datos queda intacta
+      console.error('❌ El lote para remover la promoción de variantes falló:', error);
+      this.message.error('No se pudo remover la promoción de las variantes.');
+    } finally {
+      this.applying = false;
+      this.cdr.markForCheck();
+    }
   }
 
-  private removePromotionFromProduct(promotionId: string, promotionName: string): void {
-    this.appliedPromotionsService.removePromotion(promotionId, this.product!.id)
-      .pipe(
-        take(1),
-        switchMap(() => {
-          return this.productPriceService.updateProductPricing(this.product!.id, {
-            currentPrice: this.product!.price,
-            discountPercentage: 0,
-            originalPrice: this.product!.price
-          });
-        }),
-        finalize(() => {
-          this.applying = false;
-          this.cdr.markForCheck();
-        })
-      )
-      .subscribe({
-        next: () => {
-          this.product = {
-            ...this.product!,
-            currentPrice: this.product!.price,
-            discountPercentage: 0,
-            originalPrice: this.product!.price
-          };
+  private async removePromotionFromProduct(promotionId: string, promotionName: string): Promise<void> {
+    if (!this.product) return;
 
-          // ✅ BROADCASTING EXISTENTE (mantener)
-          this.promotionStateService.notifyPromotionRemoved(this.product.id, promotionId);
+    this.applying = true;
+    this.cdr.markForCheck();
 
-          // 🆕 NUEVO: Broadcasting mejorado
-          this.promotionStateService.notifyPromotionDeactivated(
-            promotionId,
-            [this.product.id]
-          );
+    // Definir las referencias a los documentos que vamos a modificar
+    const productRef = doc(this.firestore, 'products', this.product.id);
+    const appliedPromoRef = doc(this.firestore, 'appliedPromotions', `${this.product.id}_${promotionId}`);
 
-          this.promotionChanged.emit({
-            productId: this.product.id,
-            updatedProduct: this.product
-          });
-
-          this.loadPromotions();
-        },
-        error: (error) => {
-          console.error('❌ Error eliminando promoción:', error);
-          this.message.error('Error al eliminar promoción');
+    try {
+      // ✅ CAMBIO CLAVE: Iniciar una transacción
+      await runTransaction(this.firestore, async (transaction) => {
+        // 1. Leer el estado actual del producto DENTRO de la transacción
+        const productDoc = await transaction.get(productRef);
+        if (!productDoc.exists()) {
+          throw new Error("El producto no existe.");
         }
+        const currentProductData = productDoc.data() as Product;
+
+        // 2. Preparar la reversión de precios en el producto
+        const productUpdatePayload = {
+          currentPrice: currentProductData.price, // Revertir al precio original
+          discountPercentage: 0,
+          originalPrice: currentProductData.price
+        };
+        transaction.update(productRef, productUpdatePayload);
+
+        // 3. Preparar la eliminación del registro de promoción aplicada
+        transaction.delete(appliedPromoRef);
       });
+
+      // ✅ ÉXITO: Si la transacción se completa, actualiza el estado local y notifica
+      this.message.success(`Promoción "${promotionName}" removida correctamente.`);
+      this.loadPromotions();
+      this.promotionStateService.notifyPromotionDeactivated(promotionId, [this.product.id]);
+      this.promotionChanged.emit({ productId: this.product.id });
+
+    } catch (error) {
+      // ❌ FALLO: Si algo falla, la transacción se revierte automáticamente
+      console.error('❌ La transacción para remover la promoción falló:', error);
+      this.message.error('No se pudo remover la promoción. La base de datos está segura.');
+    } finally {
+      // Siempre se ejecuta, para detener el spinner
+      this.applying = false;
+      this.cdr.markForCheck();
+    }
   }
 
   removeAllPromotions(): void {

@@ -2,7 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CartService, CartItem, Cart } from '../services/cart/cart.service';
+import { CartService } from '../services/cart/cart.service';
+import { CartItem, Cart } from '../../models/models';
 import { Subject, takeUntil, firstValueFrom, take, catchError, of, debounceTime, switchMap } from 'rxjs';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -19,6 +20,7 @@ import { User } from '@angular/fire/auth';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { ShippingInfoModalComponent, ShippingInfo } from '../shipping-info-modal/shipping-info-modal.component';
 
 @Component({
   selector: 'app-carrito',
@@ -97,7 +99,21 @@ export class CarritoComponent implements OnInit, OnDestroy {
       next: (cart) => {
         this.cart = cart;
         this.loading = false;
-        console.log('🛒 Carrito actualizado:', cart);
+        console.log('🛒 CART DEBUG:', {
+          totalItems: cart.items.length,
+          subtotal: cart.subtotal,
+          totalSavings: cart.totalSavings,
+          items: cart.items.map(item => ({
+            productName: item.product?.name,
+            unitPrice: item.unitPrice,
+            originalUnitPrice: item.originalUnitPrice, // ¿Existe?
+            appliedPromotionTitle: item.appliedPromotionTitle, // ¿Existe?
+            quantity: item.quantity,
+            totalPrice: item.totalPrice,
+            // Verificar si hay descuento
+            hasDiscount: !!item.originalUnitPrice && item.originalUnitPrice > item.unitPrice
+          }))
+        });
       },
       error: (error) => {
         console.error('❌ Error al cargar el carrito:', error);
@@ -337,42 +353,22 @@ export class CarritoComponent implements OnInit, OnDestroy {
 
   // ✅ NUEVA IMPLEMENTACIÓN: Checkout completo con descuento de inventario
   async proceedToCheckout(): Promise<void> {
-    // 1. Validación inicial unificada
+    // 1. Validaciones iniciales (sin cambios)
     if (!this.cart || this.cart.items.length === 0) {
       this.message.warning('Tu carrito está vacío.');
       return;
     }
     if (!this.canCheckout) {
       this.message.warning(this.checkoutMessage || 'No cumples los requisitos para proceder.');
-      // Redirigir si es necesario
       if (!this.currentUser) this.router.navigate(['/welcome'], { queryParams: { returnUrl: '/carrito' } });
       else if (this.currentUser.isAnonymous) this.router.navigate(['/completar-perfil'], { queryParams: { returnUrl: '/carrito' } });
       return;
     }
 
-    this.processingCheckout = true;
-
-    try {
-      // 2. Lógica condicional basada en el rol
-      if (this.isDistributor) {
-        // --- FLUJO PARA DISTRIBUIDOR ---
-        this.message.info('Registrando pedido de distribuidor...');
-        const result = await this.cartService.createDistributorOrder();
-
-        if (result.success) {
-          this.cartService.clearCart(); // Limpiamos el carrito primero
-
-          // ✅ USAMOS UN MODAL DE ÉXITO EN LUGAR DE REDIRIGIR
-          this.modal.success({
-            nzTitle: '¡Pedido Registrado Exitosamente!',
-            nzContent: `Tu pedido #${result.orderId} ha sido creado. Nos pondremos en contacto para coordinar la entrega.`,
-            nzOkText: 'Entendido',
-            nzOnOk: () => this.router.navigate(['/shop']) // Opcional: redirigir a la tienda al cerrar
-          });
-        }
-
-      } else {
-        // --- FLUJO PARA CLIENTE NORMAL ---
+    // --- FLUJO PARA CLIENTE NORMAL (sin cambios) ---
+    if (!this.isDistributor) {
+      this.processingCheckout = true;
+      try {
         for (const item of this.cart.items) {
           const currentVariant = await firstValueFrom(this.cartService.getVariantById(item.variantId));
           if (!currentVariant || currentVariant.stock < item.quantity) {
@@ -380,13 +376,55 @@ export class CarritoComponent implements OnInit, OnDestroy {
           }
         }
         this.router.navigate(['/pago']);
+      } catch (error: any) {
+        this.message.error(error.message || 'Ocurrió un error al verificar el stock.');
+      } finally {
+        this.processingCheckout = false;
       }
-    } catch (error: any) {
-      console.error('❌ Error en el checkout:', error);
-      this.message.error(error.message || 'Ocurrió un error al procesar el pedido.');
-    } finally {
-      this.processingCheckout = false;
+      return; // Termina la ejecución para clientes normales
     }
+
+    // --- ✅ NUEVO FLUJO PARA DISTRIBUIDOR ---
+    // 2. Abrir el modal de envío
+    const modalRef = this.modal.create<ShippingInfoModalComponent, {}, ShippingInfo>({
+      nzTitle: 'Confirmar Envío del Pedido',
+      nzContent: ShippingInfoModalComponent,
+      nzFooter: null, // El modal tiene sus propios botones
+      nzWidth: 600,
+      nzClosable: false,
+      nzMaskClosable: false,
+      nzKeyboard: false
+    });
+
+    // 3. Esperar a que el modal se cierre
+    modalRef.afterClose.subscribe(async (shippingInfo?: ShippingInfo) => {
+      // Si el usuario confirmó y tenemos los datos del envío
+      if (shippingInfo) {
+        this.processingCheckout = true;
+        this.message.info('Registrando pedido de distribuidor...');
+
+        try {
+          // 4. Llamar al servicio con los datos del envío
+          const result = await this.cartService.createDistributorOrder(shippingInfo);
+
+          if (result.success) {
+            this.cartService.clearCart();
+            this.modal.success({
+              nzTitle: '¡Pedido Registrado Exitosamente!',
+              nzContent: `Tu pedido #${result.orderId} ha sido creado. Nos pondremos en contacto para coordinar la entrega.`,
+              nzOkText: 'Entendido',
+              nzOnOk: () => this.router.navigate(['/shop'])
+            });
+          }
+        } catch (error: any) {
+          console.error('❌ Error en el checkout:', error);
+          this.message.error(error.message || 'Ocurrió un error al procesar el pedido.');
+        } finally {
+          this.processingCheckout = false;
+        }
+      }
+      // Si 'shippingInfo' es undefined, significa que el usuario cerró el modal (canceló), así que no hacemos nada.
+    });
   }
 
 
@@ -470,10 +508,39 @@ export class CarritoComponent implements OnInit, OnDestroy {
   }
 
   // ✅ NUEVO: Manejar errores de imagen
-  handleImageError(event: Event): void {
+  handleImageError(event: ErrorEvent): void {
     const target = event.target as HTMLImageElement;
     if (target) {
       target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOGY4Ii8+PGcgZmlsbD0iIzk5OSI+PGNpcmNsZSBjeD0iNTAiIGN5PSI0MCIgcj0iMTAiLz48cGF0aCBkPSJtMzAgNzBoNDB2MTBIMzB6Ii8+PC9nPjwvc3ZnPg==';
     }
+  }
+
+  // ✅ AGREGAR estos métodos al final de carrito.component.ts (antes del último })
+
+  /**
+   * Verifica si un item del carrito tiene descuento aplicado
+   */
+  hasItemDiscount(item: CartItem): boolean {
+    return !!(item.originalUnitPrice &&
+      item.originalUnitPrice > item.unitPrice);
+  }
+
+  /**
+   * Calcula el total original de un item (sin descuento)
+   */
+  getItemOriginalTotal(item: CartItem): number {
+    const originalPrice = item.originalUnitPrice || item.unitPrice;
+    return originalPrice * item.quantity;
+  }
+
+  /**
+   * Calcula el ahorro de un item específico
+   */
+  getItemSavings(item: CartItem): number {
+    if (!this.hasItemDiscount(item)) return 0;
+
+    const originalTotal = this.getItemOriginalTotal(item);
+    const currentTotal = item.totalPrice;
+    return originalTotal - currentTotal;
   }
 }

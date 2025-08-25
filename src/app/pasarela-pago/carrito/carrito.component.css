@@ -1,5 +1,9 @@
 /* Reset */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
 /* Layout principal - Manteniendo el lateral */
 .cart-container {
@@ -369,7 +373,7 @@
 }
 
 .sidebar-header {
-    padding: 20px ;
+    padding: 20px;
 }
 
 .sidebar-title {
@@ -473,7 +477,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 5px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .total-label {
@@ -511,6 +515,7 @@
     flex-direction: row;
     gap: 10px;
 }
+
 .checkout-section {
     border-top: 1px solid #333333;
     padding-top: 32px;
@@ -539,14 +544,14 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0,0,0,0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent);
     transition: left 0.6s ease;
 }
 
 .checkout-btn:hover:not(:disabled) {
     background: #f5f5f5;
     transform: translateY(-3px);
-    box-shadow: 0 8px 30px rgba(255,255,255,0.4);
+    box-shadow: 0 8px 30px rgba(255, 255, 255, 0.4);
 }
 
 .checkout-btn:hover::before {
@@ -725,12 +730,12 @@
     .cart-container {
         grid-template-columns: 1fr;
     }
-    
+
     .cart-sidebar {
         position: static;
         height: auto;
     }
-    
+
     .mobile-actions {
         display: block;
     }
@@ -740,27 +745,27 @@
     .cart-header {
         padding: 24px 20px 16px;
     }
-    
+
     .cart-title {
         font-size: 24px;
         letter-spacing: -0.5px;
     }
-    
+
     .cart-content {
         padding: 20px;
     }
-    
+
     .cart-item {
         grid-template-columns: 100px 1fr;
         padding: 24px 0;
         gap: 16px;
     }
-    
+
     .item-image {
-        width: 100px;
-        height: 100px;
+        width: 80px;
+        height: 80px;
     }
-    
+
     .item-controls {
         grid-column: 1 / -1;
         flex-direction: row;
@@ -771,21 +776,21 @@
         border-top: 1px solid #f0f0f0;
         min-width: auto;
     }
-    
+
     .quantity-section {
         align-items: center;
     }
-    
+
     .order-summary {
         padding: 24px 20px;
         gap: 24px;
     }
-    
+
     .discount-section {
         margin: 0 -20px;
         padding: 20px;
     }
-    
+
     .auth-notice {
         margin: 0 -20px;
         padding: 16px 20px;
@@ -802,6 +807,7 @@
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -822,4 +828,86 @@
 ::ng-deep .ant-empty-description {
     color: #666666;
     font-weight: 300;
+}
+
+/* ✅ REEMPLAZAR los estilos que agregamos antes con estos que coinciden con tu diseño */
+
+/* Badge de promoción - Estilo acorde al diseño existente */
+.promotion-badge-container {
+    margin-bottom: 4px;
+}
+
+.promotion-badge {
+    background: #52c41a;
+    color: #ffffff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: inline-block;
+}
+
+/* Contenedores de precios - Manteniendo layout vertical */
+.unit-price-container,
+.total-price-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 3px;
+}
+
+/* Precios originales tachados - Estilo minimalista */
+.original-unit-price,
+.original-total-price {
+    text-decoration: line-through;
+    color: #999999;
+    font-size: 13px;
+    font-weight: 400;
+    order: -1;
+    /* Aparece arriba */
+}
+
+/* Precios con descuento - Usando colores de tu diseño */
+.unit-price.discounted-price {
+    color: #ff4d4f;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.total-price.discounted-total {
+    color: #ff4d4f;
+    font-weight: 600;
+}
+
+/* Información de ahorro - Estilo minimalista */
+.savings-info {
+    margin-top: 6px;
+}
+
+.savings-text {
+    color: #52c41a;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: #f6ffed;
+    padding: 3px 6px;
+    border-radius: 2px;
+    display: inline-block;
+    border: 1px solid #52c41a;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .promotion-badge {
+        font-size: 8px;
+        padding: 1px 4px;
+    }
+
+    .savings-text {
+        font-size: 9px;
+        padding: 2px 4px;
+    }
 }

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { addDoc, collection, collectionData, deleteDoc, doc, Firestore, getDoc, getDocs, updateDoc } from '@angular/fire/firestore';
 import { CacheService } from '../cache/cache.service';
 import { catchError, from, map, Observable, of, throwError, take } from 'rxjs';
-import { Promotion } from '../../../models/models';
+import { Promotion, Product } from '../../../models/models';
 
 @Injectable({
   providedIn: 'root'
@@ -57,7 +57,7 @@ export class PromotionService {
             endDate = new Date();
             endDate.setDate(endDate.getDate() + 30);
           }
-          
+
           return {
             id: doc.id,
             ...promo,
@@ -82,7 +82,7 @@ export class PromotionService {
     if (!id) {
       return of(null);
     }
-    
+
     const docRef = doc(this.firestore, this.collectionName, id);
 
     return from(getDoc(docRef)).pipe(
@@ -105,7 +105,7 @@ export class PromotionService {
           } else {
             startDate = new Date();
           }
-          
+
           // ✅ Cambio aquí: usa data['endDate'] en lugar de data.endDate
           if (data['endDate'] && typeof data['endDate'].toDate === 'function') {
             endDate = data['endDate'].toDate();
@@ -216,6 +216,49 @@ export class PromotionService {
         return of([]);
       })
     );
+  }
+
+  /**
+ * Encuentra la mejor promoción aplicable para un producto de una lista de promociones.
+ * @param product El producto a verificar.
+ * @param promotions La lista de promociones activas.
+ * @returns La promoción con el mayor descuento, o null si ninguna aplica.
+ */
+  public findBestPromotionForProduct(product: Product, promotions: Promotion[]): Promotion | null {
+    const applicablePromotions = promotions.filter(promo => {
+      // Una promoción aplica si:
+      // 1. No tiene restricciones de producto o categoría (aplica a todo)
+      const appliesToAllProducts = !promo.applicableProductIds?.length && !promo.applicableCategories?.length;
+      // 2. El ID del producto está en la lista de la promoción
+      const appliesToProduct = promo.applicableProductIds?.includes(product.id);
+      // 3. Alguna de las categorías del producto está en la lista de la promoción
+      const appliesToCategory = product.categories?.some(catId => promo.applicableCategories?.includes(catId));
+
+      return appliesToAllProducts || appliesToProduct || appliesToCategory;
+    });
+
+    if (applicablePromotions.length === 0) {
+      return null; // No hay promociones para este producto
+    }
+
+    // Si hay varias promociones aplicables, elegimos la que ofrece el mayor descuento.
+    return applicablePromotions.sort((a, b) => this.getDiscountAmount(product, b) - this.getDiscountAmount(product, a))[0];
+  }
+
+  /**
+   * Método privado para calcular el monto de descuento que una promoción daría a un producto.
+   * @param product El producto.
+   * @param promo La promoción.
+   * @returns El valor numérico del descuento en dólares.
+   */
+  private getDiscountAmount(product: Product, promo: Promotion): number {
+    if (promo.discountType === 'percentage') {
+      const discount = product.price * (promo.discountValue / 100);
+      // Aplicar el descuento máximo si está definido
+      return promo.maxDiscountAmount ? Math.min(discount, promo.maxDiscountAmount) : discount;
+    } else { // 'fixed'
+      return promo.discountValue;
+    }
   }
 
   /**

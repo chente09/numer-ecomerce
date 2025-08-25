@@ -1,32 +1,15 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { BehaviorSubject, Observable, from, of, forkJoin, map, catchError, Subject, takeUntil, firstValueFrom } from 'rxjs';
-import { Product, ProductVariant } from '../../../models/models';
+import { Product, ProductVariant, Cart, CartItem } from '../../../models/models';
+import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { UsersService } from '../../../services/users/users.service';
 import { deleteDoc, doc, Firestore, getDoc, setDoc, serverTimestamp } from '@angular/fire/firestore';
 import { User } from '@angular/fire/auth';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { ShippingInfo } from '../../shipping-info-modal/shipping-info-modal.component';
 
-// --- Tus Interfaces (no cambian) ---
-export interface CartItem {
-  productId: string;
-  variantId: string;
-  quantity: number;
-  product?: Product;
-  variant?: ProductVariant;
-  unitPrice: number;
-  totalPrice: number;
-}
-export interface Cart {
-  items: CartItem[];
-  totalItems: number;
-  subtotal: number;
-  tax: number;
-  shipping: number;
-  discount: number;
-  total: number;
-}
 
 @Injectable({
   providedIn: 'root'
@@ -36,14 +19,15 @@ export class CartService implements OnDestroy {
   private firestore = inject(Firestore);
   private productService = inject(ProductService);
   private usersService = inject(UsersService);
+  private promotionService = inject(PromotionService);
   private message = inject(NzMessageService);
   private http = inject(HttpClient);
-  
+
   // --- Propiedades de Estado ---
   private currentUserId: string | null = null;
   private readonly GUEST_CART_KEY = 'guestCart';
   private initialCartState: Cart = {
-    items: [], totalItems: 0, subtotal: 0, tax: 0, shipping: 0, discount: 0, total: 0
+    items: [], totalItems: 0, subtotal: 0, tax: 0, shipping: 0, discount: 0, totalSavings: 0, total: 0
   };
   private cartSubject = new BehaviorSubject<Cart>(this.initialCartState);
   public cart$: Observable<Cart> = this.cartSubject.asObservable();
@@ -80,14 +64,14 @@ export class CartService implements OnDestroy {
       this.updateCartState(guestItems);
     }
   }
-  
+
   private async mergeLocalWithFirestore(): Promise<void> {
     const guestItems = this.getGuestCartItems();
     const firestoreItems = await this.loadFirestoreCartItems();
-    
+
     // Lógica de fusión que suma cantidades si el item ya existía
     const mergedItems = this.mergeItems(guestItems, firestoreItems);
-    
+
     this.updateCartState(mergedItems);
     await this.saveCartToFirestore(mergedItems);
     localStorage.removeItem(this.GUEST_CART_KEY);
@@ -98,34 +82,90 @@ export class CartService implements OnDestroy {
   public getCart = (): Cart => this.cartSubject.getValue();
 
   public getCartItemCount = (): Observable<number> => this.cart$.pipe(map(cart => cart.totalItems));
-  
+
   public getVariantById = (variantId: string): Observable<ProductVariant | undefined> => this.productService.getVariantById(variantId);
 
-  public addToCart(productId: string, variantId: string, quantity: number, productData?: Product, variantData?: ProductVariant): Observable<boolean> {
+  public addToCart(productId: string, variantId: string, quantity: number): Observable<boolean> {
     const promise = (async () => {
-      const product = productData ?? await firstValueFrom(this.productService.getProductById(productId));
-      const variant = variantData ?? await firstValueFrom(this.getVariantById(variantId));
-      if (!product || !variant) throw new Error("Producto no encontrado.");
-      
+      // Obtenemos producto, variante y promociones activas en paralelo
+      const [product, variant, activePromotions] = await Promise.all([
+        firstValueFrom(this.productService.getProductById(productId)),
+        firstValueFrom(this.getVariantById(variantId)),
+        firstValueFrom(this.promotionService.getActivePromotions())
+      ]);
+
+      if (!product || !variant) throw new Error("Producto o variante no encontrados.");
+
       const currentItems = this.getCart().items;
       const existingItem = currentItems.find(i => i.variantId === variantId);
       const newQuantity = (existingItem?.quantity || 0) + quantity;
 
-      if (variant.stock < newQuantity) throw new Error(`Stock insuficiente para ${product.name}. Disponibles: ${variant.stock}`);
+      if (variant.stock < newQuantity) throw new Error(`Stock insuficiente. Disponibles: ${variant.stock}`);
 
-      let newItems: CartItem[];
-      if (existingItem) {
-        newItems = currentItems.map(item => item.variantId === variantId ? { ...item, quantity: newQuantity } : item);
-      } else {
-        newItems = [...currentItems, {
-          productId, variantId, quantity, product, variant,
-          unitPrice: product.currentPrice ?? product.price,
-          totalPrice: (product.currentPrice ?? product.price) * quantity,
-        }];
+      // --- ✅ LÓGICA DE PROMOCIONES CORREGIDA ---
+      const bestPromotion = this.promotionService.findBestPromotionForProduct(product, activePromotions);
+
+      let unitPrice = product.price; // Precio base
+      let originalUnitPrice: number | undefined = undefined;
+      let appliedPromotionTitle: string | undefined = undefined;
+
+      if (bestPromotion) {
+        originalUnitPrice = product.price; // ✅ GUARDAR precio original
+
+        // Calcular descuento
+        if (bestPromotion.discountType === 'percentage') {
+          const discount = product.price * (bestPromotion.discountValue / 100);
+          const finalDiscount = bestPromotion.maxDiscountAmount
+            ? Math.min(discount, bestPromotion.maxDiscountAmount)
+            : discount;
+          unitPrice = product.price - finalDiscount;
+        } else { // 'fixed'
+          unitPrice = product.price - bestPromotion.discountValue;
+        }
+
+        unitPrice = Math.max(0, unitPrice); // No negativo
+        appliedPromotionTitle = bestPromotion.name; // ✅ GUARDAR nombre promoción
+
+        console.log(`✨ [CART] Promoción aplicada: "${bestPromotion.name}" a ${product.name}: ${product.price} → ${unitPrice}`);
       }
+
+      // --- ✅ CREAR ITEM CON TODAS LAS PROPIEDADES ---
+      let newItems: CartItem[];
+      const newItemData: CartItem = {
+        productId,
+        variantId,
+        quantity: newQuantity,
+        product,
+        variant,
+        unitPrice, // Precio con descuento
+        originalUnitPrice, // ✅ PRECIO ORIGINAL (puede ser undefined)
+        appliedPromotionTitle, // ✅ NOMBRE PROMOCIÓN (puede ser undefined)
+        totalPrice: unitPrice * newQuantity,
+      };
+
+      if (existingItem) {
+        // ✅ ACTUALIZAR item existente manteniendo promociones
+        newItemData.quantity = newQuantity;
+        newItemData.totalPrice = unitPrice * newQuantity;
+        newItems = currentItems.map(item => item.variantId === variantId ? newItemData : item);
+      } else {
+        // ✅ AGREGAR nuevo item con promociones
+        newItemData.quantity = quantity;
+        newItemData.totalPrice = unitPrice * quantity;
+        newItems = [...currentItems, newItemData];
+      }
+
+      console.log('✅ [CART] Item guardado con promoción:', {
+        productName: product.name,
+        unitPrice: newItemData.unitPrice,
+        originalUnitPrice: newItemData.originalUnitPrice,
+        appliedPromotionTitle: newItemData.appliedPromotionTitle,
+        hasDiscount: !!newItemData.originalUnitPrice
+      });
+
       this.updateAndSync(newItems);
     })();
-    
+
     return from(promise).pipe(
       map(() => true),
       catchError(err => {
@@ -134,7 +174,7 @@ export class CartService implements OnDestroy {
       })
     );
   }
-  
+
   public updateItemQuantity(variantId: string, quantity: number): Observable<boolean> {
     if (quantity <= 0) {
       return this.removeItem(variantId);
@@ -143,7 +183,7 @@ export class CartService implements OnDestroy {
     this.updateAndSync(newItems);
     return of(true);
   }
-  
+
   public removeItem(variantId: string): Observable<boolean> {
     const newItems = this.getCart().items.filter(item => item.variantId !== variantId);
     this.updateAndSync(newItems);
@@ -168,10 +208,10 @@ export class CartService implements OnDestroy {
     this.updateCartState(items);
     this.syncCart(items);
   }
-  
+
   private syncCart(items: CartItem[]): void {
-    this.currentUserId 
-      ? this.saveCartToFirestore(items) 
+    this.currentUserId
+      ? this.saveCartToFirestore(items)
       : this.saveGuestCartToStorage(items);
   }
 
@@ -181,16 +221,27 @@ export class CartService implements OnDestroy {
       this.cartSubject.next(newCart);
     });
   }
-  
+
   private recalculateCart(items: CartItem[]): Cart {
-    const newCart = { ...this.initialCartState, items };
+    const newCart: Cart = { ...this.initialCartState, items };
     newCart.totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-    newCart.subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-    newCart.tax = newCart.subtotal * 0.15; // Tu lógica de impuestos
+
+    newCart.subtotal = items.reduce((sum, item) => {
+      item.totalPrice = item.unitPrice * item.quantity;
+      return sum + item.totalPrice;
+    }, 0);
+
+    newCart.totalSavings = items.reduce((sum, item) => {
+      const saving = (item.originalUnitPrice || item.unitPrice) - item.unitPrice;
+      return sum + (saving * item.quantity);
+    }, 0);
+
+    newCart.tax = (newCart.subtotal - newCart.discount) * 0.15; // Asumo IVA 15%
     newCart.total = newCart.subtotal + newCart.tax + newCart.shipping - newCart.discount;
+
     return newCart;
   }
-  
+
   private mergeItems(guest: CartItem[], firestore: CartItem[]): CartItem[] {
     const merged = new Map<string, CartItem>();
     [...firestore, ...guest].forEach(item => {
@@ -214,12 +265,12 @@ export class CartService implements OnDestroy {
         const storableItems = items.map(item => this.toStorableItem(item));
         await setDoc(cartRef, { items: storableItems, updatedAt: serverTimestamp() });
       }
-    } catch (error) { 
+    } catch (error) {
       console.error("Error guardando en Firestore:", error);
       this.message.error("No se pudo sincronizar el carrito con la nube.");
     }
   }
-  
+
   private saveGuestCartToStorage(items: CartItem[]): void {
     const storableItems = items.map(item => this.toStorableItem(item));
     localStorage.setItem(this.GUEST_CART_KEY, JSON.stringify({ items: storableItems }));
@@ -234,9 +285,9 @@ export class CartService implements OnDestroy {
       const cartRef = doc(this.firestore, `users/${this.currentUserId}/cart`, 'current');
       const cartSnap = await getDoc(cartRef);
       return cartSnap.exists() ? (cartSnap.data()['items'] || []) : [];
-    } catch (error) { 
+    } catch (error) {
       console.error("Error cargando carrito de Firestore:", error);
-      return []; 
+      return [];
     }
   }
 
@@ -257,36 +308,39 @@ export class CartService implements OnDestroy {
   /**
    * Envía el carrito a tu backend para ser procesado como un pedido de distribuidor.
    */
-  public async createDistributorOrder(): Promise<{ success: boolean; orderId?: string }> {
+  /**
+ * Envía el carrito y los detalles de envío al backend.
+ */
+  public async createDistributorOrder(shippingDetails: ShippingInfo): Promise<{ success: boolean; orderId?: string }> {
     const cart = this.getCart();
     if (cart.items.length === 0) {
       throw new Error("El carrito está vacío.");
     }
-    
-    // 1. Obtenemos el token de autenticación del usuario actual
+
     const idToken = await this.usersService.getIdToken();
     if (!idToken) {
       throw new Error("No se pudo verificar la autenticación del usuario.");
     }
 
-    // 2. Preparamos la petición para tu backend de Node.js
-    const url = 'https://backend-numer.netlify.app/.netlify/functions/create-distributor-order'; 
+    const url = 'https://backend-numer.netlify.app/.netlify/functions/create-distributor-order';
     const headers = new HttpHeaders({
       'Authorization': `Bearer ${idToken}`
     });
-    
+
+    // ✅ AÑADIMOS shippingDetails AL PAYLOAD
     const orderPayload = {
       cartItems: cart.items.map(item => ({
         variantId: item.variantId,
         quantity: item.quantity,
         unitPrice: item.unitPrice
       })),
-      total: cart.total
+      total: cart.total,
+      shippingDetails: shippingDetails // <-- Aquí va la nueva información
     };
-    
-    // 3. Hacemos la llamada POST a tu servidor
+
     return firstValueFrom(
       this.http.post<{ success: boolean; orderId?: string }>(url, orderPayload, { headers })
     );
   }
+
 }

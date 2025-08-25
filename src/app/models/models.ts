@@ -1,5 +1,4 @@
 import { Timestamp } from '@angular/fire/firestore';
-import { CartItem } from '../pasarela-pago/services/cart/cart.service';
 
 export interface Color {
     id: string;
@@ -33,17 +32,46 @@ export interface Promotion {
     id: string;
     name: string;
     description?: string;
-    discountType: 'percentage' | 'fixed';
-    discountValue: number;
+
+    // 🚀 NUEVO: Distingue entre promociones generales y cupones específicos.
+    promotionType: 'standard' | 'coupon';
+
+    // Ahora incluye 'shipping' para envíos gratis.
+    discountType: 'percentage' | 'fixed' | 'shipping';
+    discountValue: number; // Para 'shipping', el valor puede ser 0, la lógica se encarga del resto.
+
     startDate: Date;
     endDate: Date;
     isActive: boolean;
+
+    // --- Campos Específicos para Cupones ---
+    couponCode?: string; // El código que el cliente usará. Ej: "BIENVENIDA10"
+    couponType?: 'SHIPPING' | 'REFERRAL' | 'WELCOME' | 'SEASONAL' | 'VIP' | 'BULK';
+
+    usageLimits?: {
+        global?: number;   // Límite total de usos del cupón.
+        perUser?: number;  // Límite de usos por cada cliente.
+        perDay?: number;   // Límite de usos por día (menos común, pero posible).
+    };
+    // --- Fin de Campos de Cupones ---
+
+
+    // --- Reglas de Aplicabilidad (sin cambios) ---
     applicableProductIds?: string[];
     applicableCategories?: string[];
-    minPurchaseAmount?: number;
-    maxDiscountAmount?: number;
-    usageLimit?: number;
-    perCustomerLimit?: number;
+    minPurchaseAmount?: number; // Requerimiento para compra mínima (BULK)
+    maxDiscountAmount?: number; // Límite de descuento para tipo 'percentage'
+}
+
+// ✅ NUEVO: Interfaz para rastrear el uso de cupones por usuario.
+export interface CouponUsage {
+    id?: string; // Compuesto: userId_couponCode
+    userId: string;
+    couponCode: string;
+    promotionId: string;
+    usageCount: number;
+    lastUsedAt: Date;
+    orderIds: string[]; // Para rastrear en qué pedidos se usó
 }
 
 export interface AppliedPromotion {
@@ -67,7 +95,7 @@ export interface ProductVariant {
     distributorCost?: number;
     imageUrl?: string;
     promotionId?: string;
-    discountType?: 'percentage' | 'fixed';
+    discountType?: 'percentage' | 'fixed' | 'shipping';
     discountValue?: number;
     discountedPrice?: number;
     originalPrice?: number;
@@ -221,6 +249,29 @@ export interface UserProfile {
     profileCompleted?: boolean;
     defaultAddress?: any;
     updatedAt?: Timestamp | Date;
+}
+
+export interface CartItem {
+    productId: string;
+    variantId: string;
+    quantity: number;
+    product?: Product;
+    variant?: ProductVariant;
+    unitPrice: number; // Precio final CON descuento
+    totalPrice: number;
+    originalUnitPrice?: number; // Precio original sin descuento
+    appliedPromotionTitle?: string; // Nombre de la promoción
+}
+
+export interface Cart {
+    items: CartItem[];
+    totalItems: number;
+    subtotal: number;
+    tax: number;
+    shipping: number;
+    discount: number; // Para descuentos manuales por código
+    totalSavings: number; // Para ahorros por promociones automáticas
+    total: number;
 }
 
 export interface Order {

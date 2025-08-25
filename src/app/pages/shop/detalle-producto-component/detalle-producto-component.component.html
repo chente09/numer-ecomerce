@@ -95,39 +95,25 @@
             </div>
 
             <!-- 🏷️ PRECIO ÚNICO - SIN DUPLICACIONES -->
-            <div class="product-price-container">
-                <!-- 🆕 PRECIO DE VARIANTE (si está seleccionada) -->
-                <ng-container *ngIf="selectedVariant">
-                    <!-- Precio original tachado si hay descuento -->
-                    <span *ngIf="currentVariantPrice.hasDiscount" class="original-price">
-                        ${{ currentVariantPrice.originalPrice.toFixed(2) }}
+            <div *ngIf="displayedPriceInfo">
+                <div class="product-price-container">
+                    <span *ngIf="displayedPriceInfo.hasDiscount" class="original-price">
+                        ${{ displayedPriceInfo.originalPrice | number:'1.2-2' }}
                     </span>
 
-                    <!-- Precio actual -->
-                    <span class="product-price">${{ currentVariantPrice.currentPrice.toFixed(2) }}</span>
+                    <span class="product-price">${{ displayedPriceInfo.currentPrice | number:'1.2-2' }}</span>
 
-                    <!-- Badge de descuento -->
-                    <span *ngIf="currentVariantPrice.hasDiscount && currentVariantPrice.discountPercentage"
-                        class="discount-badge">
-                        -{{ currentVariantPrice.discountPercentage }}% ¡Qué chévere!
+                    <span *ngIf="displayedPriceInfo.hasDiscount" class="discount-badge">
+                        -{{ displayedPriceInfo.discountPercentage }}% ¡Qué chévere!
                     </span>
+                </div>
 
-                    <!-- Ahorro en dólares -->
-                    <span *ngIf="currentVariantPrice.hasDiscount && currentVariantPrice.savings" class="savings-amount">
-                        ¡Ahorras ${{ currentVariantPrice.savings.toFixed(2) }}!
+                <div *ngIf="displayedPriceInfo.hasDiscount" class="active-promotion product-promotion">
+                    <span class="promotion-tag">
+                        🔥 {{ displayedPriceInfo.promotionName }} - ¡Ahorras ${{ displayedPriceInfo.savings |
+                        number:'1.2-2' }}!
                     </span>
-                </ng-container>
-
-                <!-- 🆕 PRECIO DEL PRODUCTO (si no hay variante seleccionada) -->
-                <ng-container *ngIf="!selectedVariant">
-                    <span *ngIf="product.originalPrice && product.originalPrice > product.price" class="original-price">
-                        ${{ product.originalPrice.toFixed(2) }}
-                    </span>
-                    <span class="product-price">${{ product.price.toFixed(2) }}</span>
-                    <span *ngIf="product.discountPercentage" class="discount-badge">
-                        -{{ product.discountPercentage }}% ¡Qué chévere!
-                    </span>
-                </ng-container>
+                </div>
             </div>
 
             <!-- 🏷️ PROMOCIÓN ÚNICA - SIN DUPLICACIONES -->
@@ -218,16 +204,16 @@
                 </div>
 
                 <div class="size-help-text">
-                        <p class="help-main">
-                            <i nz-icon nzType="info-circle" nzTheme="outline"></i>
-                            Si no encuentras tu talla en stock, dale un vistazo a nuestra Guía de Tallas o contactanos
-                            por el botón WhatsApp
-                        </p>
-                        <p class="help-secondary">
-                            ¿Dudas con la talla? <a routerLink="/servicio-cliente" class="help-link">Escríbenos</a>
-                            y te ayudamos a encontrar la perfecta para tu aventura
-                        </p>
-                    </div>
+                    <p class="help-main">
+                        <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+                        Si no encuentras tu talla en stock, dale un vistazo a nuestra Guía de Tallas o contactanos
+                        por el botón WhatsApp
+                    </p>
+                    <p class="help-secondary">
+                        ¿Dudas con la talla? <a routerLink="/servicio-cliente" class="help-link">Escríbenos</a>
+                        y te ayudamos a encontrar la perfecta para tu aventura
+                    </p>
+                </div>
             </div>
 
             <!-- Modal mejorado de guía de tallas -->
