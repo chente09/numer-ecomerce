@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { addDoc, collection, collectionData, deleteDoc, doc, Firestore, getDoc, getDocs, updateDoc } from '@angular/fire/firestore';
+import { addDoc, collection, collectionData, deleteDoc, deleteField, doc, Firestore, getDoc, getDocs, query, updateDoc, where, writeBatch } from '@angular/fire/firestore';
 import { CacheService } from '../cache/cache.service';
 import { catchError, from, map, Observable, of, throwError, take } from 'rxjs';
 import { Promotion, Product } from '../../../models/models';
@@ -169,17 +169,76 @@ export class PromotionService {
   }
 
   /**
-   * 🚀 CORREGIDO: Elimina una promoción
+ * ✅ NUEVO: Obtiene solo las promociones estándar (no cupones)
+ * que un administrador puede aplicar manualmente.
+ */
+  getStandardPromotions(): Observable<Promotion[]> {
+    // Reutilizamos el método que ya obtiene todas las promociones
+    return this.getPromotions().pipe(
+      map(allPromotions => {
+        // Filtramos la lista para devolver solo las que no son de tipo 'coupon'
+        return allPromotions.filter(promo =>
+          promo.promotionType !== 'coupon'
+        );
+      }),
+      catchError(error => {
+        console.error('❌ PromotionService: Error al filtrar promociones estándar:', error);
+        return of([]); // Devolver un array vacío en caso de error
+      })
+    );
+  }
+
+  /**
+   * 🚀 CORREGIDO Y MEJORADO: Elimina una promoción y limpia los productos afectados.
    */
   deletePromotion(id: string): Observable<void> {
-    const docRef = doc(this.firestore, this.collectionName, id);
-    return from(deleteDoc(docRef)).pipe(
-      map(() => { }), // ✅ No se necesita invalidar caché
-      catchError(error => {
-        console.error(`❌ PromotionService: Error al eliminar promoción ${id}:`, error);
-        return throwError(() => error);
-      }),
-    );
+    // Usamos un observable a partir de una función asíncrona para manejar los pasos
+    return from((async () => {
+      try {
+        // 1. Referencia a la colección de productos
+        const productsRef = collection(this.firestore, 'products');
+
+        // 2. Creamos una consulta para encontrar todos los productos que tienen esta promoción aplicada
+        //    (Esto asume que guardas un campo 'promotionId' en el producto cuando aplicas una promoción)
+        const q = query(productsRef, where('promotionId', '==', id));
+        const affectedProductsSnapshot = await getDocs(q);
+
+        // 3. Si se encontraron productos, los limpiamos usando un lote (batch)
+        if (!affectedProductsSnapshot.empty) {
+          console.log(`🧹 Limpiando ${affectedProductsSnapshot.size} producto(s) afectado(s) por la promoción ${id}`);
+
+          // Un 'writeBatch' nos permite hacer múltiples escrituras como una sola operación atómica
+          const batch = writeBatch(this.firestore);
+
+          affectedProductsSnapshot.forEach(productDoc => {
+            // Para cada producto, preparamos una actualización para eliminar los campos del descuento
+            batch.update(productDoc.ref, {
+              promotionId: deleteField(),
+              discountPercentage: deleteField(),
+              originalPrice: deleteField(),
+              currentPrice: deleteField()
+            });
+          });
+
+          // 4. Ejecutamos todas las actualizaciones en la base de datos
+          await batch.commit();
+          console.log(`✅ Productos limpiados correctamente.`);
+        }
+
+        // 5. Una vez que los productos están limpios, eliminamos el documento de la promoción
+        const promotionDocRef = doc(this.firestore, this.collectionName, id);
+        await deleteDoc(promotionDocRef);
+
+        // 6. Invalidamos cachés relevantes para que la UI se actualice
+        this.cacheService.invalidate('promotions');
+        this.cacheService.invalidate('products'); // Invalidamos productos porque acabamos de modificar varios
+
+      } catch (error) {
+        console.error(`❌ PromotionService: Error complejo al eliminar promoción ${id}:`, error);
+        // Si algo falla, lanzamos el error para que el componente lo maneje
+        throw error;
+      }
+    })());
   }
 
   /**
@@ -188,15 +247,16 @@ export class PromotionService {
    * @returns Un Observable que emite un array de objetos Promotion activos.
    */
   getActivePromotions(): Observable<Promotion[]> {
-    // Llama al método principal que ya no usa caché.
     return this.getPromotions().pipe(
       map(allPromotions => {
         const now = new Date();
 
-        // Filtra el array de promociones en el cliente.
         const activePromotions = allPromotions.filter(promo => {
-          // Asegura que las fechas son objetos Date válidos antes de comparar.
-          // (getPromotions ya se encarga de la conversión inicial)
+          // FILTRO NUEVO: Solo promociones automáticas, NO cupones
+          if (promo.promotionType === 'coupon') {
+            return false;
+          }
+
           const startDate = promo.startDate;
           const endDate = promo.endDate;
 
@@ -210,9 +270,7 @@ export class PromotionService {
         return activePromotions;
       }),
       catchError(error => {
-        // Aunque getPromotions ya maneja errores, es una buena práctica
-        // tener un catch aquí también para cualquier error en el mapeo.
-        console.error('❌ PromotionService: Error al filtrar promociones activas:', error);
+        console.error('Error al filtrar promociones activas:', error);
         return of([]);
       })
     );

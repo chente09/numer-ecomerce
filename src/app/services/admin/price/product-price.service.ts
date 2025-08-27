@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, collectionData,query, where, getDocs, doc, getDoc, updateDoc, deleteField } from '@angular/fire/firestore';
+import { Firestore, collection, collectionData, query, where, getDocs, doc, getDoc, updateDoc, deleteField } from '@angular/fire/firestore';
 import { Observable, of, from, throwError, firstValueFrom } from 'rxjs';
 import { map, catchError, take, tap } from 'rxjs/operators';
 
@@ -19,8 +19,7 @@ export class ProductPriceService {
   private productsCollection = 'products';
 
   constructor(
-    private cacheService: CacheService,
-    private promotionService: PromotionService
+    private cacheService: CacheService
   ) { }
 
   /**
@@ -97,7 +96,7 @@ export class ProductPriceService {
     // ✅ SOLUCIÓN: Se añade un caso explícito para 'shipping'.
     // Si la promoción es de envío, el descuento al precio del producto es 0.
     if (promotion.discountType === 'shipping') {
-        discount = 0;
+      discount = 0;
     } else if (promotion.discountType === 'percentage') {
       discount = (originalPrice * promotion.discountValue) / 100;
       if (promotion.maxDiscountAmount && discount > promotion.maxDiscountAmount) {
@@ -218,48 +217,51 @@ export class ProductPriceService {
   /**
    * Aplica promoción a variante
    */
+  // En product-price.service.ts
+
   applyPromotionToVariant(
-    productId: string,
-    variantId: string,
-    promotion: Promotion
-  ): Observable<void> {
-    return from((async () => {
-      try {
-        // Obtener la variante
-        const variantRef = doc(this.firestore, 'productVariants', variantId);
-        const variantSnap = await getDoc(variantRef);
+  productId: string,
+  variantId: string,
+  promotion: Promotion,
+  productPrice: number // <-- PARÁMETRO NUEVO
+): Observable<void> {
+  return from((async () => {
+    try {
+      const variantRef = doc(this.firestore, 'productVariants', variantId);
+      const variantSnap = await getDoc(variantRef);
 
-        if (!variantSnap.exists()) {
-          throw new Error('La variante no existe');
-        }
-
-        const variantData = variantSnap.data();
-        const originalPrice = variantData['price'] || 0;
-
-        // Calcular precio con descuento
-        const priceCalc = this.calculatePriceWithPromotion(
-          { price: originalPrice } as Product,
-          promotion
-        );
-
-        // Actualizar la variante
-        await updateDoc(variantRef, {
-          promotionId: promotion.id,
-          discountType: promotion.discountType,
-          discountValue: promotion.discountValue,
-          discountedPrice: priceCalc.currentPrice,
-          originalPrice: originalPrice,
-          updatedAt: new Date()
-        });
-        this.cacheService.invalidate(`products_${productId}`);
-
-        return;
-      } catch (error) {
-        console.error('Error al aplicar promoción a variante:', error);
-        throw error;
+      if (!variantSnap.exists()) {
+        throw new Error('La variante no existe');
       }
-    })());
-  }
+
+      const variantData = variantSnap.data();
+      // Usamos el precio de la variante, o el del producto (ahora recibido) como fallback
+      const originalPrice = variantData['price'] || productPrice;
+
+      const priceCalc = this.calculatePriceWithPromotion(
+        { price: originalPrice } as Product,
+        promotion
+      );
+
+      const payload = {
+        promotionId: promotion.id,
+        discountType: promotion.discountType,
+        discountValue: promotion.discountValue,
+        discountedPrice: priceCalc.currentPrice,
+        originalPrice: originalPrice,
+        updatedAt: new Date()
+      };
+
+      await updateDoc(variantRef, payload);
+
+      this.cacheService.invalidate(`products_${productId}`);
+      return;
+    } catch (error) {
+      console.error('❌ [PRICE SERVICE] Error al aplicar promoción a variante:', error);
+      throw error;
+    }
+  })());
+}
 
   /**
    * Elimina una promoción aplicada a una variante
@@ -313,77 +315,4 @@ export class ProductPriceService {
     return new Date();
   }
 
-
-  async addPromotionsToProduct(product: Product): Promise<Product> {
-    // ✅ GUARDIA INICIAL: Si el producto no tiene variantes, no hay nada que hacer.
-    if (!product || !product.variants || product.variants.length === 0) {
-      return product;
-    }
-
-    try {
-      const activePromotions = await firstValueFrom(this.promotionService.getActivePromotions());
-
-      // Si no hay promociones activas, devolvemos el producto tal cual.
-      if (activePromotions.length === 0) {
-        return product;
-      }
-      
-      const enrichedVariants = await Promise.all(
-        product.variants.map(async (variant) => {
-          
-          // Lógica para encontrar la mejor promoción para ESTA variante/producto
-          const applicablePromotions = activePromotions.filter(promo => {
-              
-              // ✅ GUARDIA DEFENSIVA #1: Asegurarse de que los arrays de la promoción existan.
-              const applicableCats = promo.applicableCategories || [];
-              const applicableProds = promo.applicableProductIds || [];
-              
-              // ✅ GUARDIA DEFENSIVA #2: Asegurarse de que el array de categorías del producto exista.
-              const productCats = product.categories || [];
-
-              // Condiciones de aplicabilidad
-              const appliesToAll = applicableCats.length === 0 && applicableProds.length === 0;
-              const appliesToProduct = applicableProds.includes(product.id);
-              // Usamos .some() para ver si alguna categoría del producto coincide.
-              const appliesToCategory = productCats.some(pCat => applicableCats.includes(pCat));
-
-              return appliesToAll || appliesToProduct || appliesToCategory;
-          });
-
-          if (applicablePromotions.length > 0) {
-            // Si hay varias, encontrar la mejor (la que ofrece mayor descuento)
-            const bestPromotion = applicablePromotions.sort((a, b) => 
-                this.calculatePriceWithPromotion(product, b).savings - this.calculatePriceWithPromotion(product, a).savings
-            )[0];
-
-            // Calcular el precio con la mejor promoción
-            const priceCalc = this.calculatePriceWithPromotion(product, bestPromotion);
-
-            return {
-              ...variant,
-              promotionId: bestPromotion.id,
-              discountType: bestPromotion.discountType,
-              discountValue: bestPromotion.discountValue,
-              discountedPrice: priceCalc.currentPrice,
-              originalPrice: variant.price || product.price
-            };
-          }
-          
-          // Si no hay promoción aplicable, devolver la variante sin cambios.
-          return variant;
-        })
-      );
-
-      return {
-        ...product,
-        variants: enrichedVariants
-      };
-
-    } catch (error) {
-      // ✅ Captura de error mejorada para dar más contexto.
-      console.error(`Error aplicando promociones al producto ${product.name} (ID: ${product.id}):`, error);
-      // Devolver el producto original si falla el proceso para no detener el flujo.
-      return product; 
-    }
-  }
 }

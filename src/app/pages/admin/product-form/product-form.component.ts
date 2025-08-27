@@ -1397,8 +1397,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
         total += quantity;
       }
     }
-
-    console.log(`📊 [FORM] Stock total calculado: ${total}`);
     return total;
   }
 

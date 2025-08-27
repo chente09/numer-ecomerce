@@ -8,7 +8,6 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule, A
 import { ProductService } from '../../../services/admin/product/product.service';
 import { CategoryService, Category } from '../../../services/admin/category/category.service';
 import { addDays } from 'date-fns';
-import { PromotionDiagnosticService, OrphanedPromotionData } from './promotion-diagnostic/promotion-diagnostic.service';
 import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -31,6 +30,7 @@ import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzResultModule } from 'ng-zorro-antd/result';
 import { from, Observable } from 'rxjs';
+import { NzStepsModule } from 'ng-zorro-antd/steps';
 
 @Component({
   selector: 'app-promotion-management',
@@ -40,12 +40,13 @@ import { from, Observable } from 'rxjs';
     NzFormModule, NzInputModule, NzInputNumberModule, NzSelectModule,
     NzDatePickerModule, NzSwitchModule, NzCardModule, NzModalModule, NzTagModule,
     NzIconModule, NzToolTipModule, NzPopconfirmModule, NzSpinModule, NzEmptyModule,
-    NzDividerModule, NzRadioModule, NzAlertModule, NzResultModule
+    NzDividerModule, NzRadioModule, NzAlertModule, NzResultModule, NzStepsModule
   ],
   templateUrl: './promotion-management.component.html',
   styleUrls: ['./promotion-management.component.css']
 })
 export class PromotionManagementComponent implements OnInit {
+  currentStep = 0;
   promotions: Promotion[] = [];
   categories: Category[] = [];
   products: { id: string, name: string }[] = [];
@@ -54,12 +55,6 @@ export class PromotionManagementComponent implements OnInit {
   formModalVisible = false;
   isEditMode = false;
   selectedPromotion: Promotion | null = null;
-  diagnosticData: OrphanedPromotionData | null = null;
-  diagnosticModalVisible = false;
-  diagnosing = false;
-  orphanedVariantsData: any = null;
-  cleanupModalVisible = false;
-  cleaning = false;
   promotionForm!: FormGroup;
 
   couponTypes = [
@@ -79,8 +74,6 @@ export class PromotionManagementComponent implements OnInit {
     private modal: NzModalService,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef,
-    private promotionDiagnosticService: PromotionDiagnosticService,
-    private notification: NzNotificationService
   ) { }
 
   ngOnInit(): void {
@@ -164,36 +157,39 @@ export class PromotionManagementComponent implements OnInit {
 
   loadCategories(): void {
     this.categoryService.getCategories().subscribe({
-        next: (categories) => this.categories = categories,
-        error: (error) => console.error('Error al cargar categorías:', error)
+      next: (categories) => this.categories = categories,
+      error: (error) => console.error('Error al cargar categorías:', error)
     });
   }
 
   loadProducts(): void {
     this.productService.getProducts().subscribe({
-        next: (products) => {
-            this.products = products.map(p => ({ id: p.id, name: p.name }));
-        },
-        error: (error) => console.error('Error al cargar productos:', error)
+      next: (products) => {
+        this.products = products.map(p => ({ id: p.id, name: p.name }));
+      },
+      error: (error) => console.error('Error al cargar productos:', error)
     });
   }
 
   openCreatePromotionModal(): void {
     this.isEditMode = false;
     this.selectedPromotion = null;
+    this.currentStep = 0; // <- Aseguramos empezar en el primer paso
+
+    // Reseteamos el formulario por completo
     this.promotionForm.reset({
-      promotionType: 'standard',
+      // Valores por defecto que se aplicarán después
       discountType: 'percentage',
       discountValue: 10,
       startDate: new Date(),
       endDate: addDays(new Date(), 30),
-      isActive: true,
-      applicableProductIds: [],
-      applicableCategories: []
+      isActive: true
     });
-    this.toggleCouponFields(false);
+
+    this.toggleCouponFields(false); // Nos aseguramos que los campos de cupón estén desactivados
     this.formModalVisible = true;
   }
+
 
   openEditPromotionModal(promotion: Promotion): void {
     this.isEditMode = true;
@@ -239,17 +235,17 @@ export class PromotionManagementComponent implements OnInit {
 
     // Limpiamos el objeto de claves 'undefined'
     Object.keys(promotionData).forEach(key => {
-        const typedKey = key as keyof typeof promotionData;
-        if (promotionData[typedKey] === undefined) {
-            delete promotionData[typedKey];
-        }
+      const typedKey = key as keyof typeof promotionData;
+      if (promotionData[typedKey] === undefined) {
+        delete promotionData[typedKey];
+      }
     });
 
     // Si no es un cupón, nos aseguramos de que los campos de cupón no existan
     if (promotionData.promotionType !== 'coupon') {
-        delete promotionData.couponCode;
-        delete promotionData.couponType;
-        delete promotionData.usageLimits;
+      delete promotionData.couponCode;
+      delete promotionData.couponType;
+      delete promotionData.usageLimits;
     }
 
 
@@ -286,16 +282,16 @@ export class PromotionManagementComponent implements OnInit {
       nzOnOk: () => {
         this.loading = true;
         this.promotionService.deletePromotion(id).subscribe({
-            next: () => {
-                this.message.success('Promoción eliminada correctamente.');
-                this.loadPromotions();
-            },
-            error: (error: any) => {
-                console.error('Error al eliminar la promoción:', error);
-                this.message.error('Error al eliminar la promoción.');
-                this.loading = false;
-                this.cdr.detectChanges();
-            }
+          next: () => {
+            this.message.success('Promoción eliminada correctamente.');
+            this.loadPromotions();
+          },
+          error: (error: any) => {
+            console.error('Error al eliminar la promoción:', error);
+            this.message.error('Error al eliminar la promoción.');
+            this.loading = false;
+            this.cdr.detectChanges();
+          }
         });
       }
     });
@@ -352,113 +348,38 @@ export class PromotionManagementComponent implements OnInit {
     return type === 'percentage' ? 'Porcentaje' : 'Monto fijo';
   }
 
-  runPromotionDiagnostic(): void {
-    this.diagnosing = true;
-    this.cdr.detectChanges();
-    this.promotionDiagnosticService.diagnoseBrokenPromotions().subscribe({
-      next: (diagnosticData) => {
-        this.diagnosticData = diagnosticData;
-        this.diagnosticModalVisible = true;
-        this.diagnosing = false;
-        const { stats } = diagnosticData;
-        if (stats.totalOrphanedRecords > 0) {
-          this.message.warning(`⚠️ Se encontraron ${stats.totalOrphanedRecords} registros problemáticos.`);
-        } else {
-          this.message.success('✅ No se encontraron problemas en las promociones.');
-        }
-        this.cdr.detectChanges();
-      },
-      error: (error) => {
-        this.message.error('Error al ejecutar diagnóstico: ' + error.message);
-        this.diagnosing = false;
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  getCleanupPreview(): { actionsToTake: string[]; estimatedDeletions: number; estimatedUpdates: number; } | null {
-    if (!this.diagnosticData) return null;
-    return this.promotionDiagnosticService.previewCleanup(this.diagnosticData);
-  }
-
-  closeDiagnosticModal(): void {
-    this.diagnosticModalVisible = false;
-    this.diagnosticData = null;
-  }
-
   getSeverityColor(count: number): string {
     if (count === 0) return 'success';
     if (count <= 5) return 'warning';
     return 'error';
   }
 
-  formatCleanupActions(): string[] {
-    const preview = this.getCleanupPreview();
-    return preview ? preview.actionsToTake : [];
+  // Método para manejar la selección del tipo de promoción en el Paso 1
+  selectPromotionType(type: 'standard' | 'coupon'): void {
+    this.promotionForm.get('promotionType')?.setValue(type);
+    this.currentStep = 1; // Avanzamos al siguiente paso
   }
 
-  diagnoseOrphanedVariants(): void {
-    this.diagnosing = true;
-    this.cdr.detectChanges();
-    from(this.promotionDiagnosticService.diagnoseOrphanedVariants()).subscribe({
-      next: (data) => {
-        this.orphanedVariantsData = data;
-        this.cleanupModalVisible = true;
-        this.diagnosing = false;
-        if (data.totalOrphans > 0) {
-          this.message.warning(`⚠️ Se encontraron ${data.totalOrphans} variantes con promociones inexistentes`);
-        } else {
-          this.message.success('✅ No se encontraron variantes huérfanas');
-        }
-        this.cdr.detectChanges();
-      },
-      error: (error) => {
-        this.message.error('Error al diagnosticar variantes: ' + error.message);
-        this.diagnosing = false;
-        this.cdr.detectChanges();
+  // Métodos para navegar entre los pasos (los usaremos en el pie del modal)
+  prevStep(): void {
+    this.currentStep--;
+  }
+
+  // Añade este método en promotion-management.component.ts
+  isCurrentStepValid(): boolean {
+    if (this.currentStep === 1) {
+      // Valida los campos del paso 2
+      const name = this.promotionForm.get('name');
+      const discountType = this.promotionForm.get('discountType');
+      const discountValue = this.promotionForm.get('discountValue');
+
+      let isDiscountValueValid = true;
+      if (discountType?.value !== 'shipping') {
+        isDiscountValueValid = discountValue?.valid ?? false;
       }
-    });
-  }
 
-  executeCleanup(): void {
-    if (!this.orphanedVariantsData || this.orphanedVariantsData.totalOrphans === 0) {
-      this.message.info('No hay variantes para limpiar');
-      return;
+      return !!(name?.valid && discountType?.valid && isDiscountValueValid);
     }
-    this.modal.confirm({
-      nzTitle: '🧹 ¿Confirmar Limpieza?',
-      nzContent: `<p>Esta acción limpiará <strong>${this.orphanedVariantsData.totalOrphans} variantes</strong>.</p><p style="color: #d32f2f;"><strong>⚠️ Esta acción no se puede deshacer.</strong></p>`,
-      nzOkText: 'Limpiar Variantes',
-      nzOkType: 'primary',
-      nzOkDanger: true,
-      nzWidth: 500,
-      nzOnOk: () => {
-        this.cleaning = true;
-        this.cdr.detectChanges();
-        from(this.promotionDiagnosticService.cleanOrphanedVariants(this.orphanedVariantsData.orphanedVariants)).subscribe({
-          next: (result) => {
-            this.cleaning = false;
-            if (result.errors.length > 0) {
-              this.message.warning(`Limpieza completada con errores: ${result.cleanedCount} limpiadas, ${result.errors.length} errores`);
-            } else {
-              this.message.success(`✅ Limpieza exitosa: ${result.cleanedCount} variantes limpiadas`);
-            }
-            this.closeCleanupModal();
-            this.loadPromotions();
-            this.cdr.detectChanges();
-          },
-          error: (error) => {
-            this.message.error('Error durante la limpieza: ' + error.message);
-            this.cleaning = false;
-            this.cdr.detectChanges();
-          }
-        });
-      }
-    });
-  }
-
-  closeCleanupModal(): void {
-    this.cleanupModalVisible = false;
-    this.orphanedVariantsData = null;
+    return true; // Para los demás pasos, por ahora siempre es válido
   }
 }

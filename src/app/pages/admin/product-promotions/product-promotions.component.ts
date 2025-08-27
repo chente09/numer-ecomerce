@@ -163,17 +163,18 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
   }
 
   loadAllPromotions(): void {
-    this.promotionService.forceRefreshPromotions()
+    this.promotionService.getStandardPromotions() // <-- Ahora llama al nuevo método filtrado
       .pipe(
         take(1),
         finalize(() => this.cdr.markForCheck())
       )
       .subscribe({
-        next: (promotions) => {
-          this.allPromotions = promotions;
+        next: (standardPromotions) => {
+          // La lista 'allPromotions' ahora solo contendrá promociones estándar
+          this.allPromotions = standardPromotions;
         },
         error: (error) => {
-          console.error('Error cargando todas las promociones:', error);
+          console.error('Error cargando las promociones estándar:', error);
           this.message.error('Error al cargar promociones disponibles');
         }
       });

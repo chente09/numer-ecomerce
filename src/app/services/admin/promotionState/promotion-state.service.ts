@@ -383,26 +383,26 @@ export class PromotionStateService {
     this.activePromotions$.next([]);
   }
 
+
   /**
-   * 📊 Debug: Mostrar estado actual
-   */
-  debugState(): void {
-    console.group('🎯 [PROMOTION STATE DEBUG]');
+ * Fuerza limpieza completa de caché y estado
+ */
+  forceFullCacheInvalidation(): void {
 
-    const productsMap = this.productsWithPromotions$.value;
-    const activePromotions = this.activePromotions$.value;
-    const registeredComponents = this.componentRegistrations$.value;
+    // Limpiar estado interno
+    this.clearState();
 
-    console.log('📦 Productos con promociones:', productsMap.size);
-    productsMap.forEach((promotions, productId) => {
-      console.log(`   ${productId}: ${promotions.length} promociones`);
+    // Notificar limpieza global
+    this.broadcastGlobalUpdate({
+      type: 'deleted',
+      promotionId: 'ALL',
+      affectedProducts: [],
+      timestamp: new Date(),
+      source: 'admin',
+      reason: 'Limpieza manual de caché'
     });
-
-    console.log('📊 Promociones activas:', activePromotions.length);
-    console.log('🔌 Componentes registrados:', Array.from(registeredComponents));
-
-    console.groupEnd();
   }
+
 
   /**
    * 🔧 Limpiar estado de producto específico

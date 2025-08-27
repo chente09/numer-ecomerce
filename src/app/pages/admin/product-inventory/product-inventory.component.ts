@@ -93,11 +93,7 @@ type SortType = 'stock_desc' | 'stock_asc' | 'color_name' | 'size_name' | 'sku' 
 })
 export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
   @Input() product: Product | null = null;
-  @Output() inventoryChanged = new EventEmitter<{
-    productId: string;
-    updatedProduct?: Product;
-    stockChange?: number;
-  }>();
+
 
   @Output() productUpdated = new EventEmitter<{
     productId: string;
@@ -830,7 +826,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
           this.productPriceService.applyPromotionToVariant(
             this.product!.id,
             variant.id,
-            promotion
+            promotion,
+            this.product!.price
           ).subscribe({
             next: () => {
               // Actualizar variante local
@@ -927,9 +924,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
       });
 
       // 🚀 EMITIR EVENTO AL COMPONENTE PADRE INMEDIATAMENTE
-      this.inventoryChanged.emit({
+      this.productUpdated.emit({
         productId: this.product.id,
-        stockChange: stockChange,
         updatedProduct: this.product
       });
     }
@@ -989,9 +985,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
             });
 
             // Emitir rollback al padre
-            this.inventoryChanged.emit({
+            this.productUpdated.emit({
               productId: this.product.id,
-              stockChange: -stockChange, // Revertir el cambio
               updatedProduct: this.product
             });
           }
@@ -1008,6 +1003,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   // 🚀 IMPLEMENTACIÓN OPTIMISTA PARA PROMOCIONES
+  // En product-inventory.component.ts
+
   confirmApplyPromotion(promotionId: string): void {
     if (!this.selectedVariantForPromotion || !this.product) {
       this.message.error('No se ha seleccionado una variante de producto.');
@@ -1016,48 +1013,36 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
 
     const variant = this.selectedVariantForPromotion;
     const variantIndex = this.variants.findIndex(v => v.id === variant.id);
-
     if (variantIndex === -1) {
-      this.message.error('Variante no encontrada.');
+      this.message.error('Variante no encontrada en la lista local.');
       return;
     }
 
-    // 📦 CREAR BACKUP ANTES DE LA ACTUALIZACIÓN OPTIMISTA
     const backup: VariantBackup = {
-      originalVariant: { ...variant },
+      originalVariant: { ...this.variants[variantIndex] },
       index: variantIndex
     };
 
     this.promotionService.getPromotionById(promotionId).pipe(
       switchMap(promotion => {
         if (!promotion) {
-          return throwError(() => new Error('La promoción no existe'));
+          return throwError(() => new Error('La promoción seleccionada no fue encontrada.'));
         }
 
+        // 1. Actualización optimista (la UI cambia al instante)
         this.applyPromotionOptimistically(variant, promotion, backup);
-
-        // 🚀 EMITIR EVENTO AL PADRE CON PRODUCTO ACTUALIZADO
         const updatedProduct = this.calculateUpdatedProductWithPromotions();
-        this.productUpdated.emit({
-          productId: this.product!.id,
-          updatedProduct
-        });
-
-        // 🆕 NUEVO: BROADCASTING A TODOS LOS COMPONENTES
-        const selectedPromotion = this.promotions.find(p => p.id === promotionId);
-        if (selectedPromotion) {
-          this.broadcastVariantPromotionApplied(variant, selectedPromotion);
-        }
-
-        // Mostrar loading y actualizar UI
+        this.productUpdated.emit({ productId: this.product!.id, updatedProduct });
+        this.broadcastVariantPromotionApplied(variant, promotion);
         this.loading = true;
         this.cdr.detectChanges();
 
-        // Realizar operación en servidor
+        // 2. Operación real en el servidor
         return this.productPriceService.applyPromotionToVariant(
           this.product!.id,
           variant.id,
-          promotion
+          promotion,
+          this.product!.price
         );
       }),
       finalize(() => {
@@ -1068,27 +1053,17 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
       })
     ).subscribe({
       next: () => {
-        this.message.success('Promoción aplicada correctamente');
+        this.message.success('Promoción aplicada y guardada correctamente');
         this.cleanupPendingOperation(variant.id);
         this.applyFilters();
       },
       error: (error) => {
-        console.error('❌ Error al aplicar promoción en servidor:', error);
-
-        // 🔄 ROLLBACK: Restaurar estado anterior
         this.rollbackPromotionChanges(variant.id);
 
-        // Emitir rollback al padre
         const rolledBackProduct = this.calculateUpdatedProductWithPromotions();
-        this.productUpdated.emit({
-          productId: this.product!.id,
-          updatedProduct: rolledBackProduct
-        });
-
-        // 🆕 NUEVO: BROADCASTING DE ROLLBACK
+        this.productUpdated.emit({ productId: this.product!.id, updatedProduct: rolledBackProduct });
         this.broadcastVariantPromotionRemoved(variant, promotionId);
-
-        this.message.error('Error al aplicar promoción: ' + error.message);
+        this.message.error('Error al guardar la promoción: ' + error.message);
       }
     });
   }
@@ -1238,9 +1213,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
           });
 
           // 🚀 EMITIR EVENTO AL PADRE
-          this.inventoryChanged.emit({
+          this.productUpdated.emit({
             productId: this.product.id,
-            stockChange: -(variant.stock || 0), // Stock eliminado
             updatedProduct: this.product
           });
         }
@@ -1290,9 +1264,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
                   }
                 });
 
-                this.inventoryChanged.emit({
+                this.productUpdated.emit({
                   productId: this.product.id,
-                  stockChange: variant.stock || 0, // Restaurar stock
                   updatedProduct: this.product
                 });
               }
@@ -1563,19 +1536,41 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   /**
- * 🆕 Maneja el evento de éxito de la transferencia desde el modal.
- * Recarga las variantes para reflejar los cambios en el stock principal.
- */
+   * ✅ MEJORADO: Maneja el éxito de la transferencia, recarga el producto
+   * completo y lo emite al componente padre.
+   */
   onTransferSuccess(): void {
+    if (!this.product) return;
+
     this.message.success('Stock transferido correctamente. Actualizando inventario...');
-    this.loadVariants(); // Recargar variantes para reflejar el stock actualizado
-    if (this.product) {
-      this.inventoryChanged.emit({ productId: this.product.id });
-    }
+    this.loading = true; // Activamos el spinner para feedback
+
+    // Forzamos la recarga del producto para obtener el 'totalStock' actualizado
+    this.productService.forceRefreshProduct(this.product.id).subscribe({
+      next: (freshProduct) => {
+        if (freshProduct) {
+          // 1. Actualizamos el producto local en el drawer
+          this.product = freshProduct;
+
+          // 2. Recargamos la lista de variantes (que ahora tendrá el stock reducido)
+          this.loadVariants();
+
+          // 3. Emitimos el evento con el producto completo y actualizado
+          this.productUpdated.emit({
+            productId: this.product.id,
+            updatedProduct: freshProduct // Enviamos el objeto completo
+          });
+        }
+        this.loading = false;
+      },
+      error: (err) => {
+        this.message.error('Error al actualizar el producto después de la transferencia.');
+        this.loading = false;
+        // En caso de error, recargamos las variantes de todas formas para ver si algo cambió
+        this.loadVariants();
+      }
+    });
   }
-
-
-
 
   // Formateo y utilidades
   getStockStatusColor(stock: number): string {

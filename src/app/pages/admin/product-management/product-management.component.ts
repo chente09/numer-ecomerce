@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, takeUntil, filter, switchMap, take, of, from, forkJoin } from 'rxjs';
+import { BehaviorSubject, Subject, debounceTime, distinctUntilChanged, takeUntil, filter, switchMap, take, of, from, forkJoin, firstValueFrom } from 'rxjs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalService } from 'ng-zorro-antd/modal';
 
@@ -14,6 +14,7 @@ import { CategoryService, Category } from '../../../services/admin/category/cate
 import { CacheService } from '../../../services/admin/cache/cache.service';
 import { StockUpdateService, StockUpdate } from '../../../services/admin/stockUpdate/stock-update.service';
 import { PromotionStateService, PromotionChangeEvent } from '../../../services/admin/promotionState/promotion-state.service';
+import { AppliedPromotionsService } from '../../../services/admin/applied-promotions/applied-promotions.service';
 
 // Modelos
 import { Product, Color, Size, Promotion } from '../../../models/models';
@@ -145,7 +146,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     private modal: NzModalService,
     private cdr: ChangeDetectorRef,
     private promotionStateService: PromotionStateService,
-    private productPriceService: ProductPriceService
+    private productPriceService: ProductPriceService,
+    private appliedPromotionsService: AppliedPromotionsService,
   ) { }
 
   ngOnInit(): void {
@@ -220,7 +222,14 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       case 'deactivated':
       case 'removed':
       case 'deleted':
-        this.handlePromotionDeactivated(event);
+        // NUEVO: Si es limpieza total (promotionId = 'ALL'), forzar recarga completa
+        if (event.promotionId === 'ALL') {
+          this.products = [];
+          this.cdr.detectChanges();
+          setTimeout(() => this.loadProducts(), 100);
+        } else {
+          this.handlePromotionDeactivated(event);
+        }
         break;
 
       case 'updated':
@@ -440,7 +449,11 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     return {
       count: promotedVariants.length,
       hasPromotions: promotedVariants.length > 0,
-      promotedVariants: promotedVariants.map(v => `${v.colorName}-${v.sizeName}`)
+      promotedVariants: promotedVariants.map(v => {
+        const colorName = v.colorName || 'Sin-Color';
+        const sizeName = v.sizeName || 'Sin-Talla';
+        return `${colorName}-${sizeName}`;
+      })
     };
   }
 
@@ -448,35 +461,35 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
  * Abre modal de gestión de promociones
  */
   openPromotionManagement(): void {
-  // Importación dinámica del componente
-  import('../promotion-management/promotion-management.component')
-    .then(module => {
-      const modalRef = this.modal.create({
-        nzTitle: 'Gestión de Promociones y Cupones',
-        nzContent: module.PromotionManagementComponent,
-        nzWidth: '90%',
-        nzStyle: { top: '20px' },
-        nzBodyStyle: {
-          padding: '16px',
-          maxHeight: 'calc(100vh - 100px)',
-          overflow: 'auto'
-        },
-        nzFooter: null,
-        nzMaskClosable: false
-      });
+    // Importación dinámica del componente
+    import('../promotion-management/promotion-management.component')
+      .then(module => {
+        const modalRef = this.modal.create({
+          nzTitle: 'Gestión de Promociones y Cupones',
+          nzContent: module.PromotionManagementComponent,
+          nzWidth: '90%',
+          nzStyle: { top: '20px' },
+          nzBodyStyle: {
+            padding: '16px',
+            maxHeight: 'calc(100vh - 100px)',
+            overflow: 'auto'
+          },
+          nzFooter: null,
+          nzMaskClosable: false
+        });
 
-      modalRef.afterClose.subscribe((result) => {
-        if (result && result.promotionChanged) {
-          this.message.info('Recargando productos para mostrar cambios en promociones...');
-          this.loadProducts();
-        }
+        modalRef.afterClose.subscribe((result) => {
+          if (result && result.promotionChanged) {
+            this.message.info('Recargando productos para mostrar cambios en promociones...');
+            this.loadProducts();
+          }
+        });
+      })
+      .catch(error => {
+        console.error('Error cargando componente de promociones:', error);
+        this.message.error('Error al abrir gestión de promociones');
       });
-    })
-    .catch(error => {
-      console.error('Error cargando componente de promociones:', error);
-      this.message.error('Error al abrir gestión de promociones');
-    });
-}
+  }
 
 
   initFilterForm(): void {
@@ -549,23 +562,10 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         switchMap(products => this.productPriceService.calculateDiscountedPrices(products)),
-        // ✅ PASO ADICIONAL: Enriquecer cada producto con datos de promoción de variantes.
-        switchMap(productsWithPrices => {
-          // Si no hay productos, devolvemos un array vacío para evitar errores.
-          if (!productsWithPrices || productsWithPrices.length === 0) {
-            return of([]);
-          }
-          // Creamos un array de observables, uno para cada producto.
-          const enrichedProducts$ = productsWithPrices.map(p =>
-            // Convertimos la promesa de addPromotionsToProduct en un observable.
-            from(this.productPriceService.addPromotionsToProduct(p))
-          );
-          // forkJoin espera a que todos los observables se completen y emite un array con todos los resultados.
-          return forkJoin(enrichedProducts$);
-        })
       )
       .subscribe({
         next: (enrichedProducts) => { // Ahora recibimos los productos completamente enriquecidos.
+
           const validProducts = this.validateFilterData(enrichedProducts);
           const filteredProducts = this.applyClientSideFilters(validProducts, filter);
 
@@ -1253,19 +1253,67 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
 
   // ==================== DRAWERS/PANELES ====================
 
+  // Reemplaza este método en product-management.component.ts
   openStatsDrawer(product: Product): void {
-    this.selectedProduct = product;
-    this.showStatsDrawer = true;
+    this.loading = true; // Mostramos un indicador de carga
+    this.productService.forceRefreshProduct(product.id).subscribe({
+      next: (freshProduct) => {
+        if (freshProduct) {
+          this.selectedProduct = freshProduct; // Usamos el producto fresco
+          this.showStatsDrawer = true;         // Abrimos el drawer
+        } else {
+          this.message.error('No se pudo encontrar el producto actualizado.');
+        }
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error al recargar el producto:', err);
+        this.message.error('No se pudo obtener la información más reciente del producto.');
+        this.loading = false;
+      }
+    });
   }
 
+  // Reemplaza este método en product-management.component.ts
   openInventoryDrawer(product: Product): void {
-    this.selectedProduct = product;
-    this.showInventoryDrawer = true;
+    this.loading = true; // Mostramos un indicador de carga en la tabla
+    this.productService.forceRefreshProduct(product.id).subscribe({
+      next: (freshProduct) => {
+        if (freshProduct) {
+          this.selectedProduct = freshProduct; // Usamos el producto fresco
+          this.showInventoryDrawer = true;     // Abrimos el drawer
+        } else {
+          this.message.error('No se pudo encontrar el producto actualizado.');
+        }
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error al recargar el producto:', err);
+        this.message.error('No se pudo obtener la información más reciente del producto.');
+        this.loading = false;
+      }
+    });
   }
 
+  // Reemplaza este método en product-management.component.ts
   openPromotionsDrawer(product: Product): void {
-    this.selectedProduct = product;
-    this.showPromotionsDrawer = true;
+    this.loading = true; // Mostramos un indicador de carga
+    this.productService.forceRefreshProduct(product.id).subscribe({
+      next: (freshProduct) => {
+        if (freshProduct) {
+          this.selectedProduct = freshProduct; // Usamos el producto fresco
+          this.showPromotionsDrawer = true;    // Abrimos el drawer
+        } else {
+          this.message.error('No se pudo encontrar el producto actualizado.');
+        }
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error al recargar el producto:', err);
+        this.message.error('No se pudo obtener la información más reciente del producto.');
+        this.loading = false;
+      }
+    });
   }
 
   closeDrawers(): void {
@@ -1279,66 +1327,46 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   /**
    * 🔄 Maneja cambios de inventario desde el drawer
    */
-  onInventoryChange(event: { productId: string, updatedProduct?: Product, stockChange?: number }): void {
-
-    // Invalidar solo caché específico
+  onInventoryChange(event: { productId: string; updatedProduct?: Product }): void {
+    // 1. Invalidamos el caché como ya lo hacías. ¡Perfecto!
     this.cacheService.invalidate(`products_${event.productId}`);
 
     const productIndex = this.products.findIndex(p => p.id === event.productId);
 
-    if (productIndex === -1) {
-      console.warn('⚠️ [MANAGEMENT] Producto no encontrado para actualización de inventario');
+    // Guardamos una copia del producto antiguo ANTES de actualizarlo
+    const oldProduct = productIndex !== -1 ? { ...this.products[productIndex] } : null;
+
+    // 2. Si el evento trae el producto actualizado (que ahora siempre lo hará)
+    if (event.updatedProduct && oldProduct) {
+      // Actualizamos la lista principal usando tu método auxiliar, que es ideal.
+      this.updateProductInList(event.productId, event.updatedProduct);
+
+      // 3. CALCULAMOS el 'stockChange' para notificar al otro servicio
+      const stockChange = (event.updatedProduct.totalStock || 0) - (oldProduct.totalStock || 0);
+
+      // Solo notificamos si hubo un cambio real en el stock
+      if (stockChange !== 0) {
+        this.stockUpdateService.notifyStockChange({
+          productId: event.productId,
+          variantId: 'unknown', // El evento es a nivel de producto, no conocemos la variante específica
+          stockChange: stockChange,
+          newStock: event.updatedProduct.totalStock || 0,
+          timestamp: new Date(),
+          source: 'admin',
+          metadata: { userAction: 'inventory_management' }
+        });
+      }
+
+      // 4. Mantenemos tu verificación en segundo plano. Es una buena práctica.
+      setTimeout(() => {
+        this.verifyProductUpdate(event.productId);
+      }, 3000);
+
+    } else {
+      // 5. Mantenemos el fallback por si algo sale mal.
+      console.warn('⚠️ [MANAGEMENT] El evento de inventario no contenía un producto actualizado. Forzando recarga.');
       this.refreshSingleProduct(event.productId);
-      return;
     }
-
-    if (event.updatedProduct) {
-      // Actualización completa del producto
-      this.products[productIndex] = { ...event.updatedProduct };
-
-      if (this.selectedProduct && this.selectedProduct.id === event.productId) {
-        this.selectedProduct = { ...event.updatedProduct };
-      }
-    } else if (typeof event.stockChange === 'number') {
-      // Solo actualización de stock
-      const currentStock = this.products[productIndex].totalStock || 0;
-      const newStock = Math.max(0, currentStock + event.stockChange);
-
-      this.products[productIndex] = {
-        ...this.products[productIndex],
-        totalStock: newStock
-      };
-
-      if (this.selectedProduct && this.selectedProduct.id === event.productId) {
-        this.selectedProduct = {
-          ...this.selectedProduct,
-          totalStock: newStock
-        };
-      }
-    }
-
-    if (typeof event.stockChange === 'number') {
-      const stockUpdate: StockUpdate = {
-        productId: event.productId,
-        variantId: 'unknown', // Si tienes el variantId, úsalo
-        stockChange: event.stockChange,
-        newStock: (this.products.find(p => p.id === event.productId)?.totalStock || 0) + event.stockChange,
-        timestamp: new Date(),
-        source: 'admin',
-        metadata: {
-          userAction: 'inventory_management'
-        }
-      };
-
-      this.stockUpdateService.notifyStockChange(stockUpdate);
-    }
-
-    this.cdr.detectChanges();
-
-    // Verificación en segundo plano
-    setTimeout(() => {
-      this.verifyProductUpdate(event.productId);
-    }, 3000);
   }
 
   /**
@@ -1529,6 +1557,29 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     };
   }
 
-  
+  /**
+   * Método auxiliar para limpiar registros huérfanos de appliedPromotions
+   */
+  private async cleanOrphanedAppliedPromotions(orphanedRecords: any[]): Promise<void> {
+    if (orphanedRecords.length === 0) return;
+
+    console.log(`[CLEANUP] Limpiando ${orphanedRecords.length} registros de appliedPromotions`);
+
+    // Usar el servicio AppliedPromotionsService si está disponible
+    for (const orphan of orphanedRecords) {
+      try {
+        await firstValueFrom(
+          this.appliedPromotionsService.removePromotion(
+            orphan.appliedPromotion.promotionId,
+            orphan.appliedPromotion.targetId
+          )
+        );
+      } catch (error) {
+        console.error(`Error eliminando registro aplicado:`, error);
+      }
+    }
+
+    console.log('[CLEANUP] Registros de appliedPromotions limpiados');
+  }
 
 }

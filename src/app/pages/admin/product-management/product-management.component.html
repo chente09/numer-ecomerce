@@ -258,8 +258,7 @@
         nzPlacement="right" [nzWidth]="getDrawerWidth()" [nzBodyStyle]="getDrawerBodyStyle()"
         (nzOnClose)="closeDrawers()">
         <ng-container *nzDrawerContent>
-            <app-product-inventory [product]="selectedProduct" (inventoryChanged)="onInventoryChange($event)"
-                (productUpdated)="onInventoryChange($event)">
+            <app-product-inventory [product]="selectedProduct" (productUpdated)="onInventoryChange($event)">
             </app-product-inventory>
         </ng-container>
     </nz-drawer>

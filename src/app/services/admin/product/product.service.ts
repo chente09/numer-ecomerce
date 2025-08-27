@@ -91,44 +91,34 @@ export class ProductService {
     );
   }
 
+
   /**
-   * 🚀 CORREGIDO: Obtiene todos los productos SIN caché cuando se force
+   * 🚀 OBTIENE TODOS LOS PRODUCTOS SIN CACHÉ (VERSIÓN FINAL Y CORREGIDA)
+   * Obtiene todos los productos directamente desde Firestore y los enriquece
+   * con los datos completos de sus variantes para asegurar que la UI
+   * siempre muestre la información de promociones correctamente.
    */
   getProductsNoCache(): Observable<Product[]> {
+    const productsRef = collection(this.firestore, this.productsCollection);
 
-    return new Observable<Product[]>(observer => {
-      const productsRef = collection(this.firestore, this.productsCollection);
-
-      // ✅ USAR getDocs en lugar de collectionData para evitar observables infinitos
-      getDocs(productsRef).then(querySnapshot => {
-
+    // Usamos 'from' para convertir la promesa de getDocs en un Observable
+    return from(getDocs(productsRef)).pipe(
+      map(querySnapshot => {
         const products: Product[] = [];
-
         querySnapshot.forEach(doc => {
-          const product = {
-            id: doc.id,
-            ...doc.data()
-          } as Product;
-          products.push(product);
+          products.push({ id: doc.id, ...doc.data() } as Product);
         });
-
-        // Enriquecer con stock básico (sin tiempo real para evitar complejidad)
-        const enrichedProducts = products.map(product => ({
-          ...product,
-          totalStock: product.totalStock || 0,
-          variants: product.variants || [],
-          colors: product.colors || [],
-          sizes: product.sizes || []
-        }));
-
-        observer.next(enrichedProducts);
-        observer.complete();
-
-      }).catch(error => {
+        return products;
+      }),
+      // ✅ PASO CLAVE: Reutilizamos tu método existente que enriquece
+      // los productos con sus variantes completas.
+      switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+      catchError(error => {
         console.error('❌ [PRODUCT SERVICE] Error en getProductsNoCache:', error);
-        observer.error(error);
-      });
-    });
+        // Propagamos el error para que el componente que lo llama pueda manejarlo.
+        return throwError(() => new Error('Error al obtener los productos sin caché.'));
+      })
+    );
   }
 
   /**
