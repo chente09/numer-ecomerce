@@ -46,25 +46,19 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
   styleUrls: ['./promotion-management.component.css']
 })
 export class PromotionManagementComponent implements OnInit {
-  currentStep = 0;
+  // --- Propiedades sin cambios ---
   promotions: Promotion[] = [];
   categories: Category[] = [];
   products: { id: string, name: string }[] = [];
-  loading = false;
+  loading = true;
   submitting = false;
   formModalVisible = false;
   isEditMode = false;
-  selectedPromotion: Promotion | null = null;
-  promotionForm!: FormGroup;
+  selectedPromotionId: string | null = null;
 
-  couponTypes = [
-    { label: 'Envío Gratis', value: 'SHIPPING' },
-    { label: 'Referido (un uso)', value: 'REFERRAL' },
-    { label: 'Bienvenida (un uso)', value: 'WELCOME' },
-    { label: 'Estacional (múltiples usos)', value: 'SEASONAL' },
-    { label: 'VIP (múltiples usos)', value: 'VIP' },
-    { label: 'Por Compra Mínima', value: 'BULK' }
-  ];
+  // --- Propiedades Refactorizadas ---
+  currentStep = 0; // 0: Seleccionar Tipo, 1: Configurar
+  promotionForm!: FormGroup;
 
   constructor(
     private promotionService: PromotionService,
@@ -79,39 +73,87 @@ export class PromotionManagementComponent implements OnInit {
   ngOnInit(): void {
     this.initForm();
     this.loadPromotions();
-    this.loadCategories();
-    this.loadProducts();
+  }
+
+  loadInitialData(): void {
+    this.loading = true;
+    Promise.all([
+      this.promotionService.forceRefreshPromotions().toPromise(),
+      this.categoryService.getCategories().toPromise(),
+      this.productService.getProducts().toPromise()
+    ]).then(([promotions, categories, products]) => {
+      this.promotions = promotions || [];
+      this.categories = categories || [];
+      this.products = products?.map(p => ({ id: p.id, name: p.name })) || [];
+      this.loading = false;
+      this.cdr.detectChanges();
+    }).catch(error => {
+      this.loading = false;
+      this.message.error('Error al cargar datos iniciales.');
+      console.error(error);
+    });
   }
 
   initForm(): void {
     this.promotionForm = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(5)]],
+      name: ['', Validators.required],
       description: [''],
-      promotionType: ['standard', [Validators.required]],
-      discountType: ['percentage', [Validators.required]],
-      discountValue: [10, [Validators.required, Validators.min(0)]],
-      startDate: [new Date(), [Validators.required]],
-      endDate: [addDays(new Date(), 30), [Validators.required]],
+      promotionType: ['standard', Validators.required],
+      discountType: ['percentage', Validators.required],
+      discountValue: [null, Validators.required],
+      dates: [null, Validators.required],
       isActive: [true],
-      maxDiscountAmount: [null, [Validators.min(0)]],
-      minPurchaseAmount: [null, [Validators.min(0)]],
-      applicableProductIds: [[]],
-      applicableCategories: [[]],
-      couponCode: [{ value: '', disabled: true }, [Validators.required, Validators.minLength(4), this.couponCodeValidator]],
-      couponType: [{ value: null, disabled: true }],
+      // Campos de cupón, se validarán dinámicamente
+      minPurchaseAmount: [null],
+      maxDiscountAmount: [null],
+      couponCode: [null],
       usageLimits: this.fb.group({
-        global: [{ value: null, disabled: true }, [Validators.min(1)]],
-        perUser: [{ value: null, disabled: true }, [Validators.min(1)]]
+        global: [null],
+        perUser: [null]
       })
     });
 
     this.promotionForm.get('promotionType')?.valueChanges.subscribe(type => {
-      this.toggleCouponFields(type === 'coupon');
+      this.updateFormBasedOnType(type);
     });
 
     this.promotionForm.get('discountType')?.valueChanges.subscribe(type => {
-      this.handleDiscountTypeChange(type as string);
+      const discountValueCtrl = this.promotionForm.get('discountValue');
+      if (type === 'shipping') {
+        discountValueCtrl?.setValue(0);
+        discountValueCtrl?.disable();
+      } else {
+        discountValueCtrl?.enable();
+      }
     });
+  }
+
+  updateFormBasedOnType(type: 'standard' | 'coupon'): void {
+    const couponCodeCtrl = this.promotionForm.get('couponCode');
+
+    if (type === 'standard') {
+      // Si es una promoción estándar, quitamos el validador de couponCode
+      couponCodeCtrl?.clearValidators();
+      // Reseteamos el tipo de descuento si era 'shipping'
+      if (this.promotionForm.get('discountType')?.value === 'shipping') {
+        this.promotionForm.get('discountType')?.setValue('percentage');
+      }
+    } else { // Es un cupón
+      // Hacemos el campo couponCode requerido
+      couponCodeCtrl?.setValidators(Validators.required);
+    }
+    couponCodeCtrl?.updateValueAndValidity();
+  }
+
+  toggleCouponValidators(isCoupon: boolean): void {
+    const couponCode = this.promotionForm.get('couponCode');
+    if (isCoupon) {
+      couponCode?.setValidators([Validators.required, Validators.minLength(4), this.couponCodeValidator]);
+    } else {
+      couponCode?.clearValidators();
+      couponCode?.reset();
+    }
+    couponCode?.updateValueAndValidity();
   }
 
   private toggleCouponFields(enable: boolean): void {
@@ -173,102 +215,109 @@ export class PromotionManagementComponent implements OnInit {
 
   openCreatePromotionModal(): void {
     this.isEditMode = false;
-    this.selectedPromotion = null;
-    this.currentStep = 0; // <- Aseguramos empezar en el primer paso
-
-    // Reseteamos el formulario por completo
+    this.selectedPromotionId = null;
+    this.currentStep = 0;
     this.promotionForm.reset({
-      // Valores por defecto que se aplicarán después
+      name: '',
+      description: '',
+      promotionType: 'standard',
       discountType: 'percentage',
       discountValue: 10,
-      startDate: new Date(),
-      endDate: addDays(new Date(), 30),
-      isActive: true
+      dates: [new Date(), addDays(new Date(), 30)],
+      isActive: true,
+      minPurchaseAmount: null,
+      maxDiscountAmount: null,
+      applicableCategoryIds: [],
+      applicableProductIds: [],
+      couponCode: null,
+      usageLimits: { global: null, perUser: null }
     });
-
-    this.toggleCouponFields(false); // Nos aseguramos que los campos de cupón estén desactivados
+    this.toggleCouponValidators(false);
     this.formModalVisible = true;
   }
 
 
   openEditPromotionModal(promotion: Promotion): void {
     this.isEditMode = true;
-    this.selectedPromotion = promotion;
-    this.promotionForm.patchValue({
-      ...promotion,
-      startDate: promotion.startDate instanceof Date ? promotion.startDate : new Date(promotion.startDate),
-      endDate: promotion.endDate instanceof Date ? promotion.endDate : new Date(promotion.endDate),
+    this.selectedPromotionId = promotion.id;
+    this.currentStep = 1; // Ir directo al formulario
+
+    this.promotionForm.reset({
+      name: promotion.name,
+      description: promotion.description || '',
+      promotionType: promotion.promotionType,
+      discountType: promotion.discountType,
+      discountValue: promotion.discountValue,
+      dates: [new Date(promotion.startDate), new Date(promotion.endDate)],
+      isActive: promotion.isActive,
+      minPurchaseAmount: promotion.minPurchaseAmount || null,
+      couponCode: promotion.couponCode || null,
+      usageLimits: {
+        global: promotion.usageLimits?.global || null,
+        perUser: promotion.usageLimits?.perUser || null
+      }
     });
-    this.toggleCouponFields(promotion.promotionType === 'coupon');
-    this.handleDiscountTypeChange(promotion.discountType);
+    this.toggleCouponValidators(promotion.promotionType === 'coupon');
     this.formModalVisible = true;
   }
 
   submitForm(): void {
     if (this.promotionForm.invalid) {
-      Object.values(this.promotionForm.controls).forEach(control => {
-        if (control instanceof FormGroup) {
-          Object.values(control.controls).forEach(innerControl => {
-            innerControl.markAsDirty();
-            innerControl.updateValueAndValidity();
-          });
-        } else {
-          control.markAsDirty();
-          control.updateValueAndValidity();
-        }
-      });
-      this.message.warning('Por favor, complete todos los campos requeridos correctamente.');
+      this.message.warning('Por favor, complete todos los campos requeridos.');
       return;
     }
 
     this.submitting = true;
     const formValue = this.promotionForm.getRawValue();
+    const type = formValue.promotionType;
 
-    // ✅ SOLUCIÓN AL ERROR DE FIREBASE:
-    // Creamos un objeto limpio y eliminamos cualquier propiedad que sea `undefined`
-    // antes de enviarla a Firebase.
+    // 1. Objeto base con los datos comunes
     const promotionData: Partial<Promotion> = {
-      ...formValue,
-      startDate: formValue.startDate instanceof Date ? formValue.startDate : new Date(formValue.startDate),
-      endDate: formValue.endDate instanceof Date ? formValue.endDate : new Date(formValue.endDate),
+      name: formValue.name,
+      description: formValue.description || null,
+      promotionType: type,
+      discountType: formValue.discountType,
+      discountValue: formValue.discountValue,
+      startDate: formValue.dates[0],
+      endDate: formValue.dates[1],
+      isActive: formValue.isActive,
     };
 
-    // Limpiamos el objeto de claves 'undefined'
+    // 2. Añadir campos exclusivos para cupones
+    if (type === 'coupon') {
+      promotionData.couponCode = formValue.couponCode.toUpperCase();
+      promotionData.minPurchaseAmount = formValue.minPurchaseAmount || null;
+      promotionData.maxDiscountAmount = formValue.maxDiscountAmount || null; // ✅ <--- ESTA ES LA LÍNEA QUE FALTABA
+      promotionData.usageLimits = {
+        global: formValue.usageLimits.global || null,
+        perUser: formValue.usageLimits.perUser || null,
+      };
+    }
+
+    // 3. Limpieza de nulos y envío (sin cambios)
     Object.keys(promotionData).forEach(key => {
       const typedKey = key as keyof typeof promotionData;
-      if (promotionData[typedKey] === undefined) {
+      if (promotionData[typedKey] === null) {
         delete promotionData[typedKey];
       }
     });
 
-    // Si no es un cupón, nos aseguramos de que los campos de cupón no existan
-    if (promotionData.promotionType !== 'coupon') {
-      delete promotionData.couponCode;
-      delete promotionData.couponType;
-      delete promotionData.usageLimits;
-    }
-
-
-    const operation$: Observable<void | string> = this.isEditMode && this.selectedPromotion
-      ? this.promotionService.updatePromotion(this.selectedPromotion.id, promotionData)
+    const operation$: Observable<any> = this.isEditMode && this.selectedPromotionId
+      ? this.promotionService.updatePromotion(this.selectedPromotionId, promotionData)
       : this.promotionService.createPromotion(promotionData as Promotion);
 
     operation$.subscribe({
       next: () => {
-        this.message.success(`Promoción ${this.isEditMode ? 'actualizada' : 'creada'} correctamente.`);
+        this.message.success(`Plantilla ${this.isEditMode ? 'actualizada' : 'creada'} con éxito.`);
         this.closeFormModal();
-        this.loadPromotions();
+        this.loadInitialData();
       },
-      error: (error: any) => {
-        console.error(`Error al ${this.isEditMode ? 'actualizar' : 'crear'} la promoción:`, error);
-        this.message.error(`Error al ${this.isEditMode ? 'actualizar' : 'crear'} la promoción.`);
+      error: (err) => {
         this.submitting = false;
-        this.cdr.detectChanges();
+        this.message.error('Ocurrió un error al guardar la plantilla.');
+        console.error(err);
       },
-      complete: () => {
-        this.submitting = false;
-        this.cdr.detectChanges();
-      }
+      complete: () => this.submitting = false
     });
   }
 

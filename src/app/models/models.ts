@@ -33,34 +33,26 @@ export interface Promotion {
     name: string;
     description?: string;
 
-    // 🚀 NUEVO: Distingue entre promociones generales y cupones específicos.
+    // Sigue siendo la clave: 'standard' para plantillas de producto, 'coupon' para códigos de carrito.
     promotionType: 'standard' | 'coupon';
 
-    // Ahora incluye 'shipping' para envíos gratis.
+    // Para 'standard' solo será 'percentage' o 'fixed'.
+    // Para 'coupon' podrá ser también 'shipping'.
     discountType: 'percentage' | 'fixed' | 'shipping';
-    discountValue: number; // Para 'shipping', el valor puede ser 0, la lógica se encarga del resto.
+    discountValue: number;
 
     startDate: Date;
     endDate: Date;
     isActive: boolean;
 
-    // --- Campos Específicos para Cupones ---
-    couponCode?: string; // El código que el cliente usará. Ej: "BIENVENIDA10"
-    couponType?: 'SHIPPING' | 'REFERRAL' | 'WELCOME' | 'SEASONAL' | 'VIP' | 'BULK';
-
+    // --- CAMPOS EXCLUSIVOS PARA CUPONES ---
+    minPurchaseAmount?: number;
+    maxDiscountAmount?: number;
+    couponCode?: string;
     usageLimits?: {
-        global?: number;   // Límite total de usos del cupón.
-        perUser?: number;  // Límite de usos por cada cliente.
-        perDay?: number;   // Límite de usos por día (menos común, pero posible).
+        global?: number;
+        perUser?: number;
     };
-    // --- Fin de Campos de Cupones ---
-
-
-    // --- Reglas de Aplicabilidad (sin cambios) ---
-    applicableProductIds?: string[];
-    applicableCategories?: string[];
-    minPurchaseAmount?: number; // Requerimiento para compra mínima (BULK)
-    maxDiscountAmount?: number; // Límite de descuento para tipo 'percentage'
 }
 
 // ✅ NUEVO: Interfaz para rastrear el uso de cupones por usuario.
@@ -118,6 +110,7 @@ export interface Product {
     distributorCost?: number;
     gender?: 'man' | 'woman' | 'boy' | 'girl' | 'unisex';
     originalPrice?: number;
+    promotionId?: string; 
     currentPrice?: number;
     discountPercentage?: number;
     imageUrl: string;

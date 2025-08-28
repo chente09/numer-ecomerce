@@ -1595,14 +1595,15 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
 
   // Función para cargar promociones
   loadPromotions(): void {
-    this.promotionService.getActivePromotions().subscribe({
+    // CORRECCIÓN: Usar getStandardPromotions para cargar solo las plantillas aplicables a productos.
+    this.promotionService.getStandardPromotions().subscribe({
       next: (promotions) => {
         this.promotions = promotions;
         this.cdr.markForCheck();
       },
       error: (error) => {
-        console.error('Error al cargar promociones:', error);
-        this.message.error('Error al cargar promociones: ' + error.message);
+        console.error('Error al cargar promociones estándar:', error);
+        this.message.error('Error al cargar las plantillas de promoción.');
       }
     });
   }
@@ -1611,7 +1612,8 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
     this.selectedVariantForPromotion = variant;
     this.loading = true;
 
-    this.promotionService.getActivePromotions().pipe(
+    // CORRECCIÓN: Usar getStandardPromotions para asegurar que el modal solo muestre las opciones correctas.
+    this.promotionService.getStandardPromotions().pipe(
       finalize(() => {
         this.loading = false;
         this.cdr.detectChanges();
@@ -1621,7 +1623,6 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
         this.promotions = promotions;
         this.promotionModalVisible = true;
 
-        // En móvil, cerrar filtros expandidos para dar más espacio
         if (this.isMobile && this.filtersExpanded) {
           this.filtersExpanded = false;
         }
@@ -1629,7 +1630,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
         this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('Error al cargar promociones:', error);
+        console.error('Error al cargar promociones estándar:', error);
         this.message.error('Error al cargar promociones. Intente nuevamente.');
         this.cdr.detectChanges();
       }

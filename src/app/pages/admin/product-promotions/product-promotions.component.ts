@@ -7,7 +7,7 @@ import { CategoryService, Category } from '../../../services/admin/category/cate
 import { AppliedPromotionsService } from '../../../services/admin/applied-promotions/applied-promotions.service';
 import { Product, Promotion, ProductVariant, AppliedPromotion } from '../../../models/models';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { finalize, forkJoin, switchMap, take } from 'rxjs';
+import { finalize, forkJoin, of, switchMap, take } from 'rxjs';
 import { Firestore, deleteField, doc, runTransaction, writeBatch } from '@angular/fire/firestore';
 
 // Importar módulos ng-zorro necesarios
@@ -184,28 +184,37 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     if (!this.product) return;
 
     this.loading = true;
+    this.cdr.markForCheck();
 
-    // Cargar promociones aplicadas desde el nuevo servicio
-    forkJoin({
-      applied: this.appliedPromotionsService.getAppliedPromotions(this.product.id),
-      allActive: this.promotionService.getActivePromotions()
-    }).pipe(
-      take(1),
+    // Paso 1: Obtener los registros de las promociones que han sido aplicadas a este producto.
+    this.appliedPromotionsService.getAppliedPromotions(this.product.id).pipe(
+      switchMap(appliedPromos => {
+        this.appliedPromotions = appliedPromos;
+        const appliedIds = appliedPromos.map(a => a.promotionId);
+
+        if (appliedIds.length === 0) {
+          // Si no hay promociones aplicadas, devolvemos un array vacío y terminamos.
+          return of([]);
+        }
+
+        // Paso 2: Para cada ID de promoción aplicada, buscar sus detalles completos.
+        // Usamos forkJoin para hacer todas las llamadas a la vez.
+        const promotionObservables = appliedIds.map(id => this.promotionService.getPromotionById(id));
+        return forkJoin(promotionObservables);
+      }),
       finalize(() => {
         this.loading = false;
         this.cdr.markForCheck();
       })
     ).subscribe({
-      next: ({ applied, allActive }) => {
-        this.appliedPromotions = applied;
-        const appliedIds = applied.map(a => a.promotionId);
-        this.promotions = allActive.filter(p => appliedIds.includes(p.id));
-        this.allPromotions = allActive;
-        this.cdr.markForCheck();
+      next: (promotionsDetails) => {
+        // El resultado es un array con los objetos Promotion completos.
+        // Filtramos por si alguna promoción fue eliminada pero su registro de aplicación quedó huérfano.
+        this.promotions = promotionsDetails.filter(p => p !== null) as Promotion[];
       },
       error: (error) => {
-        console.error('Error cargando promociones:', error);
-        this.message.error('Error al cargar promociones');
+        console.error('Error cargando promociones aplicadas:', error);
+        this.message.error('Error al cargar las promociones aplicadas a este producto.');
       }
     });
   }
@@ -534,18 +543,23 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
   isPromotionApplicable(promotion: Promotion): boolean {
     if (!this.product) return false;
 
-    // Verificar si ya está aplicada
-    if (this.isPromotionActive(promotion.id)) return false;
+    // Condición 1: La promoción no debe estar ya aplicada a este producto.
+    if (this.isPromotionActive(promotion.id)) {
+      return false;
+    }
 
-    // Verificar fechas
+    // Condición 2: La promoción debe estar activa y dentro de su rango de fechas.
     const now = new Date();
     const startDate = promotion.startDate instanceof Date ? promotion.startDate : new Date(promotion.startDate);
     const endDate = promotion.endDate instanceof Date ? promotion.endDate : new Date(promotion.endDate);
 
-    if (!promotion.isActive || startDate > now || endDate < now) return false;
+    if (!promotion.isActive || startDate > now || endDate < now) {
+      return false;
+    }
 
-    // Verificar si aplica a este producto
-    return this.productPriceService.isPromotionApplicable(this.product, promotion);
+    // Si pasa todas las validaciones, entonces el administrador PUEDE aplicarla.
+    // Ya no llamamos a productPriceService para una validación automática.
+    return true;
   }
 
   calculatePromotionPreview(promotion: Promotion): {

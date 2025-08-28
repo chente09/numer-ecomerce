@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { BehaviorSubject, Observable, from, of, forkJoin, map, catchError, Subject, takeUntil, firstValueFrom } from 'rxjs';
-import { Product, ProductVariant, Cart, CartItem } from '../../../models/models';
+import { Promotion, ProductVariant, Cart, CartItem } from '../../../models/models';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { UsersService } from '../../../services/users/users.service';
@@ -32,6 +32,7 @@ export class CartService implements OnDestroy {
   private cartSubject = new BehaviorSubject<Cart>(this.initialCartState);
   public cart$: Observable<Cart> = this.cartSubject.asObservable();
   private destroy$ = new Subject<void>();
+  private appliedCoupon: Promotion | null = null;
 
   constructor() {
     // Suscripción única para manejar el estado del usuario
@@ -86,94 +87,87 @@ export class CartService implements OnDestroy {
   public getVariantById = (variantId: string): Observable<ProductVariant | undefined> => this.productService.getVariantById(variantId);
 
   public addToCart(productId: string, variantId: string, quantity: number): Observable<boolean> {
-    const promise = (async () => {
-      // Obtenemos producto, variante y promociones activas en paralelo
-      const [product, variant, activePromotions] = await Promise.all([
-        firstValueFrom(this.productService.getProductById(productId)),
-        firstValueFrom(this.getVariantById(variantId)),
-        firstValueFrom(this.promotionService.getActivePromotions())
-      ]);
+  const promise = (async () => {
+    // 1. Obtener los datos más frescos del producto y la variante.
+    // El 'product' que recibimos de getProductById ya viene con su precio final calculado.
+    const [product, variant] = await Promise.all([
+      firstValueFrom(this.productService.getProductById(productId)),
+      firstValueFrom(this.getVariantById(variantId)),
+    ]);
 
-      if (!product || !variant) throw new Error("Producto o variante no encontrados.");
+    if (!product || !variant) throw new Error("Producto o variante no encontrados.");
 
-      const currentItems = this.getCart().items;
-      const existingItem = currentItems.find(i => i.variantId === variantId);
-      const newQuantity = (existingItem?.quantity || 0) + quantity;
+    // 2. Validar stock (sin cambios)
+    const currentItems = this.getCart().items;
+    const existingItem = currentItems.find(i => i.variantId === variantId);
+    const newQuantity = (existingItem?.quantity || 0) + quantity;
+    if (variant.stock < newQuantity) throw new Error(`Stock insuficiente. Disponibles: ${variant.stock}`);
 
-      if (variant.stock < newQuantity) throw new Error(`Stock insuficiente. Disponibles: ${variant.stock}`);
+    // 3. ✅ NUEVA LÓGICA DE PRECIOS Y TÍTULOS: Lee la información que ya existe.
+    let unitPrice = 0;
+    let originalUnitPrice: number | undefined = undefined;
+    let appliedPromotionTitle: string | undefined = undefined;
 
-      // --- ✅ LÓGICA DE PROMOCIONES CORREGIDA ---
-      const bestPromotion = this.promotionService.findBestPromotionForProduct(product, activePromotions);
-
-      let unitPrice = product.price; // Precio base
-      let originalUnitPrice: number | undefined = undefined;
-      let appliedPromotionTitle: string | undefined = undefined;
-
-      if (bestPromotion) {
-        originalUnitPrice = product.price; // ✅ GUARDAR precio original
-
-        // Calcular descuento
-        if (bestPromotion.discountType === 'percentage') {
-          const discount = product.price * (bestPromotion.discountValue / 100);
-          const finalDiscount = bestPromotion.maxDiscountAmount
-            ? Math.min(discount, bestPromotion.maxDiscountAmount)
-            : discount;
-          unitPrice = product.price - finalDiscount;
-        } else { // 'fixed'
-          unitPrice = product.price - bestPromotion.discountValue;
-        }
-
-        unitPrice = Math.max(0, unitPrice); // No negativo
-        appliedPromotionTitle = bestPromotion.name; // ✅ GUARDAR nombre promoción
-
-        console.log(`✨ [CART] Promoción aplicada: "${bestPromotion.name}" a ${product.name}: ${product.price} → ${unitPrice}`);
+    // Prioridad 1: Usar el precio de la VARIANTE si tiene un descuento específico.
+    if (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice) {
+      unitPrice = variant.discountedPrice;
+      originalUnitPrice = variant.originalPrice;
+      // Obtenemos el nombre de la promoción de la variante
+      if (variant.promotionId) {
+        const promo = await firstValueFrom(this.promotionService.getPromotionById(variant.promotionId));
+        appliedPromotionTitle = promo?.name; // <-- AQUÍ SE OBTIENE EL NOMBRE
       }
-
-      // --- ✅ CREAR ITEM CON TODAS LAS PROPIEDADES ---
-      let newItems: CartItem[];
-      const newItemData: CartItem = {
-        productId,
-        variantId,
-        quantity: newQuantity,
-        product,
-        variant,
-        unitPrice, // Precio con descuento
-        originalUnitPrice, // ✅ PRECIO ORIGINAL (puede ser undefined)
-        appliedPromotionTitle, // ✅ NOMBRE PROMOCIÓN (puede ser undefined)
-        totalPrice: unitPrice * newQuantity,
-      };
-
-      if (existingItem) {
-        // ✅ ACTUALIZAR item existente manteniendo promociones
-        newItemData.quantity = newQuantity;
-        newItemData.totalPrice = unitPrice * newQuantity;
-        newItems = currentItems.map(item => item.variantId === variantId ? newItemData : item);
-      } else {
-        // ✅ AGREGAR nuevo item con promociones
-        newItemData.quantity = quantity;
-        newItemData.totalPrice = unitPrice * quantity;
-        newItems = [...currentItems, newItemData];
+    } 
+    // Prioridad 2: Usar el precio del PRODUCTO si tiene un descuento general.
+    else if (product.currentPrice && product.originalPrice && product.currentPrice < product.originalPrice) {
+      unitPrice = product.currentPrice;
+      originalUnitPrice = product.originalPrice;
+      // Obtenemos el nombre de la promoción del producto
+      if (product.promotionId) {
+        const promo = await firstValueFrom(this.promotionService.getPromotionById(product.promotionId));
+        appliedPromotionTitle = promo?.name; // <-- O AQUÍ SE OBTIENE EL NOMBRE
       }
+    }
+    // Prioridad 3: Usar el precio base si no hay descuentos.
+    else {
+      unitPrice = variant.price || product.price;
+      originalUnitPrice = undefined;
+      appliedPromotionTitle = undefined;
+    }
+    
+    // 4. Construir y guardar el item del carrito con el título correcto
+    let newItems: CartItem[];
+    const newItemData: CartItem = {
+      productId,
+      variantId,
+      quantity,
+      product,
+      variant,
+      unitPrice,
+      originalUnitPrice,
+      appliedPromotionTitle, // <-- El nombre correcto se guarda aquí
+      totalPrice: unitPrice * quantity,
+    };
+    
+    if (existingItem) {
+      newItemData.quantity = newQuantity;
+      newItemData.totalPrice = unitPrice * newQuantity;
+      newItems = currentItems.map(item => item.variantId === variantId ? newItemData : item);
+    } else {
+      newItems = [...currentItems, newItemData];
+    }
 
-      console.log('✅ [CART] Item guardado con promoción:', {
-        productName: product.name,
-        unitPrice: newItemData.unitPrice,
-        originalUnitPrice: newItemData.originalUnitPrice,
-        appliedPromotionTitle: newItemData.appliedPromotionTitle,
-        hasDiscount: !!newItemData.originalUnitPrice
-      });
+    this.updateAndSync(newItems);
+  })();
 
-      this.updateAndSync(newItems);
-    })();
-
-    return from(promise).pipe(
-      map(() => true),
-      catchError(err => {
-        this.message.error(err instanceof Error ? err.message : 'No se pudo añadir al carrito.');
-        return of(false);
-      })
-    );
-  }
+  return from(promise).pipe(
+    map(() => true),
+    catchError(err => {
+      this.message.error(err instanceof Error ? err.message : 'No se pudo añadir al carrito.');
+      return of(false);
+    })
+  );
+}
 
   public updateItemQuantity(variantId: string, quantity: number): Observable<boolean> {
     if (quantity <= 0) {
@@ -202,6 +196,42 @@ export class CartService implements OnDestroy {
     return true;
   }
 
+  /**
+   * ✅ MÉTODO REFACTORIZADO: Valida y aplica un código de descuento.
+   */
+  public async applyDiscountCode(code: string): Promise<{ success: boolean; message: string }> {
+    if (!code.trim()) {
+      return { success: false, message: 'Por favor, ingresa un código.' };
+    }
+
+    const promotion = await firstValueFrom(this.promotionService.getPromotionByCode(code));
+
+    if (!promotion) {
+      return { success: false, message: 'El código de descuento no es válido o ha expirado.' };
+    }
+
+    const cart = this.getCart();
+
+    // Validar monto mínimo de compra
+    if (promotion.minPurchaseAmount && cart.subtotal < promotion.minPurchaseAmount) {
+      return { success: false, message: `Este código requiere una compra mínima de $${promotion.minPurchaseAmount.toFixed(2)}.` };
+    }
+
+    // Si todo es válido, guardamos el cupón y recalculamos el carrito
+    this.appliedCoupon = promotion;
+    this.updateAndSync(cart.items); // Esto forzará un recálculo
+
+    return { success: true, message: `¡Cupón "${promotion.name}" aplicado con éxito!` };
+  }
+
+  /**
+   * ✅ NUEVO: Remueve el cupón aplicado
+   */
+  public removeDiscountCode(): void {
+    this.appliedCoupon = null;
+    this.updateAndSync(this.getCart().items);
+  }
+
   // --- MÉTODOS PRIVADOS AUXILIARES ---
 
   private updateAndSync(items: CartItem[]): void {
@@ -226,21 +256,63 @@ export class CartService implements OnDestroy {
     const newCart: Cart = { ...this.initialCartState, items };
     newCart.totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
+    // 1. Calcular subtotal y ahorros de productos
     newCart.subtotal = items.reduce((sum, item) => {
       item.totalPrice = item.unitPrice * item.quantity;
       return sum + item.totalPrice;
     }, 0);
-
     newCart.totalSavings = items.reduce((sum, item) => {
       const saving = (item.originalUnitPrice || item.unitPrice) - item.unitPrice;
       return sum + (saving * item.quantity);
     }, 0);
 
-    newCart.tax = (newCart.subtotal - newCart.discount) * 0.15; // Asumo IVA 15%
-    newCart.total = newCart.subtotal + newCart.tax + newCart.shipping - newCart.discount;
+    // 2. ✅ APLICAR DESCUENTO DEL CUPÓN (si existe)
+    newCart.discount = 0;
+    if (this.appliedCoupon) {
+      let discountAmount = 0;
+      if (this.appliedCoupon.discountType === 'percentage') {
+        discountAmount = newCart.subtotal * (this.appliedCoupon.discountValue / 100);
+      } else if (this.appliedCoupon.discountType === 'fixed') {
+        discountAmount = this.appliedCoupon.discountValue;
+      }
+      // No manejamos 'shipping' aquí, eso se hace en el checkout
+
+      newCart.discount = discountAmount;
+      newCart.totalSavings += discountAmount; // Sumar al ahorro total
+    }
+
+    // 3. Calcular impuestos y total final
+    const baseForTax = newCart.subtotal - newCart.discount;
+    newCart.tax = baseForTax * 0.15; // Asumo IVA 15%
+    newCart.shipping = this.appliedCoupon?.discountType === 'shipping' ? 0 : 5; // Lógica de envío simple
+    newCart.total = baseForTax + newCart.tax + newCart.shipping;
 
     return newCart;
   }
+
+  /**
+   * ✅ NUEVO: Valida el stock de todos los items del carrito en tiempo real.
+   */
+  public async validateCartForCheckout(): Promise<{ isValid: boolean; unavailableItems: CartItem[] }> {
+    const cart = this.getCart();
+    const unavailableItems: CartItem[] = [];
+
+    // Creamos un array de promesas para verificar el stock de cada item en paralelo
+    const stockChecks = cart.items.map(async (item) => {
+      const variant = await firstValueFrom(this.getVariantById(item.variantId));
+      if (!variant || variant.stock < item.quantity) {
+        unavailableItems.push(item);
+      }
+    });
+
+    await Promise.all(stockChecks);
+
+    return {
+      isValid: unavailableItems.length === 0,
+      unavailableItems: unavailableItems
+    };
+  }
+
 
   private mergeItems(guest: CartItem[], firestore: CartItem[]): CartItem[] {
     const merged = new Map<string, CartItem>();

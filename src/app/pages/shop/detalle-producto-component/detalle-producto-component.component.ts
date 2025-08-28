@@ -920,68 +920,66 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     this.activeTab = tabName;
   }
 
+
   private async updateDisplayedPrice(): Promise<void> {
     if (!this.product) return;
 
-    // 1. ✅ Precio base (producto o variante)
-    const basePrice = this.selectedVariant?.price || this.product.price;
-
-    // 2. ✅ Por defecto, no hay descuento
+    // Por defecto, mostramos el precio base sin descuento.
     let finalPriceInfo = {
-      originalPrice: basePrice,
-      currentPrice: basePrice,
+      originalPrice: this.product.price,
+      currentPrice: this.product.price,
       hasDiscount: false,
       discountPercentage: 0,
       savings: 0,
       promotionName: ''
     };
 
-    try {
-      // 3. ✅ USAR EL MISMO PATRÓN QUE CATALOG Y CART
-      const activePromotions = await firstValueFrom(this.promotionService.getActivePromotions());
-      const bestPromotion = this.promotionService.findBestPromotionForProduct(this.product, activePromotions);
+    // Verificamos si el producto tiene un descuento aplicado directamente en sus propiedades.
+    const hasProductDiscount = this.product.currentPrice && this.product.currentPrice < this.product.price;
 
-      if (bestPromotion) {
-        let discountedPrice = basePrice;
+    if (hasProductDiscount) {
+      finalPriceInfo = {
+        originalPrice: this.product.originalPrice || this.product.price,
+        currentPrice: this.product.currentPrice!,
+        hasDiscount: true,
+        discountPercentage: this.product.discountPercentage || 0,
+        savings: (this.product.originalPrice || this.product.price) - this.product.currentPrice!,
+        promotionName: 'OFERTA ESPECIAL' // Valor por defecto mientras se carga el nombre real
+      };
 
-        // ✅ USAR LA MISMA LÓGICA QUE OTROS COMPONENTES
-        if (bestPromotion.discountType === 'percentage') {
-          const discount = basePrice * (bestPromotion.discountValue / 100);
-          const finalDiscount = bestPromotion.maxDiscountAmount
-            ? Math.min(discount, bestPromotion.maxDiscountAmount)
-            : discount;
-          discountedPrice = basePrice - finalDiscount;
-        } else { // 'fixed'
-          discountedPrice = basePrice - bestPromotion.discountValue;
-        }
-
-        discountedPrice = Math.max(0, discountedPrice);
-
-        const discountPercentage = basePrice > 0
-          ? Math.round(((basePrice - discountedPrice) / basePrice) * 100)
-          : 0;
-
-        console.log(`🏷️ [DETALLE] Promoción aplicada: ${bestPromotion.name} - ${basePrice} → ${discountedPrice}`);
-
-        finalPriceInfo = {
-          originalPrice: basePrice,
-          currentPrice: discountedPrice,
-          hasDiscount: true,
-          discountPercentage: discountPercentage,
-          savings: basePrice - discountedPrice,
-          promotionName: bestPromotion.name
-        };
+      // Si el producto tiene un promotionId, buscamos su nombre.
+      if (this.product.promotionId) {
+        finalPriceInfo.promotionName = await this.getPromotionName(this.product.promotionId);
       }
-    } catch (error) {
-      console.error("❌ [DETALLE] Error al calcular precio con promoción:", error);
-      // Continuar con precios sin promoción
     }
 
-    // 4. ✅ Actualizar y forzar detección de cambios
     this.displayedPriceInfo = finalPriceInfo;
-    this.cdr.markForCheck();
-    this.cdr.detectChanges();
+    this.cdr.markForCheck(); // Notificamos a Angular que la vista debe actualizarse.
   }
+
+  /**
+ * Obtiene el nombre de una promoción por su ID y lo guarda en caché.
+ */
+  private async getPromotionName(promotionId: string): Promise<string> {
+    // Si ya lo tenemos en caché, lo devolvemos inmediatamente.
+    if (this.promotionNamesCache.has(promotionId)) {
+      return this.promotionNamesCache.get(promotionId)!;
+    }
+
+    try {
+      // Hacemos la llamada al servicio para obtener los detalles de la promoción.
+      const promotion = await firstValueFrom(this.promotionService.getPromotionById(promotionId));
+      const name = promotion?.name || 'Oferta Especial';
+
+      // Guardamos el nombre en caché para futuras consultas.
+      this.promotionNamesCache.set(promotionId, name);
+      return name;
+    } catch (error) {
+      console.error(`Error al obtener nombre de la promoción ${promotionId}:`, error);
+      return 'Oferta Especial'; // Devolvemos un nombre genérico en caso de error.
+    }
+  }
+
 
   // 🆕 Método mejorado para agregar al carrito con mensajes ecuatorianos
   addToCart(): void {

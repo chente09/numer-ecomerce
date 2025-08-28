@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { addDoc, collection, collectionData, deleteDoc, deleteField, doc, Firestore, getDoc, getDocs, query, updateDoc, where, writeBatch } from '@angular/fire/firestore';
+import { addDoc, collection, collectionData, deleteDoc, deleteField, doc, Firestore, getDoc, getDocs, limit, query, updateDoc, where, writeBatch } from '@angular/fire/firestore';
 import { CacheService } from '../cache/cache.service';
 import { catchError, from, map, Observable, of, throwError, take } from 'rxjs';
 import { Promotion, Product } from '../../../models/models';
@@ -173,17 +173,11 @@ export class PromotionService {
  * que un administrador puede aplicar manualmente.
  */
   getStandardPromotions(): Observable<Promotion[]> {
-    // Reutilizamos el método que ya obtiene todas las promociones
     return this.getPromotions().pipe(
-      map(allPromotions => {
-        // Filtramos la lista para devolver solo las que no son de tipo 'coupon'
-        return allPromotions.filter(promo =>
-          promo.promotionType !== 'coupon'
-        );
-      }),
+      map(allPromotions => allPromotions.filter(promo => promo.promotionType === 'standard' && promo.isActive)),
       catchError(error => {
-        console.error('❌ PromotionService: Error al filtrar promociones estándar:', error);
-        return of([]); // Devolver un array vacío en caso de error
+        console.error('❌ Error al filtrar promociones estándar:', error);
+        return of([]);
       })
     );
   }
@@ -242,138 +236,6 @@ export class PromotionService {
   }
 
   /**
-   * Obtiene las promociones que están activas y dentro de su rango de fechas válido.
-   * Este método reutiliza getPromotions() para obtener los datos frescos.
-   * @returns Un Observable que emite un array de objetos Promotion activos.
-   */
-  getActivePromotions(): Observable<Promotion[]> {
-    return this.getPromotions().pipe(
-      map(allPromotions => {
-        const now = new Date();
-
-        const activePromotions = allPromotions.filter(promo => {
-          // FILTRO NUEVO: Solo promociones automáticas, NO cupones
-          if (promo.promotionType === 'coupon') {
-            return false;
-          }
-
-          const startDate = promo.startDate;
-          const endDate = promo.endDate;
-
-          const isCurrentlyActive = promo.isActive === true &&
-            now >= startDate &&
-            now <= endDate;
-
-          return isCurrentlyActive;
-        });
-
-        return activePromotions;
-      }),
-      catchError(error => {
-        console.error('Error al filtrar promociones activas:', error);
-        return of([]);
-      })
-    );
-  }
-
-  /**
- * Encuentra la mejor promoción aplicable para un producto de una lista de promociones.
- * @param product El producto a verificar.
- * @param promotions La lista de promociones activas.
- * @returns La promoción con el mayor descuento, o null si ninguna aplica.
- */
-  public findBestPromotionForProduct(product: Product, promotions: Promotion[]): Promotion | null {
-    const applicablePromotions = promotions.filter(promo => {
-      // Una promoción aplica si:
-      // 1. No tiene restricciones de producto o categoría (aplica a todo)
-      const appliesToAllProducts = !promo.applicableProductIds?.length && !promo.applicableCategories?.length;
-      // 2. El ID del producto está en la lista de la promoción
-      const appliesToProduct = promo.applicableProductIds?.includes(product.id);
-      // 3. Alguna de las categorías del producto está en la lista de la promoción
-      const appliesToCategory = product.categories?.some(catId => promo.applicableCategories?.includes(catId));
-
-      return appliesToAllProducts || appliesToProduct || appliesToCategory;
-    });
-
-    if (applicablePromotions.length === 0) {
-      return null; // No hay promociones para este producto
-    }
-
-    // Si hay varias promociones aplicables, elegimos la que ofrece el mayor descuento.
-    return applicablePromotions.sort((a, b) => this.getDiscountAmount(product, b) - this.getDiscountAmount(product, a))[0];
-  }
-
-  /**
-   * Método privado para calcular el monto de descuento que una promoción daría a un producto.
-   * @param product El producto.
-   * @param promo La promoción.
-   * @returns El valor numérico del descuento en dólares.
-   */
-  private getDiscountAmount(product: Product, promo: Promotion): number {
-    if (promo.discountType === 'percentage') {
-      const discount = product.price * (promo.discountValue / 100);
-      // Aplicar el descuento máximo si está definido
-      return promo.maxDiscountAmount ? Math.min(discount, promo.maxDiscountAmount) : discount;
-    } else { // 'fixed'
-      return promo.discountValue;
-    }
-  }
-
-  /**
-   * 🆕 NUEVO: Obtiene promociones por categoría de producto
-   */
-  getPromotionsByCategory(categoryId: string): Observable<Promotion[]> {
-    if (!categoryId) {
-      return of([]);
-    }
-
-    return this.getActivePromotions().pipe(
-      take(1), // ✅ NUEVO: Forzar completar
-      map(activePromotions => {
-        const categoryPromotions = activePromotions.filter(promo => {
-          // Verificar si la promoción aplica a esta categoría
-          return promo.applicableCategories?.includes(categoryId) ||
-            promo.applicableCategories?.includes('all') ||
-            !promo.applicableCategories; // Si no especifica categorías, aplica a todas
-        });
-
-        return categoryPromotions;
-      }),
-      catchError(error => {
-        console.error(`❌ PromotionService: Error al obtener promociones por categoría ${categoryId}:`, error);
-        return of([]);
-      }),
-    );
-  }
-
-  /**
-   * 🆕 NUEVO: Obtiene promociones por producto específico
-   */
-  getPromotionsByProduct(productId: string): Observable<Promotion[]> {
-    if (!productId) {
-      return of([]);
-    }
-
-    return this.getActivePromotions().pipe(
-      take(1), // ✅ NUEVO: Forzar completar
-      map(activePromotions => {
-        const productPromotions = activePromotions.filter(promo => {
-          // Verificar si la promoción aplica a este producto específico
-          return promo.applicableProductIds?.includes(productId) ||
-            promo.applicableProductIds?.includes('all') ||
-            !promo.applicableProductIds; // Si no especifica productos, aplica a todos
-        });
-
-        return productPromotions;
-      }),
-      catchError(error => {
-        console.error(`❌ PromotionService: Error al obtener promociones por producto ${productId}:`, error);
-        return of([]);
-      }),
-    );
-  }
-
-  /**
    * 🆕 NUEVO: Verifica si una promoción está activa actualmente
    */
   isPromotionActive(promotionId: string): Observable<boolean> {
@@ -409,70 +271,6 @@ export class PromotionService {
   }
 
   /**
-   * 🆕 NUEVO: Método de debugging para ver el estado de promociones
-   */
-  debugPromotions(): void {
-
-    this.getPromotions().pipe(
-      take(1)
-    ).subscribe({
-      next: (promotions) => {
-
-        if (promotions.length > 0) {
-          const summary = promotions.map(promo => {
-            const now = new Date();
-            const isCurrentlyActive = promo.isActive &&
-              now >= promo.startDate &&
-              now <= promo.endDate;
-
-            return {
-              id: promo.id,
-              name: promo.name,
-              discountType: promo.discountType,
-              discountValue: promo.discountValue || 0,
-              discountDisplay: promo.discountType === 'percentage'
-                ? `${promo.discountValue}%`
-                : `${promo.discountValue}`,
-              isActive: promo.isActive ? '✅' : '❌',
-              currentlyValid: isCurrentlyActive ? '✅' : '❌',
-              startDate: promo.startDate.toLocaleDateString(),
-              endDate: promo.endDate.toLocaleDateString()
-            };
-          });
-
-          console.table(summary);
-
-          // Estadísticas
-          const stats = {
-            activas: promotions.filter(p => p.isActive).length,
-            vigentes: promotions.filter(p => {
-              const now = new Date();
-              return p.isActive && now >= p.startDate && now <= p.endDate;
-            }).length,
-            vencidas: promotions.filter(p => {
-              const now = new Date();
-              return p.endDate < now;
-            }).length,
-            futuras: promotions.filter(p => {
-              const now = new Date();
-              return p.startDate > now;
-            }).length
-          };
-
-          console.log('📈 Estadísticas:', stats);
-        } else {
-          console.log('🤷‍♂️ No hay promociones disponibles');
-        }
-      },
-      error: (error) => {
-        console.error('❌ Error obteniendo promociones para debug:', error);
-      }
-    });
-
-    console.groupEnd();
-  }
-
-  /**
    * 🆕 NUEVO: Fuerza la recarga de promociones (sin caché)
    */
   forceRefreshPromotions(): Observable<Promotion[]> {
@@ -480,4 +278,51 @@ export class PromotionService {
     // Obtener promociones frescas
     return this.getPromotions();
   }
+
+  /**
+ * ✅ NUEVO: Busca una promoción activa por su código de cupón.
+ * Este es el método clave para validar los cupones en tiempo real.
+ */
+  getPromotionByCode(code: string): Observable<Promotion | null> {
+    if (!code || code.trim() === '') {
+      return of(null);
+    }
+
+    const promotionsRef = collection(this.firestore, this.collectionName);
+    // Buscamos un cupón que coincida con el código, sea de tipo 'coupon' y esté activo.
+    const q = query(
+      promotionsRef,
+      where('couponCode', '==', code.toUpperCase()),
+      where('promotionType', '==', 'coupon'),
+      where('isActive', '==', true),
+      limit(1) // Solo nos interesa el primero que encuentre
+    );
+
+    return from(getDocs(q)).pipe(
+      map(snapshot => {
+        if (snapshot.empty) {
+          return null; // No se encontró ningún cupón con ese código.
+        }
+        // Procesa el documento encontrado (igual que en getPromotionById)
+        const doc = snapshot.docs[0];
+        const data = doc.data();
+        const now = new Date();
+        const startDate = data['startDate']?.toDate ? data['startDate'].toDate() : new Date();
+        const endDate = data['endDate']?.toDate ? data['endDate'].toDate() : new Date();
+
+        // Doble validación de fecha
+        if (now < startDate || now > endDate) {
+          console.warn(`Cupón "${code}" encontrado pero fuera de fecha de validez.`);
+          return null;
+        }
+
+        return { id: doc.id, ...data, startDate, endDate } as Promotion;
+      }),
+      catchError(error => {
+        console.error(`❌ Error buscando cupón por código ${code}:`, error);
+        return of(null);
+      })
+    );
+  }
+
 }

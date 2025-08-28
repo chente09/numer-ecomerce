@@ -100,22 +100,13 @@ export class ProductService {
    */
   getProductsNoCache(): Observable<Product[]> {
     const productsRef = collection(this.firestore, this.productsCollection);
-
-    // Usamos 'from' para convertir la promesa de getDocs en un Observable
     return from(getDocs(productsRef)).pipe(
-      map(querySnapshot => {
-        const products: Product[] = [];
-        querySnapshot.forEach(doc => {
-          products.push({ id: doc.id, ...doc.data() } as Product);
-        });
-        return products;
-      }),
-      // ✅ PASO CLAVE: Reutilizamos tu método existente que enriquece
-      // los productos con sus variantes completas.
+      map(querySnapshot => querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product))),
       switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+      // ✅ PASO CLAVE Y CONSISTENTE: Siempre calcular precios antes de devolver.
+      switchMap(enrichedProducts => this.priceService.calculateDiscountedPrices(enrichedProducts)),
       catchError(error => {
-        console.error('❌ [PRODUCT SERVICE] Error en getProductsNoCache:', error);
-        // Propagamos el error para que el componente que lo llama pueda manejarlo.
+        console.error('❌ Error en getProductsNoCache:', error);
         return throwError(() => new Error('Error al obtener los productos sin caché.'));
       })
     );
@@ -125,36 +116,25 @@ export class ProductService {
    * 🚀 CORREGIDO: Obtiene un producto por ID SIN caché
    */
   getProductByIdNoCache(productId: string): Observable<Product | null> {
-    if (!productId) {
-      return of(null);
-    }
-
-    return from((async () => {
-      try {
-        const productDoc = doc(this.firestore, this.productsCollection, productId);
-        const productSnap = await getDoc(productDoc);
-
-        if (!productSnap.exists()) {
-          return null;
-        }
-
-        const product = {
-          id: productSnap.id,
-          ...productSnap.data()
-        } as Product;
-
-        // Enriquecer con stock en tiempo real
-        const enrichedProduct = await firstValueFrom(
-          this.enrichSingleProductWithRealTimeStock(product).pipe(take(1))
-        );
-
-        return enrichedProduct;
-      } catch (error) {
-        console.error(`❌ [PRODUCT SERVICE] Error al obtener producto ${productId}:`, error);
+    if (!productId) return of(null);
+    const productDoc = doc(this.firestore, this.productsCollection, productId);
+    return from(getDoc(productDoc)).pipe(
+      switchMap(productSnap => {
+        if (!productSnap.exists()) return of(null);
+        const product = { id: productSnap.id, ...productSnap.data() } as Product;
+        return this.enrichSingleProductWithRealTimeStock(product);
+      }),
+      // ✅ PASO CLAVE Y CONSISTENTE: Calcular precio para el producto individual.
+      switchMap(enrichedProduct => {
+        if (!enrichedProduct) return of(null);
+        // Usamos la versión singular del servicio de precios
+        const pricedProduct = this.priceService.calculateDiscountedPrice(enrichedProduct);
+        return of(pricedProduct);
+      }),
+      catchError(error => {
+        console.error(`❌ Error al obtener producto ${productId}:`, error);
         throw error;
-      }
-    })()).pipe(
-      catchError(error => ErrorUtil.handleError(error, `getProductByIdNoCache(${productId})`))
+      })
     );
   }
 
@@ -162,51 +142,10 @@ export class ProductService {
    * Fuerza la actualización de un producto específico
    */
   forceRefreshProduct(productId: string): Observable<Product | null> {
-
-    // Invalidar TODOS los cachés relacionados con este producto
     this.cacheService.invalidateProductCache(productId);
-
-    // ✅ NUEVO: También invalidar caché específico de variantes
     this.inventoryService.invalidateVariantCache(productId);
-
-    // Obtener producto fresco del servidor
-    return this.getProductByIdNoCache(productId).pipe(
-      take(1),
-      switchMap(product => {
-        if (!product) return of(null);
-
-        // ✅ NUEVO: Obtener variantes frescas usando el método sin caché
-        return this.inventoryService.getVariantsByProductIdNoCache(productId).pipe(
-          take(1),
-          map(variants => {
-
-            // Verificar si hay variantes con promociones
-            const variantsWithPromotions = variants.filter(v => v.promotionId);
-            if (variantsWithPromotions.length > 0) {
-              variantsWithPromotions.forEach(v => {
-                console.log(`   - ${v.colorName}-${v.sizeName}: Promoción ${v.promotionId}`);
-              });
-            }
-
-            // Enriquecer producto con variantes frescas
-            const enrichedProduct = this.enrichProductWithVariants(product, variants);
-
-            // Calcular precios con las promociones aplicadas
-            const productWithPricing = this.priceService.calculateDiscountedPrice(enrichedProduct);
-            return productWithPricing;
-          }),
-          catchError(error => {
-            console.error('❌ [PRODUCT SERVICE] Error obteniendo variantes frescas:', error);
-            // Fallback: usar el producto sin variantes actualizadas
-            return of(product);
-          })
-        );
-      }),
-      catchError(error => {
-        console.error(`❌ [PRODUCT SERVICE] Error en forceRefreshProduct:`, error);
-        return of(null);
-      })
-    );
+    // Ahora simplemente llama a getProductByIdNoCache, que ya hace todo el trabajo.
+    return this.getProductByIdNoCache(productId);
   }
 
   /**
@@ -1910,53 +1849,7 @@ export class ProductService {
     );
   }
 
-  /**
-   * 🆕 NUEVO: Método de debugging para ver el estado de productos
-   */
-  debugProducts(): void {
 
-    this.getProducts().pipe(
-      take(1)
-    ).subscribe({
-      next: (products) => {
-        if (products.length > 0) {
-          const summary = products.slice(0, 10).map(product => ({
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            totalStock: product.totalStock,
-            isNew: product.isNew ? '✅' : '❌',
-            isBestSeller: product.isBestSeller ? '✅' : '❌',
-            variants: product.variants?.length || 0,
-            colors: product.colors?.length || 0,
-            sizes: product.sizes?.length || 0
-          }));
-
-          console.table(summary);
-
-          // Estadísticas adicionales
-          const stats = {
-            nuevos: products.filter(p => p.isNew).length,
-            masVendidos: products.filter(p => p.isBestSeller).length,
-            sinStock: products.filter(p => p.totalStock === 0).length,
-            precioPromedio: Math.round(products.reduce((sum, p) => sum + p.price, 0) / products.length)
-          };
-
-        } else {
-          console.log('🤷‍♂️ No hay productos disponibles');
-        }
-      },
-      error: (error) => {
-        console.error('❌ Error obteniendo productos para debug:', error);
-      }
-    });
-
-    console.groupEnd();
-  }
-
-  /**
-* 🆕 MÉTODO: Forzar recarga después de transacción exitosa
-*/
   /**
 * 🆕 MÉTODO: Forzar recarga después de transacción exitosa
 */

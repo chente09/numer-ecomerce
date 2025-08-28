@@ -292,48 +292,28 @@ export class CarritoComponent implements OnInit, OnDestroy {
   }
 
   // ✅ MEJORADO: Lógica de descuento más robusta
-  applyDiscount(): void {
+  async applyDiscount(): Promise<void> {
     if (!this.discountCode.trim()) {
-      this.message.warning('Ingresa un código de descuento válido.');
+      this.message.warning('Por favor, ingresa un código.');
       return;
     }
 
-    if (!this.cart) {
-      this.message.error('No hay productos en el carrito.');
-      return;
-    }
-
-    console.log(`💰 Aplicando código de descuento: ${this.discountCode}`);
-
-    // ✅ MEJORADO: Múltiples códigos de descuento
-    const validCodes = {
-      'DISCOUNT20': { percentage: 20, minAmount: 50 },
-      'WELCOME10': { percentage: 10, minAmount: 0 },
-      'SAVE15': { percentage: 15, minAmount: 100 }
-    };
-
-    const code = this.discountCode.toUpperCase();
-    const discountInfo = validCodes[code as keyof typeof validCodes];
-
-    if (discountInfo) {
-      if (this.cart.subtotal < discountInfo.minAmount) {
-        this.message.warning(`Este código requiere una compra mínima de $${discountInfo.minAmount}.`);
-        return;
-      }
-
-      const discountAmount = this.cart.subtotal * (discountInfo.percentage / 100);
-      const success = this.cartService.applyDiscount(this.discountCode, discountAmount);
-
-      if (success) {
-        this.message.success(`✅ Código aplicado: ${discountInfo.percentage}% de descuento ($${discountAmount.toFixed(2)})`);
-        this.discountCode = ''; // Limpiar campo
+    this.updating = true;
+    try {
+      const result = await this.cartService.applyDiscountCode(this.discountCode);
+      if (result.success) {
+        this.message.success(result.message);
+        this.discountCode = ''; // Limpiar el campo si el cupón fue exitoso
       } else {
-        this.message.error('No se pudo aplicar el descuento.');
+        this.message.error(result.message);
       }
-    } else {
-      this.message.error('Código de descuento inválido.');
+    } catch (error) {
+      this.message.error('Ocurrió un error inesperado al aplicar el código.');
+    } finally {
+      this.updating = false;
     }
   }
+
 
   clearCart(): void {
     this.modal.confirm({
@@ -354,77 +334,81 @@ export class CarritoComponent implements OnInit, OnDestroy {
   // ✅ NUEVA IMPLEMENTACIÓN: Checkout completo con descuento de inventario
   async proceedToCheckout(): Promise<void> {
     // 1. Validaciones iniciales (sin cambios)
-    if (!this.cart || this.cart.items.length === 0) {
-      this.message.warning('Tu carrito está vacío.');
-      return;
-    }
-    if (!this.canCheckout) {
+    if (!this.cart || this.cart.items.length === 0 || !this.canCheckout) {
       this.message.warning(this.checkoutMessage || 'No cumples los requisitos para proceder.');
       if (!this.currentUser) this.router.navigate(['/welcome'], { queryParams: { returnUrl: '/carrito' } });
       else if (this.currentUser.isAnonymous) this.router.navigate(['/completar-perfil'], { queryParams: { returnUrl: '/carrito' } });
       return;
     }
 
-    // --- FLUJO PARA CLIENTE NORMAL (sin cambios) ---
-    if (!this.isDistributor) {
-      this.processingCheckout = true;
-      try {
-        for (const item of this.cart.items) {
-          const currentVariant = await firstValueFrom(this.cartService.getVariantById(item.variantId));
-          if (!currentVariant || currentVariant.stock < item.quantity) {
-            throw new Error(`Stock insuficiente para ${item.product?.name}.`);
+    this.processingCheckout = true;
+    this.message.loading('Verificando disponibilidad de productos...', { nzDuration: 0 });
+
+    try {
+      // 2. ✅ PASO CLAVE: Validar el stock de todo el carrito en tiempo real
+      const validation = await this.cartService.validateCartForCheckout();
+
+      // 3. Si la validación falla, detener el proceso
+      if (!validation.isValid) {
+        this.message.remove(); // Quitar el mensaje de "cargando"
+        const unavailableNames = validation.unavailableItems.map(item => item.product?.name).join(', ');
+
+        this.modal.warning({
+          nzTitle: 'Productos no disponibles',
+          nzContent: `Algunos productos en tu carrito ya no tienen stock suficiente: ${unavailableNames}. Por favor, ajusta las cantidades antes de continuar.`,
+          nzOkText: 'Entendido'
+        });
+
+        // Importante: Detenemos la ejecución aquí
+        this.processingCheckout = false;
+        return;
+      }
+
+      // Si la validación es exitosa, quitamos el mensaje de carga
+      this.message.remove();
+
+      // 4. Continuar con el flujo específico para cada tipo de usuario
+      if (this.isDistributor) {
+        // --- Flujo para Distribuidor (con stock ya validado) ---
+        const modalRef = this.modal.create<ShippingInfoModalComponent, {}, ShippingInfo>({
+          nzTitle: 'Confirmar Envío del Pedido',
+          nzContent: ShippingInfoModalComponent,
+          nzFooter: null,
+          nzWidth: 600,
+          nzClosable: false,
+          nzMaskClosable: false,
+        });
+
+        modalRef.afterClose.subscribe(async (shippingInfo?: ShippingInfo) => {
+          if (shippingInfo) {
+            this.message.info('Registrando pedido...');
+            const result = await this.cartService.createDistributorOrder(shippingInfo);
+            if (result.success) {
+              this.cartService.clearCart();
+              this.modal.success({
+                nzTitle: '¡Pedido Registrado Exitosamente!',
+                nzContent: `Tu pedido #${result.orderId} ha sido creado.`,
+                nzOkText: 'Entendido',
+                nzOnOk: () => this.router.navigate(['/shop'])
+              });
+            }
           }
-        }
+        });
+      } else {
+        // --- Flujo para Cliente Normal (con stock ya validado) ---
         this.router.navigate(['/pago']);
-      } catch (error: any) {
-        this.message.error(error.message || 'Ocurrió un error al verificar el stock.');
-      } finally {
+      }
+
+    } catch (error: any) {
+      this.message.remove();
+      this.message.error(error.message || 'Ocurrió un error al verificar tu pedido.');
+    } finally {
+      // Nota: El 'processingCheckout' se maneja dentro de los flujos para que el botón no se reactive prematuramente.
+      // Solo lo desactivamos aquí en caso de un error temprano.
+      if (this.processingCheckout) {
         this.processingCheckout = false;
       }
-      return; // Termina la ejecución para clientes normales
     }
-
-    // --- ✅ NUEVO FLUJO PARA DISTRIBUIDOR ---
-    // 2. Abrir el modal de envío
-    const modalRef = this.modal.create<ShippingInfoModalComponent, {}, ShippingInfo>({
-      nzTitle: 'Confirmar Envío del Pedido',
-      nzContent: ShippingInfoModalComponent,
-      nzFooter: null, // El modal tiene sus propios botones
-      nzWidth: 600,
-      nzClosable: false,
-      nzMaskClosable: false,
-      nzKeyboard: false
-    });
-
-    // 3. Esperar a que el modal se cierre
-    modalRef.afterClose.subscribe(async (shippingInfo?: ShippingInfo) => {
-      // Si el usuario confirmó y tenemos los datos del envío
-      if (shippingInfo) {
-        this.processingCheckout = true;
-        this.message.info('Registrando pedido de distribuidor...');
-
-        try {
-          // 4. Llamar al servicio con los datos del envío
-          const result = await this.cartService.createDistributorOrder(shippingInfo);
-
-          if (result.success) {
-            this.cartService.clearCart();
-            this.modal.success({
-              nzTitle: '¡Pedido Registrado Exitosamente!',
-              nzContent: `Tu pedido #${result.orderId} ha sido creado. Nos pondremos en contacto para coordinar la entrega.`,
-              nzOkText: 'Entendido',
-              nzOnOk: () => this.router.navigate(['/shop'])
-            });
-          }
-        } catch (error: any) {
-          console.error('❌ Error en el checkout:', error);
-          this.message.error(error.message || 'Ocurrió un error al procesar el pedido.');
-        } finally {
-          this.processingCheckout = false;
-        }
-      }
-      // Si 'shippingInfo' es undefined, significa que el usuario cerró el modal (canceló), así que no hacemos nada.
-    });
   }
 
 

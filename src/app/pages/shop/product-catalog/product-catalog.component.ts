@@ -366,89 +366,32 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     try {
-      // 1. Obtener la lista base de productos
-      const productsObservable = forceRefresh && this.productService.getProductsNoCache
-        ? this.productService.getProductsNoCache()
-        : this.productService.getProducts();
+        // 1. ✅ OBTENER PRODUCTOS: Llamamos al método apropiado del servicio.
+        // La variable 'products' que recibimos aquí ya contiene los precios
+        // finales calculados (currentPrice, discountPercentage, etc.).
+        const productsObservable = forceRefresh
+            ? this.productService.getProductsNoCache()
+            : this.productService.getProducts();
 
-      const baseProducts = await firstValueFrom(productsObservable);
+        const products = await firstValueFrom(productsObservable);
+        
+        // 🗑️ LÓGICA ELIMINADA: Ya no necesitamos buscar promociones ni recalcular
+        // precios aquí. El ProductService ya hizo todo ese trabajo por nosotros.
 
-      // 2. ✅ CORRECCIÓN: Obtener promociones activas usando el método correcto
-      const activePromotions = await firstValueFrom(this.promotionService.getActivePromotions());
-
-      console.log('🏷️ [CATALOG] Promociones activas encontradas:', activePromotions.length);
-
-      // 3. ✅ CORRECCIÓN: Enriquecer cada producto con promociones de forma consistente
-      const productsWithPrices = baseProducts.map(product => {
-        // Usar el método oficial del servicio
-        const bestPromotion = this.promotionService.findBestPromotionForProduct(product, activePromotions);
-
-        if (bestPromotion) {
-          let discountedPrice = product.price;
-
-          // ✅ USAR LA MISMA LÓGICA QUE EL CART SERVICE
-          if (bestPromotion.discountType === 'percentage') {
-            const discount = product.price * (bestPromotion.discountValue / 100);
-            // Aplicar descuento máximo si está definido
-            const finalDiscount = bestPromotion.maxDiscountAmount
-              ? Math.min(discount, bestPromotion.maxDiscountAmount)
-              : discount;
-            discountedPrice = product.price - finalDiscount;
-          } else { // 'fixed'
-            discountedPrice = product.price - bestPromotion.discountValue;
-          }
-
-          // Asegurar que el precio no sea negativo
-          discountedPrice = Math.max(0, discountedPrice);
-
-          const discountPercentage = product.price > 0
-            ? Math.round(((product.price - discountedPrice) / product.price) * 100)
-            : 0;
-
-          console.log(`🏷️ [CATALOG] Promoción aplicada a ${product.name}: ${product.price} → ${discountedPrice} (${discountPercentage}%)`);
-
-          return {
-            ...product,
-            currentPrice: discountedPrice,
-            originalPrice: product.price,
-            discountPercentage: discountPercentage,
-            // ✅ AGREGAR: Información de la promoción para debugging
-            appliedPromotionId: bestPromotion.id,
-            appliedPromotionName: bestPromotion.name
-          };
-        }
-
-        // Si no hay promoción, devolver el producto sin cambios
-        return {
-          ...product,
-          currentPrice: product.price,
-          originalPrice: undefined,
-          discountPercentage: 0
-        };
-      });
-
-      console.log('🏷️ [CATALOG] Productos procesados:', {
-        total: productsWithPrices.length,
-        conPromociones: productsWithPrices.filter(p => p.discountPercentage > 0).length
-      });
-
-      // 4. ✅ CORRECCIÓN: Forzar detección de cambios después de procesar
-      this.products = productsWithPrices.map(p => this.initializeProductVariantState(p));
-      this.updatePriceRange();
-      this.applyFilters();
-
-      // ✅ FORZAR actualización de la UI
-      this.cdr.detectChanges();
+        // 2. ✅ ASIGNAR Y CONTINUAR: Asignamos los productos listos para usar.
+        this.products = products.map(p => this.initializeProductVariantState(p));
+        this.updatePriceRange();
+        this.applyFilters();
 
     } catch (error) {
-      console.error('❌ Error cargando productos:', error);
-      this.message.error('Error al cargar productos');
-      throw error;
+        console.error('❌ Error cargando productos en el catálogo:', error);
+        this.message.error('Error al cargar productos');
     } finally {
-      this.loading = false;
-      this.cdr.detectChanges();
+        this.loading = false;
+        // Forzamos una detección de cambios final para asegurar que la UI se renderice.
+        this.cdr.detectChanges();
     }
-  }
+}
 
 
   private initializeProductVariantState(product: Product): ProductWithSelectedVariant {
