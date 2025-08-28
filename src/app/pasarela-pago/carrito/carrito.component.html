@@ -43,7 +43,7 @@
           [class.updating-item]="updating">
 
           <div class="item-image">
-            <img [src]="getVariantImage(item)" [alt]="item.product?.name" class="product-image"/>
+            <img [src]="getVariantImage(item)" [alt]="item.product?.name" class="product-image" />
           </div>
 
           <div class="item-details">
@@ -107,7 +107,8 @@
             <div class="quantity-section">
               <span class="quantity-label">Cantidad</span>
               <div class="quantity-controls">
-                <button class="qty-btn" [disabled]="updating || item.quantity <= 1" (click)="updateQuantity(item, item.quantity - 1)">−</button>
+                <button class="qty-btn" [disabled]="updating || item.quantity <= 1"
+                  (click)="updateQuantity(item, item.quantity - 1)">−</button>
                 <input type="number" [(ngModel)]="item.quantity" [disabled]="updating"
                   (change)="updateQuantity(item, item.quantity)" min="1" [max]="item.variant?.stock || 10"
                   class="qty-input">
@@ -194,15 +195,19 @@
         <!-- Usuario registrado -->
         <div class="checkout-actions">
           <div *ngIf="currentUser && !currentUser.isAnonymous">
-            <button class="checkout-btn" [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout"
-              (click)="proceedToCheckout()">
-              <span *ngIf="!processingCheckout">
-                <!-- ✅ Lógica condicional para el texto -->
-                <ng-container *ngIf="!isDistributor; else distributorText">Botón de pago</ng-container>
-                <ng-template #distributorText>Registrar Pedido</ng-template>
-              </span>
-              <span *ngIf="processingCheckout">Procesando...</span>
-            </button>
+            <div class="actions-row-flex">
+              <button class="checkout-btn" [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout"
+                (click)="proceedToCheckout()">
+                <span *ngIf="!processingCheckout">
+                  <ng-container *ngIf="!isDistributor; else distributorText">Botón de pago</ng-container>
+                  <ng-template #distributorText>Registrar Pedido</ng-template>
+                </span>
+                <span *ngIf="processingCheckout">Procesando...</span>
+              </button>
+              <button class="mobile-clear" (click)="clearCart()" [disabled]="updating">
+                Limpiar
+              </button>
+            </div>
           </div>
         </div>
 

@@ -522,7 +522,7 @@
 }
 
 .checkout-btn {
-    width: 150%;
+    flex: 2; /* Ocupa el doble de espacio */
     height: 60px;
     background: #ffffff;
     color: #000000;
@@ -535,6 +535,7 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+    min-width: 0; /* Permite compresión si es necesario */
 }
 
 .checkout-btn::before {
@@ -568,6 +569,97 @@
     transform: translateY(-1px);
 }
 
+/* REEMPLAZAR la sección de checkout-actions existente con esta versión flexbox */
+
+/* Botones de checkout - Layout con flexbox */
+.checkout-actions {
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.actions-row-flex {
+    display: flex;
+    gap: 12px;
+    align-items: stretch; /* Asegura que ambos botones tengan la misma altura */
+    width: 100%;
+}
+
+.checkout-btn {
+    flex: 3; /* Ocupa el doble de espacio */
+    height: 60px;
+    background: #ffffff;
+    color: #000000;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    min-width: 200px; /* Permite compresión si es necesario */
+}
+
+.checkout-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent);
+    transition: left 0.6s ease;
+}
+
+.checkout-btn:hover:not(:disabled) {
+    background: #f5f5f5;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(255, 255, 255, 0.4);
+}
+
+.checkout-btn:hover::before {
+    left: 100%;
+}
+
+.checkout-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.checkout-btn:active:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+/* Botón limpiar - Proporcional */
+.actions-row-flex .mobile-clear {
+    flex: 1; /* Ocupa la mitad del espacio que el botón principal */
+    height: 60px;
+    background: transparent;
+    color: #ffffff;
+    border: 1px solid #666666;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 90px; /* Ancho mínimo para que quepa "LIMPIAR" */
+}
+
+.actions-row-flex .mobile-clear:hover:not(:disabled) {
+    background: #333333;
+    border-color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
+}
+
+.actions-row-flex .mobile-clear:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+}
 /* Auth notices */
 .auth-notice {
     background: #111111;

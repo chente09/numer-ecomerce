@@ -21,6 +21,7 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { ShippingInfoModalComponent, ShippingInfo } from '../shipping-info-modal/shipping-info-modal.component';
+import { NzGridModule } from 'ng-zorro-antd/grid';
 
 @Component({
   selector: 'app-carrito',
@@ -38,7 +39,8 @@ import { ShippingInfoModalComponent, ShippingInfo } from '../shipping-info-modal
     NzModalModule,
     NzAlertModule,
     NzTagModule,
-    NzDividerModule
+    NzDividerModule,
+    NzGridModule
   ],
   templateUrl: './carrito.component.html',
   styleUrl: './carrito.component.css'
