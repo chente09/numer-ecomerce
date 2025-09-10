@@ -64,6 +64,9 @@ export interface CouponUsage {
     usageCount: number;
     lastUsedAt: Date;
     orderIds: string[]; // Para rastrear en qué pedidos se usó
+    // ✅ NUEVOS CAMPOS AGREGADOS
+    createdAt?: Date; // Cuando se usó por primera vez
+    updatedAt?: Date; // Última actualización del registro
 }
 
 export interface AppliedPromotion {
@@ -110,7 +113,7 @@ export interface Product {
     distributorCost?: number;
     gender?: 'man' | 'woman' | 'boy' | 'girl' | 'unisex';
     originalPrice?: number;
-    promotionId?: string; 
+    promotionId?: string;
     currentPrice?: number;
     discountPercentage?: number;
     imageUrl: string;

@@ -9,6 +9,7 @@ import { User } from '@angular/fire/auth';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ShippingInfo } from '../../shipping-info-modal/shipping-info-modal.component';
+import { CouponUsageService } from '../../../services/admin/coupon-usage/coupon-usage.service';
 
 
 @Injectable({
@@ -20,6 +21,7 @@ export class CartService implements OnDestroy {
   private productService = inject(ProductService);
   private usersService = inject(UsersService);
   private promotionService = inject(PromotionService);
+  private couponUsageService = inject(CouponUsageService);
   private message = inject(NzMessageService);
   private http = inject(HttpClient);
 
@@ -87,87 +89,87 @@ export class CartService implements OnDestroy {
   public getVariantById = (variantId: string): Observable<ProductVariant | undefined> => this.productService.getVariantById(variantId);
 
   public addToCart(productId: string, variantId: string, quantity: number): Observable<boolean> {
-  const promise = (async () => {
-    // 1. Obtener los datos más frescos del producto y la variante.
-    // El 'product' que recibimos de getProductById ya viene con su precio final calculado.
-    const [product, variant] = await Promise.all([
-      firstValueFrom(this.productService.getProductById(productId)),
-      firstValueFrom(this.getVariantById(variantId)),
-    ]);
+    const promise = (async () => {
+      // 1. Obtener los datos más frescos del producto y la variante.
+      // El 'product' que recibimos de getProductById ya viene con su precio final calculado.
+      const [product, variant] = await Promise.all([
+        firstValueFrom(this.productService.getProductById(productId)),
+        firstValueFrom(this.getVariantById(variantId)),
+      ]);
 
-    if (!product || !variant) throw new Error("Producto o variante no encontrados.");
+      if (!product || !variant) throw new Error("Producto o variante no encontrados.");
 
-    // 2. Validar stock (sin cambios)
-    const currentItems = this.getCart().items;
-    const existingItem = currentItems.find(i => i.variantId === variantId);
-    const newQuantity = (existingItem?.quantity || 0) + quantity;
-    if (variant.stock < newQuantity) throw new Error(`Stock insuficiente. Disponibles: ${variant.stock}`);
+      // 2. Validar stock (sin cambios)
+      const currentItems = this.getCart().items;
+      const existingItem = currentItems.find(i => i.variantId === variantId);
+      const newQuantity = (existingItem?.quantity || 0) + quantity;
+      if (variant.stock < newQuantity) throw new Error(`Stock insuficiente. Disponibles: ${variant.stock}`);
 
-    // 3. ✅ NUEVA LÓGICA DE PRECIOS Y TÍTULOS: Lee la información que ya existe.
-    let unitPrice = 0;
-    let originalUnitPrice: number | undefined = undefined;
-    let appliedPromotionTitle: string | undefined = undefined;
+      // 3. ✅ NUEVA LÓGICA DE PRECIOS Y TÍTULOS: Lee la información que ya existe.
+      let unitPrice = 0;
+      let originalUnitPrice: number | undefined = undefined;
+      let appliedPromotionTitle: string | undefined = undefined;
 
-    // Prioridad 1: Usar el precio de la VARIANTE si tiene un descuento específico.
-    if (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice) {
-      unitPrice = variant.discountedPrice;
-      originalUnitPrice = variant.originalPrice;
-      // Obtenemos el nombre de la promoción de la variante
-      if (variant.promotionId) {
-        const promo = await firstValueFrom(this.promotionService.getPromotionById(variant.promotionId));
-        appliedPromotionTitle = promo?.name; // <-- AQUÍ SE OBTIENE EL NOMBRE
+      // Prioridad 1: Usar el precio de la VARIANTE si tiene un descuento específico.
+      if (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice) {
+        unitPrice = variant.discountedPrice;
+        originalUnitPrice = variant.originalPrice;
+        // Obtenemos el nombre de la promoción de la variante
+        if (variant.promotionId) {
+          const promo = await firstValueFrom(this.promotionService.getPromotionById(variant.promotionId));
+          appliedPromotionTitle = promo?.name; // <-- AQUÍ SE OBTIENE EL NOMBRE
+        }
       }
-    } 
-    // Prioridad 2: Usar el precio del PRODUCTO si tiene un descuento general.
-    else if (product.currentPrice && product.originalPrice && product.currentPrice < product.originalPrice) {
-      unitPrice = product.currentPrice;
-      originalUnitPrice = product.originalPrice;
-      // Obtenemos el nombre de la promoción del producto
-      if (product.promotionId) {
-        const promo = await firstValueFrom(this.promotionService.getPromotionById(product.promotionId));
-        appliedPromotionTitle = promo?.name; // <-- O AQUÍ SE OBTIENE EL NOMBRE
+      // Prioridad 2: Usar el precio del PRODUCTO si tiene un descuento general.
+      else if (product.currentPrice && product.originalPrice && product.currentPrice < product.originalPrice) {
+        unitPrice = product.currentPrice;
+        originalUnitPrice = product.originalPrice;
+        // Obtenemos el nombre de la promoción del producto
+        if (product.promotionId) {
+          const promo = await firstValueFrom(this.promotionService.getPromotionById(product.promotionId));
+          appliedPromotionTitle = promo?.name; // <-- O AQUÍ SE OBTIENE EL NOMBRE
+        }
       }
-    }
-    // Prioridad 3: Usar el precio base si no hay descuentos.
-    else {
-      unitPrice = variant.price || product.price;
-      originalUnitPrice = undefined;
-      appliedPromotionTitle = undefined;
-    }
-    
-    // 4. Construir y guardar el item del carrito con el título correcto
-    let newItems: CartItem[];
-    const newItemData: CartItem = {
-      productId,
-      variantId,
-      quantity,
-      product,
-      variant,
-      unitPrice,
-      originalUnitPrice,
-      appliedPromotionTitle, // <-- El nombre correcto se guarda aquí
-      totalPrice: unitPrice * quantity,
-    };
-    
-    if (existingItem) {
-      newItemData.quantity = newQuantity;
-      newItemData.totalPrice = unitPrice * newQuantity;
-      newItems = currentItems.map(item => item.variantId === variantId ? newItemData : item);
-    } else {
-      newItems = [...currentItems, newItemData];
-    }
+      // Prioridad 3: Usar el precio base si no hay descuentos.
+      else {
+        unitPrice = variant.price || product.price;
+        originalUnitPrice = undefined;
+        appliedPromotionTitle = undefined;
+      }
 
-    this.updateAndSync(newItems);
-  })();
+      // 4. Construir y guardar el item del carrito con el título correcto
+      let newItems: CartItem[];
+      const newItemData: CartItem = {
+        productId,
+        variantId,
+        quantity,
+        product,
+        variant,
+        unitPrice,
+        originalUnitPrice,
+        appliedPromotionTitle, // <-- El nombre correcto se guarda aquí
+        totalPrice: unitPrice * quantity,
+      };
 
-  return from(promise).pipe(
-    map(() => true),
-    catchError(err => {
-      this.message.error(err instanceof Error ? err.message : 'No se pudo añadir al carrito.');
-      return of(false);
-    })
-  );
-}
+      if (existingItem) {
+        newItemData.quantity = newQuantity;
+        newItemData.totalPrice = unitPrice * newQuantity;
+        newItems = currentItems.map(item => item.variantId === variantId ? newItemData : item);
+      } else {
+        newItems = [...currentItems, newItemData];
+      }
+
+      this.updateAndSync(newItems);
+    })();
+
+    return from(promise).pipe(
+      map(() => true),
+      catchError(err => {
+        this.message.error(err instanceof Error ? err.message : 'No se pudo añadir al carrito.');
+        return of(false);
+      })
+    );
+  }
 
   public updateItemQuantity(variantId: string, quantity: number): Observable<boolean> {
     if (quantity <= 0) {
@@ -197,32 +199,90 @@ export class CartService implements OnDestroy {
   }
 
   /**
-   * ✅ MÉTODO REFACTORIZADO: Valida y aplica un código de descuento.
-   */
+ * Valida y aplica un código de descuento con verificación completa de límites
+ */
   public async applyDiscountCode(code: string): Promise<{ success: boolean; message: string }> {
     if (!code.trim()) {
       return { success: false, message: 'Por favor, ingresa un código.' };
     }
 
-    const promotion = await firstValueFrom(this.promotionService.getPromotionByCode(code));
-
-    if (!promotion) {
-      return { success: false, message: 'El código de descuento no es válido o ha expirado.' };
+    const currentUserId = this.currentUserId;
+    if (!currentUserId) {
+      return { success: false, message: 'Debes iniciar sesión para usar cupones.' };
     }
 
-    const cart = this.getCart();
+    try {
+      // 1. Buscar el cupón por código
+      const promotion = await firstValueFrom(this.promotionService.getPromotionByCode(code));
 
-    // Validar monto mínimo de compra
-    if (promotion.minPurchaseAmount && cart.subtotal < promotion.minPurchaseAmount) {
-      return { success: false, message: `Este código requiere una compra mínima de $${promotion.minPurchaseAmount.toFixed(2)}.` };
+      if (!promotion) {
+        return { success: false, message: 'El código de descuento no es válido o ha expirado.' };
+      }
+
+      const cart = this.getCart();
+
+      // 2. Validar completamente el cupón (incluyendo límites de uso)
+      const validation = await this.couponUsageService.validateCouponForCheckout(
+        currentUserId,
+        promotion,
+        cart.subtotal
+      );
+
+      if (!validation.isValid) {
+        return { success: false, message: validation.errorMessage || 'El cupón no es válido.' };
+      }
+
+      // 3. Si todo es válido, aplicar el cupón
+      this.appliedCoupon = promotion;
+      this.updateAndSync(cart.items); // Esto forzará un recálculo
+
+      return {
+        success: true,
+        message: `¡Cupón "${promotion.name}" aplicado con éxito!` +
+          (validation.usageInfo ? ` (Uso ${validation.usageInfo.userUsage + 1}/${promotion.usageLimits?.perUser || '∞'})` : '')
+      };
+
+    } catch (error) {
+      console.error('Error aplicando cupón:', error);
+      return {
+        success: false,
+        message: 'Error al validar el cupón. Intenta nuevamente.'
+      };
     }
-
-    // Si todo es válido, guardamos el cupón y recalculamos el carrito
-    this.appliedCoupon = promotion;
-    this.updateAndSync(cart.items); // Esto forzará un recálculo
-
-    return { success: true, message: `¡Cupón "${promotion.name}" aplicado con éxito!` };
   }
+
+  /**
+ * Registra el uso de un cupón cuando se confirma el pedido
+ * IMPORTANTE: Este método debe ser llamado desde tu componente de confirmación de compra
+ */
+  public async recordCouponUsageForOrder(orderId: string): Promise<void> {
+    if (!this.appliedCoupon || !this.currentUserId) {
+      return; // No hay cupón aplicado o no hay usuario
+    }
+
+    try {
+      await this.couponUsageService.recordCouponUsage(
+        this.currentUserId,
+        this.appliedCoupon.id,
+        this.appliedCoupon.couponCode!,
+        orderId
+      );
+
+      console.log(`Uso de cupón registrado: ${this.appliedCoupon.couponCode} en pedido ${orderId}`);
+    } catch (error) {
+      console.error('Error registrando uso de cupón:', error);
+      // No lanzar error aquí para no afectar el checkout
+    }
+  }
+
+  /**
+ * Obtiene información del cupón actualmente aplicado
+ */
+  public getAppliedCoupon(): Promotion | null {
+    return this.appliedCoupon;
+  }
+
+
 
   /**
    * ✅ NUEVO: Remueve el cupón aplicado
@@ -293,11 +353,15 @@ export class CartService implements OnDestroy {
   /**
    * ✅ NUEVO: Valida el stock de todos los items del carrito en tiempo real.
    */
-  public async validateCartForCheckout(): Promise<{ isValid: boolean; unavailableItems: CartItem[] }> {
+  public async validateCartForCheckout(): Promise<{
+    isValid: boolean;
+    unavailableItems: CartItem[];
+    couponError?: string;
+  }> {
     const cart = this.getCart();
     const unavailableItems: CartItem[] = [];
 
-    // Creamos un array de promesas para verificar el stock de cada item en paralelo
+    // 1. Validar stock (código existente)
     const stockChecks = cart.items.map(async (item) => {
       const variant = await firstValueFrom(this.getVariantById(item.variantId));
       if (!variant || variant.stock < item.quantity) {
@@ -307,9 +371,29 @@ export class CartService implements OnDestroy {
 
     await Promise.all(stockChecks);
 
+    // 2. Validar cupón aplicado si existe
+    let couponError: string | undefined = undefined;
+
+    if (this.appliedCoupon && this.currentUserId) {
+      try {
+        const couponValidation = await this.couponUsageService.validateCouponForCheckout(
+          this.currentUserId,
+          this.appliedCoupon,
+          cart.subtotal
+        );
+
+        if (!couponValidation.isValid) {
+          couponError = couponValidation.errorMessage;
+        }
+      } catch (error) {
+        couponError = 'Error al validar el cupón aplicado.';
+      }
+    }
+
     return {
-      isValid: unavailableItems.length === 0,
-      unavailableItems: unavailableItems
+      isValid: unavailableItems.length === 0 && !couponError,
+      unavailableItems,
+      couponError
     };
   }
 
@@ -380,9 +464,7 @@ export class CartService implements OnDestroy {
   /**
    * Envía el carrito a tu backend para ser procesado como un pedido de distribuidor.
    */
-  /**
- * Envía el carrito y los detalles de envío al backend.
- */
+
   public async createDistributorOrder(shippingDetails: ShippingInfo): Promise<{ success: boolean; orderId?: string }> {
     const cart = this.getCart();
     if (cart.items.length === 0) {

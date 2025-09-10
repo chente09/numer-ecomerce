@@ -344,15 +344,15 @@ export class CarritoComponent implements OnInit, OnDestroy {
     }
 
     this.processingCheckout = true;
-    this.message.loading('Verificando disponibilidad de productos...', { nzDuration: 0 });
+    this.message.loading('Verificando disponibilidad de productos y cupones...', { nzDuration: 0 });
 
     try {
-      // 2. ✅ PASO CLAVE: Validar el stock de todo el carrito en tiempo real
+      // 2. VALIDACIÓN MEJORADA: Incluye stock Y cupones
       const validation = await this.cartService.validateCartForCheckout();
 
-      // 3. Si la validación falla, detener el proceso
-      if (!validation.isValid) {
-        this.message.remove(); // Quitar el mensaje de "cargando"
+      // 3. Manejar errores de stock
+      if (validation.unavailableItems.length > 0) {
+        this.message.remove();
         const unavailableNames = validation.unavailableItems.map(item => item.product?.name).join(', ');
 
         this.modal.warning({
@@ -361,17 +361,37 @@ export class CarritoComponent implements OnInit, OnDestroy {
           nzOkText: 'Entendido'
         });
 
-        // Importante: Detenemos la ejecución aquí
         this.processingCheckout = false;
         return;
       }
 
-      // Si la validación es exitosa, quitamos el mensaje de carga
+      // 4. NUEVO: Manejar errores de cupón
+      if (validation.couponError) {
+        this.message.remove();
+
+        this.modal.error({
+          nzTitle: 'Problema con el cupón',
+          nzContent: validation.couponError + ' ¿Deseas continuar sin el cupón?',
+          nzOkText: 'Continuar sin cupón',
+          nzCancelText: 'Revisar cupón',
+          nzOnOk: () => {
+            // Remover el cupón y continuar
+            this.cartService.removeDiscountCode();
+            this.message.info('Cupón removido. Continuando con la compra...');
+            this.proceedToCheckout(); // Reintentar
+          },
+          nzOnCancel: () => {
+            this.processingCheckout = false;
+          }
+        });
+        return;
+      }
+
+      // 5. Si todo está válido, continuar con el flujo normal
       this.message.remove();
 
-      // 4. Continuar con el flujo específico para cada tipo de usuario
       if (this.isDistributor) {
-        // --- Flujo para Distribuidor (con stock ya validado) ---
+        // --- Flujo para Distribuidor (SIN CUPONES) ---
         const modalRef = this.modal.create<ShippingInfoModalComponent, {}, ShippingInfo>({
           nzTitle: 'Confirmar Envío del Pedido',
           nzContent: ShippingInfoModalComponent,
@@ -386,6 +406,8 @@ export class CarritoComponent implements OnInit, OnDestroy {
             this.message.info('Registrando pedido...');
             const result = await this.cartService.createDistributorOrder(shippingInfo);
             if (result.success) {
+              // NOTA: Los distribuidores NO usan cupones, por eso NO agregamos recordCouponUsageForOrder aquí
+
               this.cartService.clearCart();
               this.modal.success({
                 nzTitle: '¡Pedido Registrado Exitosamente!',
@@ -395,24 +417,34 @@ export class CarritoComponent implements OnInit, OnDestroy {
               });
             }
           }
+          this.processingCheckout = false;
         });
       } else {
-        // --- Flujo para Cliente Normal (con stock ya validado) ---
+        // --- Flujo para Cliente Normal (CON posibles cupones) ---
+        // NOTA: El registro de cupón se hace en payphone-form.component.ts y respuesta-pago.component.ts
+        this.processingCheckout = false;
         this.router.navigate(['/pago']);
       }
 
     } catch (error: any) {
       this.message.remove();
       this.message.error(error.message || 'Ocurrió un error al verificar tu pedido.');
-    } finally {
-      // Nota: El 'processingCheckout' se maneja dentro de los flujos para que el botón no se reactive prematuramente.
-      // Solo lo desactivamos aquí en caso de un error temprano.
-      if (this.processingCheckout) {
-        this.processingCheckout = false;
-      }
+      this.processingCheckout = false;
     }
   }
 
+  getAppliedCouponInfo(): string {
+    const coupon = this.cartService.getAppliedCoupon();
+    if (!coupon) return '';
+
+    let info = `Cupón: ${coupon.name}`;
+
+    if (coupon.usageLimits?.perUser) {
+      info += ` (Límite: ${coupon.usageLimits.perUser} uso${coupon.usageLimits.perUser > 1 ? 's' : ''} por usuario)`;
+    }
+
+    return info;
+  }
 
   // ✅ NUEVO: Verificar si un item tiene stock suficiente
   hasValidStock(item: CartItem): boolean {

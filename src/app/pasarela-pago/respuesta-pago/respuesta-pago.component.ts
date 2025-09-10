@@ -75,7 +75,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     private message: NzMessageService,
     private activityLogService: ActivityLogService,
     private usersService: UsersService,  // ✅ AGREGAR
-    private modalService: NzModalService 
+    private modalService: NzModalService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -98,11 +98,11 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
         if (!currentUser || currentUser.isAnonymous) {
           this.error = 'Debes iniciar sesión para ver los detalles del pago';
           this.loading = false;
-          
+
           // Redirigir a login después de 2 segundos
           setTimeout(() => {
             this.router.navigate(['/login'], {
-              queryParams: { 
+              queryParams: {
                 returnUrl: '/respuesta-pago',
                 id: id,
                 clientTransactionId: clientTxId
@@ -150,18 +150,18 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
           },
           error: err => {
             console.error('❌ Error en confirmación:', err);
-            
+
             // ✅ MEJORAR MANEJO DE ERRORES
             if (err.status === 401 || err.status === 403) {
               this.error = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
-              
+
               // Modal de error
               this.modalService.error({
                 nzTitle: 'Sesión Expirada',
                 nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
                 nzOnOk: () => {
                   this.router.navigate(['/login'], {
-                    queryParams: { 
+                    queryParams: {
                       returnUrl: '/respuesta-pago',
                       id: id,
                       clientTransactionId: clientTxId
@@ -172,7 +172,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
             } else {
               this.error = err.error?.error || 'Error al confirmar el pago';
             }
-            
+
             this.loading = false;
           }
         });
@@ -198,17 +198,26 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     );
 
     if (shouldClearCart) {
-      console.log('✅ Pago confirmado, limpiando carrito...');
+      console.log('Pago confirmado, limpiando carrito...');
 
       // Obtener datos del carrito ANTES de limpiarlo
       const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
       const transactionId = confirmationResponse.transactionId;
 
+      // NUEVO: Registrar uso de cupón ANTES de limpiar carrito
+      try {
+        await this.cartService.recordCouponUsageForOrder(transactionId);
+        console.log('Uso de cupón registrado para transacción:', transactionId);
+      } catch (couponError) {
+        console.warn('Error registrando uso de cupón (no crítico):', couponError);
+        // No afectar el flujo principal por error de cupón
+      }
+
       // Registrar compra (solo si hay items en el carrito)
       if (currentCart && currentCart.items.length > 0) {
         try {
           await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
-          console.log('💰 Compra registrada exitosamente desde respuesta-pago');
+          console.log('Compra registrada exitosamente desde respuesta-pago');
         } catch (error) {
           console.warn('Error registrando compra:', error);
         }
@@ -216,7 +225,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
 
       this.cartService.clearCart();
     } else {
-      console.warn('⚠️ Pago no confirmado');
+      console.warn('Pago no confirmado');
     }
   }
 
