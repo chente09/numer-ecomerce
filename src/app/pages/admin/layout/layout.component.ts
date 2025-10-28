@@ -45,6 +45,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { title: 'Dashboard', icon: 'dashboard', path: '/admin/dashboard' },
     { title: 'Productos', icon: 'shopping', path: '/admin/products' },
     { title: 'Categorías', icon: 'appstore', path: '/admin/categories' },
+    { title: 'Carreras', icon: 'flag', path: '/admin/carreras' },
     { title: 'Distribuidores', icon: 'deployment-unit', path: '/admin/distributors' },
     { title: 'Gestión de Usuarios', icon: 'team', path: '/admin/user-roles' },
     { title: 'Sitemap & SEO', icon: 'global', path: '/admin/sitemap' },

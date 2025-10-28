@@ -1,0 +1,430 @@
+<div class="races-container">
+    <nz-card nzTitle="Administrar Carreras" class="mb-4 header-card">
+        <div class="card-actions">
+            <button nz-button nzType="primary" (click)="openModal()">
+                <span nz-icon nzType="plus"></span>
+                <span class="button-text">Nueva Carrera</span>
+            </button>
+        </div>
+    </nz-card>
+
+    <nz-empty *ngIf="!loading && races?.length === 0" nzNotFoundContent="No hay carreras disponibles"
+        [nzNotFoundFooter]="emptyButton">
+    </nz-empty>
+    <ng-template #emptyButton>
+        <button nz-button nzType="primary" (click)="openModal()">Crear primera carrera</button>
+    </ng-template>
+
+    <div *ngIf="loading" class="loading-skeleton">
+        <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 4 }"></nz-skeleton>
+    </div>
+
+    <div class="table-responsive" *ngIf="!loading && races && races.length > 0">
+        <nz-table #tabla [nzData]="races" [nzBordered]="true" [nzLoading]="loading" [nzShowPagination]="true"
+            [nzPageSize]="10">
+            <thead>
+                <tr>
+                    <th nzWidth="auto">Imagen</th>
+                    <th nzWidth="auto">Nombre</th>
+                    <th nzWidth="auto" class="hide-sm">Fecha</th>
+                    <th nzWidth="auto" class="hide-md">Cupos</th>
+                    <th nzWidth="auto" class="hide-sm">Estado</th>
+                    <th nzWidth="auto">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let race of tabla.data" [class.highlight-row]="selectedRace?.id === race.id">
+                    <td>
+                        <nz-avatar [nzSrc]="race.imagenPrincipal" nzShape="square" nzSize="large" [nzAlt]="race.nombre"
+                            (error)="handleImageError($event)"></nz-avatar>
+                    </td>
+                    <td>{{ race.nombre }}</td>
+                    <td class="hide-sm">{{ race.fecha | date:'dd/MM/yyyy' }}</td>
+                    <td class="hide-md">
+                        {{ race.inscritosActuales }} / {{ race.cupoMaximo || '∞' }}
+                    </td>
+                    <td class="hide-sm">
+                        <nz-tag [nzColor]="race.publicado ? 'green' : 'orange'">
+                            {{ race.publicado ? 'Publicado' : 'Borrador' }}
+                        </nz-tag>
+                        <nz-tag [nzColor]="race.activo ? 'blue' : 'red'">
+                            {{ race.activo ? 'Activo' : 'Inactivo' }}
+                        </nz-tag>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button nz-button nzSize="small" (click)="editRace(race)" nz-tooltip
+                                nzTooltipTitle="Editar">
+                                <span nz-icon nzType="edit"></span>
+                            </button>
+                            <button nz-button nz-popconfirm
+                                nzPopconfirmTitle="¿Seguro que quieres eliminar esta carrera?"
+                                nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteRace(race.id)" nzSize="small"
+                                nz-tooltip nzTooltipTitle="Eliminar">
+                                <i nz-icon nzType="delete" nzTheme="outline"></i>
+                            </button>
+                            <button nz-button nzSize="small" (click)="showDetails(race)" nz-tooltip
+                                nzTooltipTitle="Ver detalles" class="show-sm">
+                                <i nz-icon nzType="eye" nzTheme="outline"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </nz-table>
+    </div>
+
+    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Carrera' : 'Nueva Carrera'"
+        [nzOkLoading]="saving" (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="modalWidth" nzCentered
+        nzOkText="Guardar Carrera" nzCancelText="Cancelar" [nzOkDisabled]="!raceForm.valid || saving">
+
+        <ng-container *nzModalContent>
+            <form [formGroup]="raceForm" nz-form nzLayout="vertical">
+                <nz-tabset>
+
+                    <nz-tab nzTitle="General">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Nombre</nz-form-label>
+                                    <nz-form-control nzErrorTip="Por favor ingresa un nombre">
+                                        <input nz-input formControlName="nombre"
+                                            placeholder="Ej. Carrera de Montaña 10K" (blur)="generateSlug()" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Slug (URL)</nz-form-label>
+                                    <nz-form-control nzErrorTip="El slug debe ser válido (ej. carrera-10k)">
+                                        <input nz-input formControlName="slug" placeholder="Ej. carrera-10k" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Fecha de la Carrera</nz-form-label>
+                                    <nz-form-control nzErrorTip="Selecciona una fecha">
+                                        <nz-date-picker formControlName="fecha" style="width: 100%;"></nz-date-picker>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Hora de Inicio</nz-form-label>
+                                    <nz-form-control nzErrorTip="Ingresa una hora">
+                                        <input nz-input type="time" formControlName="horaInicio" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Descripción</nz-form-label>
+                            <nz-form-control nzErrorTip="Ingresa una descripción">
+                                <textarea nz-input formControlName="descripcion"
+                                    placeholder="Describe los detalles de la carrera..."
+                                    [nzAutosize]="{ minRows: 4, maxRows: 8 }"></textarea>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </nz-tab>
+
+                    <nz-tab nzTitle="Clasificación">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Tipo de Evento</nz-form-label>
+                                    <nz-form-control nzErrorTip="Selecciona un tipo">
+                                        <nz-select formControlName="tipoEvento" nzPlaceHolder="Seleccionar...">
+                                            <nz-option *ngFor="let type of raceTypes" [nzValue]="type.value"
+                                                [nzLabel]="type.label"></nz-option>
+                                        </nz-select>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Categoría</nz-form-label>
+                                    <nz-form-control nzErrorTip="Selecciona una categoría">
+                                        <nz-select formControlName="categoria" nzPlaceHolder="Seleccionar...">
+                                            <nz-option *ngFor="let cat of raceCategories" [nzValue]="cat.value"
+                                                [nzLabel]="cat.label"></nz-option>
+                                        </nz-select>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Dificultad</nz-form-label>
+                                    <nz-form-control nzErrorTip="Selecciona una dificultad">
+                                        <nz-select formControlName="dificultad" nzPlaceHolder="Seleccionar...">
+                                            <nz-option *ngFor="let diff of raceDifficulties" [nzValue]="diff.value"
+                                                [nzLabel]="diff.label"></nz-option>
+                                        </nz-select>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Ubicación (Lugar)</nz-form-label>
+                                    <nz-form-control nzErrorTip="Ingresa la ubicación">
+                                        <input nz-input formControlName="ubicacion"
+                                            placeholder="Ej. Parque Metropolitano" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Ciudad</nz-form-label>
+                                    <nz-form-control nzErrorTip="Ingresa la ciudad">
+                                        <input nz-input formControlName="ciudad" placeholder="Ej. Quito" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Provincia</nz-form-label>
+                                    <nz-form-control nzErrorTip="Selecciona una provincia">
+                                        <nz-select formControlName="provincia" nzPlaceHolder="Seleccionar..."
+                                            nzShowSearch>
+                                            <nz-option *ngFor="let prov of ecuadorianProvinces" [nzValue]="prov"
+                                                [nzLabel]="prov"></nz-option>
+                                        </nz-select>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label>Latitud (Opcional)</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-input-number formControlName="coordenadasLat" [nzMin]="-90" [nzMax]="90" [nzStep]="0.000001" style="width: 100%;" placeholder="-0.22985"></nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label>Longitud (Opcional)</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-input-number formControlName="coordenadasLng" [nzMin]="-180" [nzMax]="180" [nzStep]="0.000001" style="width: 100%;" placeholder="-78.52498"></nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                    </nz-tab>
+
+                    <nz-tab nzTitle="Comercial y Detalles">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Precio (USD)</nz-form-label>
+                                    <nz-form-control nzErrorTip="Ingresa un precio válido">
+                                        <nz-input-number formControlName="precio" [nzMin]="0" [nzStep]="1"
+                                            [nzPrecision]="2" style="width: 100%;"></nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label>Precio Anterior (Opcional)</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-input-number formControlName="precioAntesDescuento" [nzMin]="0" [nzStep]="1"
+                                            [nzPrecision]="2" style="width: 100%;"></nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label>Cupo Máximo (Opcional)</nz-form-label>
+                                    <nz-form-control nzErrorTip="Debe ser mayor a 0">
+                                        <nz-input-number formControlName="cupoMaximo" [nzMin]="1" [nzStep]="10"
+                                            style="width: 100%;" placeholder="Ilimitado"></nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label>Distancia (Ej. 21K)</nz-form-label>
+                                    <nz-form-control>
+                                        <input nz-input formControlName="distancia" placeholder="Ej. 10K, 21K, 42K" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label>Desnivel Positivo (m)</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-input-number formControlName="denivelePositivo" [nzMin]="0" [nzStep]="100"
+                                            style="width: 100%;"></nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label>Altitud Máxima (msnm)</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-input-number formControlName="altitudMaxima" [nzMin]="0" [nzStep]="100"
+                                            style="width: 100%;"></nz-input-number>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                    </nz-tab>
+
+                    <nz-tab nzTitle="Multimedia">
+                        <nz-form-item>
+                            <nz-form-label>Imagen Principal <span *ngIf="!isEditMode"
+                                    class="required-mark">*</span></nz-form-label>
+                            <nz-form-control>
+                                <div class="upload-container">
+                                    <nz-upload [nzFileList]="mainFileList" [nzBeforeUpload]="beforeUploadMain"
+                                        [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                        [nzPreview]="handlePreview" [nzRemove]="handleRemoveMain"
+                                        nzListType="picture-card">
+                                        <div *ngIf="mainFileList.length < 1">
+                                            <span nz-icon nzType="plus"></span>
+                                            <div class="ant-upload-text">Subir Principal</div>
+                                        </div>
+                                    </nz-upload>
+                                </div>
+                                <div *ngIf="mainImageError" class="error-message">
+                                    {{ mainImageError }}
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Galería (Opcional)</nz-form-label>
+                            <nz-form-control>
+                                <div class="upload-container">
+                                    <nz-upload [nzFileList]="galleryFileList" [nzBeforeUpload]="beforeUploadGallery"
+                                        [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                        [nzPreview]="handlePreview" [nzRemove]="handleRemoveGallery"
+                                        nzListType="picture-card" nzMultiple>
+                                        <div *ngIf="galleryFileList.length < 10"> <span nz-icon nzType="plus"></span>
+                                            <div class="ant-upload-text">Subir Galería</div>
+                                        </div>
+                                    </nz-upload>
+                                </div>
+                                <div *ngIf="galleryImageError" class="error-message">
+                                    {{ galleryImageError }}
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Video Promocional (Opcional)</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="videoPromo" placeholder="Link de YouTube/Vimeo" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </nz-tab>
+
+                    <nz-tab nzTitle="Extras y Estado">
+                        <nz-form-item>
+                            <nz-form-label>¿Qué incluye la inscripción?</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="incluye" nzMode="tags"
+                                    nzPlaceHolder="Escribe y presiona Enter">
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                        <nz-form-item>
+                            <nz-form-label>Requisitos</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="requisitos" nzMode="tags"
+                                    nzPlaceHolder="Escribe y presiona Enter">
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Cierre de Inscripciones</nz-form-label>
+                                    <nz-form-control nzErrorTip="Selecciona una fecha de cierre">
+                                        <nz-date-picker formControlName="fechaInscripcionCierre"
+                                            style="width: 100%;"></nz-date-picker>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="12">
+                                <nz-form-item>
+                                    <nz-form-label>Inicio de Inscripciones</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-date-picker formControlName="fechaInscripcionInicio"
+                                            style="width: 100%;"></nz-date-picker>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label>Publicado (Visible)</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-switch formControlName="publicado"></nz-switch>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label>Activo (Acepta inscrip.)</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-switch formControlName="activo"></nz-switch>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-form-item>
+                                    <nz-form-label>Destacado (Home)</nz-form-label>
+                                    <nz-form-control>
+                                        <nz-switch formControlName="destacado"></nz-switch>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+                    </nz-tab>
+
+                </nz-tabset>
+            </form>
+        </ng-container>
+    </nz-modal>
+
+    <nz-modal [(nzVisible)]="detailsModalVisible" nzTitle="Detalles de Carrera"
+        (nzOnCancel)="detailsModalVisible = false" [nzFooter]="null" [nzWidth]="320" nzCentered>
+        <ng-container *nzModalContent>
+            <div *ngIf="selectedRace" class="race-details">
+                <div class="detail-image">
+                    <img [src]="selectedRace.imagenPrincipal" [alt]="selectedRace.nombre"
+                        (error)="handleImageError($event)">
+                </div>
+                <div class="detail-content">
+                    <h3>{{ selectedRace.nombre }}</h3>
+                    <p><strong>Fecha:</strong> {{ selectedRace.fecha | date:'fullDate' }}</p>
+                    <p><strong>Lugar:</strong> {{ selectedRace.ubicacion }}, {{ selectedRace.ciudad }}</p>
+                    <p><strong>Precio:</strong> {{ selectedRace.precio | currency:'USD' }}</p>
+                    <p><strong>Cupos:</strong> {{ selectedRace.inscritosActuales }} / {{ selectedRace.cupoMaximo ||
+                        'Ilimitados' }}</p>
+                </div>
+                <div class="detail-actions">
+                    <button nz-button (click)="editRace(selectedRace); detailsModalVisible = false">
+                        <span nz-icon nzType="edit"></span> Editar
+                    </button>
+                    <button nz-button nz-popconfirm nzPopconfirmTitle="¿Seguro que quieres eliminar?"
+                        nzPopconfirmPlacement="top"
+                        (nzOnConfirm)="deleteRace(selectedRace.id); detailsModalVisible = false">
+                        <span nz-icon nzType="delete"></span> Eliminar
+                    </button>
+                </div>
+            </div>
+        </ng-container>
+    </nz-modal>
+</div>

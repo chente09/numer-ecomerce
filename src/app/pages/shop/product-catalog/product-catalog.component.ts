@@ -179,19 +179,26 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
     this.seoService.updatePageSEO('shop');
 
     try {
-      // Configurar suscripciones
+      // 🆕 Detectar si venimos de flujo de pago
+      const shouldReload = sessionStorage.getItem('reloadAfterPurchase');
+      if (shouldReload) {
+        console.log('🔄 Recarga después de flujo de pago');
+        sessionStorage.removeItem('reloadAfterPurchase');
+        await this.forceCompleteReload();
+      }
+
       this.setupFilterSubscriptions();
       this.setupPromotionUpdateListener();
       await this.loadFilterOptions();
-      // 🔑 CRÍTICO: Cargar productos DESPUÉS
-      await this.loadProductsAsync();
 
-      // Manejar URL params
+      if (!shouldReload) {
+        await this.loadProductsAsync();
+      }
+
       this.handleUrlParams();
       this.updateActiveFiltersCount();
       this.cdr.detectChanges();
@@ -200,6 +207,37 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       this.message.error('Error al cargar el catálogo');
       this.loading = false;
       this.cdr.detectChanges();
+    }
+  }
+
+  private async forceCompleteReload(): Promise<void> {
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    try {
+      await this.loadProductsAsync(true);
+
+      this.filterForm.reset({
+        categories: [],
+        colors: [],
+        sizes: [],
+        gender: '',
+        priceRange: [0, 1000],
+        priceRanges: [],
+        brands: [],
+        hasDiscount: false,
+        isNew: false,
+        isBestSeller: false,
+        inStock: false
+      });
+
+      this.searchControl.setValue('');
+      this.sortControl.setValue('relevance');
+
+      console.log('✅ Recarga completa exitosa');
+    } catch (error) {
+      console.error('❌ Error en recarga:', error);
+      window.location.reload();
     }
   }
 
@@ -366,32 +404,32 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     try {
-        // 1. ✅ OBTENER PRODUCTOS: Llamamos al método apropiado del servicio.
-        // La variable 'products' que recibimos aquí ya contiene los precios
-        // finales calculados (currentPrice, discountPercentage, etc.).
-        const productsObservable = forceRefresh
-            ? this.productService.getProductsNoCache()
-            : this.productService.getProducts();
+      // 1. ✅ OBTENER PRODUCTOS: Llamamos al método apropiado del servicio.
+      // La variable 'products' que recibimos aquí ya contiene los precios
+      // finales calculados (currentPrice, discountPercentage, etc.).
+      const productsObservable = forceRefresh
+        ? this.productService.getProductsNoCache()
+        : this.productService.getProducts();
 
-        const products = await firstValueFrom(productsObservable);
-        
-        // 🗑️ LÓGICA ELIMINADA: Ya no necesitamos buscar promociones ni recalcular
-        // precios aquí. El ProductService ya hizo todo ese trabajo por nosotros.
+      const products = await firstValueFrom(productsObservable);
 
-        // 2. ✅ ASIGNAR Y CONTINUAR: Asignamos los productos listos para usar.
-        this.products = products.map(p => this.initializeProductVariantState(p));
-        this.updatePriceRange();
-        this.applyFilters();
+      // 🗑️ LÓGICA ELIMINADA: Ya no necesitamos buscar promociones ni recalcular
+      // precios aquí. El ProductService ya hizo todo ese trabajo por nosotros.
+
+      // 2. ✅ ASIGNAR Y CONTINUAR: Asignamos los productos listos para usar.
+      this.products = products.map(p => this.initializeProductVariantState(p));
+      this.updatePriceRange();
+      this.applyFilters();
 
     } catch (error) {
-        console.error('❌ Error cargando productos en el catálogo:', error);
-        this.message.error('Error al cargar productos');
+      console.error('❌ Error cargando productos en el catálogo:', error);
+      this.message.error('Error al cargar productos');
     } finally {
-        this.loading = false;
-        // Forzamos una detección de cambios final para asegurar que la UI se renderice.
-        this.cdr.detectChanges();
+      this.loading = false;
+      // Forzamos una detección de cambios final para asegurar que la UI se renderice.
+      this.cdr.detectChanges();
     }
-}
+  }
 
 
   private initializeProductVariantState(product: Product): ProductWithSelectedVariant {

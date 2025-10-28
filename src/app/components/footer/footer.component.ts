@@ -66,8 +66,8 @@ export class FooterComponent implements OnInit {
   companyLinks = [
     { label: 'Sobre Nosotros', link: '/nosotros' },
     { label: 'Sostenibilidad', link: '/sustainability' },
-    { label: 'Carreras', link: '/careers' },
-    { label: 'Embajadores', link: '/ambassadors' },
+    { label: 'Carreras', link: '/carreras' },
+    { label: 'Embajadores', link: '/embajadores' },
   ];
   
   socialLinks = [

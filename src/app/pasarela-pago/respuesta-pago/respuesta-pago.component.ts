@@ -230,6 +230,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
   }
 
   goToMainFlow(): void {
+    sessionStorage.setItem('reloadAfterPurchase', 'true');
     this.router.navigate(['/shop']);
   }
 
@@ -250,6 +251,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
+    sessionStorage.setItem('reloadAfterPurchase', 'true');
     this.location.back();
   }
 

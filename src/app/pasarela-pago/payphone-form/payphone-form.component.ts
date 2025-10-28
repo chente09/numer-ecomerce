@@ -172,6 +172,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   volverAlCarrito(): void {
+    sessionStorage.setItem('reloadAfterPurchase', 'true');
     this.router.navigate(['/carrito']);
   }
 
@@ -215,7 +216,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private validateCartAsObservable(): Observable<Cart> {
     return this.cartService.cart$.pipe(
       take(1),
-      map(cart => {
+      switchMap(async (cart) => {
         // Validación de carrito vacío
         if (!cart || cart.items.length === 0) {
           this.setError('El carrito está vacío. No se puede procesar el pago.');
@@ -223,7 +224,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           throw new Error('EMPTY_CART');
         }
 
-        // Validación básica (solo existencia de variantes)
+        // Validación básica de stock (solo existencia de variantes)
         const stockValidation = this.validateCartStock(cart);
         if (!stockValidation.valid) {
           this.setError(`Error en el carrito: ${stockValidation.message}`);
@@ -238,11 +239,70 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           throw new Error('INVALID_AMOUNT');
         }
 
-        console.log('✅ Carrito validado, preparando pago...');
+        // ✅ NUEVA VALIDACIÓN: Revalidar cupón aplicado antes del pago
+        const appliedCoupon = this.cartService.getAppliedCoupon();
+        if (appliedCoupon) {
+          console.log('🎫 Revalidando cupón antes de procesar pago...');
+
+          try {
+            // Obtener usuario actual
+            const currentUser = this.usersService.getCurrentUser();
+            if (!currentUser || currentUser.isAnonymous) {
+              throw new Error('Usuario no autenticado para usar cupones');
+            }
+
+            // Usar el servicio de validación completa
+            const couponValidation = await firstValueFrom(
+              this.cartService.cart$.pipe(
+                take(1),
+                switchMap(async (currentCart) => {
+                  // Importar CouponUsageService si no está disponible
+                  // Alternativa: usar la validación del CartService
+                  const result = await this.cartService.applyDiscountCode(appliedCoupon.couponCode!);
+                  return result;
+                })
+              )
+            );
+
+            if (!couponValidation.success) {
+              this.setError(`Cupón no válido: ${couponValidation.message}`);
+
+              // Mostrar modal para que el usuario decida
+              this.modalService.error({
+                nzTitle: 'Cupón No Válido',
+                nzContent: `Tu cupón ya no es válido: ${couponValidation.message}\n\n¿Deseas continuar sin el cupón?`,
+                nzOkText: 'Continuar sin cupón',
+                nzCancelText: 'Volver al carrito',
+                nzOnOk: () => {
+                  // Remover cupón y recargar la página de pago
+                  this.cartService.removeDiscountCode();
+                  window.location.reload();
+                },
+                nzOnCancel: () => {
+                  this.redirectToCartWithMessage('Cupón inválido');
+                }
+              });
+
+              throw new Error('INVALID_COUPON');
+            }
+
+            console.log('✅ Cupón revalidado exitosamente antes del pago');
+          } catch (couponError) {
+            console.error('❌ Error revalidando cupón:', couponError);
+
+            // Para otros errores, mostrar mensaje genérico
+            this.setError('Error validando cupón. Por favor, intenta nuevamente.');
+            this.redirectToCartWithMessage('Error de cupón');
+            throw new Error('COUPON_VALIDATION_ERROR');
+          }
+        }
+
+        console.log('✅ Carrito y cupón validados, preparando pago...');
         return cart;
       })
     );
   }
+
 
   // ✅ PRESERVADO: Validación de stock (sin cambios)
   private validateCartStock(cart: Cart): ValidationResult {
@@ -636,6 +696,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ✅ NUEVO: Volver a comprar
   goBackToShopping(): void {
+    sessionStorage.setItem('reloadAfterPurchase', 'true');
     this.router.navigate(['/shop']);
   }
 

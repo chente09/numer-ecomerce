@@ -24,6 +24,8 @@ import { UserRolesManagementComponent } from './pages/admin/user-roles-managemen
 import { DistributorManagementComponent } from './pages/admin/distributor-management/distributor-management.component';
 import { DashboardComponent } from './pages/admin/dashboard/dashboard.component';
 import { MyInventoryComponent } from './pages/admin/distributors/my-inventory/my-inventory.component';
+import { AdminRacesComponent } from './pages/admin/admin-races/admin-races.component';
+import { RacesComponent } from './pages/races/races.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
@@ -45,6 +47,7 @@ export const routes: Routes = [
     { path: 'review-form', component: ReviewFormComponent },
     { path: 'ubicaciones', component: UbicacionesComponent },
     { path: 'embajadores', component: EmbajadoresAtletasComponent },
+    { path: 'carreras', component: RacesComponent },
 
     // Rutas protegidas que requieren autenticación pero no perfil completo
     { path: 'perfil', component: PerfilComponent, canActivate: [authGuard] },
@@ -58,6 +61,7 @@ export const routes: Routes = [
             { path: '', component: DashboardComponent }, 
             { path: 'products', component: ProductManagementComponent, canActivate: [adminOnlyGuard] },
             { path: 'categories', component: CategoriasComponent, canActivate: [adminOnlyGuard] },
+            { path: 'carreras', component: AdminRacesComponent, canActivate: [adminOnlyGuard] },
             { path: 'distributors', component: DistributorManagementComponent, canActivate: [adminOnlyGuard] },
             { path: 'heroes', component: HeroesComponent, canActivate: [adminOnlyGuard] },
             { path: 'reviews', component: ReviewManagementComponent, canActivate: [adminOnlyGuard] },

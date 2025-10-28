@@ -1,0 +1,309 @@
+<!-- races.component.html - VERSIÓN CORREGIDA -->
+
+<div class="race-container">
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="hero-content">
+            <h1 class="title">CARRERAS Y AVENTURAS</h1>
+            <p class="subtitle">
+                Encuentra tu próximo desafío. Explora las carreras, trails y
+                aventuras que NUMER tiene para ti.
+            </p>
+        </div>
+    </div>
+
+    <!-- Content Section -->
+    <div class="content-section">
+
+        <!-- Barra de Filtros -->
+        <nz-card class="filter-bar" [nzBordered]="false">
+            <form nz-form [formGroup]="filterForm" nzLayout="horizontal">
+                <div nz-row [nzGutter]="[16, 16]">
+                    <!-- Búsqueda por texto -->
+                    <div nz-col [nzXs]="24" [nzSm]="24" [nzMd]="8" [nzLg]="6">
+                        <nz-form-item>
+                            <nz-form-control>
+                                <nz-input-group [nzPrefix]="searchIcon">
+                                    <input 
+                                        nz-input 
+                                        formControlName="searchText" 
+                                        placeholder="Buscar carreras..."
+                                        type="text"
+                                    />
+                                </nz-input-group>
+                                <ng-template #searchIcon>
+                                    <span nz-icon nzType="search" nzTheme="outline"></span>
+                                </ng-template>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Tipo de Evento -->
+                    <div nz-col [nzXs]="12" [nzSm]="12" [nzMd]="8" [nzLg]="4">
+                        <nz-form-item>
+                            <nz-form-control>
+                                <nz-select 
+                                    formControlName="tipoEvento" 
+                                    nzPlaceHolder="Tipo de Evento" 
+                                    nzAllowClear
+                                >
+                                    <nz-option 
+                                        *ngFor="let type of raceTypes" 
+                                        [nzValue]="type.value"
+                                        [nzLabel]="type.label"
+                                    ></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Dificultad -->
+                    <div nz-col [nzXs]="12" [nzSm]="12" [nzMd]="8" [nzLg]="4">
+                        <nz-form-item>
+                            <nz-form-control>
+                                <nz-select 
+                                    formControlName="dificultad" 
+                                    nzPlaceHolder="Dificultad" 
+                                    nzAllowClear
+                                >
+                                    <nz-option 
+                                        *ngFor="let diff of raceDifficulties" 
+                                        [nzValue]="diff.value"
+                                        [nzLabel]="diff.label"
+                                    ></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Provincia -->
+                    <div nz-col [nzXs]="12" [nzSm]="12" [nzMd]="8" [nzLg]="5">
+                        <nz-form-item>
+                            <nz-form-control>
+                                <nz-select 
+                                    formControlName="provincia" 
+                                    nzPlaceHolder="Provincia" 
+                                    nzShowSearch 
+                                    nzAllowClear
+                                >
+                                    <nz-option 
+                                        *ngFor="let prov of ecuadorianProvinces" 
+                                        [nzValue]="prov"
+                                        [nzLabel]="prov"
+                                    ></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Fecha Desde -->
+                    <div nz-col [nzXs]="12" [nzSm]="12" [nzMd]="8" [nzLg]="3">
+                        <nz-form-item>
+                            <nz-form-control>
+                                <nz-date-picker 
+                                    formControlName="fechaDesde" 
+                                    nzPlaceHolder="Desde"
+                                    style="width: 100%;"
+                                ></nz-date-picker>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <!-- Solo con cupos -->
+                    <div nz-col [nzXs]="12" [nzSm]="12" [nzMd]="8" [nzLg]="2" class="filter-switch-col">
+                        <nz-form-item>
+                            <nz-form-control>
+                                <label class="switch-label">
+                                    <nz-switch formControlName="soloDisponibles"></nz-switch>
+                                    <span class="switch-text">Con cupos</span>
+                                </label>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <!-- Botón para resetear filtros -->
+                <div class="filter-actions">
+                    <button 
+                        nz-button 
+                        nzType="default" 
+                        (click)="resetFilters()"
+                        [disabled]="loading"
+                    >
+                        <span nz-icon nzType="reload" nzTheme="outline"></span>
+                        Limpiar Filtros
+                    </button>
+                </div>
+            </form>
+        </nz-card>
+
+        <!-- Estado de Carga -->
+        <div *ngIf="loading" class="loading-container">
+            <nz-spin nzSize="large" nzTip="Cargando carreras..."></nz-spin>
+        </div>
+
+        <!-- Estado de Error -->
+        <div *ngIf="!loading && hasError" class="error-state">
+            <nz-empty nzNotFoundImage="simple">
+                <span nz-empty-description>
+                    Error al cargar las carreras
+                </span>
+                <button nz-button nzType="primary" (click)="ngOnInit()">
+                    Reintentar
+                </button>
+            </nz-empty>
+        </div>
+
+        <!-- Grid de Carreras -->
+        <div *ngIf="!loading && !hasError && filteredRaces.length > 0" class="race-grid">
+            <div *ngFor="let race of filteredRaces" class="race-card-wrapper">
+                <nz-card 
+                    class="race-card" 
+                    nzHoverable 
+                    [nzCover]="coverTemplate"
+                >
+                    <!-- Portada con imagen -->
+                    <ng-template #coverTemplate>
+                        <div class="race-card-cover" (click)="viewRaceDetail(race)">
+                            <img 
+                                [alt]="race.nombre" 
+                                [src]="race.imagenPrincipal || 'https://via.placeholder.com/400x240'" 
+                            />
+                            
+                            <!-- Overlay con información -->
+                            <div class="race-card-cover-overlay">
+                                <div class="overlay-top">
+                                    <!-- Fecha -->
+                                    <div class="race-card-date">
+                                        <span nz-icon nzType="calendar" nzTheme="outline"></span>
+                                        {{ race.fecha | date:'dd MMM yyyy' | titlecase }}
+                                    </div>
+                                    
+                                    <!-- Badge de destacado -->
+                                    <nz-badge 
+                                        *ngIf="race.destacado" 
+                                        nzStatus="processing" 
+                                        nzText="Destacado"
+                                        class="featured-badge"
+                                    ></nz-badge>
+                                </div>
+
+                                <!-- Precio -->
+                                <div class="race-card-price">
+                                    <span class="price-amount">{{ race.precio | currency:'USD':'symbol':'1.0-0' }}</span>
+                                    <span 
+                                        *ngIf="race.precioAntesDescuento" 
+                                        class="price-before"
+                                    >
+                                        {{ race.precioAntesDescuento | currency:'USD':'symbol':'1.0-0' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-template>
+
+                    <!-- Contenido de la tarjeta -->
+                    <div class="race-card-content">
+                        <!-- Título -->
+                        <h3 class="race-card-title" (click)="viewRaceDetail(race)">
+                            {{ race.nombre }}
+                        </h3>
+
+                        <!-- Ubicación -->
+                        <div class="race-card-location">
+                            <span nz-icon nzType="environment" nzTheme="outline"></span>
+                            {{ race.ciudad }}, {{ race.provincia }}
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="race-card-tags">
+                            <nz-tag [nzColor]="getEventTypeColor(race.tipoEvento)">
+                                {{ race.tipoEvento | titlecase }}
+                            </nz-tag>
+                            <nz-tag [nzColor]="getDifficultyColor(race.dificultad)">
+                                {{ race.dificultad | titlecase }}
+                            </nz-tag>
+                            <nz-tag *ngIf="race.distancia" nzColor="geekblue">
+                                {{ race.distancia }}
+                            </nz-tag>
+                        </div>
+
+                        <!-- Información de cupos -->
+                        <div class="race-card-info">
+                            <div class="info-item">
+                                <span nz-icon nzType="team" nzTheme="outline"></span>
+                                <span class="info-text">
+                                    {{ race.inscritosActuales }} 
+                                    <span class="info-separator">/</span>
+                                    {{ race.cupoMaximo || '∞' }} inscritos
+                                </span>
+                            </div>
+
+                            <!-- Días restantes para inscripción -->
+                            <div 
+                                *ngIf="isInscriptionOpen(race) && getDaysUntilClose(race) <= 7" 
+                                class="info-item urgency"
+                            >
+                                <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+                                <span class="info-text">
+                                    {{ getDaysUntilClose(race) }} días restantes
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Barra de progreso de cupos -->
+                        <div 
+                            *ngIf="race.cupoMaximo" 
+                            class="cupos-progress"
+                            [class.almost-full]="getOccupancyPercentage(race) >= 80"
+                        >
+                            <div 
+                                class="cupos-progress-bar"
+                                [style.width.%]="getOccupancyPercentage(race)"
+                            ></div>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="race-card-actions">
+                            <button 
+                                nz-button 
+                                nzType="default" 
+                                nzBlock
+                                (click)="viewRaceDetail(race)"
+                            >
+                                <span nz-icon nzType="eye" nzTheme="outline"></span>
+                                Ver Detalles
+                            </button>
+
+                            <button 
+                                nz-button 
+                                [nzType]="hasAvailableSlots(race) && isInscriptionOpen(race) ? 'primary' : 'default'" 
+                                nzBlock
+                                [disabled]="!hasAvailableSlots(race) || !isInscriptionOpen(race)"
+                                (click)="goToInscription(race, $event)"
+                                [nz-tooltip]="getInscriptionTooltip(race)"
+                            >
+                                <span nz-icon nzType="form" nzTheme="outline"></span>
+                                {{ getInscriptionButtonText(race) }}
+                            </button>
+                        </div>
+                    </div>
+                </nz-card>
+            </div>
+        </div>
+
+        <!-- Estado Vacío -->
+        <div *ngIf="!loading && !hasError && filteredRaces.length === 0" class="empty-state">
+            <nz-empty nzNotFoundImage="simple">
+                <span nz-empty-description>
+                    No se encontraron carreras con esos filtros
+                </span>
+                <button nz-button nzType="primary" (click)="resetFilters()">
+                    Limpiar Filtros
+                </button>
+            </nz-empty>
+        </div>
+
+    </div>
+</div>

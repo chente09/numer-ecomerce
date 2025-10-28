@@ -347,10 +347,10 @@ export class CarritoComponent implements OnInit, OnDestroy {
     this.message.loading('Verificando disponibilidad de productos y cupones...', { nzDuration: 0 });
 
     try {
-      // 2. VALIDACIÓN MEJORADA: Incluye stock Y cupones
+      // 2. ✅ REVALIDACIÓN COMPLETA: Stock + Cupones con manejo estricto
       const validation = await this.cartService.validateCartForCheckout();
 
-      // 3. Manejar errores de stock
+      // 3. Manejar errores de stock (sin cambios)
       if (validation.unavailableItems.length > 0) {
         this.message.remove();
         const unavailableNames = validation.unavailableItems.map(item => item.product?.name).join(', ');
@@ -365,29 +365,71 @@ export class CarritoComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // 4. NUEVO: Manejar errores de cupón
+      // 4. ✅ MANEJO ESTRICTO DE ERRORES DE CUPÓN
       if (validation.couponError) {
         this.message.remove();
 
+        // ✅ CAMBIO CRÍTICO: No permitir continuar con cupón inválido
         this.modal.error({
-          nzTitle: 'Problema con el cupón',
-          nzContent: validation.couponError + ' ¿Deseas continuar sin el cupón?',
-          nzOkText: 'Continuar sin cupón',
-          nzCancelText: 'Revisar cupón',
+          nzTitle: 'Cupón No Válido',
+          nzContent: `${validation.couponError}\n\nPor favor, revisa tu cupón antes de continuar.`,
+          nzOkText: 'Revisar cupón',
           nzOnOk: () => {
-            // Remover el cupón y continuar
+            // Remover cupón automáticamente y enfocar en el campo
             this.cartService.removeDiscountCode();
-            this.message.info('Cupón removido. Continuando con la compra...');
-            this.proceedToCheckout(); // Reintentar
-          },
-          nzOnCancel: () => {
-            this.processingCheckout = false;
+            this.message.warning('Cupón removido. Aplica un cupón válido o continúa sin descuento.');
+
+            // Enfocar en el campo de cupón para que el usuario pueda intentar nuevamente
+            setTimeout(() => {
+              const couponInput = document.querySelector('input[placeholder*="cupón"]') as HTMLInputElement;
+              if (couponInput) {
+                couponInput.focus();
+              }
+            }, 100);
           }
         });
+
+        this.processingCheckout = false;
         return;
       }
 
-      // 5. Si todo está válido, continuar con el flujo normal
+      // 5. ✅ VALIDACIÓN ADICIONAL: Verificar que el cupón siga siendo válido
+      const appliedCoupon = this.cartService.getAppliedCoupon();
+      if (appliedCoupon) {
+        console.log('🎫 Realizando validación final del cupón antes del checkout...');
+
+        try {
+          // Re-validar el cupón una vez más antes de proceder
+          const finalValidation = await this.cartService.applyDiscountCode(appliedCoupon.couponCode!);
+
+          if (!finalValidation.success) {
+            this.message.remove();
+            this.modal.error({
+              nzTitle: 'Cupón Expirado',
+              nzContent: `Tu cupón ha expirado o ya no es válido: ${finalValidation.message}`,
+              nzOkText: 'Entendido',
+              nzOnOk: () => {
+                this.cartService.removeDiscountCode();
+                this.message.info('Cupón removido. Puedes continuar sin descuento.');
+              }
+            });
+            this.processingCheckout = false;
+            return;
+          }
+        } catch (couponError) {
+          console.error('❌ Error en validación final de cupón:', couponError);
+          this.message.remove();
+          this.modal.error({
+            nzTitle: 'Error de Validación',
+            nzContent: 'No se pudo validar tu cupón. Por favor, intenta nuevamente.',
+            nzOkText: 'Entendido'
+          });
+          this.processingCheckout = false;
+          return;
+        }
+      }
+
+      // 6. Si TODA la validación es exitosa, continuar con el flujo normal
       this.message.remove();
 
       if (this.isDistributor) {
@@ -406,8 +448,6 @@ export class CarritoComponent implements OnInit, OnDestroy {
             this.message.info('Registrando pedido...');
             const result = await this.cartService.createDistributorOrder(shippingInfo);
             if (result.success) {
-              // NOTA: Los distribuidores NO usan cupones, por eso NO agregamos recordCouponUsageForOrder aquí
-
               this.cartService.clearCart();
               this.modal.success({
                 nzTitle: '¡Pedido Registrado Exitosamente!',
@@ -420,14 +460,15 @@ export class CarritoComponent implements OnInit, OnDestroy {
           this.processingCheckout = false;
         });
       } else {
-        // --- Flujo para Cliente Normal (CON posibles cupones) ---
-        // NOTA: El registro de cupón se hace en payphone-form.component.ts y respuesta-pago.component.ts
+        // --- Flujo para Cliente Normal (CON posibles cupones validados) ---
         this.processingCheckout = false;
+        sessionStorage.removeItem('reloadAfterPurchase')
         this.router.navigate(['/pago']);
       }
 
     } catch (error: any) {
       this.message.remove();
+      console.error('❌ Error en checkout:', error);
       this.message.error(error.message || 'Ocurrió un error al verificar tu pedido.');
       this.processingCheckout = false;
     }
