@@ -6,17 +6,12 @@
     <nz-card class="summary-card" *ngIf="enhancedSummary && !isLoading">
         <div nz-row [nzGutter]="[16, 16]">
             <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
-                <nz-statistic [nzValue]="enhancedSummary.totalDebit" nzTitle="Total Adeudado" [nzPrefix]="'$'"
-                    [nzValueStyle]="{ 'color': '#cf1322' }">
-                </nz-statistic>
-            </div>
-            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
                 <nz-statistic [nzValue]="enhancedSummary.pendingAmount" nzTitle="Pendiente de Pago" [nzPrefix]="'$'"
                     [nzValueStyle]="{ 'color': '#fa8c16' }">
                 </nz-statistic>
             </div>
             <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
-                <nz-statistic [nzValue]="enhancedSummary.paidAmount" nzTitle="Total Pagado" [nzPrefix]="'$'"
+                <nz-statistic [nzValue]="enhancedSummary.paidAmount" nzTitle="Total Pagado Historico" [nzPrefix]="'$'"
                     [nzValueStyle]="{ 'color': '#3f8600' }">
                 </nz-statistic>
             </div>
@@ -28,6 +23,11 @@
             <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
                 <nz-statistic [nzValue]="enhancedSummary.balance" nzTitle="Saldo Pendiente" [nzPrefix]="'$'"
                     [nzValueStyle]="{ 'color': enhancedSummary.balance > 0 ? '#cf1322' : '#3f8600' }">
+                </nz-statistic>
+            </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="6">
+                <nz-statistic [nzValue]="enhancedSummary.totalDebit" nzTitle="Total Ventas Historicas" [nzPrefix]="'$'"
+                    [nzValueStyle]="{ 'color': '#cf1322' }">
                 </nz-statistic>
             </div>
         </div>

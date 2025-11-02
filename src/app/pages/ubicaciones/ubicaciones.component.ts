@@ -100,14 +100,14 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
   // Datos
   tiendaFisica: TiendaFisica = {
     id: 'tienda-principal',
-    nombre: 'NUMER Store - Tienda Principal',
+    nombre: 'NUMER - Workshop',
     direccion: 'Iliniza S7 - 90, Quito 170121',
     ciudad: 'Quito',
     provincia: 'Pichincha',
     telefono: '+593 2 225 4589',
     whatsapp: '+593 98 765 4321',
     email: 'numer.ec21@gmail.com',
-    horarios: 'Lunes a Viernes: 9:00 AM - 7:00 PM\nSábados: 9:00 AM - 6:00 PM\nDomingos: 10:00 AM - 4:00 PM',
+    horarios: 'Lunes a Viernes: 8:00 AM - 5:00 PM\nSábados: Bajo cita previa\nDomingos: Cerrado',
     coordenadas: {
       lat: -0.24029944583596685,
       lng: -78.5150122067466

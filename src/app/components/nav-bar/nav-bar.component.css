@@ -15,6 +15,13 @@
     backdrop-filter: blur(4px);
 }
 
+.orange-stripe {
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+    box-shadow: 0 2px 4px rgba(255, 107, 53, 0.3);
+}
+
 .ant-menu {
     background-color: black;
     line-height: 0;
@@ -161,14 +168,13 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     
     /* Efecto gradiente en hover */
-    /* background: linear-gradient(90deg,
-        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
     background-size: 300% 300%;
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent !important;
     -webkit-text-fill-color: transparent;
-    animation: shimmer 3s linear infinite; */
+    animation: shimmer 3s linear infinite;
 }
 
 
@@ -184,16 +190,15 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
 }
 
 @media (max-width: 768px) {
-    /* .nav-menu li a:hover{
-        background: linear-gradient(90deg,
-            #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+    .nav-menu li a:hover{
+        background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
         background-size: 300% 300%;
         background-clip: text;
         -webkit-background-clip: text;
         color: transparent !important;
         -webkit-text-fill-color: transparent;
         animation: shimmer 3s linear infinite;
-    } */
+    }
 }
 
 /* Anular estilos no deseados de NG-ZORRO */
@@ -251,8 +256,7 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
 
 /* Efecto gradiente en los iconos al hacer hover */
 .header-icons .icon-link:hover i {
-    background: linear-gradient(90deg,
-        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080);
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
     background-size: 300% 300%;
     background-clip: text;
     -webkit-background-clip: text;

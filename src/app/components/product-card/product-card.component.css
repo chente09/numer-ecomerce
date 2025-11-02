@@ -389,7 +389,7 @@
 
 .product-rating {
     margin: 5px 15px;
-    color: black;
+    color: #ff6b35;
     font-size: 14px;
     display: flex;
     align-items: center;
@@ -418,7 +418,8 @@
 ::ng-deep .product-rating .ant-rate-star,
 ::ng-deep .product-rating .ant-rate-star-full,
 ::ng-deep .product-rating .ant-rate-star-half {
-    color: #000 !important;
+    color: #ff6b35 !important;
+    font-weight: lighter !important;
 }
 
 ::ng-deep .black-stars .ant-rate-star-zero,

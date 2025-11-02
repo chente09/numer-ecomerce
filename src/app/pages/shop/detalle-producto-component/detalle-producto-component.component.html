@@ -8,9 +8,9 @@
     <div class="product-gallery">
         <div class="product-badges">
             <span *ngIf="product.isNew" class="new-badge">¡RECIÉN LLEGADO!</span>
-            <span *ngIf="product.isBestSeller" class="bestseller-badge">EL MÁS CHEVERE</span>
+            <span *ngIf="product.isBestSeller" class="bestseller-badge">EL MÁS VENDIDO</span>
             <span *ngIf="hasActivePromotions(product)" class="sale-badge">
-                ¡OFERTÓN! {{ getPromotionText(product) }}
+                ¡PRECIO INMEJORABLE! {{ getPromotionText(product) }}
             </span>
         </div>
 
@@ -344,7 +344,7 @@
             <div class="actions">
                 <button class="add-to-cart-btn" [disabled]="!selectedVariant || selectedVariant.stock === 0"
                     (click)="addToCart()">
-                    {{ selectedVariant && selectedVariant.stock > 0 ? '¡ME LO LLEVO!' : 'AGOTADO' }}
+                    {{ selectedVariant && selectedVariant.stock > 0 ? '¡AÑADIR AL CARRITO!' : 'AGOTADO' }}
                 </button>
                 <button class="wishlist-btn" (click)="toggleWishlist()"
                     [attr.aria-label]="isInWishlist ? 'Quitar de favoritos' : 'Agregar a favoritos'"
@@ -444,12 +444,12 @@
                             <h4><i nz-icon nzType="truck" nzTheme="outline"></i> Envío en Ecuador</h4>
                             <div class="shipping-options">
                                 <div class="shipping-option">
-                                    <strong>Quito y Valle de los Chillos</strong>
-                                    <p>Entrega el mismo día o al siguiente - Desde $3</p>
+                                    <strong>Quito y Valles</strong>
+                                    <p>Entrega el mismo día o al siguiente - Desde $2,5</p>
                                 </div>
                                 <div class="shipping-option">
                                     <strong>Resto del país</strong>
-                                    <p>2-5 días hábiles - Desde $5 (Gratis en compras +$50)</p>
+                                    <p>24-72 horas - Desde $6 </p>
                                 </div>
                                 <div class="shipping-option">
                                     <strong>Zonas rurales</strong>
@@ -463,8 +463,6 @@
                             <ul>
                                 <li>30 días para cambios y devoluciones</li>
                                 <li>Productos sin usar y con etiquetas</li>
-                                <li>Recogemos en tu casa (solo Quito)</li>
-                                <li>¿No te gustó? Te devolvemos tu plata</li>
                             </ul>
                         </div>
                     </div>
@@ -486,8 +484,8 @@
                                 <h5>Secado</h5>
                                 <ul>
                                     <li>Al aire libre, pero no al sol directo</li>
-                                    <li>Nunca en secadora ni plancha</li>
-                                    <li>En Quito aprovecha el aire seco del valle</li>
+                                    <li>Nunca en secadora</li>
+                                    <li>Nunca planchar logos directamente</li>
                                 </ul>
                             </div>
                             <div class="care-section">
@@ -498,11 +496,6 @@
                                     <li>Evita doblarlo mucho tiempo en el mismo lugar</li>
                                 </ul>
                             </div>
-                        </div>
-
-                        <div class="care-tip">
-                            <p><strong>Tip ecuatoriano:</strong> En época de lluvias, usa un deshumidificador o guárdalo
-                                con silica gel para evitar hongos.</p>
                         </div>
                     </div>
                 </div>
@@ -515,7 +508,7 @@
 <div class="section-footer">
     <a routerLink="/carrito" class="view-all-btn">
         <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
-        <span>Ya tengo mi pinta lista! ¿En dónde Pago?</span>
+        <span>Pagar ahora!</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2l9 7-9 7V2z" />
         </svg>
