@@ -43,14 +43,15 @@
             </app-product-card>
         </div>
 
-        <!-- Ver todos los productos -->
+        <!-- ✅ NUEVO: Ver todos los productos con ActionButton -->
         <div *ngIf="shouldShowProducts()" class="section-footer">
-            <a routerLink="/shop" class="view-all-btn">
-                <span>Ver Todos los Productos</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2l9 7-9 7V2z" />
-                </svg>
-            </a>
+            <app-action-button
+                text="Ver Todos los Productos"
+                link="/shop"
+                variant="gradient-dark"
+                size="medium"
+                ariaLabel="Ver todos los productos disponibles en la tienda"
+            />
         </div>
     </div>
 </section>

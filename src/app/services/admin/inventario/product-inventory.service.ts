@@ -119,7 +119,6 @@ export class ProductInventoryService {
         ...metadata // Incluir cualquier metadata adicional (orderId, distributorId, notes)
       };
       await addDoc(collection(this.firestore, this.inventoryMovementsCollection), movement);
-      console.log(`📝 Movimiento de inventario registrado: ${type} para ${variantId}, Cantidad: ${quantity}`);
     } catch (error) {
       console.error('❌ Error registrando movimiento de inventario:', error);
       // No lanzar el error para no bloquear la operación principal si el log falla
@@ -374,7 +373,6 @@ export class ProductInventoryService {
 
   // ✅ NUEVO MÉTODO: Sincronizar stock desde colorStocks
   async syncVariantsStockFromProduct(productId: string): Promise<void> {
-    console.log(`🔄 InventoryService: Sincronizando stock para producto: ${productId}`);
 
     try {
       // Obtener producto completo
@@ -406,7 +404,6 @@ export class ProductInventoryService {
         const correctStock = colorStock?.quantity || 0;
 
         if (variant.stock !== correctStock) {
-          console.log(`🔄 Corrigiendo ${variant.colorName}-${variant.sizeName}: ${variant.stock} → ${correctStock}`);
 
           batch.update(variantDoc.ref, {
             stock: correctStock,
@@ -424,7 +421,6 @@ export class ProductInventoryService {
       });
 
       await batch.commit();
-      console.log(`✅ InventoryService: Sincronización completada - Stock total: ${totalStock}`);
 
     } catch (error) {
       console.error(`❌ InventoryService: Error en sincronización:`, error);
@@ -682,8 +678,6 @@ export class ProductInventoryService {
             ...doc.data()
           } as ProductVariant));
 
-          console.log(`📦 InventoryService: Total variantes encontradas: ${variants.length}`);
-
           // 2. Obtener datos de todos los productos relacionados
           const productIds = new Set<string>();
           variants.forEach(variant => {
@@ -691,8 +685,6 @@ export class ProductInventoryService {
               productIds.add(variant.productId);
             }
           });
-
-          console.log(`🏷️ InventoryService: Productos únicos: ${productIds.size}`);
 
           const productsData: DocumentData[] = [];
           for (const productId of productIds) {
@@ -748,14 +740,6 @@ export class ProductInventoryService {
             outOfStockCount,
             categories
           };
-
-          console.log('📈 InventoryService: Resumen generado:', {
-            productos: summary.totalProducts,
-            variantes: summary.totalVariants,
-            stockTotal: summary.totalStock,
-            stockBajo: summary.lowStockCount,
-            sinStock: summary.outOfStockCount
-          });
 
           return summary;
         } catch (error) {
@@ -842,8 +826,6 @@ export class ProductInventoryService {
 
         return variant;
       });
-
-      console.log(`📦 [VARIANTS] Cargadas ${variants.length} variantes (sin cache) para producto ${productId}`);
       return variants;
     })()).pipe(
       catchError(error => ErrorUtil.handleError(error, `getVariantsByProductId(${productId})`))
@@ -878,8 +860,6 @@ export class ProductInventoryService {
           lastViewDate: new Date(),
           updatedAt: new Date()
         });
-
-        console.log(`📊 Vista incrementada para producto: ${productId}`);
 
       } catch (error: any) {
         if (error?.code === 'permission-denied' ||
@@ -933,7 +913,6 @@ export class ProductInventoryService {
     ).subscribe({
       next: (summary) => {
         if (Object.keys(summary.categories).length > 0) {
-          console.log('📂 Por Categoría:');
           Object.entries(summary.categories).forEach(([category, count]) => {
             console.log(`   ${category}: ${count} productos`);
           });
@@ -977,7 +956,6 @@ export class ProductInventoryService {
     lowStockCount: number;
     outOfStockCount: number;
   }> {
-    console.log('⚡ InventoryService: Obteniendo estadísticas rápidas...');
 
     return from((async () => {
       const variantsRef = collection(this.firestore, this.variantsCollection);

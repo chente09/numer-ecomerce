@@ -14,10 +14,12 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { Subject, takeUntil } from 'rxjs';
+import { NzAvatarModule } from 'ng-zorro-antd/avatar';
+import { Subject, takeUntil, take } from 'rxjs';
 
-// ✅ IMPORTAR SEO SERVICE
+// ✅ IMPORTAR SERVICIOS
 import { SeoService } from '../../services/seo/seo.service';
+import { AuthorizedDistributorService, AuthorizedDistributor } from '../../services/admin/authorized-distributor/authorized-distributor.service';
 
 interface TiendaFisica {
   id: string;
@@ -38,37 +40,6 @@ interface TiendaFisica {
   activa: boolean;
 }
 
-interface DistribuidorAutorizado {
-  id: string;
-  nombreComercial: string;
-  nombreContacto: string;
-  ciudad: string;
-  provincia: string;
-  telefono: string;
-  email: string;
-  tipo: 'minorista' | 'mayorista' | 'online';
-  productosAutorizados: string[];
-  fechaAutorizacion: Date;
-  activo: boolean;
-  logo?: string;
-  sitioWeb?: string;
-}
-
-interface SolicitudDistribuidor {
-  nombreComercial: string;
-  nombreContacto: string;
-  email: string;
-  telefono: string;
-  ciudad: string;
-  provincia: string;
-  tipoNegocio: 'minorista' | 'mayorista' | 'online';
-  experiencia: string;
-  volumenEstimado: string;
-  motivacion: string;
-  sitioWeb?: string;
-  rlc?: string; // RUC, cédula, etc.
-}
-
 @Component({
   selector: 'app-ubicaciones',
   standalone: true,
@@ -86,7 +57,8 @@ interface SolicitudDistribuidor {
     NzTagModule,
     NzDividerModule,
     NzToolTipModule,
-    NzSpinModule
+    NzSpinModule,
+    NzAvatarModule  // ✅ AGREGADO
   ],
   templateUrl: './ubicaciones.component.html',
   styleUrl: './ubicaciones.component.css'
@@ -94,6 +66,7 @@ interface SolicitudDistribuidor {
 export class UbicacionesComponent implements OnInit, OnDestroy {
   // Estado del componente
   loading = false;
+  loadingDistributors = true; // ✅ NUEVO: Estado específico para distribuidores
   submitting = false;
   modalVisible = false;
 
@@ -122,46 +95,19 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     activa: true
   };
 
-  distribuidores: DistribuidorAutorizado[] = [
-    {
-      id: '1',
-      nombreComercial: 'Aventura Sport',
-      nombreContacto: 'Carlos Mendoza',
-      ciudad: 'Guayaquil',
-      provincia: 'Guayas',
-      telefono: '+593 4 123 4567',
-      email: 'carlos@aventurasport.com',
-      tipo: 'minorista',
-      productosAutorizados: ['Calzado', 'Ropa deportiva', 'Accesorios'],
-      fechaAutorizacion: new Date('2023-01-15'),
-      activo: true
-    },
-    {
-      id: '2',
-      nombreComercial: 'Mountain Gear',
-      nombreContacto: 'Ana López',
-      ciudad: 'Cuenca',
-      provincia: 'Azuay',
-      telefono: '+593 7 234 5678',
-      email: 'ana@mountaingear.ec',
-      tipo: 'mayorista',
-      productosAutorizados: ['Equipamiento de montaña', 'Camping', 'Escalada'],
-      fechaAutorizacion: new Date('2023-03-20'),
-      activo: true,
-      sitioWeb: 'https://mountaingear.ec'
-    }
-  ];
+  // ✅ CAMBIADO: Ahora será cargado desde Firebase
+  distribuidores: AuthorizedDistributor[] = [];
 
   // Formulario
   solicitudForm!: FormGroup;
-  
+
   // Opciones para selects
   provincias = [
-    'Pichincha', 'Guayas', 'Azuay', 'Manabí', 'El Oro', 'Tungurahua', 
-    'Imbabura', 'Chimborazo', 'Cotopaxi', 'Loja', 'Esmeraldas', 'Los Ríos',
-    'Carchi', 'Bolívar', 'Cañar', 'Morona Santiago', 'Pastaza', 'Zamora Chinchipe',
-    'Sucumbíos', 'Orellana', 'Napo', 'Francisco de Orellana', 'Santa Elena',
-    'Santo Domingo de los Tsáchilas'
+    'Azuay', 'Bolívar', 'Cañar', 'Carchi', 'Chimborazo', 'Cotopaxi',
+    'El Oro', 'Esmeraldas', 'Galápagos', 'Guayas', 'Imbabura', 'Loja',
+    'Los Ríos', 'Manabí', 'Morona Santiago', 'Napo', 'Orellana', 'Pastaza',
+    'Pichincha', 'Santa Elena', 'Santo Domingo de los Tsáchilas',
+    'Sucumbíos', 'Tungurahua', 'Zamora Chinchipe'
   ];
 
   tiposNegocio = [
@@ -184,14 +130,13 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private message: NzMessageService,
     private modal: NzModalService,
-    // ✅ AGREGAR SEO SERVICE
-    private seoService: SeoService
+    private seoService: SeoService,
+    private authorizedDistributorService: AuthorizedDistributorService  // ✅ AGREGADO
   ) {
     this.createForm();
   }
 
   ngOnInit(): void {
-    // ✅ CONFIGURAR SEO PARA UBICACIONES
     this.seoService.updatePageSEO('ubicaciones', {
       title: 'Ubicaciones y Distribuidores - NUMER Ecuador | Tiendas Físicas',
       description: 'Encuentra nuestra tienda física en Quito y distribuidores autorizados de NUMER en todo Ecuador. Ubicaciones, horarios, contacto y mapa. Pantalón Extraligero, Chompa AGUACERO.',
@@ -199,12 +144,37 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
       image: 'https://firebasestorage.googleapis.com/v0/b/numer-16f35.firebasestorage.app/o/products%2F27d9425a-2698-452d-8b93-4962772f11b7%2Fcolors%2Fverde%20olivo.webp?alt=media&token=9aaea191-a3c5-47ef-ab6f-c59e0b8226c0'
     });
 
-    console.log('🏪 UbicacionesComponent inicializado con SEO');
+    // ✅ NUEVO: Cargar distribuidores
+    this.loadDistribuidores();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // ✅ NUEVO: Método para cargar distribuidores desde Firebase
+  private loadDistribuidores(): void {
+    this.loadingDistributors = true;
+
+    this.authorizedDistributorService.getAuthorizedDistributors()
+      .pipe(
+        take(1),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (distribuidores) => {
+          // Filtrar solo distribuidores activos
+          this.distribuidores = distribuidores.filter(d => d.activo === true);
+          console.log(`✅ Cargados ${this.distribuidores.length} distribuidores activos`);
+          this.loadingDistributors = false;
+        },
+        error: (error) => {
+          console.error('❌ Error cargando distribuidores:', error);
+          this.message.error('Error al cargar distribuidores');
+          this.loadingDistributors = false;
+        }
+      });
   }
 
   private createForm(): void {
@@ -245,20 +215,18 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     this.submitting = true;
 
     try {
-      const solicitud: SolicitudDistribuidor = this.solicitudForm.value;
-      
-      // Aquí integrarías con tu servicio de backend
-      console.log('📋 Solicitud de distribuidor:', solicitud);
-      
-      // Simular llamada al servidor
-      await this.simulateApiCall();
-      
+      const solicitudData = this.solicitudForm.value;
+
+      // ✅ CAMBIO: Guardar en Firebase usando el servicio
+      await this.authorizedDistributorService.createDistributorRequest(solicitudData)
+        .pipe(take(1))
+        .toPromise();
+
       this.message.success('¡Solicitud enviada correctamente! Te contactaremos pronto.');
       this.closeModal();
-      
-      // Opcional: Enviar email o notificación
-      this.sendNotificationEmail(solicitud);
-      
+
+      console.log('📋 Solicitud guardada:', solicitudData);
+
     } catch (error) {
       console.error('Error enviando solicitud:', error);
       this.message.error('Error al enviar la solicitud. Intenta nuevamente.');
@@ -275,21 +243,9 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     });
   }
 
-  private async simulateApiCall(): Promise<void> {
-    return new Promise(resolve => {
-      setTimeout(() => resolve(), 2000);
-    });
-  }
-
-  private async sendNotificationEmail(solicitud: SolicitudDistribuidor): Promise<void> {
-    // Aquí integrarías con tu servicio de email
-    console.log('📧 Enviando notificación por email...');
-  }
-
   // ==================== MÉTODOS DE UTILIDAD ====================
 
   openGoogleMaps(): void {
-    const { lat, lng } = this.tiendaFisica.coordenadas!;
     const url = `https://maps.app.goo.gl/xtY8Gbp8q6s6Juy4A`;
     window.open(url, '_blank');
   }
@@ -312,7 +268,8 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     window.open(url, '_self');
   }
 
-  contactDistributor(distribuidor: DistribuidorAutorizado): void {
+  // ✅ ACTUALIZADO: Usar la interfaz correcta
+  contactDistributor(distribuidor: AuthorizedDistributor): void {
     const subject = encodeURIComponent('Consulta sobre productos NUMER');
     const body = encodeURIComponent(`Hola ${distribuidor.nombreContacto}! Quisiera más información sobre los productos NUMER disponibles en su tienda.`);
     const url = `mailto:${distribuidor.email}?subject=${subject}&body=${body}`;
@@ -320,7 +277,9 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
   }
 
   visitWebsite(url: string): void {
-    window.open(url, '_blank');
+    if (url) {
+      window.open(url, '_blank');
+    }
   }
 
   getTipoNegocioLabel(tipo: string): string {
@@ -328,7 +287,6 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     return found ? found.label : tipo;
   }
 
-  // ✅ NUEVO: Método para obtener color del tag según tipo
   getDistributorTagColor(tipo: string): string {
     switch (tipo) {
       case 'mayorista': return 'purple';
@@ -338,13 +296,21 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ✅ NUEVO: TrackBy functions para mejorar performance
-  trackByDistributor(index: number, distribuidor: DistribuidorAutorizado): string {
+  trackByDistributor(index: number, distribuidor: AuthorizedDistributor): string {
     return distribuidor.id;
   }
 
   trackByProduct(index: number, producto: string): string {
     return producto;
+  }
+
+  // ✅ NUEVO: Manejo de errores de imágenes
+  handleImageError(event: Event): void {
+    const imgElement = event.target as HTMLImageElement;
+    if (imgElement) {
+      imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlZWVlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmaWxsPSIjOTk5OTk5Ij5TaW4gaW1hZ2VuPC90ZXh0Pjwvc3ZnPg==';
+      imgElement.classList.add('error-image');
+    }
   }
 
   // ==================== VALIDACIONES DEL FORMULARIO ====================
@@ -363,5 +329,18 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
       if (field.errors['pattern']) return 'Formato inválido';
     }
     return '';
+  }
+
+  openWhatsAppDistributor(distribuidor: AuthorizedDistributor): void {
+    if (distribuidor.whatsapp) {
+      const cleanNumber = distribuidor.whatsapp.replace(/[^0-9]/g, '');
+      const message = encodeURIComponent(`Hola ${distribuidor.nombreContacto}! Quisiera información sobre productos NUMER.`);
+      const url = `https://wa.me/${cleanNumber}?text=${message}`;
+      window.open(url, '_blank');
+    }
+  }
+
+  formatProductoHashtag(producto: string): string {
+    return producto.replace(/\s+/g, '');
   }
 }

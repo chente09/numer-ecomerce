@@ -106,7 +106,7 @@
                                 <div class="map-header">
                                     <h4>Nuestra Ubicación</h4>
                                     <button nz-button nzType="link" (click)="openGoogleMaps()" class="open-maps-btn">
-                                        <span nz-icon nzType="external-link"></span>
+                                        <span nz-icon nzType="export" nzTheme="outline"></span>
                                         Abrir en Google Maps
                                     </button>
                                 </div>
@@ -141,6 +141,7 @@
         <nz-divider nzText="Distribuidores Autorizados"></nz-divider>
 
         <!-- ✅ SECCIÓN DISTRIBUIDORES -->
+        <!-- ✅ SECCIÓN DISTRIBUIDORES -->
         <section class="distributors-section">
             <div class="section-header">
                 <div class="header-text">
@@ -154,70 +155,103 @@
                 </button>
             </div>
 
-            <!-- Lista de distribuidores -->
-            <div class="distributors-grid" *ngIf="distribuidores.length > 0">
-                <nz-card *ngFor="let distribuidor of distribuidores; trackBy: trackByDistributor"
-                    class="distributor-card" [nzActions]="[contactAction, websiteAction]">
+            <!-- ✅ SPINNER DE CARGA -->
+            <div class="loading-container" *ngIf="loadingDistributors">
+                <nz-spin nzSimple [nzSize]="'large'"></nz-spin>
+                <p>Cargando distribuidores...</p>
+            </div>
 
-                    <div class="distributor-content">
-                        <div class="distributor-header">
-                            <h3 class="distributor-name">{{ distribuidor.nombreComercial }}</h3>
-                            <nz-tag [nzColor]="getDistributorTagColor(distribuidor.tipo)" class="type-tag">
-                                {{ getTipoNegocioLabel(distribuidor.tipo) }}
-                            </nz-tag>
-                        </div>
+            <!-- ✅ LISTA DE DISTRIBUIDORES -->
+            <div class="distributors-grid" *ngIf="!loadingDistributors && distribuidores.length > 0">
+                <div *ngFor="let distribuidor of distribuidores; trackBy: trackByDistributor"
+                    class="distributor-card-instagram">
 
-                        <!-- ✅ CORREGIDO: nombre de clase consistente -->
-                        <div class="distributor-info">
-                            <p class="contact-person">
-                                <span nz-icon nzType="user"></span>
-                                <strong>{{ distribuidor.nombreContacto }}</strong>
-                            </p>
-
-                            <p class="location">
-                                <span nz-icon nzType="environment"></span>
-                                {{ distribuidor.ciudad }}, {{ distribuidor.provincia }}
-                            </p>
-
-                            <p class="phone">
-                                <span nz-icon nzType="phone"></span>
-                                {{ distribuidor.telefono }}
-                            </p>
-                        </div>
-
-                        <div class="products-section">
-                            <h5>Productos autorizados:</h5>
-                            <div class="products-tags">
-                                <nz-tag
-                                    *ngFor="let producto of distribuidor.productosAutorizados; trackBy: trackByProduct"
-                                    nzColor="blue" class="product-tag">
-                                    {{ producto }}
-                                </nz-tag>
+                    <!-- Header estilo Instagram -->
+                    <div class="instagram-header">
+                        <div class="profile-section">
+                            <nz-avatar [nzSrc]="distribuidor.logoUrl" [nzSize]="40" nzShape="circle"
+                                [nzAlt]="distribuidor.nombreComercial" class="profile-avatar"
+                                (error)="handleImageError($event)">
+                            </nz-avatar>
+                            <div class="profile-info">
+                                <h3 class="profile-name">{{ distribuidor.nombreComercial }}</h3>
+                                <p class="profile-location">{{ distribuidor.ciudad }}, {{ distribuidor.provincia }}</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Acciones del card -->
-                    <ng-template #contactAction>
-                        <span nz-icon nzType="mail" (click)="contactDistributor(distribuidor)" nz-tooltip="Contactar"
-                            class="action-icon">
-                        </span>
-                    </ng-template>
+                    <!-- Imagen principal (estilo post de Instagram) -->
+                    <div class="instagram-image" [style.background-image]="'url(' + distribuidor.storeImageUrl + ')'"
+                        (error)="handleImageError($event)">
+                    </div>
 
-                    <ng-template #websiteAction>
-                        <span nz-icon nzType="global" (click)="visitWebsite(distribuidor.sitioWeb!)"
-                            nz-tooltip="Visitar sitio web" *ngIf="distribuidor.sitioWeb"
-                            class="website-action action-icon">
-                        </span>
-                        <span nz-icon nzType="info-circle" nz-tooltip="Sin sitio web disponible"
-                            *ngIf="!distribuidor.sitioWeb" class="no-website action-icon">
-                        </span>
-                    </ng-template>
-                </nz-card>
+                    <!-- Sección de acciones (like, comment, share style) -->
+                    <div class="instagram-actions">
+                        <div class="action-left">
+                            <button nz-button nzType="text" nzSize="large" (click)="contactDistributor(distribuidor)"
+                                nz-tooltip="Enviar mensaje" class="action-button">
+                                <span nz-icon nzType="mail" nzTheme="outline"></span>
+                            </button>
+                            <button nz-button nzType="text" nzSize="large" *ngIf="distribuidor.whatsapp"
+                                (click)="openWhatsAppDistributor(distribuidor)" nz-tooltip="WhatsApp"
+                                class="action-button">
+                                <span nz-icon nzType="whats-app" nzTheme="outline"></span>
+                            </button>
+                            <button nz-button nzType="text" nzSize="large" *ngIf="distribuidor.googleMapsLink"
+                                (click)="visitWebsite(distribuidor.googleMapsLink!)" nz-tooltip="Ver ubicación"
+                                class="action-button">
+                                <span nz-icon nzType="environment" nzTheme="outline"></span>
+                            </button>
+                        </div>
+                        <div class="action-right">
+                            <button nz-button nzType="text" nzSize="large" *ngIf="distribuidor.sitioWeb"
+                                (click)="visitWebsite(distribuidor.sitioWeb!)" nz-tooltip="Visitar sitio web"
+                                class="action-button">
+                                <span nz-icon nzType="global" nzTheme="outline"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Información de contacto -->
+                    <div class="instagram-content">
+                        <div class="content-info">
+                            <p class="contact-name">
+                                <strong>{{ distribuidor.nombreContacto }}</strong>
+                            </p>
+                            <p class="contact-details">
+                                <span nz-icon nzType="phone" nzTheme="outline"></span>
+                                {{ distribuidor.telefono }}
+                            </p>
+                            <p class="contact-details">
+                                <span nz-icon nzType="mail" nzTheme="outline"></span>
+                                {{ distribuidor.email }}
+                            </p>
+                        </div>
+
+                        <!-- Productos disponibles -->
+                        <div class="products-info"
+                            *ngIf="distribuidor.productosAutorizados && distribuidor.productosAutorizados.length > 0">
+                            <p class="products-label">Productos disponibles:</p>
+                            <div class="products-tags-inline">
+                                <span
+                                    *ngFor="let producto of distribuidor.productosAutorizados; trackBy: trackByProduct"
+                                    class="product-tag-inline">
+                                    #{{ formatProductoHashtag(producto) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="no-products-inline"
+                            *ngIf="!distribuidor.productosAutorizados || distribuidor.productosAutorizados.length === 0">
+                            <p>Todos los productos NUMER disponibles</p>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
-            <!-- Estado vacío -->
-            <div class="empty-state" *ngIf="distribuidores.length === 0">
+            <!-- ✅ ESTADO VACÍO -->
+            <div class="empty-state" *ngIf="!loadingDistributors && distribuidores.length === 0">
                 <span nz-icon nzType="shop" class="empty-icon"></span>
                 <h3>No hay distribuidores disponibles</h3>
                 <p>Estamos expandiendo nuestra red. ¡Sé el primero!</p>

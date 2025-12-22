@@ -11,7 +11,6 @@ import {
   ViewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HeroService, HeroItem } from '../../services/admin/hero/hero.service';
 import { 
@@ -22,10 +21,11 @@ import {
   take
 } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { ActionButtonComponent } from "../action-button/action-button.component";
 
 @Component({
   selector: 'app-hero-section',
-  imports: [RouterLink, CommonModule],
+  imports: [CommonModule, ActionButtonComponent],
   templateUrl: './hero-section.component.html',
   styleUrl: './hero-section.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

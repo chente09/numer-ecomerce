@@ -23,6 +23,7 @@ import { ReviewService } from '../../services/review/review.service';
 import { Subscription, interval } from 'rxjs';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { FormsModule } from '@angular/forms';
+import { ActionButtonComponent } from "../action-button/action-button.component";
 
 // ✅ Interfaz simplificada
 export interface TestimonialData extends Review {
@@ -39,8 +40,9 @@ export interface TestimonialData extends Review {
     NzSpinModule,
     NzAvatarModule,
     NzRateModule,
-    FormsModule
-  ],
+    FormsModule,
+    ActionButtonComponent
+],
   templateUrl: './testimonios.component.html',
   styleUrls: ['./testimonios.component.css'],
   animations: [

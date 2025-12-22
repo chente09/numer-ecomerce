@@ -22,6 +22,7 @@ import { EmbajadoresAtletasComponent } from './pages/embajadores-atletas/embajad
 import { SitemapAdminComponent } from './pages/admin/sitemap-admin/sitemap-admin.component';
 import { UserRolesManagementComponent } from './pages/admin/user-roles-management/user-roles-management.component';
 import { DistributorManagementComponent } from './pages/admin/distributor-management/distributor-management.component';
+import { DistribuidoresComponent } from './pages/admin/distribuidores/distribuidores.component';
 import { DashboardComponent } from './pages/admin/dashboard/dashboard.component';
 import { MyInventoryComponent } from './pages/admin/distributors/my-inventory/my-inventory.component';
 import { AdminRacesComponent } from './pages/admin/admin-races/admin-races.component';
@@ -63,6 +64,7 @@ export const routes: Routes = [
             { path: 'categories', component: CategoriasComponent, canActivate: [adminOnlyGuard] },
             { path: 'carreras', component: AdminRacesComponent, canActivate: [adminOnlyGuard] },
             { path: 'distributors', component: DistributorManagementComponent, canActivate: [adminOnlyGuard] },
+            { path: 'authorized-distributors', component: DistribuidoresComponent, canActivate: [adminOnlyGuard] },
             { path: 'heroes', component: HeroesComponent, canActivate: [adminOnlyGuard] },
             { path: 'reviews', component: ReviewManagementComponent, canActivate: [adminOnlyGuard] },
             { path: 'clientes', component: ClientesComponent, canActivate: [adminOnlyGuard] },

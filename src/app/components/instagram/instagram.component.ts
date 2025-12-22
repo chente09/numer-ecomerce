@@ -14,6 +14,7 @@ import { InstagramService, InstagramComment, InstagramPost } from '../../service
 import { UsersService } from '../../services/users/users.service';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { Router } from '@angular/router';
+import { ActionButtonComponent } from "../action-button/action-button.component";
 
 @Component({
   selector: 'app-instagram',
@@ -24,8 +25,9 @@ import { Router } from '@angular/router';
     NzButtonModule,
     NzModalModule,
     NzIconModule,
-    NzToolTipModule
-  ],
+    NzToolTipModule,
+    ActionButtonComponent
+],
   templateUrl: './instagram.component.html',
   styleUrl: './instagram.component.css'
 })

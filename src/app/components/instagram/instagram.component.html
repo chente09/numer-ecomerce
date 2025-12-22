@@ -43,14 +43,11 @@
                 ← Desliza para ver más →
             </div>
         </div>
-
+        
         <div class="section-footer">
-            <a href="https://www.instagram.com/numer.ec/?hl=es" target="_blank" rel="noopener noreferrer"
-                class="view-all-btn">
-                <span nz-icon nzType="instagram" nzTheme="outline"></span>
-                <span>Seguir en Instagram</span>
-                <i nz-icon nzType="caret-right" nzTheme="outline" style="color: #f9f9f9;"></i>
-            </a>
+            <app-action-button text="Seguir en Instagram" link="https://www.instagram.com/numer.ec/?hl=es"
+            variant="gradient-dark" size="small" ariaLabel="Seguir a Numer en Instagram" [isExternal]="true"
+            nzIcon="instagram" nzIconTheme="outline" iconPosition="left" />
         </div>
     </div>
 </section>
@@ -62,7 +59,7 @@
         <button class="custom-close-btn" (click)="closeModal()" aria-label="Cerrar modal">
             <i nz-icon nzType="close" nzTheme="outline"></i>
         </button>
-        
+
         <!-- ✅ IMAGEN: Proporción fija -->
         <div class="modal-image-container">
             <img [src]="selectedPost.imageUrl" [alt]="selectedPost.caption" (error)="handleImageError($event)">
@@ -72,7 +69,8 @@
         <div class="modal-interaction">
             <!-- ✅ HEADER: Más compacto -->
             <div class="post-header">
-                <a href="https://www.instagram.com/numer.ec/?hl=es" target="_blank" rel="noopener noreferrer" class="post-user">
+                <a href="https://www.instagram.com/numer.ec/?hl=es" target="_blank" rel="noopener noreferrer"
+                    class="post-user">
                     <img [src]="selectedPost.userAvatar || '/logo.png'" (error)="handleImageError($event)"
                         alt="User Avatar" class="user-avatar">
                     <div class="user-details">
@@ -108,7 +106,7 @@
                 </div>
 
                 <!-- ✅ SIN COMENTARIOS: Más compacto -->
-                <div class="no-comments" *ngIf="selectedPost.comments?.length === 0">
+                <div class="no-comments" *ngIf="selectedPost.comments.length === 0">
                     <p>Sé el primero en comentar</p>
                 </div>
             </div>

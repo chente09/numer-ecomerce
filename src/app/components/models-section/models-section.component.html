@@ -53,7 +53,8 @@
                     <!-- Imagen del modelo -->
                     <div class="model-image-container">
                         <!-- 🔄 ÚNICO CAMBIO: usar modelName en lugar de name -->
-                        <img [src]="getDisplayImageUrl(model)" [alt]="model.modelName" class="model-image" loading="lazy" />
+                        <img [src]="getDisplayImageUrl(model)" [alt]="model.modelName" class="model-image"
+                            loading="lazy" />
                     </div>
 
                     <!-- Información del modelo -->
@@ -69,20 +70,16 @@
         <div *ngIf="!loading && !error && models.length === 0" class="empty-state">
             <nz-empty nzNotFoundImage="simple" nzNotFoundContent="No hay modelos disponibles en este momento">
                 <ng-template #footer>
-                    <button nz-button nzType="primary" (click)="navigateToShop()">
-                        <span nz-icon nzType="shopping"></span>
-                        Explorar Productos
-                    </button>
+                    <app-action-button text="Explorar Productos" link="/shop" variant="gradient-dark" size="medium"
+                        ariaLabel="Explorar productos disponibles en la tienda" />
                 </ng-template>
             </nz-empty>
         </div>
 
         <!-- Footer de la sección -->
         <div *ngIf="!loading && models.length > 0" class="section-footer">
-            <button class="view-all-btn" (click)="navigateToShop()">
-                Ver Todos los Productos
-                <span nz-icon nzType="arrow-right"></span>
-            </button>
+            <app-action-button text="Ver Todos los Productos" link="/shop" variant="gradient" size="medium"
+                ariaLabel="Ver todos los productos disponibles en la tienda" />
         </div>
     </div>
 </div>

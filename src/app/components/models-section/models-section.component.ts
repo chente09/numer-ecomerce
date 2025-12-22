@@ -14,6 +14,8 @@ import { map } from 'rxjs/operators';
 import { ModelImageService, ModelImage } from '../../services/admin/modelImage/model-image.service';
 import { ProductService } from '../../services/admin/product/product.service';
 import { Product } from '../../models/models';
+import { ActionButtonComponent } from "../action-button/action-button.component";
+import { NzCardModule } from "ng-zorro-antd/card";
 
 // 🎯 INTERFAZ PARA MODELO CON PRODUCTOS
 interface ModelWithProducts extends ModelImage {
@@ -33,8 +35,10 @@ interface ModelWithProducts extends ModelImage {
     NzEmptyModule,
     NzIconModule,
     NzButtonModule,
-    NzBadgeModule
-  ],
+    NzBadgeModule,
+    ActionButtonComponent,
+    NzCardModule
+],
   templateUrl: './models-section.component.html',
   styleUrl: './models-section.component.css'
 })
@@ -222,10 +226,6 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
         source: 'models-section'
       }
     });
-  }
-
-  navigateToShop(): void {
-    this.router.navigate(['/shop']);
   }
 
   // 🔄 MÉTODOS DE UTILIDAD - REFACTORIZADOS

@@ -1,0 +1,235 @@
+/* 🎨 Base del botón */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: clamp(8px, 1.5vw, 12px) clamp(16px, 3vw, 24px);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: clamp(14px, 2vw, 16px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 0;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, box-shadow;
+}
+
+/* 🎯 Variante: Gradient (Hero) */
+.action-btn--gradient {
+    color: white;
+    background-color: transparent;
+}
+
+.action-btn--gradient::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+}
+
+.action-btn--gradient:hover::before,
+.action-btn--gradient:focus::before {
+    left: 0;
+}
+
+.action-btn--gradient:hover,
+.action-btn--gradient:focus {
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* 🎯 Variante: Gradient Dark (texto negro inicial, gradiente naranja) */
+.action-btn--gradient-dark {
+    color: #000;
+    background-color: transparent;
+}
+
+.action-btn--gradient-dark::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+}
+
+.action-btn--gradient-dark:hover::before,
+.action-btn--gradient-dark:focus::before {
+    left: 0;
+}
+
+.action-btn--gradient-dark:hover,
+.action-btn--gradient-dark:focus {
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.3);
+}
+
+/* 🎯 Variante: Solid (Products) */
+.action-btn--solid {
+    color: #000;
+    background-color: transparent;
+}
+
+.action-btn--solid::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+}
+
+.action-btn--solid:hover::before,
+.action-btn--solid:focus::before {
+    left: 0;
+}
+
+.action-btn--solid:hover,
+.action-btn--solid:focus {
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* 🎯 Variante: Outline */
+.action-btn--outline {
+    color: #000;
+    background-color: transparent;
+    border: 2px solid currentColor;
+}
+
+.action-btn--outline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: currentColor;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+}
+
+.action-btn--outline:hover::before,
+.action-btn--outline:focus::before {
+    left: 0;
+}
+
+.action-btn--outline:hover,
+.action-btn--outline:focus {
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* 📏 Tamaños */
+.action-btn--small {
+    padding: clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px);
+    font-size: clamp(12px, 1.8vw, 14px);
+    gap: 6px;
+}
+
+.action-btn--medium {
+    padding: clamp(8px, 1.5vw, 12px) clamp(16px, 3vw, 24px);
+    font-size: clamp(14px, 2vw, 16px);
+    gap: 8px;
+}
+
+.action-btn--large {
+    padding: clamp(10px, 2vw, 14px) clamp(20px, 3.5vw, 28px);
+    font-size: clamp(16px, 2.2vw, 18px);
+    gap: 10px;
+}
+
+/* 🎯 Estados comunes */
+.action-btn:focus {
+    outline: 2px solid currentColor;
+    outline-offset: 4px;
+}
+
+.action-btn:active {
+    transform: translateY(-1px);
+}
+
+/* 🔄 Animación del icono */
+.action-btn__icon {
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+.action-btn:hover .action-btn__icon {
+    transform: translateX(4px);
+}
+
+.action-btn--icon-left:hover .action-btn__icon {
+    transform: translateX(-4px);
+}
+
+/* 📱 Responsive */
+@media (max-width: 480px) {
+    .action-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+        gap: 6px;
+    }
+
+    .action-btn--small {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+}
+
+/* ♿ Reducir movimientos */
+@media (prefers-reduced-motion: reduce) {
+
+    .action-btn,
+    .action-btn::before,
+    .action-btn__icon {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    .action-btn:hover,
+    .action-btn:focus,
+    .action-btn:active {
+        transform: none;
+    }
+
+    .action-btn:hover .action-btn__icon {
+        transform: none;
+    }
+}
+
+/* 🎨 Tema oscuro */
+@media (prefers-color-scheme: dark) {
+    .action-btn--solid {
+        color: #fff;
+    }
+
+    .action-btn--solid::before {
+        background: #fff;
+    }
+
+    .action-btn--solid:hover,
+    .action-btn--solid:focus {
+        color: #000;
+    }
+}

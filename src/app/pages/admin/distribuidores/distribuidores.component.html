@@ -1,0 +1,705 @@
+<!-- src/app/admin/distribuidores/distribuidores.component.html -->
+
+<div class="distributors-container">
+    <!-- Encabezado -->
+    <nz-card nzTitle="Gestión de Distribuidores Autorizados" class="mb-4 header-card">
+        <div class="card-actions">
+            <button nz-button nzType="primary" (click)="openModal()">
+                <span nz-icon nzType="plus"></span>
+                <span class="button-text">Nuevo Distribuidor</span>
+            </button>
+        </div>
+    </nz-card>
+
+    <!-- Tabs principales: Distribuidores vs Solicitudes -->
+    
+
+    <nz-tabset [(nzSelectedIndex)]="mainTabIndex" nzType="card" class="main-tabs">
+
+        <nz-tab nzTitle="Distribuidores Autorizados">
+            <nz-empty *ngIf="distributors.length === 0 && !loading"
+                nzNotFoundContent="No hay distribuidores autorizados" [nzNotFoundFooter]="emptyButton">
+            </nz-empty>
+            <ng-template #emptyButton>
+                <button nz-button nzType="primary" (click)="openModal()">Crear primer distribuidor</button>
+            </ng-template>
+
+            <div class="table-responsive" *ngIf="distributors.length > 0">
+                <nz-table #tabla [nzData]="distributors" [nzBordered]="true" [nzLoading]="loading"
+                    [nzShowPagination]="true" [nzPageSize]="10">
+                    <thead>
+                        <tr>
+                            <th nzWidth="80px">Logo</th>
+                            <th nzWidth="auto">Nombre Comercial</th>
+                            <th nzWidth="auto" class="hide-sm">Contacto</th>
+                            <th nzWidth="auto" class="hide-md">Ciudad</th>
+                            <th nzWidth="100px">Tipo</th>
+                            <th nzWidth="80px">Estado</th>
+                            <th nzWidth="150px">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let dist of tabla.data">
+                            <td>
+                                <nz-avatar [nzSrc]="dist.logoUrl" nzShape="square" nzSize="large"
+                                    [nzAlt]="dist.nombreComercial" (error)="handleImageError($event)">
+                                </nz-avatar>
+                            </td>
+                            <td>
+                                <strong>{{ dist.nombreComercial }}</strong>
+                                <br>
+                                <small class="text-muted">{{ dist.nombreContacto }}</small>
+                            </td>
+                            <td class="hide-sm">
+                                <div class="contact-info">
+                                    <div><span nz-icon nzType="phone"></span> {{ dist.telefono }}</div>
+                                    <div><span nz-icon nzType="mail"></span> {{ dist.email }}</div>
+                                </div>
+                            </td>
+                            <td class="hide-md">{{ dist.ciudad }}, {{ dist.provincia }}</td>
+                            <td>
+                                <nz-tag [nzColor]="getTipoTagColor(dist.tipo)">
+                                    {{ getTipoLabel(dist.tipo) }}
+                                </nz-tag>
+                            </td>
+                            <td>
+                                <nz-tag [nzColor]="dist.activo ? 'success' : 'default'">
+                                    {{ dist.activo ? 'Activo' : 'Inactivo' }}
+                                </nz-tag>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button nz-button nzSize="small" (click)="viewDistributor(dist)" nz-tooltip
+                                        nzTooltipTitle="Ver detalles">
+                                        <span nz-icon nzType="eye"></span>
+                                    </button>
+                                    <button nz-button nzSize="small" (click)="editDistributor(dist)" nz-tooltip
+                                        nzTooltipTitle="Editar">
+                                        <span nz-icon nzType="edit"></span>
+                                    </button>
+                                    <button nz-button nzDanger nzSize="small" nz-popconfirm
+                                        nzPopconfirmTitle="¿Seguro que quieres eliminar este distribuidor?"
+                                        nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteDistributor(dist.id)"
+                                        nz-tooltip nzTooltipTitle="Eliminar">
+                                        <span nz-icon nzType="delete"></span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </nz-table>
+            </div>
+        </nz-tab>
+
+        <nz-tab [nzTitle]="titleTemplate">
+
+            <nz-empty *ngIf="solicitudes.length === 0 && !loadingSolicitudes"
+                nzNotFoundContent="No hay solicitudes pendientes">
+            </nz-empty>
+
+            <div class="table-responsive" *ngIf="solicitudes.length > 0">
+                <nz-table #tablaSolicitudes [nzData]="solicitudes" [nzBordered]="true" [nzLoading]="loadingSolicitudes"
+                    [nzShowPagination]="true" [nzPageSize]="10">
+                    <thead>
+                        <tr>
+                            <th nzWidth="25%">Negocio / RUC</th>
+                            <th nzWidth="20%" class="hide-sm">Contacto</th>
+                            <th nzWidth="15%" class="hide-md">Ubicación</th>
+                            <th nzWidth="100px">Tipo</th>
+                            <th nzWidth="100px" class="hide-lg">Fecha</th>
+                            <th nzWidth="100px">Estado</th>
+                            <th nzWidth="140px">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let sol of tablaSolicitudes.data">
+                            <td>
+                                <strong class="text-primary">{{ sol.nombreComercial }}</strong>
+                                <div class="rlc-text">
+                                    <span nz-icon nzType="idcard"></span> {{ sol.rlc }}
+                                </div>
+                            </td>
+                            <td class="hide-sm">
+                                <div class="contact-info">
+                                    <div class="contact-item">
+                                        <span nz-icon nzType="user"></span> {{ sol.nombreContacto }}
+                                    </div>
+                                    <div class="contact-item">
+                                        <span nz-icon nzType="phone"></span>
+                                        <a [href]="'tel:' + sol.telefono">{{ sol.telefono }}</a>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="hide-md">
+                                {{ sol.ciudad }}<br>
+                                <small class="text-muted">{{ sol.provincia }}</small>
+                            </td>
+                            <td>
+                                <nz-tag [nzColor]="getTipoTagColor(sol.tipoNegocio)">
+                                    {{ getTipoLabel(sol.tipoNegocio) }}
+                                </nz-tag>
+                            </td>
+                            <td class="hide-lg">
+                                <small>{{ formatDate(sol.fechaSolicitud) }}</small>
+                            </td>
+                            <td>
+                                <nz-tag [nzColor]="getEstadoColor(sol.estado)">
+                                    <span nz-icon
+                                        [nzType]="sol.estado === 'pendiente' ? 'clock-circle' : (sol.estado === 'aprobada' ? 'check-circle' : 'close-circle')"></span>
+                                    {{ getEstadoLabel(sol.estado) }}
+                                </nz-tag>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button nz-button nzSize="small" (click)="viewSolicitud(sol)" nz-tooltip
+                                        nzTooltipTitle="Ver detalles completos">
+                                        <span nz-icon nzType="eye"></span>
+                                    </button>
+
+                                    <ng-container *ngIf="sol.estado === 'pendiente'">
+                                        <button nz-button nzSize="small" nzType="primary"
+                                            (click)="aprobarSolicitud(sol)" nz-tooltip
+                                            nzTooltipTitle="Aprobar y Convertir">
+                                            <span nz-icon nzType="check"></span>
+                                        </button>
+                                        <button nz-button nzSize="small" nzDanger (click)="rechazarSolicitud(sol)"
+                                            nz-tooltip nzTooltipTitle="Rechazar">
+                                            <span nz-icon nzType="close"></span>
+                                        </button>
+                                    </ng-container>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </nz-table>
+            </div>
+        </nz-tab>
+    </nz-tabset>
+
+    <ng-template #titleTemplate>
+        <span nz-icon nzType="file-text"></span>
+        Solicitudes
+        <nz-badge *ngIf="solicitudesPendientes > 0" [nzCount]="solicitudesPendientes"
+            [nzStyle]="{ backgroundColor: '#ff6b35', marginLeft: '8px', boxShadow: '0 0 0 1px #fff' }">
+        </nz-badge>
+    </ng-template>
+
+    <!-- ======================== MODAL CREAR/EDITAR DISTRIBUIDOR ======================== -->
+    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Distribuidor' : 'Nuevo Distribuidor'"
+        [nzWidth]="modalWidth" [nzFooter]="modalFooter" (nzOnCancel)="closeModal()" nzCentered>
+        <ng-container *nzModalContent>
+            <nz-tabset [(nzSelectedIndex)]="currentTab" [nzTabBarStyle]="{ marginBottom: '24px' }">
+
+                <!-- Tab 1: Información Básica -->
+                <nz-tab nzTitle="Información Básica">
+                    <form [formGroup]="distributorForm" nz-form nzLayout="vertical">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre Comercial</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingresa el nombre comercial">
+                                <input nz-input formControlName="nombreComercial"
+                                    placeholder="Ej. Deportes Extremos S.A." />
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre del Contacto</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingresa el nombre del contacto">
+                                <input nz-input formControlName="nombreContacto" placeholder="Ej. Juan Pérez" />
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Tipo de Distribuidor</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor selecciona el tipo">
+                                <nz-select formControlName="tipo" nzPlaceHolder="Selecciona el tipo">
+                                    <nz-option *ngFor="let tipo of tiposDistribuidor" [nzValue]="tipo.value"
+                                        [nzLabel]="tipo.label">
+                                    </nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Estado</nz-form-label>
+                            <nz-form-control>
+                                <nz-switch formControlName="activo" nzCheckedChildren="Activo"
+                                    nzUnCheckedChildren="Inactivo">
+                                </nz-switch>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </form>
+                </nz-tab>
+
+                <!-- Tab 2: Ubicación y Contacto -->
+                <nz-tab nzTitle="Ubicación y Contacto">
+                    <form [formGroup]="distributorForm" nz-form nzLayout="vertical">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Dirección</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingresa la dirección">
+                                <input nz-input formControlName="direccion" placeholder="Ej. Av. Amazonas N24-03" />
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzXs]="24" [nzMd]="12">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Ciudad</nz-form-label>
+                                    <nz-form-control nzErrorTip="Por favor ingresa la ciudad">
+                                        <input nz-input formControlName="ciudad" placeholder="Ej. Quito" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzXs]="24" [nzMd]="12">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Provincia</nz-form-label>
+                                    <nz-form-control nzErrorTip="Por favor selecciona la provincia">
+                                        <nz-select formControlName="provincia" nzPlaceHolder="Selecciona provincia"
+                                            nzShowSearch>
+                                            <nz-option *ngFor="let prov of provincias" [nzValue]="prov"
+                                                [nzLabel]="prov">
+                                            </nz-option>
+                                        </nz-select>
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzXs]="24" [nzMd]="12">
+                                <nz-form-item>
+                                    <nz-form-label nzRequired>Teléfono</nz-form-label>
+                                    <nz-form-control nzErrorTip="Por favor ingresa un teléfono válido">
+                                        <input nz-input formControlName="telefono" placeholder="Ej. +593 2 123 4567" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                            <div nz-col [nzXs]="24" [nzMd]="12">
+                                <nz-form-item>
+                                    <nz-form-label>WhatsApp</nz-form-label>
+                                    <nz-form-control nzErrorTip="Por favor ingresa un número válido">
+                                        <input nz-input formControlName="whatsapp" placeholder="Ej. +593 98 765 4321" />
+                                    </nz-form-control>
+                                </nz-form-item>
+                            </div>
+                        </div>
+
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Email</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingresa un email válido">
+                                <input nz-input type="email" formControlName="email"
+                                    placeholder="Ej. contacto@empresa.com" />
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Google Maps Link</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingresa una URL válida">
+                                <input nz-input formControlName="googleMapsLink"
+                                    placeholder="Ej. https://maps.app.goo.gl/..." />
+                                <div class="form-help-text">
+                                    Pega el link de Google Maps de la ubicación de la tienda
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </form>
+                </nz-tab>
+
+                <!-- Tab 3: Presencia Digital -->
+                <nz-tab nzTitle="Presencia Digital">
+                    <form [formGroup]="distributorForm" nz-form nzLayout="vertical">
+                        <nz-form-item>
+                            <nz-form-label>Sitio Web</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor ingresa una URL válida">
+                                <input nz-input formControlName="sitioWeb" placeholder="Ej. https://www.ejemplo.com" />
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Redes Sociales</nz-form-label>
+                            <nz-form-control>
+                                <textarea nz-input formControlName="redesSociales"
+                                    [nzAutosize]="{ minRows: 6, maxRows: 10 }" placeholder="Formato sugerido:
+Facebook: https://facebook.com/...
+Instagram: https://instagram.com/...
+TikTok: https://tiktok.com/@...
+Twitter: https://twitter.com/...">
+                </textarea>
+                                <div class="form-help-text">
+                                    Ingresa una red social por línea con el formato: "Red: URL"
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </form>
+                </nz-tab>
+
+                <!-- Tab 4: Imágenes -->
+                <nz-tab nzTitle="Imágenes">
+                    <form [formGroup]="distributorForm" nz-form nzLayout="vertical">
+                        <nz-form-item>
+                            <nz-form-label>
+                                Logo del Distribuidor
+                                <span *ngIf="!isEditMode" class="required-mark">*</span>
+                            </nz-form-label>
+                            <nz-form-control>
+                                <div class="upload-container">
+                                    <nz-upload [nzFileList]="logoFileList" [nzBeforeUpload]="beforeUploadLogo"
+                                        [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                        [nzPreview]="handlePreview" [nzRemove]="handleRemoveLogo"
+                                        nzListType="picture-card">
+                                        <div *ngIf="logoFileList.length < 1">
+                                            <span nz-icon nzType="plus"></span>
+                                            <div class="ant-upload-text">Subir Logo</div>
+                                        </div>
+                                    </nz-upload>
+                                </div>
+                                <div *ngIf="logoErrorMessage" class="error-message">
+                                    {{ logoErrorMessage }}
+                                </div>
+                                <div class="form-help-text">
+                                    Sube el logo del distribuidor (mínimo 200x200px)
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>
+                                Foto de la Tienda
+                                <span *ngIf="!isEditMode" class="required-mark">*</span>
+                            </nz-form-label>
+                            <nz-form-control>
+                                <div class="upload-container">
+                                    <nz-upload [nzFileList]="storeImageFileList"
+                                        [nzBeforeUpload]="beforeUploadStoreImage"
+                                        [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
+                                        [nzPreview]="handlePreview" [nzRemove]="handleRemoveStoreImage"
+                                        nzListType="picture-card">
+                                        <div *ngIf="storeImageFileList.length < 1">
+                                            <span nz-icon nzType="plus"></span>
+                                            <div class="ant-upload-text">Subir Foto</div>
+                                        </div>
+                                    </nz-upload>
+                                </div>
+                                <div *ngIf="storeImageErrorMessage" class="error-message">
+                                    {{ storeImageErrorMessage }}
+                                </div>
+                                <div class="form-help-text">
+                                    Sube una foto de fondo de la tienda (mínimo 200x200px)
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </form>
+                </nz-tab>
+
+                <!-- Tab 5: Comentarios -->
+                <nz-tab nzTitle="Comentarios">
+                    <form [formGroup]="distributorForm" nz-form nzLayout="vertical">
+                        <nz-form-item>
+                            <nz-form-label>Comentarios Internos</nz-form-label>
+                            <nz-form-control>
+                                <textarea nz-input formControlName="comentarios"
+                                    [nzAutosize]="{ minRows: 8, maxRows: 12 }"
+                                    placeholder="Notas internas sobre el distribuidor (no visibles públicamente)...">
+                </textarea>
+                                <div class="form-help-text">
+                                    Estos comentarios son solo para uso interno del equipo administrativo
+                                </div>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </form>
+                </nz-tab>
+
+            </nz-tabset>
+        </ng-container>
+
+        <!-- Footer del modal -->
+        <ng-template #modalFooter>
+            <div class="modal-footer-actions">
+                <button nz-button (click)="closeModal()" [disabled]="saving">Cancelar</button>
+                <button nz-button *ngIf="currentTab > 0" (click)="prevTab()" [disabled]="saving">
+                    <span nz-icon nzType="left"></span> Anterior
+                </button>
+                <button nz-button nzType="primary" *ngIf="currentTab < 4" (click)="nextTab()" [disabled]="saving">
+                    Siguiente <span nz-icon nzType="right"></span>
+                </button>
+                <button nz-button nzType="primary" *ngIf="currentTab === 4" (click)="handleSubmit()"
+                    [nzLoading]="saving" [disabled]="saving">
+                    {{ isEditMode ? 'Actualizar' : 'Crear' }} Distribuidor
+                </button>
+            </div>
+        </ng-template>
+    </nz-modal>
+
+    <!-- ======================== MODAL DETALLES DISTRIBUIDOR ======================== -->
+    <nz-modal [(nzVisible)]="detailsModalVisible" nzTitle="Detalles del Distribuidor" [nzWidth]="modalWidth"
+        [nzFooter]="detailsFooter" (nzOnCancel)="closeDetailsModal()" nzCentered>
+        <ng-container *nzModalContent>
+            <div *ngIf="viewingDistributor" class="details-content">
+
+                <!-- Imágenes -->
+                <div class="details-images" nz-row [nzGutter]="16">
+                    <div nz-col [nzXs]="12" [nzMd]="8">
+                        <div class="detail-section">
+                            <h4>Logo</h4>
+                            <img [src]="viewingDistributor.logoUrl" [alt]="viewingDistributor.nombreComercial"
+                                class="detail-image" (error)="handleImageError($event)" />
+                        </div>
+                    </div>
+                    <div nz-col [nzXs]="12" [nzMd]="16">
+                        <div class="detail-section">
+                            <h4>Foto de la Tienda</h4>
+                            <img [src]="viewingDistributor.storeImageUrl" [alt]="viewingDistributor.nombreComercial"
+                                class="detail-image-store" (error)="handleImageError($event)" />
+                        </div>
+                    </div>
+                </div>
+
+                <nz-divider></nz-divider>
+
+                <!-- Información Básica -->
+                <div class="detail-section">
+                    <h4><span nz-icon nzType="shop"></span> Información Básica</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Nombre Comercial:</label>
+                            <span>{{ viewingDistributor.nombreComercial }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Nombre del Contacto:</label>
+                            <span>{{ viewingDistributor.nombreContacto }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Tipo:</label>
+                            <nz-tag [nzColor]="getTipoTagColor(viewingDistributor.tipo)">
+                                {{ getTipoLabel(viewingDistributor.tipo) }}
+                            </nz-tag>
+                        </div>
+                        <div class="detail-item">
+                            <label>Estado:</label>
+                            <nz-tag [nzColor]="viewingDistributor.activo ? 'success' : 'default'">
+                                {{ viewingDistributor.activo ? 'Activo' : 'Inactivo' }}
+                            </nz-tag>
+                        </div>
+                    </div>
+                </div>
+
+                <nz-divider></nz-divider>
+
+                <!-- Ubicación y Contacto -->
+                <div class="detail-section">
+                    <h4><span nz-icon nzType="environment"></span> Ubicación y Contacto</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item full-width">
+                            <label>Dirección:</label>
+                            <span>{{ viewingDistributor.direccion }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Ciudad:</label>
+                            <span>{{ viewingDistributor.ciudad }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Provincia:</label>
+                            <span>{{ viewingDistributor.provincia }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Teléfono:</label>
+                            <span>
+                                <a [href]="'tel:' + viewingDistributor.telefono">
+                                    <span nz-icon nzType="phone"></span> {{ viewingDistributor.telefono }}
+                                </a>
+                            </span>
+                        </div>
+                        <div class="detail-item" *ngIf="viewingDistributor.whatsapp">
+                            <label>WhatsApp:</label>
+                            <span>
+                                <a [href]="getWhatsAppLink(viewingDistributor.whatsapp)" target="_blank">
+                                    <span nz-icon nzType="whats-app"></span> {{ viewingDistributor.whatsapp }}
+                                </a>
+                            </span>
+                        </div>
+                        <div class="detail-item full-width">
+                            <label>Email:</label>
+                            <span>
+                                <a [href]="'mailto:' + viewingDistributor.email">
+                                    <span nz-icon nzType="mail"></span> {{ viewingDistributor.email }}
+                                </a>
+                            </span>
+                        </div>
+                        <div class="detail-item full-width" *ngIf="viewingDistributor.googleMapsLink">
+                            <label>Google Maps:</label>
+                            <span>
+                                <a [href]="viewingDistributor.googleMapsLink" target="_blank">
+                                    <span nz-icon nzType="global"></span> Ver en Google Maps
+                                </a>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <nz-divider></nz-divider>
+
+                <!-- Presencia Digital -->
+                <div class="detail-section">
+                    <h4><span nz-icon nzType="global"></span> Presencia Digital</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item full-width" *ngIf="viewingDistributor.sitioWeb">
+                            <label>Sitio Web:</label>
+                            <span>
+                                <a [href]="viewingDistributor.sitioWeb" target="_blank">
+                                    <span nz-icon nzType="link"></span> {{ viewingDistributor.sitioWeb }}
+                                </a>
+                            </span>
+                        </div>
+
+                        <div class="detail-item" *ngIf="viewingDistributor.redesSociales?.facebook">
+                            <label>Facebook:</label>
+                            <span>
+                                <a [href]="viewingDistributor.redesSociales?.facebook" target="_blank">
+                                    <span nz-icon nzType="facebook"></span> Ver perfil
+                                </a>
+                            </span>
+                        </div>
+
+                        <div class="detail-item" *ngIf="viewingDistributor.redesSociales?.instagram">
+                            <label>Instagram:</label>
+                            <span>
+                                <a [href]="viewingDistributor.redesSociales?.instagram" target="_blank">
+                                    <span nz-icon nzType="instagram"></span> Ver perfil
+                                </a>
+                            </span>
+                        </div>
+
+                        <div class="detail-item" *ngIf="viewingDistributor.redesSociales?.tiktok">
+                            <label>TikTok:</label>
+                            <span>
+                                <a [href]="viewingDistributor.redesSociales?.tiktok" target="_blank">
+                                    <span nz-icon nzType="play-circle"></span> Ver perfil
+                                </a>
+                            </span>
+                        </div>
+
+                        <div class="detail-item" *ngIf="viewingDistributor.redesSociales?.twitter">
+                            <label>Twitter:</label>
+                            <span>
+                                <a [href]="viewingDistributor.redesSociales?.twitter" target="_blank">
+                                    <span nz-icon nzType="twitter"></span> Ver perfil
+                                </a>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <nz-divider *ngIf="viewingDistributor.comentarios"></nz-divider>
+
+                <!-- Comentarios Internos -->
+                <div class="detail-section" *ngIf="viewingDistributor.comentarios">
+                    <h4><span nz-icon nzType="file-text"></span> Comentarios Internos</h4>
+                    <div class="detail-comments">
+                        <p>{{ viewingDistributor.comentarios }}</p>
+                    </div>
+                </div>
+
+            </div>
+        </ng-container>
+
+        <!-- Footer del modal de detalles -->
+        <ng-template #detailsFooter>
+            <div class="modal-footer-actions">
+                <button nz-button (click)="closeDetailsModal()">Cerrar</button>
+                <button nz-button nzType="primary" (click)="editFromDetails()">
+                    <span nz-icon nzType="edit"></span> Editar
+                </button>
+            </div>
+        </ng-template>
+    </nz-modal>
+
+    <!-- ======================== MODAL DETALLES SOLICITUD ======================== -->
+    <nz-modal [(nzVisible)]="solicitudModalVisible" nzTitle="Detalles de la Solicitud" [nzWidth]="modalWidth"
+        [nzFooter]="solicitudFooter" (nzOnCancel)="closeSolicitudModal()" nzCentered>
+        <ng-container *nzModalContent>
+            <div *ngIf="viewingSolicitud" class="solicitud-details">
+
+                <nz-descriptions nzBordered [nzColumn]="{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }">
+                    <nz-descriptions-item nzTitle="Estado" [nzSpan]="2">
+                        <nz-tag [nzColor]="getEstadoColor(viewingSolicitud.estado)">
+                            {{ getEstadoLabel(viewingSolicitud.estado) }}
+                        </nz-tag>
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Fecha de Solicitud" [nzSpan]="2">
+                        {{ formatDate(viewingSolicitud.fechaSolicitud) }}
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Nombre Comercial" [nzSpan]="2">
+                        <strong>{{ viewingSolicitud.nombreComercial }}</strong>
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Nombre de Contacto">
+                        {{ viewingSolicitud.nombreContacto }}
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="RLC/Cédula">
+                        {{ viewingSolicitud.rlc }}
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Email">
+                        <a [href]="'mailto:' + viewingSolicitud.email">{{ viewingSolicitud.email }}</a>
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Teléfono">
+                        <a [href]="'tel:' + viewingSolicitud.telefono">{{ viewingSolicitud.telefono }}</a>
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Ciudad">
+                        {{ viewingSolicitud.ciudad }}
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Provincia">
+                        {{ viewingSolicitud.provincia }}
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Dirección" [nzSpan]="2" *ngIf="viewingSolicitud.direccion">
+                        {{ viewingSolicitud.direccion }}
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Tipo de Negocio">
+                        <nz-tag [nzColor]="getTipoTagColor(viewingSolicitud.tipoNegocio)">
+                            {{ getTipoLabel(viewingSolicitud.tipoNegocio) }}
+                        </nz-tag>
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Volumen Estimado">
+                        {{ viewingSolicitud.volumenEstimado }}
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Sitio Web" [nzSpan]="2" *ngIf="viewingSolicitud.sitioWeb">
+                        <a [href]="viewingSolicitud.sitioWeb" target="_blank">{{ viewingSolicitud.sitioWeb }}</a>
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Experiencia" [nzSpan]="2">
+                        <div class="text-content">{{ viewingSolicitud.experiencia }}</div>
+                    </nz-descriptions-item>
+
+                    <nz-descriptions-item nzTitle="Motivación" [nzSpan]="2">
+                        <div class="text-content">{{ viewingSolicitud.motivacion }}</div>
+                    </nz-descriptions-item>
+                </nz-descriptions>
+
+            </div>
+        </ng-container>
+
+        <!-- Footer del modal de solicitud -->
+        <ng-template #solicitudFooter>
+            <div class="modal-footer-actions">
+                <button nz-button (click)="closeSolicitudModal()">Cerrar</button>
+                <button nz-button nzType="primary" (click)="aprobarSolicitud(viewingSolicitud!)"
+                    [disabled]="viewingSolicitud.estado !== 'pendiente'" *ngIf="viewingSolicitud">
+                    <span nz-icon nzType="check"></span> Aprobar
+                </button>
+                <button nz-button nzDanger (click)="rechazarSolicitud(viewingSolicitud!)"
+                    [disabled]="viewingSolicitud.estado !== 'pendiente'" *ngIf="viewingSolicitud">
+                    <span nz-icon nzType="close"></span> Rechazar
+                </button>
+            </div>
+        </ng-template>
+    </nz-modal>
+</div>

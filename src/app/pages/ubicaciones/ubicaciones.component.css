@@ -72,8 +72,6 @@
     }
 }
 
-
-/* Responsive Adjustments */
 @media (max-width: 768px) {
     .hero-section {
         background-size: 190px 190px;
@@ -109,6 +107,7 @@
     position: relative;
     z-index: 2;
 }
+
 /* ==================== SECCIÓN TIENDA ==================== */
 .store-section {
     margin-bottom: 48px;
@@ -254,22 +253,97 @@
 }
 
 /* ==================== MAPA ==================== */
+.map-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 24px;
+}
+
+.map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.map-header h4,
+.map-header h5 {
+    margin: 0;
+    color: #001529;
+    font-weight: 600;
+}
+
+.open-maps-btn {
+    color: #1890ff;
+    font-size: 12px;
+}
+
+.map-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.map-iframe-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.map-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+    color: white;
+    padding: 20px 16px 16px;
+    pointer-events: none;
+}
+
+.map-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.location-icon {
+    font-size: 20px;
+    color: #ff4d4f;
+}
+
+.address-info strong {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.address-info p {
+    margin: 0;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
 .map-placeholder {
-    background: #f9f9f9;
-    border-radius: 8px;
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
     height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    border: 1px solid #f0f0f0;
-    margin-top: 16px;
+    border: 2px dashed #d9d9d9;
 }
 
 .map-placeholder:hover {
-    border-color: #000000;
-    background: #f0f0f0;
+    border-color: #1890ff;
+    background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+}
+
+.load-map-btn {
+    margin-top: 12px;
 }
 
 .map-content {
@@ -317,164 +391,299 @@
     font-size: 1rem;
 }
 
-.become-distributor-btn {
-    border-radius: 4px;
-    height: 40px;
-    white-space: nowrap;
+/* ==================== SPINNER DE CARGA ==================== */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.loading-container p {
+    margin-top: 20px;
+    color: #666;
+    font-size: 15px;
     font-weight: 500;
-    background-color: #000000;
-    color: white;
-    border: none;
 }
 
-.become-distributor-btn:hover {
-    background-color: #333333;
+:host ::ng-deep .loading-container .ant-spin-dot-item {
+    background-color: #ff6b35;
 }
 
-/* ==================== GRID DE DISTRIBUIDORES ==================== */
+/* ==================== GRID DE DISTRIBUIDORES ESTILO INSTAGRAM ==================== */
 .distributors-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 24px;
 }
 
-.distributor-card {
+.distributor-card-instagram {
+    background: white;
+    border: 1px solid #dbdbdb;
     border-radius: 8px;
-    transition: all 0.3s ease;
     overflow: hidden;
-    background-color: white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
     animation: fadeInUp 0.6s ease;
-    animation-delay: calc(var(--index, 0) * 0.1s);
 }
 
-.distributor-card:hover {
-    transform: translateY(-4px);
+.distributor-card-instagram:hover {
+    transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.distributor-header {
+/* Header estilo Instagram */
+.instagram-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
-    padding: 20px 20px 0;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #efefef;
 }
 
-.distributor-name {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #000000;
-    margin: 0;
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     flex: 1;
 }
 
-.type-tag {
-    border-radius: 4px;
-    font-size: 11px;
-    padding: 2px 8px;
-    background: #f0f0f0;
-    color: #000000;
+.profile-avatar {
+    flex-shrink: 0;
+    border: 2px solid #dbdbdb;
+    transition: border-color 0.3s ease;
 }
 
-.distributor-info {
-    margin-bottom: 20px;
-    padding: 0 20px;
+.distributor-card-instagram:hover .profile-avatar {
+    border-color: #ff6b35;
 }
 
-.distributor-info p {
-    margin: 8px 0;
+.profile-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #262626;
+    margin: 0 0 2px 0;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-location {
+    font-size: 12px;
+    color: #8e8e8e;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Imagen principal estilo Instagram */
+.instagram-image {
+    width: 100%;
+    padding-top: 60%; /* Aspect ratio 1:1 */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: #fafafa;
+    position: relative;
+}
+
+/* Acciones estilo Instagram */
+.instagram-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    border-bottom: 1px solid #efefef;
+}
+
+.action-left,
+.action-right {
+    display: flex;
+    gap: 4px;
+}
+
+.action-button {
+    padding: 8px;
+    height: auto;
+    color: #262626;
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    color: #ff6b35;
+    transform: scale(1.1);
+}
+
+.action-button span[nz-icon] {
+    font-size: 24px;
+}
+
+/* Contenido estilo Instagram */
+.instagram-content {
+    padding: 12px 16px 16px;
+}
+
+.content-info {
+    margin-bottom: 12px;
+}
+
+.contact-name {
+    font-size: 14px;
+    margin: 0 0 8px 0;
+    color: #262626;
+}
+
+.contact-name strong {
+    font-weight: 600;
+}
+
+.contact-details {
+    font-size: 13px;
+    color: #8e8e8e;
+    margin: 4px 0;
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #333;
+}
+
+.contact-details span[nz-icon] {
     font-size: 14px;
+    color: #8e8e8e;
 }
 
-.distributor-info span[nz-icon] {
-    color: #000000;
-    width: 16px;
+/* Productos inline estilo hashtags */
+.products-info {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #efefef;
 }
 
-.products-section h5 {
-    color: #000000;
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    font-weight: 600;
-    padding: 0 20px;
+.products-label {
+    font-size: 12px;
+    color: #8e8e8e;
+    margin: 0 0 8px 0;
+    font-weight: 500;
 }
 
-.products-tags {
+.products-tags-inline {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    padding: 0 20px 20px;
+    gap: 8px;
 }
 
-.product-tag {
-    font-size: 11px;
-    border-radius: 4px;
-    border: none;
-    background: #f0f0f0;
-    color: #000000;
-}
-
-/* ==================== ACCIONES DEL CARD ==================== */
-:host ::ng-deep .ant-card-actions {
-    background: #fafafa;
-    border-top: 1px solid #f0f0f0;
-    padding: 12px 0;
-}
-
-.action-icon {
-    font-size: 16px;
-    color: #666;
+.product-tag-inline {
+    font-size: 13px;
+    color: #00376b;
+    font-weight: 500;
     cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.product-tag-inline:hover {
+    color: #ff6b35;
+}
+
+.no-products-inline {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #efefef;
+}
+
+.no-products-inline p {
+    font-size: 13px;
+    color: #8e8e8e;
+    margin: 0;
+    font-style: italic;
+}
+
+/* ==================== BOTÓN SER DISTRIBUIDOR ==================== */
+.become-distributor-btn {
+    border-radius: 8px;
+    height: 44px;
+    white-space: nowrap;
+    font-weight: 600;
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.25);
     transition: all 0.3s ease;
 }
 
-.action-icon:hover {
-    color: #000000;
-    transform: scale(1.1);
+.become-distributor-btn:hover {
+    background: linear-gradient(90deg, #ff8c42 0%, #ff6b35 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.35);
 }
 
 /* ==================== ESTADO VACÍO ==================== */
 .empty-state {
     text-align: center;
-    padding: 64px 24px;
+    padding: 80px 24px;
     background: white;
-    border-radius: 8px;
-    border: 1px dashed #f0f0f0;
+    border-radius: 12px;
+    border: 2px dashed #e8e8e8;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .empty-icon {
-    font-size: 64px;
+    font-size: 72px;
     color: #d9d9d9;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .empty-state h3 {
-    color: #000000;
-    margin: 16px 0 8px 0;
+    color: #1a1a1a;
+    margin: 20px 0 12px 0;
     font-weight: 600;
+    font-size: 1.5rem;
 }
 
 .empty-state p {
     color: #666;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
+    font-size: 1.1rem;
+}
+
+.empty-state button {
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+    border: none;
+    height: 44px;
+    padding: 0 32px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.25);
+}
+
+.empty-state button:hover {
+    background: linear-gradient(90deg, #ff8c42 0%, #ff6b35 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.35);
+}
+
+/* ==================== ERROR DE IMAGEN ==================== */
+.error-image {
+    object-fit: cover;
+    background: #fafafa;
 }
 
 /* ==================== RESPONSIVE ==================== */
+@media (max-width: 992px) {
+    .distributors-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+    }
+}
+
 @media (max-width: 768px) {
-    .page-title {
-        font-size: 32px;
-    }
-
-    .page-subtitle {
-        font-size: 18px;
-    }
-
     .section-header {
         flex-direction: column;
         align-items: flex-start;
@@ -483,24 +692,52 @@
 
     .distributors-grid {
         grid-template-columns: 1fr;
+        gap: 20px;
     }
 
     .action-buttons {
         grid-template-columns: 1fr;
     }
+
+    .map-header {
+        padding: 12px;
+    }
+
+    .map-header h4,
+    .map-header h5 {
+        font-size: 14px;
+    }
+
+    .map-iframe-container iframe {
+        height: 200px;
+    }
 }
 
 @media (max-width: 576px) {
-    .page-title {
-        font-size: 28px;
-    }
-
-    .page-subtitle {
-        font-size: 16px;
-    }
-
     .header-text h2 {
         font-size: 1.5rem;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .become-distributor-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .instagram-header {
+        padding: 12px;
+    }
+
+    .profile-name {
+        font-size: 13px;
+    }
+
+    .action-button span[nz-icon] {
+        font-size: 22px;
     }
 }
 
@@ -514,128 +751,5 @@
     to {
         opacity: 1;
         transform: translateY(0);
-    }
-}
-
-@keyframes shimmer {
-    0% {
-        background-position: 0% 50%;
-    }
-
-    100% {
-        background-position: 100% 50%;
-    }
-}
-
-/* Contenedor del mapa */
-.map-container {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    margin-top: 24px;
-}
-
-.map-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.map-header h4,
-.map-header h5 {
-    margin: 0;
-    color: #001529;
-    font-weight: 600;
-}
-
-.open-maps-btn {
-    color: #1890ff;
-    font-size: 12px;
-}
-
-.map-actions {
-    display: flex;
-    gap: 8px;
-}
-
-/* Iframe container */
-.map-iframe-container {
-    position: relative;
-    overflow: hidden;
-}
-
-/* Overlay para la opción 1 */
-.map-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
-    color: white;
-    padding: 20px 16px 16px;
-    pointer-events: none;
-}
-
-.map-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.location-icon {
-    font-size: 20px;
-    color: #ff4d4f;
-}
-
-.address-info strong {
-    display: block;
-    font-size: 14px;
-    margin-bottom: 4px;
-}
-
-.address-info p {
-    margin: 0;
-    font-size: 12px;
-    opacity: 0.9;
-}
-
-/* Placeholder mejorado para opción 2 */
-.map-placeholder {
-    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
-    height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px dashed #d9d9d9;
-}
-
-.map-placeholder:hover {
-    border-color: #1890ff;
-    background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
-}
-
-.load-map-btn {
-    margin-top: 12px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .map-header {
-        padding: 12px;
-    }
-
-    .map-header h4,
-    .map-header h5 {
-        font-size: 14px;
-    }
-
-    .map-iframe-container iframe {
-        height: 200px;
     }
 }

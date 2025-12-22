@@ -44,18 +44,13 @@
 
         <!-- Call to Action Section -->
         <div class="section-footer" *ngIf="getHeroCtaText() && getHeroCtaLink()">
-            <a [routerLink]="getHeroCtaLink().startsWith('/') ? getHeroCtaLink() : null"
-                [href]="!getHeroCtaLink().startsWith('/') ? getHeroCtaLink() : null"
-                [target]="!getHeroCtaLink().startsWith('/') ? '_blank' : undefined"
-                [rel]="!getHeroCtaLink().startsWith('/') ? 'noopener noreferrer' : null" class="view-all-btn"
-                [attr.aria-label]="getHeroCtaText() + ' - ' + getHeroTitle()">
-
-                <span>{{ getHeroCtaText() }}</span>
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
-                    <path fill-rule="evenodd"
-                        d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8z" />
-                </svg>
-            </a>
+            <app-action-button 
+                [text]="getHeroCtaText()" 
+                [link]="getHeroCtaLink()"
+                [ariaLabel]="getHeroCtaText() + ' - ' + getHeroTitle()" 
+                variant="gradient"
+                size="medium" 
+            />
         </div>
     </div>
 

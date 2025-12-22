@@ -1,0 +1,27 @@
+<a [routerLink]="isInternalLink ? link : null" [href]="!isInternalLink ? link : null" [target]="linkTarget"
+    [rel]="linkRel" [attr.aria-label]="computedAriaLabel"
+    [class]="'action-btn action-btn--' + variant + ' action-btn--' + size + ' ' + customClass"
+    [class.action-btn--icon-left]="iconPosition === 'left'">
+    <!-- Icono ng-zorro a la izquierda -->
+    <span *ngIf="useNzIcon && showIcon && iconPosition === 'left'" nz-icon [nzType]="nzIcon" [nzTheme]="nzIconTheme"
+        class="action-btn__icon"></span>
+
+    <!-- Icono SVG a la izquierda (cuando no hay nzIcon) -->
+    <svg *ngIf="!useNzIcon && showIcon && iconPosition === 'left'" class="action-btn__icon" width="16" height="16"
+        fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+        <path [attr.d]="defaultIcon" />
+    </svg>
+
+    <!-- Texto del botón -->
+    <span class="action-btn__text">{{ text }}</span>
+
+    <!-- Icono ng-zorro a la derecha -->
+    <span *ngIf="useNzIcon && showIcon && iconPosition === 'right'" nz-icon [nzType]="nzIcon" [nzTheme]="nzIconTheme"
+        class="action-btn__icon"></span>
+
+    <!-- Icono SVG a la derecha (cuando no hay nzIcon) -->
+    <svg *ngIf="!useNzIcon && showIcon && iconPosition === 'right'" class="action-btn__icon" width="16" height="16"
+        fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+        <path [attr.d]="defaultIcon" />
+    </svg>
+</a>

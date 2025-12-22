@@ -12,6 +12,7 @@ import { Subject, takeUntil, map, debounceTime } from 'rxjs';
 import { ProductCardComponent } from '../product-card/product-card.component';
 import { PromotionStateService } from '../../services/admin/promotionState/promotion-state.service';
 import { CacheService } from '../../services/admin/cache/cache.service';
+import { ActionButtonComponent } from "../action-button/action-button.component";
 
 interface ProductWithSelectedColor extends Product {
   selectedColorIndex?: number;
@@ -28,8 +29,9 @@ interface ProductWithSelectedColor extends Product {
     NzEmptyModule,
     RouterLink,
     FormsModule,
-    ProductCardComponent
-  ],
+    ProductCardComponent,
+    ActionButtonComponent
+],
   templateUrl: './productos-section.component.html',
   styleUrls: ['./productos-section.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
