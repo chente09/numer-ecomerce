@@ -33,7 +33,7 @@ export interface OrderNotification {
 export class TelegramAdminService {
   private readonly BACKEND_URL = 'https://backend-numer.netlify.app/.netlify/functions';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   /**
    * ✅ NUEVO: Envía notificación usando el backend seguro
@@ -157,7 +157,7 @@ export class TelegramAdminService {
       });
 
       const success = response.ok;
-      
+
       if (success) {
         console.log('✅ Test de backend exitoso');
       } else {
@@ -170,4 +170,52 @@ export class TelegramAdminService {
       return false;
     }
   }
+
+  /**
+   * ✅ NUEVO: Envía notificación de nueva solicitud de distribuidor
+   */
+  async sendDistributorRequestNotification(requestData: {
+    nombreComercial: string;
+    nombreContacto: string;
+    email: string;
+    telefono: string;
+    direccion?: string;
+    ciudad: string;
+    provincia: string;
+    tipoNegocio: 'minorista' | 'mayorista' | 'online';
+    experiencia: string;
+    volumenEstimado: string;
+    motivacion: string;
+    sitioWeb?: string;
+    rlc: string;
+  }): Promise<void> {
+    try {
+      console.log('📱 Enviando notificación de solicitud de distribuidor...');
+
+      const response = await fetch(`${this.BACKEND_URL}/telegram-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: 'distributor_request',
+          data: requestData,
+          apiKey: 'numer_secret_key_2024' // ⚠️ TEMPORAL - mover a environment después
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Backend Error ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Notificación de solicitud enviada correctamente:', result);
+    } catch (error) {
+      console.error('❌ Error enviando notificación de solicitud:', error);
+      // No re-lanzamos el error para no bloquear el guardado de la solicitud
+      console.warn('⚠️ La solicitud se guardó pero no se pudo notificar al equipo');
+    }
+  }
+
 }

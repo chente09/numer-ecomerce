@@ -248,6 +248,18 @@ export class AuthorizedDistributorService {
     );
   }
 
+  /**
+ * Elimina permanentemente una solicitud de distribuidor
+ * @param id - ID de la solicitud a eliminar
+ * @returns Observable<void>
+ */
+  deleteDistributorRequest(id: string): Observable<void> {
+    const docRef = doc(this.firestore, `${this.requestsCollection}/${id}`);
+    return from(deleteDoc(docRef)).pipe(
+      catchError(error => ErrorUtil.handleError(error, `deleteDistributorRequest(${id})`))
+    );
+  }
+
   // ==================== MÉTODOS PRIVADOS ====================
 
   private async uploadImage(path: string, file: File): Promise<string> {

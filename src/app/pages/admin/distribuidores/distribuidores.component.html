@@ -12,7 +12,7 @@
     </nz-card>
 
     <!-- Tabs principales: Distribuidores vs Solicitudes -->
-    
+
 
     <nz-tabset [(nzSelectedIndex)]="mainTabIndex" nzType="card" class="main-tabs">
 
@@ -156,14 +156,23 @@
                                         <span nz-icon nzType="eye"></span>
                                     </button>
 
+                                    <!-- ✅ NUEVO: Botón eliminar (siempre visible) -->
+                                    <button nz-button nzSize="small" nzDanger nzType="default" nz-popconfirm
+                                        nzPopconfirmTitle="¿Eliminar esta solicitud permanentemente?"
+                                        nzPopconfirmPlacement="topRight" (nzOnConfirm)="eliminarSolicitud(sol)"
+                                        [nzLoading]="saving" nz-tooltip nzTooltipTitle="Eliminar solicitud">
+                                        <span nz-icon nzType="delete"></span>
+                                    </button>
+
+                                    <!-- Botones de aprobar/rechazar (solo para pendientes) -->
                                     <ng-container *ngIf="sol.estado === 'pendiente'">
                                         <button nz-button nzSize="small" nzType="primary"
                                             (click)="aprobarSolicitud(sol)" nz-tooltip
-                                            nzTooltipTitle="Aprobar y Convertir">
+                                            nzTooltipTitle="Aprobar y Convertir" [nzLoading]="saving">
                                             <span nz-icon nzType="check"></span>
                                         </button>
                                         <button nz-button nzSize="small" nzDanger (click)="rechazarSolicitud(sol)"
-                                            nz-tooltip nzTooltipTitle="Rechazar">
+                                            nz-tooltip nzTooltipTitle="Rechazar" [nzLoading]="saving">
                                             <span nz-icon nzType="close"></span>
                                         </button>
                                     </ng-container>
@@ -690,15 +699,39 @@ Twitter: https://twitter.com/...">
         <!-- Footer del modal de solicitud -->
         <ng-template #solicitudFooter>
             <div class="modal-footer-actions">
-                <button nz-button (click)="closeSolicitudModal()">Cerrar</button>
-                <button nz-button nzType="primary" (click)="aprobarSolicitud(viewingSolicitud!)"
-                    [disabled]="viewingSolicitud.estado !== 'pendiente'" *ngIf="viewingSolicitud">
-                    <span nz-icon nzType="check"></span> Aprobar
-                </button>
-                <button nz-button nzDanger (click)="rechazarSolicitud(viewingSolicitud!)"
-                    [disabled]="viewingSolicitud.estado !== 'pendiente'" *ngIf="viewingSolicitud">
-                    <span nz-icon nzType="close"></span> Rechazar
-                </button>
+                <!-- Lado izquierdo: Cerrar -->
+                <div style="display: flex; gap: 8px;">
+                    <button nz-button (click)="closeSolicitudModal()">
+                        Cerrar
+                    </button>
+                </div>
+
+                <!-- Lado derecho: Acciones principales -->
+                <div style="display: flex; gap: 8px;" *ngIf="viewingSolicitud">
+                    <!-- ✅ NUEVO: Botón Eliminar (siempre visible) -->
+                    <button nz-button nzDanger nzType="default" nz-popconfirm
+                        nzPopconfirmTitle="¿Eliminar esta solicitud permanentemente?" nzPopconfirmPlacement="top"
+                        (nzOnConfirm)="eliminarSolicitud(viewingSolicitud!); closeSolicitudModal()"
+                        [nzLoading]="saving">
+                        <span nz-icon nzType="delete"></span>
+                        <span class="button-text">Eliminar</span>
+                    </button>
+
+                    <!-- Botón Rechazar (solo pendientes) -->
+                    <button nz-button nzDanger (click)="rechazarSolicitud(viewingSolicitud!)"
+                        [disabled]="viewingSolicitud.estado !== 'pendiente'" [nzLoading]="saving">
+                        <span nz-icon nzType="close"></span>
+                        <span class="button-text">Rechazar</span>
+                    </button>
+
+                    <!-- Botón Aprobar (solo pendientes) -->
+                    <button nz-button nzType="primary"
+                        (click)="aprobarSolicitud(viewingSolicitud!); closeSolicitudModal()"
+                        [disabled]="viewingSolicitud.estado !== 'pendiente'" [nzLoading]="saving">
+                        <span nz-icon nzType="check"></span>
+                        <span class="button-text">Aprobar</span>
+                    </button>
+                </div>
             </div>
         </ng-template>
     </nz-modal>

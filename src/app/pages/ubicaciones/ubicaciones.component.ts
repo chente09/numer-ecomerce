@@ -15,11 +15,12 @@ import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
-import { Subject, takeUntil, take } from 'rxjs';
+import { Subject, takeUntil, take, firstValueFrom } from 'rxjs';
 
 // ✅ IMPORTAR SERVICIOS
 import { SeoService } from '../../services/seo/seo.service';
 import { AuthorizedDistributorService, AuthorizedDistributor } from '../../services/admin/authorized-distributor/authorized-distributor.service';
+import { TelegramAdminService } from '../../services/admin/telegramAdmin/telegram-admin.service';
 
 interface TiendaFisica {
   id: string;
@@ -131,7 +132,8 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     private message: NzMessageService,
     private modal: NzModalService,
     private seoService: SeoService,
-    private authorizedDistributorService: AuthorizedDistributorService  // ✅ AGREGADO
+    private authorizedDistributorService: AuthorizedDistributorService,  // ✅ AGREGADO
+    private telegramService: TelegramAdminService  // ✅ AGREGADO
   ) {
     this.createForm();
   }
@@ -182,13 +184,13 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
       nombreComercial: ['', [Validators.required, Validators.minLength(3)]],
       nombreContacto: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      telefono: ['', [Validators.required, Validators.pattern(/^[0-9+\-\s()]+$/)]],
+      telefono: ['', [Validators.required, Validators.pattern(/^(\+593|593|0)[0-9]{9}$/)]],
       ciudad: ['', [Validators.required]],
       provincia: ['', [Validators.required]],
       tipoNegocio: ['', [Validators.required]],
       experiencia: ['', [Validators.required, Validators.minLength(20)]],
       volumenEstimado: ['', [Validators.required]],
-      motivacion: ['', [Validators.required, Validators.minLength(50)]],
+      motivacion: ['', [Validators.required, Validators.minLength(20)]],
       sitioWeb: [''],
       rlc: ['', [Validators.required, Validators.minLength(8)]]
     });
@@ -215,20 +217,39 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     this.submitting = true;
 
     try {
-      const solicitudData = this.solicitudForm.value;
+      const formData = this.solicitudForm.value;
 
-      // ✅ CAMBIO: Guardar en Firebase usando el servicio
-      await this.authorizedDistributorService.createDistributorRequest(solicitudData)
-        .pipe(take(1))
-        .toPromise();
+      // ✅ Formatear teléfono antes de enviar
+      const solicitudData = {
+        ...formData,
+        telefono: this.formatPhoneNumber(formData.telefono)
+      };
 
+
+      // 1. Guardar solicitud en Firebase
+      await firstValueFrom(
+        this.authorizedDistributorService.createDistributorRequest(solicitudData)
+      );
+
+      console.log('✅ Solicitud guardada en Firebase');
+
+      // 2. Enviar notificación a Telegram (sin bloquear si falla)
+      try {
+        await this.telegramService.sendDistributorRequestNotification(solicitudData);
+        console.log('✅ Notificación de Telegram enviada');
+      } catch (telegramError) {
+        console.warn('⚠️ No se pudo enviar notificación a Telegram, pero la solicitud se guardó:', telegramError);
+        // No mostramos error al usuario, solo logueamos
+      }
+
+      // 3. Mostrar mensaje de éxito
       this.message.success('¡Solicitud enviada correctamente! Te contactaremos pronto.');
       this.closeModal();
 
-      console.log('📋 Solicitud guardada:', solicitudData);
+      console.log('📋 Proceso completado exitosamente');
 
     } catch (error) {
-      console.error('Error enviando solicitud:', error);
+      console.error('❌ Error enviando solicitud:', error);
       this.message.error('Error al enviar la solicitud. Intenta nuevamente.');
     } finally {
       this.submitting = false;
@@ -326,9 +347,73 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
       if (field.errors['required']) return 'Este campo es requerido';
       if (field.errors['email']) return 'Email inválido';
       if (field.errors['minlength']) return `Mínimo ${field.errors['minlength'].requiredLength} caracteres`;
+
+      // ✅ Mensaje específico para teléfono
+      if (field.errors['pattern'] && fieldName === 'telefono') {
+        return 'Ingresa un número ecuatoriano válido (ej: 0999123456)';
+      }
+
       if (field.errors['pattern']) return 'Formato inválido';
     }
     return '';
+  }
+
+  /**
+ * Previene conflictos de eventos en inputs
+ */
+  onInputKeydown(event: KeyboardEvent): void {
+    // No hacer nada - solo permitir que el evento fluya normalmente
+    // Este handler vacío previene que ng-zorro interfiera con el input
+    event.stopPropagation();
+  }
+
+  /**
+   * Maneja el input para evitar pérdida de caracteres
+   */
+  onInputChange(event: Event, fieldName: string): void {
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+    if (target) {
+      this.solicitudForm.patchValue({
+        [fieldName]: target.value
+      }, { emitEvent: false });
+    }
+  }
+
+  /**
+ * Formatea número de teléfono ecuatoriano con código de país
+ * Acepta: 0999123456, 593999123456, +593999123456
+ * Retorna: +593999123456
+ */
+  formatPhoneNumber(phone: string): string {
+    if (!phone) return '';
+
+    // Remover todos los caracteres no numéricos excepto el +
+    let cleaned = phone.replace(/[^\d+]/g, '');
+
+    // Casos:
+    // 1. Ya tiene +593 al inicio
+    if (cleaned.startsWith('+593')) {
+      return cleaned;
+    }
+
+    // 2. Tiene 593 al inicio sin +
+    if (cleaned.startsWith('593')) {
+      return '+' + cleaned;
+    }
+
+    // 3. Número local que empieza con 0 (ej: 0999123456)
+    if (cleaned.startsWith('0') && cleaned.length === 10) {
+      return '+593' + cleaned.substring(1);
+    }
+
+    // 4. Número sin código (ej: 999123456)
+    if (cleaned.length === 9) {
+      return '+593' + cleaned;
+    }
+
+    // Si no coincide con ningún patrón, retornar sin modificar
+    console.warn('⚠️ Formato de teléfono no reconocido:', phone);
+    return cleaned;
   }
 
   openWhatsAppDistributor(distribuidor: AuthorizedDistributor): void {

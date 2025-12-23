@@ -141,7 +141,6 @@
         <nz-divider nzText="Distribuidores Autorizados"></nz-divider>
 
         <!-- ✅ SECCIÓN DISTRIBUIDORES -->
-        <!-- ✅ SECCIÓN DISTRIBUIDORES -->
         <section class="distributors-section">
             <div class="section-header">
                 <div class="header-text">
@@ -286,7 +285,9 @@
                             <nz-form-label nzRequired>Nombre Comercial</nz-form-label>
                             <nz-form-control [nzErrorTip]="getFieldError('nombreComercial')">
                                 <input nz-input formControlName="nombreComercial" placeholder="Ej. Aventura Sport"
-                                    [class.error]="isFieldInvalid('nombreComercial')">
+                                    autocomplete="off" [class.error]="isFieldInvalid('nombreComercial')"
+                                    (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'nombreComercial')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -315,7 +316,9 @@
                             <nz-form-label nzRequired>Nombre del Contacto</nz-form-label>
                             <nz-form-control [nzErrorTip]="getFieldError('nombreContacto')">
                                 <input nz-input formControlName="nombreContacto" placeholder="Tu nombre completo"
-                                    [class.error]="isFieldInvalid('nombreContacto')">
+                                    autocomplete="off" [class.error]="isFieldInvalid('nombreContacto')"
+                                    (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'nombreContacto')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -325,7 +328,8 @@
                             <nz-form-label nzRequired>Email</nz-form-label>
                             <nz-form-control [nzErrorTip]="getFieldError('email')">
                                 <input nz-input formControlName="email" placeholder="contacto@tutienda.com"
-                                    [class.error]="isFieldInvalid('email')">
+                                    autocomplete="off" [class.error]="isFieldInvalid('email')"
+                                    (keydown)="onInputKeydown($event)" (input)="onInputChange($event, 'email')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -334,8 +338,9 @@
                         <nz-form-item>
                             <nz-form-label nzRequired>Teléfono</nz-form-label>
                             <nz-form-control [nzErrorTip]="getFieldError('telefono')">
-                                <input nz-input formControlName="telefono" placeholder="+593 9 1234 5678"
-                                    [class.error]="isFieldInvalid('telefono')">
+                                <input nz-input formControlName="telefono" placeholder="0999123456 o +593999123456"
+                                    autocomplete="off" [class.error]="isFieldInvalid('telefono')"
+                                    (keydown)="onInputKeydown($event)" (input)="onInputChange($event, 'telefono')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -344,8 +349,9 @@
                         <nz-form-item>
                             <nz-form-label nzRequired>RUC / Cédula</nz-form-label>
                             <nz-form-control [nzErrorTip]="getFieldError('rlc')">
-                                <input nz-input formControlName="rlc" placeholder="1234567890001"
-                                    [class.error]="isFieldInvalid('rlc')">
+                                <input nz-input formControlName="rlc" placeholder="1234567890001" autocomplete="off"
+                                    [class.error]="isFieldInvalid('rlc')" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'rlc')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -359,8 +365,9 @@
                         <nz-form-item>
                             <nz-form-label nzRequired>Ciudad</nz-form-label>
                             <nz-form-control [nzErrorTip]="getFieldError('ciudad')">
-                                <input nz-input formControlName="ciudad" placeholder="Ej. Quito"
-                                    [class.error]="isFieldInvalid('ciudad')">
+                                <input nz-input formControlName="ciudad" placeholder="Ej. Quito" autocomplete="off"
+                                    [class.error]="isFieldInvalid('ciudad')" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'ciudad')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -388,8 +395,9 @@
                         <nz-form-item>
                             <nz-form-label>Sitio Web</nz-form-label>
                             <nz-form-control>
-                                <input nz-input formControlName="sitioWeb"
-                                    placeholder="https://tutienda.com (opcional)">
+                                <input nz-input formControlName="sitioWeb" placeholder="https://tutienda.com (opcional)"
+                                    autocomplete="off" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'sitioWeb')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -416,8 +424,9 @@
                                 <!-- ✅ CORREGIDO: usar rows en lugar de [nzRows] -->
                                 <textarea nz-input formControlName="experiencia"
                                     placeholder="Describe tu experiencia vendiendo productos deportivos, outdoor o similares..."
-                                    rows="3" [class.error]="isFieldInvalid('experiencia')">
-                </textarea>
+                                    rows="3" autocomplete="off" spellcheck="false"
+                                    [class.error]="isFieldInvalid('experiencia')" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'experiencia')"></textarea>
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -429,8 +438,9 @@
                                 <!-- ✅ CORREGIDO: usar rows en lugar de [nzRows] -->
                                 <textarea nz-input formControlName="motivacion"
                                     placeholder="¿Por qué quieres ser distribuidor de NUMER? ¿Cómo planeas promocionar nuestros productos?"
-                                    rows="4" [class.error]="isFieldInvalid('motivacion')">
-                </textarea>
+                                    rows="4" autocomplete="off" spellcheck="false"
+                                    [class.error]="isFieldInvalid('motivacion')" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'motivacion')"></textarea>
                             </nz-form-control>
                         </nz-form-item>
                     </div>

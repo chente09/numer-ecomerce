@@ -338,136 +338,136 @@ export class DistribuidoresComponent implements OnInit, OnDestroy {
   // ==================== SUBMIT ====================
 
   handleSubmit(): void {
-  // 1. Marcar todos los campos como tocados (Validación visual)
-  Object.keys(this.distributorForm.controls).forEach(key => {
-    this.distributorForm.get(key)?.markAsDirty();
-    this.distributorForm.get(key)?.updateValueAndValidity();
-  });
-
-  // 2. Validación general del formulario
-  if (!this.distributorForm.valid) {
-    this.message.warning('Por favor complete todos los campos obligatorios correctamente.');
-    return;
-  }
-
-  // 3. Validación de imágenes (Solo requeridas si es creación nueva)
-  if (!this.isEditMode && (!this.logoFile || !this.storeImageFile)) {
-    this.message.warning('Por favor seleccione el logo y la foto de la tienda.');
-    return;
-  }
-
-  // 4. Iniciar estado de carga
-  this.saving = true;
-  this.cdr.detectChanges();
-
-  // 5. Preparar datos
-  const formData = this.distributorForm.value;
-  const redesSociales = this.parseRedesSociales(formData.redesSociales);
-
-  const distributorData: any = {
-    nombreComercial: formData.nombreComercial,
-    nombreContacto: formData.nombreContacto,
-    tipo: formData.tipo,
-    activo: formData.activo,
-    direccion: formData.direccion,
-    ciudad: formData.ciudad,
-    provincia: formData.provincia,
-    telefono: formData.telefono,
-    whatsapp: formData.whatsapp || null,
-    email: formData.email,
-    googleMapsLink: formData.googleMapsLink || null,
-    sitioWeb: formData.sitioWeb || null,
-    redesSociales: Object.keys(redesSociales).length > 0 ? redesSociales : null,
-    comentarios: formData.comentarios || null,
-    productosAutorizados: []
-  };
-
-  // ================= LÓGICA DE GUARDADO =================
-
-  if (this.isEditMode && this.editingId) {
-    // CASO A: ACTUALIZAR (UPDATE)
-    this.authorizedDistributorService.updateAuthorizedDistributor(
-      this.editingId,
-      distributorData,
-      this.logoFile || undefined,
-      this.storeImageFile || undefined
-    ).pipe(
-      take(1),
-      finalize(() => {
-        this.saving = false;
-        this.cdr.detectChanges();
-      })
-    ).subscribe({
-      next: () => {
-        this.message.success('Distribuidor actualizado correctamente.');
-        this.fetchDistributors();
-        setTimeout(() => this.closeModal(), 300);
-      },
-      error: (error) => {
-        console.error('Error al actualizar distribuidor:', error);
-        this.message.error(error.message || 'Error al actualizar el distribuidor.');
-      }
+    // 1. Marcar todos los campos como tocados (Validación visual)
+    Object.keys(this.distributorForm.controls).forEach(key => {
+      this.distributorForm.get(key)?.markAsDirty();
+      this.distributorForm.get(key)?.updateValueAndValidity();
     });
 
-  } else {
-    // CASO B: CREAR (CREATE) - Aquí integramos la lógica de conversión
-    this.authorizedDistributorService.createAuthorizedDistributor(
-      distributorData,
-      this.logoFile!,
-      this.storeImageFile!
-    ).pipe(
-      take(1),
-      // Encadenamos la siguiente operación: Actualizar solicitud (si existe)
-      switchMap((newDistributorId) => {
-        
-        // Si venimos de una solicitud ("Aprobar y Crear")
-        if (this.convertingRequestId) {
-          console.log(`🔗 Vinculando nuevo distribuidor con solicitud ${this.convertingRequestId}`);
-          
-          return this.authorizedDistributorService.updateDistributorRequestStatus(
-            this.convertingRequestId, 
-            'aprobada'
-          ).pipe(
-            // Manejamos error específico de la actualización de estado para no romper todo el flujo
-            catchError(err => {
-              console.error('⚠️ Distribuidor creado, pero falló actualización de estado de solicitud', err);
-              return of(null); // Retornamos null para continuar el flujo exitoso del distribuidor
-            })
-          );
+    // 2. Validación general del formulario
+    if (!this.distributorForm.valid) {
+      this.message.warning('Por favor complete todos los campos obligatorios correctamente.');
+      return;
+    }
+
+    // 3. Validación de imágenes (Solo requeridas si es creación nueva)
+    if (!this.isEditMode && (!this.logoFile || !this.storeImageFile)) {
+      this.message.warning('Por favor seleccione el logo y la foto de la tienda.');
+      return;
+    }
+
+    // 4. Iniciar estado de carga
+    this.saving = true;
+    this.cdr.detectChanges();
+
+    // 5. Preparar datos
+    const formData = this.distributorForm.value;
+    const redesSociales = this.parseRedesSociales(formData.redesSociales);
+
+    const distributorData: any = {
+      nombreComercial: formData.nombreComercial,
+      nombreContacto: formData.nombreContacto,
+      tipo: formData.tipo,
+      activo: formData.activo,
+      direccion: formData.direccion,
+      ciudad: formData.ciudad,
+      provincia: formData.provincia,
+      telefono: formData.telefono,
+      whatsapp: formData.whatsapp || null,
+      email: formData.email,
+      googleMapsLink: formData.googleMapsLink || null,
+      sitioWeb: formData.sitioWeb || null,
+      redesSociales: Object.keys(redesSociales).length > 0 ? redesSociales : null,
+      comentarios: formData.comentarios || null,
+      productosAutorizados: []
+    };
+
+    // ================= LÓGICA DE GUARDADO =================
+
+    if (this.isEditMode && this.editingId) {
+      // CASO A: ACTUALIZAR (UPDATE)
+      this.authorizedDistributorService.updateAuthorizedDistributor(
+        this.editingId,
+        distributorData,
+        this.logoFile || undefined,
+        this.storeImageFile || undefined
+      ).pipe(
+        take(1),
+        finalize(() => {
+          this.saving = false;
+          this.cdr.detectChanges();
+        })
+      ).subscribe({
+        next: () => {
+          this.message.success('Distribuidor actualizado correctamente.');
+          this.fetchDistributors();
+          setTimeout(() => this.closeModal(), 300);
+        },
+        error: (error) => {
+          console.error('Error al actualizar distribuidor:', error);
+          this.message.error(error.message || 'Error al actualizar el distribuidor.');
         }
-        
-        // Si es creación manual normal, retornamos observable vacío para seguir
-        return of(null);
-      }),
-      // Finalize se ejecuta siempre al terminar todo el flujo
-      finalize(() => {
-        this.saving = false;
-        this.cdr.detectChanges();
-      })
-    ).subscribe({
-      next: () => {
-        // Mensaje dinámico según el caso
-        const msg = this.convertingRequestId 
-          ? 'Solicitud aprobada y Distribuidor creado correctamente.' 
-          : 'Distribuidor creado correctamente.';
-        
-        this.message.success(msg);
-        
-        // Recargamos ambas tablas
-        this.fetchDistributors();
-        if (this.convertingRequestId) {
-          this.fetchSolicitudes(); // Para ver que desapareció de pendientes o cambió estado
+      });
+
+    } else {
+      // CASO B: CREAR (CREATE) - Aquí integramos la lógica de conversión
+      this.authorizedDistributorService.createAuthorizedDistributor(
+        distributorData,
+        this.logoFile!,
+        this.storeImageFile!
+      ).pipe(
+        take(1),
+        // Encadenamos la siguiente operación: Actualizar solicitud (si existe)
+        switchMap((newDistributorId) => {
+
+          // Si venimos de una solicitud ("Aprobar y Crear")
+          if (this.convertingRequestId) {
+            console.log(`🔗 Vinculando nuevo distribuidor con solicitud ${this.convertingRequestId}`);
+
+            return this.authorizedDistributorService.updateDistributorRequestStatus(
+              this.convertingRequestId,
+              'aprobada'
+            ).pipe(
+              // Manejamos error específico de la actualización de estado para no romper todo el flujo
+              catchError(err => {
+                console.error('⚠️ Distribuidor creado, pero falló actualización de estado de solicitud', err);
+                return of(null); // Retornamos null para continuar el flujo exitoso del distribuidor
+              })
+            );
+          }
+
+          // Si es creación manual normal, retornamos observable vacío para seguir
+          return of(null);
+        }),
+        // Finalize se ejecuta siempre al terminar todo el flujo
+        finalize(() => {
+          this.saving = false;
+          this.cdr.detectChanges();
+        })
+      ).subscribe({
+        next: () => {
+          // Mensaje dinámico según el caso
+          const msg = this.convertingRequestId
+            ? 'Solicitud aprobada y Distribuidor creado correctamente.'
+            : 'Distribuidor creado correctamente.';
+
+          this.message.success(msg);
+
+          // Recargamos ambas tablas
+          this.fetchDistributors();
+          if (this.convertingRequestId) {
+            this.fetchSolicitudes(); // Para ver que desapareció de pendientes o cambió estado
+          }
+
+          setTimeout(() => this.closeModal(), 300);
+        },
+        error: (error) => {
+          console.error('Error al crear distribuidor:', error);
+          this.message.error(error.message || 'Error al crear el distribuidor.');
         }
-        
-        setTimeout(() => this.closeModal(), 300);
-      },
-      error: (error) => {
-        console.error('Error al crear distribuidor:', error);
-        this.message.error(error.message || 'Error al crear el distribuidor.');
-      }
-    });
+      });
+    }
   }
-}
 
   deleteDistributor(id: string): void {
     this.authorizedDistributorService.deleteAuthorizedDistributor(id).pipe(
@@ -543,6 +543,41 @@ export class DistribuidoresComponent implements OnInit, OnDestroy {
       nzCancelText: 'Cancelar',
       nzOnOk: () => {
         this.actualizarEstadoSolicitud(solicitud.id, 'rechazada');
+      }
+    });
+  }
+
+  eliminarSolicitud(solicitud: DistributorRequest): void {
+    this.modalService.confirm({
+      nzTitle: '¿Eliminar esta solicitud permanentemente?',
+      nzContent: `La solicitud de "${solicitud.nombreComercial}" será eliminada de forma permanente. Esta acción no se puede deshacer.`,
+      nzOkText: 'Eliminar',
+      nzOkType: 'primary',
+      nzOkDanger: true,
+      nzCancelText: 'Cancelar',
+      nzOnOk: () => {
+        this.saving = true;
+        this.cdr.detectChanges();
+
+        this.authorizedDistributorService.deleteDistributorRequest(solicitud.id)
+          .pipe(
+            take(1),
+            finalize(() => {
+              this.saving = false;
+              this.cdr.detectChanges();
+            })
+          )
+          .subscribe({
+            next: () => {
+              this.message.success('Solicitud eliminada correctamente');
+              this.fetchSolicitudes();
+              this.closeSolicitudModal();
+            },
+            error: (error) => {
+              console.error('Error eliminando solicitud:', error);
+              this.message.error('Error al eliminar la solicitud');
+            }
+          });
       }
     });
   }
