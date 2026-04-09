@@ -1,5 +1,5 @@
-/* Reset básico */Add commentMore actions
-:host *,
+/* Reset básico */
+Add commentMore actions:host *,
 :host *::before,
 :host *::after {
     margin: 0;
@@ -9,7 +9,7 @@
 :host {
     display: block;
     width: 100%;
-    height: 120px;
+    height: 220px;
     background-color: #000;
     font-family: 'Arial', sans-serif;
     position: relative;
@@ -123,7 +123,7 @@
 /* Responsive */
 @media (max-width: 768px) {
     :host {
-        height: 100px;
+        height: 10px;
     }
 
     .mountain-container {
@@ -147,15 +147,16 @@
 
 @media (max-width: 480px) {
     :host {
-        height: 110px; /* Altura relativa al viewport */
-        min-height: 60px;
-        max-height: 110px;
+        height: 70px;
+        min-height: 50px;
+        max-height: 70px;
+        margin-top: 8px;
     }
 
     .mountain-container {
-        height: 110px; /* Altura relativa al viewport */
-        min-height: 60px;
-        max-height: 110px;
+        height: 70px;
+        min-height: 50px;
+        max-height: 70px;
     }
 
     .ridgeline-path {
@@ -170,15 +171,14 @@
         padding-right: 5px;
         width: fit-content;
     }
-
-
 }
 
 /* Pantallas muy pequeñas (ej. móviles en landscape) */
 @media (max-width: 320px) {
-    
+
     .info {
-        display: none; /* Ocultar en pantallas muy pequeñas */
+        display: none;
+        /* Ocultar en pantallas muy pequeñas */
     }
 }
 
@@ -198,12 +198,12 @@
         height: 25vw;
         max-height: 100px;
     }
-    
+
     .mountain-container {
         height: 25vw;
         max-height: 100px;
     }
-    
+
     .info {
         display: block;
         font-size: 7px;

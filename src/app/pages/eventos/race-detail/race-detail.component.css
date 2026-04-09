@@ -1,0 +1,681 @@
+/* ==================== CONTENEDOR PRINCIPAL ==================== */
+:host {
+    display: block;
+    background: #f5f5f5;
+    min-height: 100vh;
+}
+
+.race-detail-container {
+    margin: 0 auto;
+    position: relative;
+}
+
+/* ==================== ESTADOS DE CARGA Y ERROR ==================== */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 20px;
+    min-height: 60vh;
+}
+
+.loading-container p {
+    margin-top: 20px;
+    color: #666;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+:host ::ng-deep .loading-container .ant-spin-dot-item {
+    background-color: #ff6b35;
+}
+
+.error-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 20px;
+    min-height: 60vh;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 500px;
+}
+
+.error-icon {
+    font-size: 80px;
+    color: #d9d9d9;
+    margin-bottom: 24px;
+}
+
+.error-content h2 {
+    color: #000000;
+    margin: 0 0 12px 0;
+    font-weight: 700;
+    font-size: 28px;
+}
+
+.error-content p {
+    color: #666;
+    margin-bottom: 32px;
+    font-size: 16px;
+}
+
+.error-content button {
+    background: #000000;
+    border-color: #000000;
+    height: 44px;
+    padding: 0 32px;
+    font-weight: 600;
+}
+
+.error-content button:hover {
+    background: #ff6b35;
+    border-color: #ff6b35;
+    transform: translateY(-2px);
+}
+
+/* ==================== BREADCRUMB ==================== */
+.breadcrumb-section {
+    background: #ffffff;
+    padding: 16px 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+:host ::ng-deep .breadcrumb-section .ant-breadcrumb {
+    font-size: 14px;
+}
+
+:host ::ng-deep .breadcrumb-section .ant-breadcrumb a {
+    color: #595959;
+    transition: color 0.3s ease;
+}
+
+:host ::ng-deep .breadcrumb-section .ant-breadcrumb a:hover {
+    color: #ff6b35;
+}
+
+/* ==================== HERO IMAGE SECTION ==================== */
+.hero-image-section {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    overflow: hidden;
+    background: #000000;
+}
+
+.hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 50%);
+}
+
+.hero-badge-container {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+}
+
+.hero-badge {
+    font-size: 14px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ==================== MAIN CONTENT SECTION ==================== */
+.main-content-section {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 24px;
+}
+
+/* ==================== EVENT HEADER ==================== */
+.event-header {
+    margin-bottom: 32px;
+}
+
+.event-title {
+    font-size: 42px;
+    font-weight: 700;
+    color: #000000;
+    margin: 0 0 20px 0;
+    line-height: 1.2;
+}
+
+.event-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-bottom: 16px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    color: #595959;
+}
+
+.meta-item span[nz-icon] {
+    font-size: 18px;
+    color: #ff6b35;
+}
+
+.event-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+:host ::ng-deep .event-tags .ant-tag {
+    font-size: 13px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+/* ==================== EVENT SECTIONS ==================== */
+.event-section {
+    margin-bottom: 40px;
+}
+
+.section-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #000000;
+    margin: 0 0 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title span[nz-icon] {
+    font-size: 24px;
+    color: #ff6b35;
+}
+
+.event-description {
+    font-size: 16px;
+    line-height: 1.8;
+    color: #262626;
+    white-space: pre-wrap;
+}
+
+/* ==================== DETAILS GRID ==================== */
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.detail-card {
+    background: #ffffff;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.detail-card:hover {
+    border-color: #ff6b35;
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.1);
+}
+
+.detail-icon {
+    font-size: 32px;
+    color: #ff6b35;
+}
+
+.detail-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-label {
+    font-size: 13px;
+    color: #8c8c8c;
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #000000;
+}
+
+/* ==================== LISTAS ==================== */
+.list-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.list-items li {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 15px;
+    color: #262626;
+    line-height: 1.6;
+    position: relative;
+    padding-left: 24px;
+}
+
+.list-items li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #52c41a;
+    font-weight: 700;
+}
+
+.list-items li:last-child {
+    border-bottom: none;
+}
+
+.prize-list li::before {
+    content: '🏆';
+}
+
+/* ==================== SPONSORS ==================== */
+.sponsors-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.sponsor-tag {
+    font-size: 14px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    background: #ffffff;
+    border: 1px solid #d9d9d9;
+    color: #262626;
+}
+
+/* ==================== GALERÍA ==================== */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 16px;
+}
+
+.gallery-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.gallery-image:hover {
+    transform: scale(1.05);
+}
+
+/* ==================== VIDEO ==================== */
+.video-container {
+    text-align: center;
+    padding: 40px;
+    background: #fafafa;
+    border-radius: 8px;
+}
+
+.video-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    color: #ff0000;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.video-link:hover {
+    color: #cc0000;
+    transform: scale(1.05);
+}
+
+.video-link span[nz-icon] {
+    font-size: 32px;
+}
+
+/* ==================== MAPA ==================== */
+.map-placeholder {
+    text-align: center;
+    padding: 60px 20px;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 2px dashed #d9d9d9;
+}
+
+.map-placeholder button {
+    background: #000000;
+    border-color: #000000;
+    height: 48px;
+    padding: 0 32px;
+    font-weight: 600;
+}
+
+.map-placeholder button:hover {
+    background: #ff6b35;
+    border-color: #ff6b35;
+}
+
+/* ==================== SIDEBAR INSCRIPCIÓN ==================== */
+.sticky-sidebar {
+    position: sticky;
+    top: 24px;
+}
+
+.inscription-card,
+.organizer-card {
+    margin-bottom: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+:host ::ng-deep .inscription-card .ant-card-body,
+:host ::ng-deep .organizer-card .ant-card-body {
+    padding: 24px;
+}
+
+/* ==================== PRECIO ==================== */
+.price-section {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.price-current {
+    font-size: 48px;
+    font-weight: 800;
+    color: #000000;
+    line-height: 1;
+}
+
+.price-before {
+    font-size: 20px;
+    color: #8c8c8c;
+    text-decoration: line-through;
+    margin-top: 8px;
+}
+
+/* ==================== CAPACIDAD ==================== */
+.capacity-section {
+    margin-bottom: 24px;
+}
+
+.capacity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.capacity-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #595959;
+    font-weight: 500;
+}
+
+.capacity-count {
+    font-size: 16px;
+    font-weight: 700;
+    color: #000000;
+}
+
+.urgency-alert {
+    margin-top: 12px;
+    background: #fff7e6;
+    border-left: 3px solid #ff6b35;
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #d46b08;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.urgency-alert span[nz-icon] {
+    color: #ff6b35;
+}
+
+/* ==================== BOTONES ==================== */
+/* ==================== BOTONES DE ACCIÓN (CARRITO) ==================== */
+.action-buttons-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.cart-btn {
+    background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+    border: none;
+    height: 52px;
+    font-size: 16px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.25);
+    color: #ffffff;
+}
+
+.cart-btn:hover:not(:disabled) {
+    background: linear-gradient(90deg, #ff8c42 0%, #ff6b35 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.35);
+    color: #ffffff;
+}
+
+.cart-btn:disabled {
+    background: #d9d9d9;
+    border-color: #d9d9d9;
+    color: #8c8c8c;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.buy-now-btn {
+    background: #000000;
+    border: 2px solid #000000;
+    color: #ffffff;
+    height: 48px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.buy-now-btn:hover:not(:disabled) {
+    background: #333333;
+    border-color: #333333;
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.buy-now-btn:disabled {
+    background: #d9d9d9;
+    border-color: #d9d9d9;
+    color: #8c8c8c;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.disabled-message {
+    background: #fff7e6;
+    border: 1px solid #ffd591;
+    border-radius: 4px;
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+    color: #d46b08;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.disabled-message span[nz-icon] {
+    font-size: 16px;
+    color: #fa8c16;
+}
+
+.share-btn {
+    border: 2px solid #000000;
+    height: 44px;
+    font-weight: 600;
+    color: #000000;
+}
+
+.share-btn:hover {
+    border-color: #ff6b35;
+    color: #ff6b35;
+}
+
+/* ==================== ORGANIZER INFO ==================== */
+.organizer-card h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #000000;
+    margin: 0 0 16px 0;
+}
+
+.organizer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #595959;
+}
+
+.info-row span[nz-icon] {
+    font-size: 16px;
+    color: #8c8c8c;
+}
+
+.info-row a {
+    color: #595959;
+    transition: color 0.3s ease;
+}
+
+.info-row a:hover {
+    color: #ff6b35;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 992px) {
+    .hero-image-section {
+        height: 400px;
+    }
+
+    .event-title {
+        font-size: 32px;
+    }
+
+    .sticky-sidebar {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .breadcrumb-section {
+        padding: 12px 16px;
+    }
+
+    .hero-image-section {
+        height: 300px;
+    }
+
+    .hero-badge-container {
+        top: 16px;
+        left: 16px;
+    }
+
+    .main-content-section {
+        padding: 24px 16px;
+    }
+
+    .event-title {
+        font-size: 28px;
+    }
+
+    .event-meta-row {
+        gap: 16px;
+    }
+
+    .meta-item {
+        font-size: 14px;
+    }
+
+    .section-title {
+        font-size: 20px;
+    }
+
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .gallery-image {
+        height: 150px;
+    }
+
+    .price-current {
+        font-size: 40px;
+    }
+}
+
+@media (max-width: 576px) {
+    .event-title {
+        font-size: 24px;
+    }
+
+    .event-meta-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .price-current {
+        font-size: 36px;
+    }
+
+    .inscription-btn {
+        height: 48px;
+        font-size: 15px;
+    }
+
+    .share-btn {
+        height: 40px;
+    }
+}

@@ -56,7 +56,8 @@
                             <nz-form-label nzRequired>Nombre</nz-form-label>
                             <nz-form-control nzErrorTip="El nombre es requerido (mínimo 2 caracteres)">
                                 <input nz-input formControlName="firstName" placeholder="Ingresa tu nombre"
-                                    autocomplete="given-name">
+                                    autocomplete="off" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'firstName')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -66,7 +67,8 @@
                             <nz-form-label nzRequired>Apellido</nz-form-label>
                             <nz-form-control nzErrorTip="El apellido es requerido (mínimo 2 caracteres)">
                                 <input nz-input formControlName="lastName" placeholder="Ingresa tu apellido"
-                                    autocomplete="family-name">
+                                    autocomplete="off" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'lastName')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -75,7 +77,8 @@
                 <nz-form-item>
                     <nz-form-label nzRequired>Teléfono</nz-form-label>
                     <nz-form-control nzErrorTip="Formato: 09XXXXXXXX (10 dígitos)">
-                        <input nz-input formControlName="phone" placeholder="Ej: 0987654321" autocomplete="tel">
+                        <input nz-input formControlName="phone" placeholder="Ej: 0987654321" autocomplete="off"
+                            (keydown)="onInputKeydown($event)" (input)="onInputChange($event, 'phone')">
                     </nz-form-control>
                 </nz-form-item>
 
@@ -119,7 +122,8 @@
                             <nz-form-control
                                 nzErrorTip="Ingresa un número válido (10 dígitos para cédula, 13 para RUC)">
                                 <input nz-input formControlName="documentNumber" placeholder="1234567890"
-                                    autocomplete="off">
+                                    autocomplete="off" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'documentNumber')">
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -136,8 +140,9 @@
                 <nz-form-item>
                     <nz-form-label nzRequired>Dirección Completa</nz-form-label>
                     <nz-form-control nzErrorTip="Ingresa tu dirección completa (mínimo 10 caracteres)">
-                        <input nz-input formControlName="address" placeholder="Ej: Av. 6 de Diciembre N24-253 y Wilson"
-                            autocomplete="street-address">
+                        <input nz-input formControlName="address" placeholder="Ej: Av. 6 de Diciembre..."
+                            autocomplete="off" (keydown)="onInputKeydown($event)"
+                            (input)="onInputChange($event, 'address')">
                     </nz-form-control>
                 </nz-form-item>
 
@@ -200,9 +205,9 @@
                 <nz-form-item>
                     <nz-form-label>Referencia de la Dirección</nz-form-label>
                     <nz-form-control>
-                        <textarea nz-input formControlName="reference"
-                            placeholder="Ej: Casa blanca de dos pisos, frente al parque central"
-                            [nzAutosize]="{ minRows: 2, maxRows: 4 }"></textarea>
+                        <textarea nz-input formControlName="reference" placeholder="Ej: Casa blanca..."
+                            [nzAutosize]="{ minRows: 2, maxRows: 4 }" autocomplete="off" spellcheck="false"
+                            (keydown)="onInputKeydown($event)" (input)="onInputChange($event, 'reference')"></textarea>
                         <small class="form-help">Esta información ayudará al repartidor a encontrar tu dirección más
                             fácilmente</small>
                     </nz-form-control>

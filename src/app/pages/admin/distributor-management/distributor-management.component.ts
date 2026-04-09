@@ -380,8 +380,8 @@ export class DistributorManagementComponent implements OnInit {
     try {
       // 1. Calcular el valor exacto de la devolución
       const distributorCostBase = await this.calculateDistributorCost(item);
-      const totalWithoutIVA = distributorCostBase * quantity;
-      const returnValue = totalWithoutIVA * (1 + this.VAT_RATE);
+      const roundedUnitCost = Math.round(distributorCostBase * (1 + this.VAT_RATE) * 100) / 100;
+      const returnValue = roundedUnitCost * quantity;
 
       // 2. Obtener todas las entradas del ledger para este distribuidor
       const ledgerEntries = await firstValueFrom(this.ledgerService.getLedgerEntries(distributorId));
@@ -390,15 +390,14 @@ export class DistributorManagementComponent implements OnInit {
         return { canRevert: true };
       }
 
-      // 3. ✅ CORREGIDO: Buscar débitos relacionados con este producto/variante
-      const relatedDebits = ledgerEntries.filter(entry => {
-        if (entry.type !== 'debit' || entry.paymentStatus === 'paid') return false;
+      // 3. Usar el cálculo corregido que descuenta devoluciones anteriores
+      const debitsWithCorrectRemaining = this.ledgerService.calculateRemainingAmountsForDebits(ledgerEntries);
 
-        // Buscar por descripción que contenga el nombre del producto Y la variante
+      const relatedDebits = debitsWithCorrectRemaining.filter(entry => {
+        if (entry.paymentStatus === 'paid') return false;
         const descriptionContainsProduct = entry.description.toLowerCase().includes(item.productName?.toLowerCase() || '');
         const descriptionContainsVariant = entry.description.toLowerCase().includes(item.colorName?.toLowerCase() || '') &&
           entry.description.toLowerCase().includes(item.sizeName?.toLowerCase() || '');
-
         return descriptionContainsProduct && descriptionContainsVariant;
       });
 
@@ -409,16 +408,13 @@ export class DistributorManagementComponent implements OnInit {
         };
       }
 
-      // 4. ✅ CORREGIDO: Verificar si la suma de saldos pendientes es suficiente
-      const totalPendingAmount = relatedDebits.reduce((sum, debit) => {
-        const remainingAmount = debit.remainingAmount || debit.amount;
-        return sum + remainingAmount;
-      }, 0);
+      // 4. remainingAmount ya viene corregido (descuenta devoluciones previas)
+      const totalPendingAmount = relatedDebits.reduce((sum, debit) => sum + (debit.remainingAmount ?? 0), 0);
 
       if (totalPendingAmount < returnValue) {
         return {
           canRevert: false,
-          reason: `Saldo pendiente insuficiente. Disponible: ${totalPendingAmount.toFixed(2)}, Requerido: ${returnValue.toFixed(2)}.`
+          reason: `Saldo pendiente insuficiente. Disponible: $${totalPendingAmount.toFixed(2)}, Requerido: $${returnValue.toFixed(2)}.`
         };
       }
 
@@ -461,56 +457,66 @@ export class DistributorManagementComponent implements OnInit {
     });
   }
 
-  private executeRevert(item: EnrichedDistributorInventoryItem, quantity: number): void {
+  private async executeRevert(item: EnrichedDistributorInventoryItem, quantity: number): Promise<void> {
     if (!this.selectedDistributorId) return;
     const adminUid = this.usersService.getCurrentUser()?.uid;
     if (!adminUid) return;
+
+    // ✅ RE-VALIDAR con la cantidad real (el modal puede haberla cambiado)
+    const validation = await this.canRevertTransfer(this.selectedDistributorId, item, quantity);
+    if (!validation.canRevert) {
+      this.message.error(validation.reason || 'No se puede procesar la devolución con esta cantidad.');
+      return;
+    }
 
     const transferDetails: TransferDetails = {
       distributorId: this.selectedDistributorId,
       variantId: item.variantId,
       productId: item.productId,
-      quantity: quantity,
+      quantity,
       performedByUid: adminUid,
       notes: `Reversión desde distribuidor.`
     };
 
     this.isLoadingInventory = true;
 
-    // 1. Ejecutar la devolución física del stock
     this.distributorService.receiveStockFromDistributor(transferDetails).subscribe({
       next: async () => {
         try {
-          // 2. Calcular el valor de la devolución
           const distributorCostBase = await this.calculateDistributorCost(item);
-          const totalWithoutIVA = distributorCostBase * quantity;
-          const returnValue = totalWithoutIVA * (1 + this.VAT_RATE);
+          const roundedUnitCost = Math.round(distributorCostBase * (1 + this.VAT_RATE) * 100) / 100;
+          const roundedReturnValue = Math.round(roundedUnitCost * quantity * 100) / 100;
 
-          // ✅ CAMBIO CLAVE: Redondear el valor a 2 decimales ANTES de guardarlo.
-          const roundedReturnValue = Math.round(returnValue * 100) / 100;
+          // ✅ Buscar el debit relacionado para enlazar el crédito
+          const freshEntries = await firstValueFrom(
+            this.ledgerService.getLedgerEntries(this.selectedDistributorId!).pipe(take(1))
+          );
+          const relatedDebit = freshEntries.find(entry => {
+            if (entry.type !== 'debit' || entry.paymentStatus === 'paid') return false;
+            return entry.description.toLowerCase().includes(item.productName?.toLowerCase() || '') &&
+              entry.description.toLowerCase().includes(item.colorName?.toLowerCase() || '') &&
+              entry.description.toLowerCase().includes(item.sizeName?.toLowerCase() || '');
+          });
 
-          // 3. Registrar el crédito (pago por devolución) en el ledger
-          const returnId = `return-${Date.now()}`;
-          await this.ledgerService.registerPayment(
+          if (!relatedDebit?.id) {
+            throw new Error('No se encontró el débito relacionado para registrar la devolución.');
+          }
+
+          // ✅ Usar registerReturnCredit con relatedDebitId
+          await this.ledgerService.registerReturnCredit(
             this.selectedDistributorId!,
-            roundedReturnValue, // ✅ USAR EL VALOR YA REDONDEADO
+            roundedReturnValue,
             `Devolución de ${quantity} x ${item.productName} (${item.colorName}/${item.sizeName})`,
-            {
-              paymentMethod: 'other',
-              notes: `Devolución automática por reversión de transferencia. Costo base: $${distributorCostBase.toFixed(2)} + IVA (15%)`,
-              paidDate: new Date()
-            }
+            relatedDebit.id,
+            `Devolución automática por reversión de transferencia. Costo base: $${distributorCostBase.toFixed(2)} + IVA (15%)`
           );
 
-          this.message.success(`${quantity} unidad(es) devuelta(s) al almacén principal. Ajuste contable aplicado automáticamente.`);
-
-          setTimeout(() => {
-            this.loadDistributorData(this.selectedDistributorId!);
-          }, 500);
+          this.message.success(`${quantity} unidad(es) devuelta(s). Ajuste contable aplicado.`);
+          setTimeout(() => this.loadDistributorData(this.selectedDistributorId!), 500);
 
         } catch (ledgerError: any) {
           console.error('Error en ajuste contable:', ledgerError);
-          this.message.warning(`Stock devuelto exitosamente, pero hubo un error en el ajuste contable: ${ledgerError.message}. Registre manualmente el crédito de $${(item.basePrice || 0 * quantity).toFixed(2)}.`);
+          this.message.warning(`Stock devuelto, pero error en ajuste contable: ${ledgerError.message}`);
           this.onDistributorChange(this.selectedDistributorId);
         } finally {
           this.isLoadingInventory = false;
@@ -537,7 +543,9 @@ export class DistributorManagementComponent implements OnInit {
       const product = await firstValueFrom(this.productService.getProductById(item.productId));
 
       if (!product) {
-        throw new Error('Producto no encontrado');
+        const price = item.basePrice || 0;
+        const priceWithoutVAT = price / (1 + this.VAT_RATE);
+        return priceWithoutVAT * (1 - this.DISTRIBUTOR_DISCOUNT_PERCENTAGE);
       }
 
       // 2️⃣ Buscar la variante específica dentro del producto

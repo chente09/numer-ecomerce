@@ -187,6 +187,8 @@ export class CartService implements OnDestroy {
   }
 
   public clearCart(): void {
+    this.appliedCoupon = null;
+    sessionStorage.removeItem('appliedCoupon');
     this.updateAndSync([]);
   }
 
@@ -234,7 +236,8 @@ export class CartService implements OnDestroy {
 
       // 3. Si todo es válido, aplicar el cupón
       this.appliedCoupon = promotion;
-      this.updateAndSync(cart.items); // Esto forzará un recálculo
+      sessionStorage.setItem('appliedCoupon', JSON.stringify(promotion));
+      this.updateAndSync(cart.items);
 
       return {
         success: true,
@@ -256,9 +259,14 @@ export class CartService implements OnDestroy {
  * IMPORTANTE: Este método debe ser llamado desde tu componente de confirmación de compra
  */
   public async recordCouponUsageForOrder(orderId: string): Promise<void> {
-    if (!this.appliedCoupon || !this.currentUserId) {
-      return; // No hay cupón aplicado o no hay usuario
+    if (!this.currentUserId) return;
+
+    if (!this.appliedCoupon) {
+      const stored = sessionStorage.getItem('appliedCoupon');
+      if (stored) this.appliedCoupon = JSON.parse(stored);
     }
+
+    if (!this.appliedCoupon) return;
 
     try {
       await this.couponUsageService.recordCouponUsage(
@@ -269,6 +277,7 @@ export class CartService implements OnDestroy {
       );
 
       console.log(`Uso de cupón registrado: ${this.appliedCoupon.couponCode} en pedido ${orderId}`);
+      sessionStorage.removeItem('appliedCoupon');
     } catch (error) {
       console.error('Error registrando uso de cupón:', error);
       // No lanzar error aquí para no afectar el checkout
@@ -289,6 +298,7 @@ export class CartService implements OnDestroy {
    */
   public removeDiscountCode(): void {
     this.appliedCoupon = null;
+    sessionStorage.removeItem('appliedCoupon');
     this.updateAndSync(this.getCart().items);
   }
 
@@ -433,7 +443,15 @@ export class CartService implements OnDestroy {
   }
 
   private getGuestCartItems = (): CartItem[] => JSON.parse(localStorage.getItem(this.GUEST_CART_KEY) || '{"items":[]}').items;
-  private toStorableItem = (item: CartItem) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, unitPrice: item.unitPrice, totalPrice: item.totalPrice || item.unitPrice * item.quantity });
+  private toStorableItem = (item: CartItem) => ({
+    productId: item.productId,
+    variantId: item.variantId,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    originalUnitPrice: item.originalUnitPrice ?? null,
+    appliedPromotionTitle: item.appliedPromotionTitle ?? null,
+    totalPrice: item.totalPrice || item.unitPrice * item.quantity
+  });
 
   private async loadFirestoreCartItems(): Promise<CartItem[]> {
     if (!this.currentUserId) return [];

@@ -26,12 +26,13 @@ import { DistribuidoresComponent } from './pages/admin/distribuidores/distribuid
 import { DashboardComponent } from './pages/admin/dashboard/dashboard.component';
 import { MyInventoryComponent } from './pages/admin/distributors/my-inventory/my-inventory.component';
 import { AdminRacesComponent } from './pages/admin/admin-races/admin-races.component';
-import { RacesComponent } from './pages/races/races.component';
+import { RacesComponent } from './pages/eventos/races/races.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
 import { adminGuardGuard } from './guards/admin-guard.guard';
 import { adminOnlyGuard } from './guards/admin-only.guard';
+import { RaceDetailComponent } from './pages/eventos/race-detail/race-detail.component';
 
 
 export const routes: Routes = [
@@ -48,7 +49,8 @@ export const routes: Routes = [
     { path: 'review-form', component: ReviewFormComponent },
     { path: 'ubicaciones', component: UbicacionesComponent },
     { path: 'embajadores', component: EmbajadoresAtletasComponent },
-    { path: 'carreras', component: RacesComponent },
+    { path: 'eventos', component: RacesComponent },
+    { path: 'eventos/:slug', component: RaceDetailComponent,title: 'Detalle del Evento - NUMER' },
 
     // Rutas protegidas que requieren autenticación pero no perfil completo
     { path: 'perfil', component: PerfilComponent, canActivate: [authGuard] },
@@ -62,7 +64,7 @@ export const routes: Routes = [
             { path: '', component: DashboardComponent }, 
             { path: 'products', component: ProductManagementComponent, canActivate: [adminOnlyGuard] },
             { path: 'categories', component: CategoriasComponent, canActivate: [adminOnlyGuard] },
-            { path: 'carreras', component: AdminRacesComponent, canActivate: [adminOnlyGuard] },
+            { path: 'eventos', component: AdminRacesComponent, canActivate: [adminOnlyGuard] },
             { path: 'distributors', component: DistributorManagementComponent, canActivate: [adminOnlyGuard] },
             { path: 'authorized-distributors', component: DistribuidoresComponent, canActivate: [adminOnlyGuard] },
             { path: 'heroes', component: HeroesComponent, canActivate: [adminOnlyGuard] },
@@ -70,7 +72,7 @@ export const routes: Routes = [
             { path: 'clientes', component: ClientesComponent, canActivate: [adminOnlyGuard] },
             { path: 'sitemap', component: SitemapAdminComponent, canActivate: [adminOnlyGuard] },
             { path: 'user-roles', component: UserRolesManagementComponent, canActivate: [adminOnlyGuard] },
-            { path: 'my-inventory', component: MyInventoryComponent },
+            { path: 'distribuidores', component: MyInventoryComponent },
         ]
     },
 ];

@@ -140,9 +140,7 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
   }
 
   // Usar getProductsNoCache si forceRefresh es true
-  const productsMethod = forceRefresh && this.productService.getProductsNoCache
-    ? this.productService.getProductsNoCache()
-    : this.productService.getProducts();
+  const productsMethod = this.productService.getProductsNoCache();
 
   productsMethod
     .pipe(

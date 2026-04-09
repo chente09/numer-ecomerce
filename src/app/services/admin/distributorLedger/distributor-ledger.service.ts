@@ -102,6 +102,36 @@ export class DistributorLedgerService {
     }
   }
 
+  async registerReturnCredit(
+    distributorId: string,
+    amount: number,
+    description: string,
+    relatedDebitId: string,
+    notes?: string
+  ): Promise<void> {
+    const adminUid = this.usersService.getCurrentUser()?.uid;
+    if (!adminUid) throw new Error("No se pudo identificar al administrador.");
+    if (amount <= 0) throw new Error("El monto de la devolución debe ser mayor a cero.");
+
+    const ledgerRef = collection(this.firestore, this.collectionName);
+    await addDoc(ledgerRef, {
+      distributorId,
+      type: 'credit',
+      amount,
+      description,
+      sourceId: `return-${Date.now()}`,
+      sourceType: 'return',
+      createdAt: serverTimestamp(),
+      createdBy: adminUid,
+      relatedDebitId,          // ← Fix #8
+      paymentStatus: 'paid',
+      paidAmount: amount,
+      paymentDate: serverTimestamp(),
+      paymentNotes: notes || '',
+      paymentVoucher: null
+    });
+  }
+
   /**
    * ✅ NUEVO: Registra una nueva deuda (débito) - EXTENDIDO
    */
@@ -112,9 +142,10 @@ export class DistributorLedgerService {
     sourceId: string,
     sourceType: 'transfer' | 'distributor_order',
     dueDate?: Date,
-    relatedTransferId?: string
+    relatedTransferId?: string,
+    createdByUid?: string
   ): Promise<void> {
-    const adminUid = this.usersService.getCurrentUser()?.uid;
+    const adminUid = createdByUid ?? this.usersService.getCurrentUser()?.uid ?? distributorId;
     if (!adminUid) throw new Error("No se pudo identificar al administrador.");
     if (amount <= 0) throw new Error("El monto de la deuda debe ser mayor a cero.");
 
@@ -235,13 +266,13 @@ export class DistributorLedgerService {
           pendingAmount += actualRemaining;
 
           // Calcular edad de la deuda
-          const createdDate = entry.createdAt.toDate();
+          const createdDate = entry.createdAt?.toDate?.() ?? new Date();
           const ageInDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
           totalAgeInDays += ageInDays;
           ageCount++;
 
           // Verificar si está vencida
-          if (entry.dueDate && entry.dueDate.toDate() < now) {
+          if (entry.dueDate && entry.dueDate?.toDate?.() < now) {
             overdueAmount += actualRemaining;
           }
 
@@ -261,7 +292,7 @@ export class DistributorLedgerService {
         totalCredit += entry.amount;
 
         // Rastrear último pago
-        const paymentDate = entry.paymentDate?.toDate() || entry.createdAt.toDate();
+        const paymentDate = entry.paymentDate?.toDate?.() || entry.createdAt?.toDate?.() || new Date();
         if (!lastPaymentDate || paymentDate > lastPaymentDate) {
           lastPaymentDate = paymentDate;
         }
@@ -294,43 +325,33 @@ export class DistributorLedgerService {
    * ✅ NUEVO: Calcula remainingAmount correcto para cada débito
    * considerando devoluciones automáticas relacionadas por producto/variante
    */
-  private calculateRemainingAmountsForDebits(entries: LedgerEntry[]): LedgerEntry[] {
+  public calculateRemainingAmountsForDebits(entries: LedgerEntry[]): LedgerEntry[] {
     const debits = entries.filter(e => e.type === 'debit');
     const credits = entries.filter(e => e.type === 'credit');
 
     return debits.map(debit => {
-      // Buscar créditos que sean devoluciones relacionadas con este débito
       const relatedReturns = credits.filter(credit => {
-        // Solo considerar devoluciones automáticas
-        if (!credit.description.toLowerCase().includes('devolución')) {
-          return false;
+        const isReturn = credit.sourceType === 'return' ||
+          credit.description?.toLowerCase().includes('devolución');
+        if (!isReturn) return false;
+
+        // Fix #8: enlace directo cuando existe
+        if (credit.relatedDebitId) {
+          return credit.relatedDebitId === debit.id;
         }
 
-        // Comparar producto/variante usando el mismo método que el componente
+        // Fallback para entradas legacy sin relatedDebitId
         const debitInfo = this.extractProductInfo(debit.description);
         const creditInfo = this.extractProductInfo(credit.description);
-
         return debitInfo.product === creditInfo.product &&
           debitInfo.variant === creditInfo.variant;
       });
 
-      // Calcular total de devoluciones automáticas
-      const totalAutomaticReturns = relatedReturns.reduce((sum, returnEntry) => {
-        return sum + returnEntry.amount;
-      }, 0);
-
-      // Calcular pagos manuales realizados
+      const totalAutomaticReturns = relatedReturns.reduce((sum, r) => sum + r.amount, 0);
       const manualPayments = debit.paidAmount || 0;
+      const remainingAmount = Math.max(0, debit.amount - manualPayments - totalAutomaticReturns);
 
-      // Calcular remainingAmount considerando tanto pagos manuales como devoluciones
-      const totalReductions = manualPayments + totalAutomaticReturns;
-      const remainingAmount = Math.max(0, debit.amount - totalReductions);
-
-      return {
-        ...debit,
-        remainingAmount,
-        paidAmount: manualPayments // Solo pagos manuales, no incluir devoluciones aquí
-      };
+      return { ...debit, remainingAmount, paidAmount: manualPayments };
     });
   }
 

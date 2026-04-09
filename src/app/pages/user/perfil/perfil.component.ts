@@ -162,16 +162,25 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.userProfile = await this.usersService.getUserProfile();
 
       if (this.userProfile) {
+        // 1. Convertimos de Firebase (Timestamp) a JS Date
+        const birthDateObj = this.convertFirebaseDate(this.userProfile.birthDate);
+
+        // 2. Convertimos de JS Date a String "YYYY-MM-DD" para el input HTML
+        const birthDateString = this.formatDateToISO(birthDateObj);
+
         this.profileForm.patchValue({
           firstName: this.userProfile.firstName || '',
           lastName: this.userProfile.lastName || '',
           phone: this.userProfile.phone || '',
-          birthDate: this.userProfile.birthDate || null, // 🆕 NUEVO
-          documentType: this.userProfile.documentType || '', // 🆕 NUEVO
-          documentNumber: this.userProfile.documentNumber || '', // 🆕 NUEVO
-          alternativePhone: this.userProfile.alternativePhone || '', // 🆕 NUEVO
-          emergencyContact: this.userProfile.emergencyContact || '', // 🆕 NUEVO
-          emergencyPhone: this.userProfile.emergencyPhone || '' // 🆕 NUEVO
+
+          // AQUI ESTA EL CAMBIO CLAVE: Usamos el string formateado
+          birthDate: birthDateString,
+
+          documentType: this.userProfile.documentType || '',
+          documentNumber: this.userProfile.documentNumber || '',
+          alternativePhone: this.userProfile.alternativePhone || '',
+          emergencyContact: this.userProfile.emergencyContact || '',
+          emergencyPhone: this.userProfile.emergencyPhone || ''
         });
       }
     } catch (error) {
@@ -179,6 +188,30 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.message.error('No se pudo cargar la información del perfil');
     } finally {
       this.loading = false;
+    }
+  }
+
+  onInputKeydown(event: KeyboardEvent): void {
+    event.stopPropagation();
+  }
+
+  // Método para el formulario de Perfil
+  onProfileInputChange(event: Event, fieldName: string): void {
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+    if (target) {
+      this.profileForm.patchValue({
+        [fieldName]: target.value
+      }, { emitEvent: false });
+    }
+  }
+
+  // Método para el formulario de Direcciones (Modal)
+  onAddressInputChange(event: Event, fieldName: string): void {
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+    if (target) {
+      this.editAddressForm.patchValue({
+        [fieldName]: target.value
+      }, { emitEvent: false });
     }
   }
 
@@ -247,8 +280,20 @@ export class PerfilComponent implements OnInit, OnDestroy {
     this.savingProfile = true;
 
     try {
+      // Obtenemos los valores del formulario
+      const formValues = this.profileForm.value;
+
+      // Convertimos el string de fecha (YYYY-MM-DD) de vuelta a Objeto Date
+      // Solo si el campo tiene valor
+      let birthDateToSave = null;
+      if (formValues.birthDate) {
+        // Al agregar 'T12:00:00' evitamos problemas de zona horaria que a veces restan un día
+        birthDateToSave = new Date(formValues.birthDate + 'T12:00:00');
+      }
+
       const userData = {
-        ...this.profileForm.value,
+        ...formValues,
+        birthDate: birthDateToSave, // Usamos la fecha convertida
         updatedAt: new Date()
       };
 
@@ -261,7 +306,6 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.editMode = false;
       this.message.success('Perfil actualizado correctamente');
 
-      // Recargar perfil para mostrar los cambios
       await this.loadUserProfile();
     } catch (error) {
       console.error('Error al guardar perfil:', error);
@@ -434,5 +478,14 @@ export class PerfilComponent implements OnInit, OnDestroy {
     }
 
     return null;
+  }
+
+  // Convierte una fecha JS a formato "YYYY-MM-DD" para input type="date"
+  formatDateToISO(date: Date | null): string {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = ('0' + (date.getMonth() + 1)).slice(-2); // Agrega cero inicial
+    const day = ('0' + date.getDate()).slice(-2); // Agrega cero inicial
+    return `${year}-${month}-${day}`;
   }
 }

@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
-import { 
-  Firestore, 
-  collection, 
-  collectionData, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  Firestore,
+  collection,
+  collectionData,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   getDoc,
   query,
   where,
@@ -15,12 +15,12 @@ import {
   serverTimestamp,
   getDocs
 } from '@angular/fire/firestore';
-import { 
-  Storage, 
-  ref, 
-  uploadBytes, 
-  getDownloadURL, 
-  deleteObject 
+import {
+  Storage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
 } from '@angular/fire/storage';
 import { Observable, from, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
@@ -35,7 +35,7 @@ import { Race, RaceFilter } from '../../../models/race.model';
 export class RaceService {
   private collectionName = 'races';
   private cacheKey = 'races';
-  
+
   constructor(
     private firestore: Firestore,
     private storage: Storage,
@@ -51,12 +51,24 @@ export class RaceService {
     return this.cacheService.getCached<Race[]>(this.cacheKey, () => {
       const racesRef = collection(this.firestore, this.collectionName);
       const q = query(racesRef, orderBy('fecha', 'desc'));
-      
+
       return collectionData(q, { idField: 'id' }).pipe(
         map(data => this.convertTimestamps(data as any[])),
         catchError(error => ErrorUtil.handleError(error, 'getRaces'))
       );
     });
+  }
+
+  getRacesPublic(): Observable<Race[]> {
+    const racesRef = collection(this.firestore, this.collectionName);
+    const q = query(racesRef, orderBy('fecha', 'desc'));
+
+    console.log('🔄 Cargando eventos en tiempo real (sin caché)');
+
+    return collectionData(q, { idField: 'id' }).pipe(
+      map(data => this.convertTimestamps(data as any[])),
+      catchError(error => ErrorUtil.handleError(error, 'getRaces'))
+    );
   }
 
   /**
@@ -67,7 +79,7 @@ export class RaceService {
     return this.cacheService.getCached<Race[]>(cacheKey, () => {
       const racesRef = collection(this.firestore, this.collectionName);
       const now = new Date();
-      
+
       const q = query(
         racesRef,
         where('activo', '==', true),
@@ -76,7 +88,7 @@ export class RaceService {
         orderBy('fechaInscripcionCierre', 'asc'),
         orderBy('fecha', 'asc')
       );
-      
+
       return collectionData(q, { idField: 'id' }).pipe(
         map(data => this.convertTimestamps(data as any[])),
         catchError(error => ErrorUtil.handleError(error, 'getActiveRaces'))
@@ -92,7 +104,7 @@ export class RaceService {
     return this.cacheService.getCached<Race[]>(cacheKey, () => {
       const racesRef = collection(this.firestore, this.collectionName);
       const now = new Date();
-      
+
       const q = query(
         racesRef,
         where('activo', '==', true),
@@ -101,7 +113,7 @@ export class RaceService {
         where('fechaInscripcionCierre', '>', Timestamp.fromDate(now)),
         orderBy('fechaInscripcionCierre', 'asc')
       );
-      
+
       return collectionData(q, { idField: 'id' }).pipe(
         map(data => this.convertTimestamps(data as any[])),
         catchError(error => ErrorUtil.handleError(error, 'getFeaturedRaces'))
@@ -129,7 +141,7 @@ export class RaceService {
     return this.cacheService.getCached<Race | undefined>(cacheKey, () => {
       const racesRef = collection(this.firestore, this.collectionName);
       const q = query(racesRef, where('slug', '==', slug));
-      
+
       return from(getDocs(q)).pipe(
         map(snapshot => {
           if (snapshot.empty) return undefined;
@@ -178,7 +190,7 @@ export class RaceService {
         }
 
         if (filters.soloDisponibles) {
-          filtered = filtered.filter(r => 
+          filtered = filtered.filter(r =>
             !r.cupoMaximo || r.inscritosActuales < r.cupoMaximo
           );
         }
@@ -199,7 +211,7 @@ export class RaceService {
     galleryFiles?: File[]
   ): Observable<string> {
     const raceId = uuidv4();
-    
+
     // Subir imagen principal
     return from(this.uploadImage(`races/${raceId}/main.webp`, imageFile)).pipe(
       switchMap(imagenPrincipal => {
@@ -213,7 +225,7 @@ export class RaceService {
       }),
       switchMap(({ imagenPrincipal, galeria }) => {
         const racesRef = collection(this.firestore, this.collectionName);
-        
+
         const newRace: any = {
           ...race,
           imagenPrincipal,
@@ -224,7 +236,7 @@ export class RaceService {
         if (galeria && galeria.length > 0) {
           newRace.galeria = galeria;
         }
-        
+
         return from(addDoc(racesRef, newRace));
       }),
       map(docRef => {
@@ -238,18 +250,20 @@ export class RaceService {
   /**
    * Actualizar una carrera existente
    */
+
   updateRace(
     id: string,
     data: Partial<Race>,
     imageFile?: File,
-    galleryFiles?: File[]
+    galleryFiles?: File[],
+    existingGalleryUrls?: string[] // ✅ NUEVO PARÁMETRO
   ): Observable<void> {
     const docRef = doc(this.firestore, `${this.collectionName}/${id}`);
-    
+
     return from(this.getRaceById(id)).pipe(
       switchMap(currentRace => {
         if (!currentRace) {
-          throw new Error(`La carrera con ID ${id} no existe`);
+          throw new Error(`El evento con ID ${id} no existe`);
         }
 
         // Manejar imagen principal nueva
@@ -261,14 +275,26 @@ export class RaceService {
           );
         }
 
-        // Manejar galería nueva
+        // Manejar galería nueva (MEJORADO)
         let galleryUpload$ = of<string[] | undefined>(undefined);
         if (galleryFiles && galleryFiles.length > 0) {
-          galleryUpload$ = from(this.uploadGallery(id, galleryFiles));
+          // Subir nuevas imágenes
+          galleryUpload$ = from(this.uploadGallery(id, galleryFiles)).pipe(
+            map(newUrls => {
+              // Combinar URLs existentes con las nuevas
+              const existingUrls = existingGalleryUrls || [];
+              const combinedUrls = [...existingUrls, ...newUrls];
+              console.log('✅ Galería actualizada:', combinedUrls);
+              return combinedUrls;
+            })
+          );
+        } else if (existingGalleryUrls) {
+          // No hay nuevas imágenes, pero hay que actualizar con las existentes
+          galleryUpload$ = of(existingGalleryUrls);
         }
 
         return imageUpload$.pipe(
-          switchMap(imagenPrincipal => 
+          switchMap(imagenPrincipal =>
             galleryUpload$.pipe(
               map(galeria => ({ imagenPrincipal, galeria }))
             )
@@ -283,7 +309,8 @@ export class RaceService {
               updatedData.imagenPrincipal = imagenPrincipal;
             }
 
-            if (galeria && galeria.length > 0) {
+            // Solo actualizar galería si hay cambios
+            if (galeria !== undefined) {
               updatedData.galeria = galeria;
             }
 
@@ -309,7 +336,7 @@ export class RaceService {
         }
 
         // Eliminar imagen principal
-        const deleteImage$ = race.imagenPrincipal 
+        const deleteImage$ = race.imagenPrincipal
           ? from(this.deleteImageIfExists(race.imagenPrincipal)).pipe(catchError(() => of(undefined)))
           : of(undefined);
 
@@ -379,7 +406,7 @@ export class RaceService {
   private async fetchRaceById(id: string): Promise<Race | undefined> {
     const docRef = doc(this.firestore, `${this.collectionName}/${id}`);
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       return this.convertTimestamp({ id: docSnap.id, ...docSnap.data() } as any);
     }
@@ -400,7 +427,7 @@ export class RaceService {
    * Subir múltiples imágenes para galería
    */
   private async uploadGallery(raceId: string, files: File[]): Promise<string[]> {
-    const uploadPromises = files.map((file, index) => 
+    const uploadPromises = files.map((file, index) =>
       this.uploadImage(`races/${raceId}/gallery/${index}-${uuidv4()}.webp`, file)
     );
     return Promise.all(uploadPromises);
@@ -409,14 +436,49 @@ export class RaceService {
   /**
    * Eliminar imagen si existe
    */
+
   private async deleteImageIfExists(imageUrl?: string): Promise<void> {
     if (!imageUrl) return;
-    
+
     try {
-      const imageRef = ref(this.storage, imageUrl);
-      await deleteObject(imageRef);
+      // Extraer el path de Storage de la URL completa
+      const storagePath = this.extractStoragePathFromUrl(imageUrl);
+
+      if (storagePath) {
+        const imageRef = ref(this.storage, storagePath);
+        await deleteObject(imageRef);
+      } else {
+        console.warn('⚠️ No se pudo extraer el path de la URL:', imageUrl);
+      }
     } catch (e) {
-      console.warn('No se pudo eliminar la imagen:', e);
+      console.warn('⚠️ No se pudo eliminar la imagen:', e);
+    }
+  }
+
+  /**
+   * Extraer el path de Storage desde una URL completa de Firebase Storage
+   */
+  private extractStoragePathFromUrl(url: string): string | null {
+    try {
+      // Verificar si es una URL de Firebase Storage
+      if (!url.includes('firebasestorage.googleapis.com')) {
+        console.warn('⚠️ La URL no es de Firebase Storage');
+        return null;
+      }
+
+      // Extraer la parte entre "/o/" y "?"
+      const matches = url.match(/\/o\/(.+?)\?/);
+      if (matches && matches[1]) {
+        // Decodificar caracteres URL-encoded (ej: %2F → /)
+        const decodedPath = decodeURIComponent(matches[1]);
+        return decodedPath;
+      }
+
+      console.warn('⚠️ No se pudo hacer match con el patrón de URL');
+      return null;
+    } catch (e) {
+      console.error('❌ Error al extraer path de Storage:', e);
+      return null;
     }
   }
 
@@ -457,7 +519,7 @@ export class RaceService {
    */
   private convertTimestamp(data: any): Race {
     const converted = { ...data };
-    
+
     if (data.fecha?.toDate) {
       converted.fecha = data.fecha.toDate();
     }
@@ -473,7 +535,7 @@ export class RaceService {
     if (data.updatedAt?.toDate) {
       converted.updatedAt = data.updatedAt.toDate();
     }
-    
+
     return converted as Race;
   }
 

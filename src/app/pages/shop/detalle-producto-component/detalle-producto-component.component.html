@@ -346,6 +346,7 @@
                     (click)="addToCart()">
                     {{ selectedVariant && selectedVariant.stock > 0 ? '¡AÑADIR AL CARRITO!' : 'AGOTADO' }}
                 </button>
+
                 <button class="wishlist-btn" (click)="toggleWishlist()"
                     [attr.aria-label]="isInWishlist ? 'Quitar de favoritos' : 'Agregar a favoritos'"
                     [attr.title]="isInWishlist ? 'Quitar de mis favoritos' : 'Guardar para después'">
@@ -353,6 +354,16 @@
                         [nzTheme]="isInWishlist ? 'fill' : 'outline'" [ngClass]="{'heart-filled': isInWishlist}">
                     </i>
                 </button>
+            </div>
+            <!-- condicionar para que aparezca el boton -->
+            <div class="section-footer">
+                <a routerLink="/carrito" class="view-all-btn">
+                    <i nz-icon nzType="shopping-cart" nzTheme="outline"></i>
+                    <span>Pagar ahora!</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l9 7-9 7V2z" />
+                    </svg>
+                </a>
             </div>
 
             <!-- SKU con info adicional -->

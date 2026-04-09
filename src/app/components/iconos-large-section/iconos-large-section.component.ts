@@ -11,7 +11,7 @@ import { NavigationItem } from '../../models/models';
   imports: [
     CommonModule,
     NzIconModule
-],
+  ],
   templateUrl: './iconos-large-section.component.html',
   styleUrl: './iconos-large-section.component.css'
 })
@@ -38,11 +38,11 @@ export class IconosLargeSectionComponent implements OnInit, OnDestroy {
       isActive: true
     },
     {
-      id: 'atletas',
-      icon: 'trophy',
-      title: 'ATLETAS',
-      description: 'Conoce a nuestros atletas',
-      link: '/embajadores',
+      id: 'eventos',
+      icon: 'calendar',
+      title: 'EVENTOS',
+      description: 'Conoce nuestros eventos',
+      link: '/eventos',
       order: 2,
       isActive: true
     },

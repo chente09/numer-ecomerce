@@ -98,8 +98,10 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
 
   // Manejo de archivos (Galería)
   galleryFileList: NzUploadFile[] = [];
-  galleryImageFiles: File[] = [];
+  galleryImageFiles: File[] = []; // Nuevas imágenes a subir
+  galleryImagesToDelete: string[] = []; // URLs de imágenes existentes a eliminar
   galleryImageError: string | null = null;
+  existingGalleryUrls: string[] = []; // URLs actuales en Firestore
 
   fallbackImageUrl: SafeUrl;
   private destroy$ = new Subject<void>();
@@ -209,7 +211,7 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
           },
           error: (error) => {
             this.zone.run(() => {
-              this.message.error('Error al cargar carreras. Intente nuevamente.');
+              this.message.error('Error al cargar eventos. Intente nuevamente.');
               this.loading = false;
             });
           }
@@ -244,6 +246,8 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
     this.editingId = null;
     this.mainImageFile = null;
     this.galleryImageFiles = [];
+    this.galleryImagesToDelete = [];
+    this.existingGalleryUrls = [];
     this.mainImageError = '';
     this.galleryImageError = '';
     this.setModalWidth();
@@ -312,10 +316,30 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
 
   handleRemoveGallery = (file: NzUploadFile): boolean => {
     const index = this.galleryFileList.findIndex(f => f.uid === file.uid);
+
     if (index > -1) {
+      // Verificar si es una imagen existente (tiene URL de Firebase)
+      const isExistingImage = file.url && file.url.includes('firebasestorage.googleapis.com');
+
+      if (isExistingImage && file.url) {
+        // Es una imagen que ya existe en Firestore, marcarla para eliminación
+        this.galleryImagesToDelete.push(file.url);
+        console.log('🗑️ Imagen marcada para eliminar:', file.url);
+      } else {
+        // Es una imagen nueva que aún no se ha subido, solo removerla de la lista
+        const fileIndex = this.galleryImageFiles.findIndex(f =>
+          f.name === file.name && f.size === (file as any).size
+        );
+        if (fileIndex > -1) {
+          this.galleryImageFiles.splice(fileIndex, 1);
+          console.log('❌ Imagen nueva removida de la cola de subida');
+        }
+      }
+
+      // Remover de la lista visual
       this.galleryFileList.splice(index, 1);
-      this.galleryImageFiles.splice(index, 1);
     }
+
     return true;
   };
 
@@ -370,7 +394,7 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
     }
 
     if (!this.mainImageFile && !this.isEditMode) {
-      this.mainImageError = 'Por favor seleccione una imagen principal para la carrera.';
+      this.mainImageError = 'Por favor seleccione una imagen principal para este evento.';
       return;
     }
 
@@ -422,31 +446,68 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
 
 
     if (this.isEditMode && this.editingId) {
-      // Actualizar carrera (raceData se envía como Partial<Race>)
-      this.raceService.updateRace(
-        this.editingId,
-        raceData, // <-- Esto ahora funciona
-        this.mainImageFile || undefined,
-        this.galleryImageFiles.length > 0 ? this.galleryImageFiles : undefined
-      ).pipe(
-        take(1),
-        finalize(() => {
-          this.saving = false;
-          this.cdr.detectChanges();
-        })
-      ).subscribe({
-        next: () => {
-          this.message.success('Carrera actualizada correctamente.');
-          this.modalVisible = false;
-        },
-        error: (error) => this.message.error(error.message || 'Error al actualizar la carrera.')
+      // ==================== ACTUALIZAR EVENTO ====================
+
+      // Paso 1: Eliminar imágenes marcadas para eliminación
+      const deletePromises: Promise<void>[] = [];
+      if (this.galleryImagesToDelete.length > 0) {
+        console.log('🗑️ Eliminando imágenes antiguas:', this.galleryImagesToDelete);
+        deletePromises.push(
+          ...this.galleryImagesToDelete.map(url =>
+            this.raceService['deleteImageIfExists'](url).catch(err => {
+              console.warn('⚠️ Error al eliminar imagen:', err);
+            })
+          )
+        );
+      }
+
+      // Paso 2: Esperar eliminaciones y luego actualizar
+      Promise.all(deletePromises).then(() => {
+        // Calcular la nueva galería
+        let updatedGallery: string[] | undefined = undefined;
+
+        if (this.galleryImageFiles.length > 0) {
+          // Hay nuevas imágenes para subir
+          // La galería final será: imágenes existentes + nuevas imágenes
+          updatedGallery = []; // Se construirá en el servicio
+        } else if (this.galleryImagesToDelete.length > 0) {
+          // Solo se eliminaron imágenes, actualizar con las que quedan
+          updatedGallery = this.existingGalleryUrls.filter(
+            url => !this.galleryImagesToDelete.includes(url)
+          );
+        }
+
+        // Actualizar evento
+        this.raceService.updateRace(
+          this.editingId!,
+          {
+            ...raceData,
+            // Si hay nuevas imágenes O se eliminaron algunas, actualizar galería
+            ...(updatedGallery !== undefined && { galeria: updatedGallery })
+          },
+          this.mainImageFile || undefined,
+          this.galleryImageFiles.length > 0 ? this.galleryImageFiles : undefined,
+          this.existingGalleryUrls // Pasar URLs existentes
+        ).pipe(
+          take(1),
+          finalize(() => {
+            this.saving = false;
+            this.cdr.detectChanges();
+          })
+        ).subscribe({
+          next: () => {
+            this.message.success('Evento actualizado correctamente.');
+            this.modalVisible = false;
+          },
+          error: (error) => this.message.error(error.message || 'Error al actualizar el evento.')
+        });
       });
     } else {
-      // Crear nueva carrera
+      // ==================== CREAR NUEVO EVENTO ====================
       this.raceService.createRace(
         {
           ...raceData,
-          inscritosActuales: 0 // Añadimos el campo requerido que faltaba
+          inscritosActuales: 0
         },
         this.mainImageFile!,
         this.galleryImageFiles.length > 0 ? this.galleryImageFiles : undefined
@@ -458,10 +519,10 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
         })
       ).subscribe({
         next: () => {
-          this.message.success('Carrera creada correctamente.');
+          this.message.success('Evento creado correctamente.');
           this.modalVisible = false;
         },
-        error: (error) => this.message.error(error.message || 'Error al crear la carrera.')
+        error: (error) => this.message.error(error.message || 'Error al crear el evento.')
       });
     }
   }
@@ -526,12 +587,17 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
     ] : [];
 
     // Mostrar galería actual
+    this.existingGalleryUrls = race.galeria || []; // ✅ NUEVO: Guardar URLs existentes
     this.galleryFileList = race.galeria ? race.galeria.map((url, index) => ({
-      uid: `-${index + 1}`, name: `galeria-${index}.png`, status: 'done', url: url
+      uid: `-gallery-${index}`,
+      name: `imagen-${index + 1}.webp`,
+      status: 'done',
+      url: url
     })) : [];
 
     this.mainImageFile = null;
-    this.galleryImageFiles = []; // Se resetea, si sube nuevas, reemplaza la galería
+    this.galleryImageFiles = []; // Nuevas imágenes a agregar
+    this.galleryImagesToDelete = []; // ✅ NUEVO: Resetear lista de eliminación
 
     this.modalVisible = true;
     this.setModalWidth();
@@ -540,8 +606,8 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
 
   deleteRace(id: string): void {
     this.raceService.deleteRace(id).pipe(take(1)).subscribe({
-      next: () => this.message.success('Carrera eliminada correctamente.'),
-      error: (error) => this.message.error(error.message || 'Error al eliminar la carrera.')
+      next: () => this.message.success('Evento eliminado correctamente.'),
+      error: (error) => this.message.error(error.message || 'Error al eliminar el evento.')
     });
   }
 

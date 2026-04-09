@@ -325,8 +325,8 @@ export class CarritoComponent implements OnInit, OnDestroy {
       nzOkType: 'primary',
       nzOkDanger: true,
       nzOnOk: () => {
-        console.log('🧹 Vaciando carrito...');
         this.cartService.clearCart();
+        sessionStorage.setItem('reloadAfterPurchase', 'true');
         this.message.info('Tu carrito ha sido vaciado.');
       },
       nzCancelText: 'Cancelar'
@@ -547,13 +547,14 @@ export class CarritoComponent implements OnInit, OnDestroy {
   }
 
   continueShopping(): void {
+    sessionStorage.setItem('reloadAfterPurchase', 'true');
     this.router.navigate(['/shop']);
   }
 
   // ✅ NUEVO: Método para calcular ahorros
   getTotalSavings(): number {
     if (!this.cart) return 0;
-    return this.cart.discount;
+    return this.cart.totalSavings;
   }
 
   // ✅ NUEVO: Verificar si el carrito tiene descuentos

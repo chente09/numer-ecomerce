@@ -121,19 +121,19 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
 
     this.isLoading = true;
     this.ledgerService.getLedgerEntries(this.distributorId)
-    .subscribe({
-      next: (entries) => {
-        this.ledgerEntries = entries;
-        this.enhancedSummary = this.ledgerService.calculateEnhancedSummary(entries);
-        this.applyStatusFilter();
-        this.isLoading = false;
-      },
-      error: (err) => {
-        this.message.error('Error al cargar los datos del libro contable.');
-        console.error(err);
-        this.isLoading = false;
-      }
-    });
+      .subscribe({
+        next: (entries) => {
+          this.ledgerEntries = entries;
+          this.enhancedSummary = this.ledgerService.calculateEnhancedSummary(entries);
+          this.applyStatusFilter();
+          this.isLoading = false;
+        },
+        error: (err) => {
+          this.message.error('Error al cargar los datos del libro contable.');
+          console.error(err);
+          this.isLoading = false;
+        }
+      });
   }
 
   // =====================================
@@ -191,7 +191,7 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
   }
 
   handleMarkAsPaid(): void {
-    if (!this.selectedEntry || this.markPaidForm.invalid) {
+    if (!this.selectedEntry || this.markPaidForm.invalid || this.isRegisteringPayment) {
       this.message.warning('Por favor, complete todos los campos requeridos.');
       return;
     }
@@ -331,12 +331,10 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
    */
   hasRecentChanges(): boolean {
     if (!this.ledgerEntries || this.ledgerEntries.length === 0) return false;
-
-    // Verificar si hay entradas recientes (últimos 5 minutos)
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     return this.ledgerEntries.some(entry => {
-      const entryDate = entry.createdAt.toDate();
-      return entryDate > fiveMinutesAgo;
+      const entryDate = entry.createdAt?.toDate?.();
+      return entryDate && entryDate > fiveMinutesAgo;
     });
   }
 
@@ -445,9 +443,13 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
 
     // Paso 2: De los candidatos, buscar coincidencias exactas de producto/variante
     return returnCandidates.filter(returnEntry => {
-      const returnProductInfo = this.extractProductInfoOptimized(returnEntry.description);
+      // Enlace directo si existe
+      if (returnEntry.relatedDebitId) {
+        return returnEntry.relatedDebitId === debitId;
+      }
 
-      // ✅ COMPARACIÓN EXACTA de producto Y variante
+      // Fallback legacy
+      const returnProductInfo = this.extractProductInfoOptimized(returnEntry.description);
       return debitProductInfo.product === returnProductInfo.product &&
         debitProductInfo.variant === returnProductInfo.variant;
     });
@@ -535,18 +537,17 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
     // Buscar devoluciones automáticas relacionadas
     const relatedReturns = this.ledgerEntries.filter(creditEntry => {
       if (creditEntry.type !== 'credit') return false;
+      if (creditEntry.sourceType !== 'return' && !creditEntry.description.toLowerCase().includes('devolución')) return false;
 
-      // Solo devoluciones automáticas
-      if (!creditEntry.description.toLowerCase().includes('devolución')) {
-        return false;
+      // Enlace directo si existe
+      if (creditEntry.relatedDebitId) {
+        return creditEntry.relatedDebitId === entry.id;
       }
 
-      // Comparar producto/variante
+      // Fallback legacy
       const debitInfo = this.extractProductInfoOptimized(entry.description);
       const returnInfo = this.extractProductInfoOptimized(creditEntry.description);
-
-      return debitInfo.product === returnInfo.product &&
-        debitInfo.variant === returnInfo.variant;
+      return debitInfo.product === returnInfo.product && debitInfo.variant === returnInfo.variant;
     });
 
     // Calcular total de devoluciones automáticas

@@ -18,7 +18,7 @@ export const adminOnlyGuard: CanActivateFn = (route, state) => {
         // Si no es admin (ej. es un distribuidor), le negamos el paso
         message.error('Acción no permitida. No tienes permisos de administrador.');
         // Lo redirigimos a una ruta segura, como su propio panel
-        router.navigate(['/admin/my-inventory']); 
+        router.navigate(['/admin/distribuidores']); 
         return false;
       }
     })

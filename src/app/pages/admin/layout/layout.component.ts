@@ -45,7 +45,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { title: 'Dashboard', icon: 'dashboard', path: '/admin/dashboard' },
     { title: 'Productos', icon: 'shopping', path: '/admin/products' },
     { title: 'Categorías', icon: 'appstore', path: '/admin/categories' },
-    { title: 'Carreras', icon: 'flag', path: '/admin/carreras' },
+    { title: 'Eventos', icon: 'flag', path: '/admin/eventos' },
     { title: 'Distribuidores', icon: 'deployment-unit', path: '/admin/distributors' },
     { title: 'Distribuidores Autorizados', icon: 'shop', path: '/admin/authorized-distributors' },
     { title: 'Gestión de Usuarios', icon: 'team', path: '/admin/user-roles' },
@@ -55,7 +55,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   ];
 
   distributorMenuItems = [
-    { title: 'Mi Inventario', icon: 'shop', path: '/admin/my-inventory' },
+    { title: 'Mi Inventario', icon: 'shop', path: '/admin/distribuidores' },
   ];
 
   visibleMenuItems: any[] = [];

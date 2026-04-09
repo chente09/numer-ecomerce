@@ -206,7 +206,11 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       switchMap(paymentData => this.callPayphoneAPI(paymentData)),
       tap(response => this.handleApiSuccess(response)),
       catchError(error => {
-        this.handleApiError(error);
+        // ✅ Si el usuario ya fue notificado del cupón inválido,
+        // no mostrar error genérico ni redirigir
+        if (error.message !== 'COUPON_INVALID_USER_NOTIFIED') {
+          this.handleApiError(error);
+        }
         throw error;
       })
     );
@@ -224,7 +228,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           throw new Error('EMPTY_CART');
         }
 
-        // Validación básica de stock (solo existencia de variantes)
+        // Validación básica de stock
         const stockValidation = this.validateCartStock(cart);
         if (!stockValidation.valid) {
           this.setError(`Error en el carrito: ${stockValidation.message}`);
@@ -239,65 +243,53 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           throw new Error('INVALID_AMOUNT');
         }
 
-        // ✅ NUEVA VALIDACIÓN: Revalidar cupón aplicado antes del pago
+        // Revalidar cupón aplicado antes del pago
         const appliedCoupon = this.cartService.getAppliedCoupon();
         if (appliedCoupon) {
-          console.log('🎫 Revalidando cupón antes de procesar pago...');
+          const currentUser = this.usersService.getCurrentUser();
+          if (!currentUser || currentUser.isAnonymous) {
+            this.setError('Debes iniciar sesión para usar cupones.');
+            this.redirectToCartWithMessage('Error de autenticación');
+            throw new Error('AUTH_ERROR');
+          }
+
+          let validationResult: { success: boolean; message: string };
 
           try {
-            // Obtener usuario actual
-            const currentUser = this.usersService.getCurrentUser();
-            if (!currentUser || currentUser.isAnonymous) {
-              throw new Error('Usuario no autenticado para usar cupones');
-            }
-
-            // Usar el servicio de validación completa
-            const couponValidation = await firstValueFrom(
-              this.cartService.cart$.pipe(
-                take(1),
-                switchMap(async (currentCart) => {
-                  // Importar CouponUsageService si no está disponible
-                  // Alternativa: usar la validación del CartService
-                  const result = await this.cartService.applyDiscountCode(appliedCoupon.couponCode!);
-                  return result;
-                })
-              )
-            );
-
-            if (!couponValidation.success) {
-              this.setError(`Cupón no válido: ${couponValidation.message}`);
-
-              // Mostrar modal para que el usuario decida
-              this.modalService.error({
-                nzTitle: 'Cupón No Válido',
-                nzContent: `Tu cupón ya no es válido: ${couponValidation.message}\n\n¿Deseas continuar sin el cupón?`,
-                nzOkText: 'Continuar sin cupón',
-                nzCancelText: 'Volver al carrito',
-                nzOnOk: () => {
-                  // Remover cupón y recargar la página de pago
-                  this.cartService.removeDiscountCode();
-                  window.location.reload();
-                },
-                nzOnCancel: () => {
-                  this.redirectToCartWithMessage('Cupón inválido');
-                }
-              });
-
-              throw new Error('INVALID_COUPON');
-            }
-
-            console.log('✅ Cupón revalidado exitosamente antes del pago');
-          } catch (couponError) {
-            console.error('❌ Error revalidando cupón:', couponError);
-
-            // Para otros errores, mostrar mensaje genérico
+            // ✅ Llamada directa, sin wrapper innecesario
+            validationResult = await this.cartService.applyDiscountCode(appliedCoupon.couponCode!);
+          } catch (technicalError) {
+            // Solo errores técnicos reales llegan aquí
+            console.error('❌ Error técnico revalidando cupón:', technicalError);
             this.setError('Error validando cupón. Por favor, intenta nuevamente.');
             this.redirectToCartWithMessage('Error de cupón');
             throw new Error('COUPON_VALIDATION_ERROR');
           }
+
+          if (!validationResult.success) {
+            // ✅ Mostrar modal y detener flujo SIN redirigir automáticamente
+            this.setLoading(false);
+            this.modalService.error({
+              nzTitle: 'Cupón No Válido',
+              nzContent: `Tu cupón ya no es válido: ${validationResult.message}\n\n¿Deseas continuar sin el cupón?`,
+              nzOkText: 'Continuar sin cupón',
+              nzCancelText: 'Volver al carrito',
+              nzOnOk: () => {
+                this.cartService.removeDiscountCode();
+                window.location.reload();
+              },
+              nzOnCancel: () => {
+                this.router.navigate(['/carrito']);
+              }
+            });
+            // ✅ Error especial que NO dispara redirección automática
+            throw new Error('COUPON_INVALID_USER_NOTIFIED');
+          }
+
+          console.log('✅ Cupón revalidado exitosamente');
         }
 
-        console.log('✅ Carrito y cupón validados, preparando pago...');
+        console.log('✅ Carrito validado, preparando pago...');
         return cart;
       })
     );
@@ -616,15 +608,6 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('Inventario procesado exitosamente, limpiando carrito...');
         const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
         const transactionId = response['id'] || response.transactionId || this.transactionId;
-
-        // NUEVO: Registrar uso de cupón ANTES de limpiar el carrito
-        try {
-          await this.cartService.recordCouponUsageForOrder(transactionId);
-          console.log('Uso de cupón registrado para transacción:', transactionId);
-        } catch (couponError) {
-          console.warn('Error registrando uso de cupón (no crítico):', couponError);
-          // No lanzar error para no afectar el flujo principal
-        }
 
         try {
           await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);

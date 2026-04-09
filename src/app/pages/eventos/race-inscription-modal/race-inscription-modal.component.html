@@ -1,0 +1,341 @@
+<!-- race-inscription-modal.component.html -->
+
+<nz-modal [(nzVisible)]="visible" [nzTitle]="modalTitle" [nzClosable]="!loading" [nzMaskClosable]="false"
+    [nzWidth]="700" [nzFooter]="modalFooter" (nzOnCancel)="handleCancel()">
+    <!-- Template del título -->
+    <ng-template #modalTitle>
+        <div class="modal-header">
+            <span nz-icon nzType="form" nzTheme="outline" class="modal-icon"></span>
+            <span class="modal-title-text">Inscripción a {{ race.nombre }}</span>
+        </div>
+    </ng-template>
+
+    <!-- Contenido del modal -->
+    <div class="modal-content" *nzModalContent>
+
+        <!-- Loading inicial -->
+        <div *ngIf="loadingUserData" class="loading-container">
+            <nz-spin nzSize="large"></nz-spin>
+            <p>Cargando información del usuario...</p>
+        </div>
+
+        <!-- Formulario -->
+        <form *ngIf="!loadingUserData" nz-form [formGroup]="inscriptionForm" nzLayout="vertical"
+            class="inscription-form">
+
+            <!-- SECCIÓN 1: INFORMACIÓN PERSONAL (Readonly) -->
+            <div class="form-section">
+                <div class="section-header">
+                    <span nz-icon nzType="user" nzTheme="outline" class="section-icon"></span>
+                    <h3 class="section-title">Información Personal</h3>
+                </div>
+                <p class="section-description">Datos obtenidos de tu perfil (Puedes editar esta informacion desde Mi
+                    Cuenta )</p>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Nombre</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="nombre" placeholder="Nombre" class="readonly-input" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Apellido</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="apellido" placeholder="Apellido"
+                                    class="readonly-input" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Email</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="email" placeholder="Email" class="readonly-input" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Teléfono</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="telefono" placeholder="Teléfono"
+                                    class="readonly-input" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Cédula</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="cedula" placeholder="Cédula" class="readonly-input" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Fecha de Nacimiento</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="fechaNacimiento" placeholder="Fecha de Nacimiento"
+                                    class="readonly-input" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Ciudad</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="ciudad" placeholder="Ciudad" class="readonly-input" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Provincia</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="provincia" placeholder="Provincia"
+                                    class="readonly-input" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+            </div>
+
+            <nz-divider></nz-divider>
+
+            <!-- SECCIÓN 2: INFORMACIÓN DEPORTIVA -->
+            <div class="form-section">
+                <div class="section-header">
+                    <span nz-icon nzType="trophy" nzTheme="outline" class="section-icon"></span>
+                    <h3 class="section-title">Información Deportiva</h3>
+                </div>
+                <p class="section-description">Completa los siguientes datos</p>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="24">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Género</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor, selecciona tu género">
+                                <nz-radio-group formControlName="genero">
+                                    <label *ngFor="let option of genderOptions" nz-radio [nzValue]="option.value">
+                                        {{ option.label }}
+                                    </label>
+                                </nz-radio-group>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Talla de Camiseta</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor, selecciona tu talla">
+                                <nz-select formControlName="tallaCamiseta" nzPlaceHolder="Selecciona tu talla">
+                                    <nz-option *ngFor="let size of shirtSizes" [nzValue]="size"
+                                        [nzLabel]="size"></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label>Club Deportivo</nz-form-label>
+                            <nz-form-control>
+                                <input nz-input formControlName="clubDeportivo" placeholder="Opcional"
+                                    autocomplete="off" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'clubDeportivo')" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="24">
+                        <nz-form-item>
+                            <nz-form-label>Experiencia Previa</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="experienciaPrevia"
+                                    nzPlaceHolder="Opcional - Selecciona tu nivel" nzAllowClear>
+                                    <nz-option *ngFor="let exp of experienceOptions" [nzValue]="exp.value"
+                                        [nzLabel]="exp.label"></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+            </div>
+
+            <nz-divider></nz-divider>
+
+            <!-- SECCIÓN 3: CONTACTO DE EMERGENCIA -->
+            <div class="form-section">
+                <div class="section-header">
+                    <span nz-icon nzType="phone" nzTheme="outline" class="section-icon"></span>
+                    <h3 class="section-title">Contacto de Emergencia</h3>
+                </div>
+                <p class="section-description">Información de tu contacto de emergencia</p>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="24">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Nombre Completo</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor, ingresa el nombre del contacto">
+                                <input nz-input formControlName="emergenciaNombre"
+                                    placeholder="Nombre completo del contacto de emergencia" autocomplete="off"
+                                    (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'emergenciaNombre')" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Teléfono</nz-form-label>
+                            <nz-form-control nzErrorTip="Ingresa un teléfono válido de 10 dígitos">
+                                <input nz-input formControlName="emergenciaTelefono" placeholder="0999999999"
+                                    maxlength="10" autocomplete="off" (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'emergenciaTelefono')" />
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+
+                    <div nz-col [nzSpan]="12">
+                        <nz-form-item>
+                            <nz-form-label nzRequired>Relación</nz-form-label>
+                            <nz-form-control nzErrorTip="Por favor, selecciona la relación">
+                                <nz-select formControlName="emergenciaRelacion" nzPlaceHolder="Selecciona la relación">
+                                    <nz-option *ngFor="let rel of relationOptions" [nzValue]="rel.value"
+                                        [nzLabel]="rel.label"></nz-option>
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+            </div>
+
+            <nz-divider></nz-divider>
+
+            <!-- SECCIÓN 4: INFORMACIÓN ADICIONAL -->
+            <div class="form-section">
+                <div class="section-header">
+                    <span nz-icon nzType="info-circle" nzTheme="outline" class="section-icon"></span>
+                    <h3 class="section-title">Información Adicional</h3>
+                </div>
+                <p class="section-description">Campos opcionales</p>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="24">
+                        <nz-form-item>
+                            <nz-form-control>
+                                <label nz-checkbox formControlName="necesitaTransporte">
+                                    <span class="checkbox-label">Tengo vehículo</span>
+                                </label>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="24">
+                        <nz-form-item>
+                            <nz-form-label>Restricciones Alimenticias</nz-form-label>
+                            <nz-form-control>
+                                <textarea nz-input formControlName="restriccionesAlimenticias"
+                                    placeholder="Opcional - Ejemplo: vegetariano, celíaco, alérgico a..."
+                                    [nzAutosize]="{ minRows: 2, maxRows: 4 }" autocomplete="off" spellcheck="false"
+                                    (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'restriccionesAlimenticias')"></textarea>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+
+                <div nz-row [nzGutter]="16">
+                    <div nz-col [nzSpan]="24">
+                        <nz-form-item>
+                            <nz-form-label>Condiciones Médicas</nz-form-label>
+                            <nz-form-control>
+                                <textarea nz-input formControlName="condicionesMedicas"
+                                    placeholder="Opcional - Ejemplo: asma, diabetes, lesiones previas..."
+                                    [nzAutosize]="{ minRows: 2, maxRows: 4 }" autocomplete="off" spellcheck="false"
+                                    (keydown)="onInputKeydown($event)"
+                                    (input)="onInputChange($event, 'condicionesMedicas')"></textarea>
+                            </nz-form-control>
+                        </nz-form-item>
+                    </div>
+                </div>
+            </div>
+
+            <nz-divider></nz-divider>
+
+            <!-- SECCIÓN 5: TÉRMINOS Y CONDICIONES -->
+            <div class="form-section">
+                <div class="section-header">
+                    <span nz-icon nzType="safety-certificate" nzTheme="outline" class="section-icon"></span>
+                    <h3 class="section-title">Términos y Condiciones</h3>
+                </div>
+
+                <div class="terms-container">
+                    <nz-form-item>
+                        <nz-form-control nzErrorTip="Debes aceptar los términos y condiciones">
+                            <label nz-checkbox formControlName="aceptaTerminos">
+                                <span class="checkbox-label">
+                                    He leído y acepto los
+                                    <a href="/terminos" target="_blank">términos y condiciones</a>
+                                    <span class="required-asterisk">*</span>
+                                </span>
+                            </label>
+                        </nz-form-control>
+                    </nz-form-item>
+
+                    <nz-form-item>
+                        <nz-form-control nzErrorTip="Debes aceptar el deslinde de responsabilidad">
+                            <label nz-checkbox formControlName="aceptaDeslinde">
+                                <span class="checkbox-label">
+                                    Acepto el
+                                    <a href="/deslinde" target="_blank">deslinde de responsabilidad</a>
+                                    <span class="required-asterisk">*</span>
+                                </span>
+                            </label>
+                        </nz-form-control>
+                    </nz-form-item>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Footer del modal -->
+    <ng-template #modalFooter>
+        <div class="modal-footer">
+            <button nz-button nzType="default" (click)="handleCancel()" [disabled]="loading">
+                Cancelar
+            </button>
+            <button nz-button nzType="primary" (click)="handleOk()" [nzLoading]="loading" [disabled]="loadingUserData">
+                <span nz-icon nzType="check" nzTheme="outline"></span>
+                Crear Inscripción
+            </button>
+        </div>
+    </ng-template>
+
+</nz-modal>

@@ -4,9 +4,11 @@ import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
 import { icons } from './icons-provider';
 import { provideNzIcons } from 'ng-zorro-antd/icon';
-import { en_US, provideNzI18n } from 'ng-zorro-antd/i18n';
+import { es_ES, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { registerLocaleData } from '@angular/common';
-import en from '@angular/common/locales/en';
+import { LOCALE_ID } from '@angular/core';
+import localeEs from '@angular/common/locales/es';
+import localeEsEc from '@angular/common/locales/es-EC';
 import { FormsModule } from '@angular/forms';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideHttpClient } from '@angular/common/http';
@@ -18,7 +20,8 @@ import { getStorage, provideStorage } from '@angular/fire/storage';
 import { FirebaseInitService } from './services/firebase/firebase-init.service';
 import { StockUpdateService } from './services/admin/stockUpdate/stock-update.service';
 
-registerLocaleData(en);
+registerLocaleData(localeEs, 'es');
+registerLocaleData(localeEsEc, 'es-EC');
 
 // Firebase initialization factory
 export function initializeFirebaseFactory(firebaseInitService: FirebaseInitService) {
@@ -30,15 +33,16 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }), 
     provideRouter(routes, 
       withInMemoryScrolling({
-        scrollPositionRestoration: 'top', // 🔧 ESTO FUERZA SCROLL AL TOP
+        scrollPositionRestoration: 'top',
         anchorScrolling: 'enabled'
       })
     ),
     provideNzIcons(icons), 
-    provideNzI18n(en_US), 
+    provideNzI18n(es_ES), 
     importProvidersFrom(FormsModule), 
     provideAnimationsAsync(), 
-    provideHttpClient(), 
+    provideHttpClient(),
+    { provide: LOCALE_ID, useValue: 'es-EC' },
     StockUpdateService,
     provideFirebaseApp(() => initializeApp({ 
       projectId: "numer-16f35", 
@@ -47,7 +51,8 @@ export const appConfig: ApplicationConfig = {
       apiKey: "AIzaSyB4NSF26zLhm9qsXGrJZ6rNAUw2Z2T8k3o", 
       authDomain: "numer-16f35.firebaseapp.com", 
       messagingSenderId: "1010054110379", 
-      measurementId: "G-GVGLYZ4RJJ" })), 
+      measurementId: "G-GVGLYZ4RJJ" 
+    })), 
     provideAuth(() => getAuth()), 
     provideAnalytics(() => getAnalytics()), 
     ScreenTrackingService, 

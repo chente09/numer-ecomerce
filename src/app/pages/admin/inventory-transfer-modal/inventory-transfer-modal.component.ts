@@ -203,11 +203,8 @@ export class InventoryTransferModalComponent implements OnInit {
         try {
           // Calcular el costo base y el total de la deuda
           const distributorCostBase = this.calculateDistributorCost();
-          const totalWithoutIVA = distributorCostBase * quantity;
-          const totalDebitAmount = totalWithoutIVA * (1 + this.VAT_RATE);
-
-          // ✅ CAMBIO CLAVE: Redondear el monto total de la deuda a 2 decimales.
-          const roundedTotalDebitAmount = Math.round(totalDebitAmount * 100) / 100;
+          const roundedUnitCost = Math.round(distributorCostBase * (1 + this.VAT_RATE) * 100) / 100;
+          const roundedTotalDebitAmount = Math.round(roundedUnitCost * quantity * 100) / 100;
 
           const transferId = `transfer-${Date.now()}`;
 

@@ -135,7 +135,9 @@
                                             <nz-form-item>
                                                 <nz-form-label>Nombre</nz-form-label>
                                                 <nz-form-control nzErrorTip="Por favor ingresa tu nombre">
-                                                    <input nz-input formControlName="firstName" placeholder="Nombre">
+                                                    <input nz-input formControlName="firstName" placeholder="Nombre"
+                                                        autocomplete="off" (keydown)="onInputKeydown($event)"
+                                                        (input)="onProfileInputChange($event, 'firstName')">
                                                 </nz-form-control>
                                             </nz-form-item>
                                         </div>
@@ -144,7 +146,9 @@
                                             <nz-form-item>
                                                 <nz-form-label>Apellido</nz-form-label>
                                                 <nz-form-control nzErrorTip="Por favor ingresa tu apellido">
-                                                    <input nz-input formControlName="lastName" placeholder="Apellido">
+                                                    <input nz-input formControlName="lastName" placeholder="Apellido"
+                                                        autocomplete="off" (keydown)="onInputKeydown($event)"
+                                                        (input)="onProfileInputChange($event, 'lastName')">
                                                 </nz-form-control>
                                             </nz-form-item>
                                         </div>
@@ -154,8 +158,12 @@
                                         <div nz-col [nzXs]="24" [nzSm]="12">
                                             <nz-form-item>
                                                 <nz-form-label>Teléfono principal</nz-form-label>
-                                                <nz-form-control nzErrorTip="Por favor ingresa un número de teléfono válido">
-                                                    <input nz-input formControlName="phone" placeholder="Teléfono (10 dígitos)">
+                                                <nz-form-control
+                                                    nzErrorTip="Por favor ingresa un número de teléfono válido">
+                                                    <input nz-input formControlName="phone"
+                                                        placeholder="Teléfono (10 dígitos)" autocomplete="off"
+                                                        (keydown)="onInputKeydown($event)"
+                                                        (input)="onProfileInputChange($event, 'phone')">
                                                 </nz-form-control>
                                             </nz-form-item>
                                         </div>
@@ -164,7 +172,10 @@
                                             <nz-form-item>
                                                 <nz-form-label>Teléfono alternativo</nz-form-label>
                                                 <nz-form-control>
-                                                    <input nz-input formControlName="alternativePhone" placeholder="Teléfono alternativo (opcional)">
+                                                    <input nz-input formControlName="alternativePhone"
+                                                        placeholder="Teléfono alternativo" autocomplete="off"
+                                                        (keydown)="onInputKeydown($event)"
+                                                        (input)="onProfileInputChange($event, 'alternativePhone')">
                                                 </nz-form-control>
                                             </nz-form-item>
                                         </div>
@@ -188,7 +199,8 @@
                                             <nz-form-item>
                                                 <nz-form-label>Tipo de documento</nz-form-label>
                                                 <nz-form-control>
-                                                    <nz-select formControlName="documentType" nzPlaceHolder="Selecciona tipo">
+                                                    <nz-select formControlName="documentType"
+                                                        nzPlaceHolder="Selecciona tipo">
                                                         <nz-option nzValue="cedula" nzLabel="Cédula"></nz-option>
                                                         <nz-option nzValue="pasaporte" nzLabel="Pasaporte"></nz-option>
                                                         <nz-option nzValue="ruc" nzLabel="RUC"></nz-option>
@@ -201,7 +213,10 @@
                                             <nz-form-item>
                                                 <nz-form-label>Número de documento</nz-form-label>
                                                 <nz-form-control>
-                                                    <input nz-input formControlName="documentNumber" placeholder="Número de documento">
+                                                    <input nz-input formControlName="documentNumber"
+                                                        placeholder="Número de documento" autocomplete="off"
+                                                        (keydown)="onInputKeydown($event)"
+                                                        (input)="onProfileInputChange($event, 'documentNumber')">
                                                 </nz-form-control>
                                             </nz-form-item>
                                         </div>
@@ -216,7 +231,10 @@
                                             <nz-form-item>
                                                 <nz-form-label>Nombre del contacto</nz-form-label>
                                                 <nz-form-control>
-                                                    <input nz-input formControlName="emergencyContact" placeholder="Nombre completo del contacto de emergencia">
+                                                    <input nz-input formControlName="emergencyContact"
+                                                        placeholder="Nombre completo..." autocomplete="off"
+                                                        (keydown)="onInputKeydown($event)"
+                                                        (input)="onProfileInputChange($event, 'emergencyContact')">
                                                 </nz-form-control>
                                             </nz-form-item>
                                         </div>
@@ -225,7 +243,10 @@
                                             <nz-form-item>
                                                 <nz-form-label>Teléfono de emergencia</nz-form-label>
                                                 <nz-form-control>
-                                                    <input nz-input formControlName="emergencyPhone" placeholder="Teléfono del contacto de emergencia">
+                                                    <input nz-input formControlName="emergencyPhone"
+                                                        placeholder="Teléfono..." autocomplete="off"
+                                                        (keydown)="onInputKeydown($event)"
+                                                        (input)="onProfileInputChange($event, 'emergencyPhone')">
                                                 </nz-form-control>
                                             </nz-form-item>
                                         </div>
@@ -266,7 +287,8 @@
                         </div>
 
                         <div *ngIf="!loadingAddresses && addresses.length > 0" class="addresses-list">
-                            <div *ngFor="let address of addresses" class="address-card" [class.is-default]="address.isDefault">
+                            <div *ngFor="let address of addresses" class="address-card"
+                                [class.is-default]="address.isDefault">
                                 <div class="address-card-content">
                                     <div class="address-card-header">
                                         <h4>{{ address.name }}</h4>
@@ -365,14 +387,16 @@
         <nz-form-item>
             <nz-form-label>Nombre de la dirección</nz-form-label>
             <nz-form-control nzErrorTip="Por favor ingresa un nombre para esta dirección">
-                <input nz-input formControlName="name" placeholder="Ej: Casa, Trabajo, etc.">
+                <input nz-input formControlName="name" placeholder="Ej: Casa, Trabajo..." autocomplete="off"
+                    (keydown)="onInputKeydown($event)" (input)="onAddressInputChange($event, 'name')">
             </nz-form-control>
         </nz-form-item>
 
         <nz-form-item>
             <nz-form-label>Dirección</nz-form-label>
             <nz-form-control nzErrorTip="Por favor ingresa la dirección">
-                <input nz-input formControlName="address" placeholder="Calle, número, referencias">
+                <input nz-input formControlName="address" placeholder="Calle, número, refencias" autocomplete="off"
+                    (keydown)="onInputKeydown($event)" (input)="onAddressInputChange($event, 'address')">
             </nz-form-control>
         </nz-form-item>
 
@@ -381,7 +405,8 @@
                 <nz-form-item>
                     <nz-form-label>Ciudad</nz-form-label>
                     <nz-form-control nzErrorTip="Por favor ingresa la ciudad">
-                        <input nz-input formControlName="city" placeholder="Ciudad">
+                        <input nz-input formControlName="city" placeholder="Ciudad" autocomplete="off"
+                            (keydown)="onInputKeydown($event)" (input)="onAddressInputChange($event, 'city')">
                     </nz-form-control>
                 </nz-form-item>
             </div>
@@ -390,7 +415,8 @@
                 <nz-form-item>
                     <nz-form-label>Provincia</nz-form-label>
                     <nz-form-control nzErrorTip="Por favor ingresa la provincia">
-                        <input nz-input formControlName="province" placeholder="Provincia">
+                        <input nz-input formControlName="province" placeholder="Provincia" autocomplete="off"
+                            (keydown)="onInputKeydown($event)" (input)="onAddressInputChange($event, 'province')">
                     </nz-form-control>
                 </nz-form-item>
             </div>
@@ -401,7 +427,8 @@
                 <nz-form-item>
                     <nz-form-label>Cantón</nz-form-label>
                     <nz-form-control>
-                        <input nz-input formControlName="canton" placeholder="Cantón (opcional)">
+                        <input nz-input formControlName="canton" placeholder="Cantón" autocomplete="off"
+                            (keydown)="onInputKeydown($event)" (input)="onAddressInputChange($event, 'canton')">
                     </nz-form-control>
                 </nz-form-item>
             </div>
@@ -410,7 +437,8 @@
                 <nz-form-item>
                     <nz-form-label>Barrio</nz-form-label>
                     <nz-form-control>
-                        <input nz-input formControlName="neighborhood" placeholder="Barrio (opcional)">
+                        <input nz-input formControlName="neighborhood" placeholder="Barrio" autocomplete="off"
+                            (keydown)="onInputKeydown($event)" (input)="onAddressInputChange($event, 'neighborhood')">
                     </nz-form-control>
                 </nz-form-item>
             </div>
@@ -419,7 +447,8 @@
         <nz-form-item>
             <nz-form-label>Código Postal</nz-form-label>
             <nz-form-control nzErrorTip="Por favor ingresa el código postal">
-                <input nz-input formControlName="postalCode" placeholder="Código postal">
+                <input nz-input formControlName="postalCode" placeholder="Código postal" autocomplete="off"
+                    (keydown)="onInputKeydown($event)" (input)="onAddressInputChange($event, 'postalCode')">
             </nz-form-control>
         </nz-form-item>
 
@@ -427,7 +456,9 @@
             <nz-form-label>Referencias adicionales</nz-form-label>
             <nz-form-control>
                 <nz-textarea-count [nzMaxCharacterCount]="200">
-                    <textarea nz-input formControlName="reference" placeholder="Referencias para encontrar la dirección (opcional)" rows="3"></textarea>
+                    <textarea nz-input formControlName="reference" rows="3" placeholder="Referencias..."
+                        autocomplete="off" spellcheck="false" (keydown)="onInputKeydown($event)"
+                        (input)="onAddressInputChange($event, 'reference')"></textarea>
                 </nz-textarea-count>
             </nz-form-control>
         </nz-form-item>

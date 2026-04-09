@@ -516,4 +516,23 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
       this.userSubscription.unsubscribe();
     }
   }
+
+  /**
+   * Previene conflictos de eventos en inputs (Solución bug teclado)
+   */
+  onInputKeydown(event: KeyboardEvent): void {
+    event.stopPropagation();
+  }
+
+  /**
+   * Actualiza el FormControl directamente sin emitir eventos adicionales
+   */
+  onInputChange(event: Event, fieldName: string): void {
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+    if (target) {
+      this.profileForm.patchValue({
+        [fieldName]: target.value
+      }, { emitEvent: false });
+    }
+  }
 }

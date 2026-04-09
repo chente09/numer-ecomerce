@@ -317,9 +317,17 @@
                                                 <span nz-icon nzType="check-circle"></span>
                                                 Pagado
                                             </nz-tag>
-                                            <nz-tag *ngIf="transaction.paymentStatus === 'pending'" nzColor="orange">
+                                            <nz-tag
+                                                *ngIf="transaction.paymentStatus === 'pending' && getCorrectedRemainingAmount(transaction) > 0"
+                                                nzColor="orange">
                                                 <span nz-icon nzType="clock-circle"></span>
                                                 Pendiente
+                                            </nz-tag>
+                                            <nz-tag
+                                                *ngIf="transaction.paymentStatus === 'pending' && getCorrectedRemainingAmount(transaction) <= 0"
+                                                nzColor="green">
+                                                <span nz-icon nzType="undo"></span>
+                                                Devuelto
                                             </nz-tag>
                                             <nz-tag *ngIf="transaction.paymentStatus === 'partial'" nzColor="blue">
                                                 <span nz-icon nzType="pie-chart"></span>
@@ -338,8 +346,8 @@
                                         <!-- Pendiente -->
                                         <td nzAlign="center">
                                             <strong *ngIf="transaction.type === 'debit'"
-                                                [style.color]="(transaction.remainingAmount || transaction.amount) > 0 ? '#fa8c16' : '#52c41a'">
-                                                {{ formatCurrency(transaction.remainingAmount || transaction.amount) }}
+                                                [style.color]="getCorrectedRemainingAmount(transaction) > 0 ? '#fa8c16' : '#52c41a'">
+                                                {{ formatCurrency(getCorrectedRemainingAmount(transaction)) }}
                                             </strong>
                                             <span *ngIf="transaction.type === 'credit'" class="na-indicator">–</span>
                                         </td>

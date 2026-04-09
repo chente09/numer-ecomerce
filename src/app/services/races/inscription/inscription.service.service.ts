@@ -146,6 +146,7 @@ export class InscriptionService {
   /**
    * Crear una nueva inscripción (estado inicial: pending-payment)
    */
+  
   createInscription(
     inscription: Omit<RaceInscription, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'payment'>,
     certificadoMedicoFile?: File
@@ -176,12 +177,14 @@ export class InscriptionService {
           );
         }
 
-        return of({ inscriptionId: uuidv4(), certificadoMedicoUrl: undefined });
+        // ✅ CORREGIDO: No incluir certificadoMedicoUrl si no existe
+        return of({ inscriptionId: uuidv4() });
       }),
-      switchMap(({ inscriptionId, certificadoMedicoUrl }) => {
+      switchMap((result: { inscriptionId: string; certificadoMedicoUrl?: string }) => {
         const inscriptionsRef = collection(this.firestore, this.collectionName);
 
-        const newInscription = {
+        // ✅ Crear objeto base
+        const newInscription: any = {
           ...inscription,
           status: 'pending-payment' as const,
           payment: {
@@ -190,10 +193,14 @@ export class InscriptionService {
             currency: 'USD',
             status: 'pending' as const
           },
-          certificadoMedicoUrl,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };
+
+        // ✅ Solo agregar certificadoMedicoUrl SI existe
+        if (result.certificadoMedicoUrl) {
+          newInscription.certificadoMedicoUrl = result.certificadoMedicoUrl;
+        }
 
         return from(addDoc(inscriptionsRef, newInscription)).pipe(
           map(docRef => docRef.id)

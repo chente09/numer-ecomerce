@@ -253,11 +253,13 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
         return this.allTransactions.filter(t => t.type === 'credit');
 
       case 'pending':
-        return this.allTransactions.filter(t =>
-          t.type === 'debit' &&
-          (t.paymentStatus === 'pending' || t.paymentStatus === 'partial') &&
-          (t.remainingAmount || t.amount) > 0
-        );
+        const correctedDebits = this.ledgerService.calculateRemainingAmountsForDebits(this.allTransactions);
+        return this.allTransactions.filter(t => {
+          if (t.type !== 'debit') return false;
+          const corrected = correctedDebits.find(d => d.id === t.id);
+          const remaining = corrected?.remainingAmount ?? t.remainingAmount ?? t.amount;
+          return (t.paymentStatus === 'pending' || t.paymentStatus === 'partial') && remaining > 0;
+        });
 
       case 'all':
       default:
@@ -288,6 +290,13 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
     return this.getFilteredTransactions()
       .filter(t => t.type === 'credit')
       .reduce((sum, t) => sum + t.amount, 0);
+  }
+
+  getCorrectedRemainingAmount(entry: LedgerEntry): number {
+    if (entry.type !== 'debit') return 0;
+    const correctedDebits = this.ledgerService.calculateRemainingAmountsForDebits(this.allTransactions);
+    const corrected = correctedDebits.find(d => d.id === entry.id);
+    return corrected?.remainingAmount ?? entry.remainingAmount ?? entry.amount;
   }
 
   /**

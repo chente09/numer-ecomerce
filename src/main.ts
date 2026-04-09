@@ -7,7 +7,7 @@ import { AppComponent } from './app/app.component';
 
 bootstrapApplication(AppComponent, {
   providers: [
-    provideHttpClient(),           // 👈 AGREGA ESTO
-    ...appConfig.providers         // 👈 Mantenemos lo que ya tienes
+    provideHttpClient(),           
+    ...appConfig.providers         
   ]
 }).catch((err) => console.error(err));

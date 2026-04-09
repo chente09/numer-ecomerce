@@ -295,7 +295,7 @@ export interface LedgerEntry {
     amount: number;
     description: string;
     sourceId: string;
-    sourceType: 'distributor_order' | 'manual_payment' | 'transfer';
+    sourceType: 'distributor_order' | 'manual_payment' | 'transfer' | 'return';
     createdAt: Timestamp;
     createdBy: string; // UID del admin o 'system'
 
@@ -312,6 +312,7 @@ export interface LedgerEntry {
     remainingAmount?: number;
     isPartialPayment?: boolean;
     parentDebitId?: string; // Para pagos parciales, referencia al débito original
+    relatedDebitId?: string;   // ← para créditos de devolución
 }
 
 // Interface base existente

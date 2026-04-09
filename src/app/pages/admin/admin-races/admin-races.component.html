@@ -1,18 +1,18 @@
 <div class="races-container">
-    <nz-card nzTitle="Administrar Carreras" class="mb-4 header-card">
+    <nz-card nzTitle="Administrar Eventos" class="mb-4 header-card">
         <div class="card-actions">
             <button nz-button nzType="primary" (click)="openModal()">
                 <span nz-icon nzType="plus"></span>
-                <span class="button-text">Nueva Carrera</span>
+                <span class="button-text">Nuevo Evento</span>
             </button>
         </div>
     </nz-card>
 
-    <nz-empty *ngIf="!loading && races?.length === 0" nzNotFoundContent="No hay carreras disponibles"
+    <nz-empty *ngIf="!loading && races.length === 0" nzNotFoundContent="No hay eventos disponibles"
         [nzNotFoundFooter]="emptyButton">
     </nz-empty>
     <ng-template #emptyButton>
-        <button nz-button nzType="primary" (click)="openModal()">Crear primera carrera</button>
+        <button nz-button nzType="primary" (click)="openModal()">Crear primer evento</button>
     </ng-template>
 
     <div *ngIf="loading" class="loading-skeleton">
@@ -58,7 +58,7 @@
                                 <span nz-icon nzType="edit"></span>
                             </button>
                             <button nz-button nz-popconfirm
-                                nzPopconfirmTitle="¿Seguro que quieres eliminar esta carrera?"
+                                nzPopconfirmTitle="¿Seguro que quieres eliminar este evento?"
                                 nzPopconfirmPlacement="bottom" (nzOnConfirm)="deleteRace(race.id)" nzSize="small"
                                 nz-tooltip nzTooltipTitle="Eliminar">
                                 <i nz-icon nzType="delete" nzTheme="outline"></i>
@@ -74,9 +74,9 @@
         </nz-table>
     </div>
 
-    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Carrera' : 'Nueva Carrera'"
+    <nz-modal [(nzVisible)]="modalVisible" [nzTitle]="isEditMode ? 'Editar Evento' : 'Nueva Evento'"
         [nzOkLoading]="saving" (nzOnCancel)="closeModal()" (nzOnOk)="handleSubmit()" [nzWidth]="modalWidth" nzCentered
-        nzOkText="Guardar Carrera" nzCancelText="Cancelar" [nzOkDisabled]="!raceForm.valid || saving">
+        nzOkText="Guardar Cambios" nzCancelText="Cancelar" [nzOkDisabled]="!raceForm.valid || saving">
 
         <ng-container *nzModalContent>
             <form [formGroup]="raceForm" nz-form nzLayout="vertical">
@@ -105,7 +105,7 @@
                         <div nz-row [nzGutter]="16">
                             <div nz-col [nzSpan]="12">
                                 <nz-form-item>
-                                    <nz-form-label nzRequired>Fecha de la Carrera</nz-form-label>
+                                    <nz-form-label nzRequired>Fecha del Evento</nz-form-label>
                                     <nz-form-control nzErrorTip="Selecciona una fecha">
                                         <nz-date-picker formControlName="fecha" style="width: 100%;"></nz-date-picker>
                                     </nz-form-control>
@@ -124,7 +124,7 @@
                             <nz-form-label nzRequired>Descripción</nz-form-label>
                             <nz-form-control nzErrorTip="Ingresa una descripción">
                                 <textarea nz-input formControlName="descripcion"
-                                    placeholder="Describe los detalles de la carrera..."
+                                    placeholder="Describe los detalles del evento..."
                                     [nzAutosize]="{ minRows: 4, maxRows: 8 }"></textarea>
                             </nz-form-control>
                         </nz-form-item>
@@ -202,7 +202,9 @@
                                 <nz-form-item>
                                     <nz-form-label>Latitud (Opcional)</nz-form-label>
                                     <nz-form-control>
-                                        <nz-input-number formControlName="coordenadasLat" [nzMin]="-90" [nzMax]="90" [nzStep]="0.000001" style="width: 100%;" placeholder="-0.22985"></nz-input-number>
+                                        <nz-input-number formControlName="coordenadasLat" [nzMin]="-90" [nzMax]="90"
+                                            [nzStep]="0.000001" style="width: 100%;"
+                                            placeholder="-0.22985"></nz-input-number>
                                     </nz-form-control>
                                 </nz-form-item>
                             </div>
@@ -210,7 +212,9 @@
                                 <nz-form-item>
                                     <nz-form-label>Longitud (Opcional)</nz-form-label>
                                     <nz-form-control>
-                                        <nz-input-number formControlName="coordenadasLng" [nzMin]="-180" [nzMax]="180" [nzStep]="0.000001" style="width: 100%;" placeholder="-78.52498"></nz-input-number>
+                                        <nz-input-number formControlName="coordenadasLng" [nzMin]="-180" [nzMax]="180"
+                                            [nzStep]="0.000001" style="width: 100%;"
+                                            placeholder="-78.52498"></nz-input-number>
                                     </nz-form-control>
                                 </nz-form-item>
                             </div>
@@ -343,6 +347,23 @@
                                 </nz-select>
                             </nz-form-control>
                         </nz-form-item>
+                        <nz-form-item>
+                            <nz-form-label>Premios</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="premios" nzMode="tags"
+                                    nzPlaceHolder="Ej: 1er lugar $500, 2do lugar $300...">
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
+
+                        <nz-form-item>
+                            <nz-form-label>Sponsors / Auspiciantes</nz-form-label>
+                            <nz-form-control>
+                                <nz-select formControlName="sponsors" nzMode="tags"
+                                    nzPlaceHolder="Ej: Nike, Gatorade, Red Bull...">
+                                </nz-select>
+                            </nz-form-control>
+                        </nz-form-item>
 
                         <div nz-row [nzGutter]="16">
                             <div nz-col [nzSpan]="12">
@@ -398,7 +419,7 @@
         </ng-container>
     </nz-modal>
 
-    <nz-modal [(nzVisible)]="detailsModalVisible" nzTitle="Detalles de Carrera"
+    <nz-modal [(nzVisible)]="detailsModalVisible" nzTitle="Detalles del Evento"
         (nzOnCancel)="detailsModalVisible = false" [nzFooter]="null" [nzWidth]="320" nzCentered>
         <ng-container *nzModalContent>
             <div *ngIf="selectedRace" class="race-details">

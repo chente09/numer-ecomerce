@@ -1,0 +1,42 @@
+<nz-modal [(nzVisible)]="visible" [nzTitle]="modalTitle" [nzClosable]="!loading" [nzMaskClosable]="false"
+    [nzWidth]="500" [nzFooter]="null" (nzOnCancel)="handleCancel()">
+    <!-- Template del título -->
+    <ng-template #modalTitle>
+        <div class="modal-header">
+            <span nz-icon nzType="user" nzTheme="outline" class="modal-icon"></span>
+            <span class="modal-title-text">Iniciar Sesión</span>
+        </div>
+    </ng-template>
+
+    <!-- Contenido del modal -->
+    <div class="modal-content" *nzModalContent>
+
+        <div class="login-content">
+            <div class="login-icon">
+                <i nz-icon nzType="lock" nzTheme="outline"></i>
+            </div>
+
+            <p class="login-message">{{ message }}</p>
+
+            <button nz-button nzSize="large" nzBlock [nzLoading]="loading" (click)="handleLogin()"
+                class="google-login-btn">
+                <span *ngIf="!loading" class="btn-content">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"
+                        class="google-icon" />
+                    <span>Continuar con Google</span>
+                </span>
+                <span *ngIf="loading">Iniciando sesión...</span>
+            </button>
+
+            <div class="login-footer">
+                <p class="footer-text">
+                    Al continuar, aceptas nuestros
+                    <a href="/terminos" target="_blank">Términos de Servicio</a>
+                    y
+                    <a href="/privacidad" target="_blank">Política de Privacidad</a>
+                </p>
+            </div>
+        </div>
+
+    </div>
+</nz-modal>

@@ -30,7 +30,7 @@ export class DashboardComponent implements OnInit {
       this.router.navigate(['/admin/products']);
     } else if (roles.includes('distributor')) {
       // Si es distribuidor, a su inventario
-      this.router.navigate(['/admin/my-inventory']);
+      this.router.navigate(['/admin/distribuidores']);
     } else {
       // Si es otro rol, a la página principal
       this.router.navigate(['/welcome']);

@@ -90,7 +90,7 @@ export class ModelsSectionComponent implements OnInit, OnDestroy, AfterViewInit 
     // 🔄 COMBINAR MODELOS E IMÁGENES CON PRODUCTOS
     combineLatest([
       this.modelImageService.getActiveModelImages(),
-      this.productService.getProducts()
+      this.productService.getProductsNoCache()
     ]).pipe(
       take(1),
       map(([modelImages, products]) => {
