@@ -9,6 +9,7 @@ import { WppComponent } from "./components/wpp/wpp.component";
 import { filter } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ScrollService } from './services/scroll/scroll.service';
+import { CartButtonComponent } from './components/cart-button/cart-button.component';
 
 @Component({
   selector: 'app-root',
@@ -20,7 +21,8 @@ import { ScrollService } from './services/scroll/scroll.service';
     NzMenuModule,
     NavBarComponent,
     FooterComponent,
-    WppComponent
+    WppComponent,
+    CartButtonComponent
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'

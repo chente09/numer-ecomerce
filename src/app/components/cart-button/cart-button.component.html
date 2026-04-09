@@ -1,0 +1,7 @@
+<div class="cart-button" [class.visible]="isVisible">
+  <button class="cart-btn" (click)="goToCart()">
+    <nz-icon class="cart-icon" nzType="shopping-cart" nzTheme="outline"></nz-icon>
+    <span class="cart-badge">{{ itemCount }}</span>
+  </button>
+  <span class="cart-tooltip">Ver carrito</span>
+</div>
