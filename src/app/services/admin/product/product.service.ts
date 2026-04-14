@@ -1078,9 +1078,26 @@ export class ProductService {
     const sanitized: any = {};
 
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined) {
-        sanitized[key] = value;
+      if (value === undefined) return;
+
+      // Eliminar base64 de campos imageUrl a nivel raíz
+      if (key === 'imageUrl' && typeof value === 'string' && value.startsWith('data:')) {
+        return; // No incluir base64 en Firestore
       }
+
+      // Limpiar base64 en arrays de colors/sizes
+      if ((key === 'colors' || key === 'sizes') && Array.isArray(value)) {
+        sanitized[key] = value.map((item: any) => {
+          const cleanItem = { ...item };
+          if (cleanItem.imageUrl?.startsWith('data:')) {
+            cleanItem.imageUrl = '';
+          }
+          return cleanItem;
+        });
+        return;
+      }
+
+      sanitized[key] = value;
     });
 
     return sanitized;
@@ -1112,6 +1129,12 @@ export class ProductService {
       ...productData,
       updatedAt: new Date()
     };
+
+    // Guard: si imageUrl del formulario es base64, eliminarlo aquí
+    // Se asignará correctamente solo si se sube una nueva imagen (línea ~1143)
+    if (updateData.imageUrl?.startsWith('data:')) {
+      delete updateData.imageUrl;
+    }
 
     // ✅ CRÍTICO: Preservar distributorCost explícitamente
     if (productData.distributorCost !== undefined) {
