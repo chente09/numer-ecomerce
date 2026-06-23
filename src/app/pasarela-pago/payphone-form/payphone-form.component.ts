@@ -97,6 +97,8 @@ const PAYPHONE_CONFIG = {
   styleUrl: './payphone-form.component.css',
 })
 export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
+  readonly pagosSuspendidos = true;
+
   // Estado reactivo (preservado)
   private readonly loadingSubject = new BehaviorSubject<boolean>(true);
   private readonly errorSubject = new BehaviorSubject<string | null>(null);
@@ -198,6 +200,11 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 🎯 OPTIMIZADO: Inicialización de pago como Observable
   private initializePayment(): Observable<any> {
+    if (this.pagosSuspendidos) {
+      this.setLoading(false);
+      return new Observable(obs => obs.complete());
+    }
+
     console.log('🔄 Inicializando proceso de pago...');
 
     return this.validateCartAsObservable().pipe(

@@ -128,8 +128,32 @@
         </div>
       </div>
 
+      <!-- Pagos suspendidos temporalmente -->
+      <div *ngIf="pagosSuspendidos && (isLoading$ | async) === false" class="state-container">
+        <div class="error-state">
+          <nz-result
+            nzStatus="warning"
+            nzTitle="Pagos temporalmente suspendidos"
+            nzSubTitle="Estamos preparando el lanzamiento oficial de la tienda. Los pagos en línea estarán disponibles muy pronto.">
+            <div nz-result-extra>
+              <p style="margin-bottom: 16px; color: #595959;">
+                Si tienes alguna consulta o deseas realizar un pedido, contáctanos directamente por WhatsApp.
+              </p>
+              <a nz-button nzType="primary" nzSize="large" href="https://wa.me/593987125801" target="_blank">
+                <span nz-icon nzType="message"></span>
+                Contactar por WhatsApp
+              </a>
+              <button nz-button nzType="default" nzSize="large" (click)="volverAlCarrito()" style="margin-left: 8px;">
+                <span nz-icon nzType="arrow-left"></span>
+                Volver al carrito
+              </button>
+            </div>
+          </nz-result>
+        </div>
+      </div>
+
       <!-- Payment Content -->
-      <div *ngIf="(isLoading$ | async) === false && !(error$ | async)" class="payment-content">
+      <div *ngIf="!pagosSuspendidos && (isLoading$ | async) === false && !(error$ | async)" class="payment-content">
         <!-- Security Notice -->
         <div class="security-notice">
           <div class="notice-icon">
