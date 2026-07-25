@@ -160,7 +160,7 @@ export class GenderSectionService {
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
-        await this.loadDefaultItems();
+        // Solo fallback en memoria — no persistir en Firestore para evitar duplicados
         this.itemsCache$.next(this.DEFAULT_ITEMS);
       } else {
         const items = snapshot.docs.map(doc =>
@@ -184,7 +184,7 @@ export class GenderSectionService {
         const config = this.convertFirestoreData(docSnap.data(), docSnap.id);
         this.configCache$.next(config);
       } else {
-        await this.loadDefaultConfig();
+        // Solo fallback en memoria — no persistir en Firestore automáticamente
         this.configCache$.next(this.DEFAULT_CONFIG);
       }
     } catch (error) {

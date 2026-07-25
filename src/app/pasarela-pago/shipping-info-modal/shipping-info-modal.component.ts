@@ -1,6 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { NzModalModule, NzModalRef } from 'ng-zorro-antd/modal';
 
 // Módulos de NG-Zorro que usaremos en el modal
@@ -37,7 +39,8 @@ export interface ShippingInfo {
   templateUrl: './shipping-info-modal.component.html',
   styleUrls: ['./shipping-info-modal.component.css']
 })
-export class ShippingInfoModalComponent implements OnInit {
+export class ShippingInfoModalComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
 
   shippingForm: FormGroup;
   shippingType: 'store' | 'client' = 'store';
@@ -59,10 +62,12 @@ export class ShippingInfoModalComponent implements OnInit {
 
   ngOnInit(): void {
     // Escuchamos los cambios en el tipo de envío para actualizar las validaciones
-    this.shippingForm.get('shippingType')?.valueChanges.subscribe(type => {
-      this.shippingType = type;
-      this.updateValidators(type);
-    });
+    this.shippingForm.get('shippingType')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(type => {
+        this.shippingType = type;
+        this.updateValidators(type);
+      });
   }
 
   // Actualiza los validadores de los campos dependiendo del tipo de envío seleccionado
@@ -117,5 +122,10 @@ export class ShippingInfoModalComponent implements OnInit {
   // Cierra el modal sin devolver datos
   closeModal(): void {
     this.modalRef.destroy();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

@@ -1,10 +1,10 @@
 // src/app/pages/admin/components/inventory-transfer-modal/inventory-transfer-modal.component.ts
-import { Component, OnInit, Input, Output, EventEmitter, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, inject, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { NzModalRef, NzModalModule } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { Observable, of, forkJoin } from 'rxjs';
-import { catchError, filter, finalize, map, switchMap, take, tap } from 'rxjs/operators';
+import { Observable, of, forkJoin, Subject } from 'rxjs';
+import { catchError, filter, finalize, map, switchMap, take, takeUntil, tap } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 
 // Tus importaciones exactas
@@ -14,6 +14,7 @@ import { ProductInventoryService } from '../../../services/admin/inventario/prod
 import { UsersService, UserProfile } from '../../../services/users/users.service';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { DistributorLedgerService } from '../../../services/admin/distributorLedger/distributor-ledger.service';
+import { ShipmentService } from '../../../services/admin/shipments/shipment.service';
 
 // Módulos NG-Zorro
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -38,7 +39,8 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
   templateUrl: './inventory-transfer-modal.component.html',
   styleUrls: ['./inventory-transfer-modal.component.css']
 })
-export class InventoryTransferModalComponent implements OnInit {
+export class InventoryTransferModalComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
 
   @Input() product?: Product;
   @Input() variant?: ProductVariant;
@@ -64,20 +66,14 @@ export class InventoryTransferModalComponent implements OnInit {
   private message = inject(NzMessageService);
   private cdr = inject(ChangeDetectorRef);
   private ledgerService = inject(DistributorLedgerService);
+  private shipmentService = inject(ShipmentService);
 
   ngOnInit(): void {
     // 🔧 CORRECCIÓN: Obtener datos desde nzData del modal
     const modalData = this.modalRef.getConfig().nzData;
 
-    console.log('🔍 Debug - Modal recibió datos:', modalData);
-
     if (modalData?.product) this.product = modalData.product;
     if (modalData?.variant) this.variant = modalData.variant;
-
-    console.log('🔍 Debug - Datos asignados:', {
-      product: this.product,
-      variant: this.variant
-    });
 
     this.initializeForm();
     this.loadDistributors();
@@ -110,9 +106,11 @@ export class InventoryTransferModalComponent implements OnInit {
       });
 
       // Escuchar cambios en la selección de variante
-      this.transferForm.get('variant')?.valueChanges.subscribe(variantId => {
-        if (variantId) this.onVariantSelected(variantId);
-      });
+      this.transferForm.get('variant')?.valueChanges
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(variantId => {
+          if (variantId) this.onVariantSelected(variantId);
+        });
     }
   }
 
@@ -198,40 +196,58 @@ export class InventoryTransferModalComponent implements OnInit {
       notes: notes || `Transferencia de ${quantity} x ${this.product!.name}`
     };
 
-    this.distributorService.transferStockToDistributor(transferDetails).subscribe({
-      next: async () => {
-        try {
-          // Calcular el costo base y el total de la deuda
-          const distributorCostBase = this.calculateDistributorCost();
-          const roundedUnitCost = Math.round(distributorCostBase * (1 + this.VAT_RATE) * 100) / 100;
-          const roundedTotalDebitAmount = Math.round(roundedUnitCost * quantity * 100) / 100;
-
-          const transferId = `transfer-${Date.now()}`;
-
-          // Registrar el débito en el libro contable
-          await this.ledgerService.registerDebit(
-            distributorId,
-            roundedTotalDebitAmount, // ✅ USAR EL VALOR YA REDONDEADO
-            `Transferencia de ${quantity} x ${this.product!.name} (${this.selectedVariant!.colorName}/${this.selectedVariant!.sizeName}) - Costo: $${distributorCostBase.toFixed(2)} + IVA`,
-            transferId,
-            'transfer'
-          );
-
-          this.message.success(`Stock transferido y deuda registrada: $${roundedTotalDebitAmount.toFixed(2)}`);
-          this.modalRef.close({ success: true });
-
-        } catch (ledgerError: any) {
-          this.message.error(`Stock transferido, pero falló el registro de la deuda: ${ledgerError.message}.`);
-          this.modalRef.close({ success: true, warning: 'ledger_failed' });
+    this.distributorService.transferStockToDistributor(transferDetails)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.onTransferSuccess(distributorId, quantity).catch(ledgerError => {
+            this.message.error(`Stock transferido, pero falló el registro de la deuda: ${(ledgerError as Error).message}.`);
+            this.modalRef.close({ success: true, warning: 'ledger_failed' });
+          });
+        },
+        error: (err) => {
+          this.isSubmitting = false;
+          this.message.error(`Error al transferir el stock: ${err.message}`);
         }
-      },
-      error: (err) => {
-        this.message.error(`Error al transferir el stock: ${err.message}`);
-      },
-      complete: () => {
-        this.isSubmitting = false;
-      }
-    });
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private async onTransferSuccess(distributorId: string, quantity: number): Promise<void> {
+    const distributorCostBase = this.calculateDistributorCost();
+    const roundedUnitCost = Math.round(distributorCostBase * 100) / 100;
+    const roundedTotalDebitAmount = Math.round(roundedUnitCost * quantity * 100) / 100;
+    const transferId = `transfer-${Date.now()}`;
+
+    await this.ledgerService.registerDebit(
+      distributorId,
+      roundedTotalDebitAmount,
+      `Transferencia de ${quantity} x ${this.product!.name} (${this.selectedVariant!.colorName}/${this.selectedVariant!.sizeName}) - Costo: $${distributorCostBase.toFixed(2)}`,
+      transferId,
+      'transfer'
+    );
+
+    try {
+      const shipmentId = await this.shipmentService.getOrCreateOpenShipment(
+        distributorId, this.currentAdminUid!
+      );
+      await this.shipmentService.addTransferToShipment(shipmentId, transferId, {
+        productName: this.product!.name,
+        variantLabel: `${this.selectedVariant!.colorName} / ${this.selectedVariant!.sizeName}`,
+        quantity,
+        unitCost: roundedUnitCost,
+      });
+    } catch (shipErr) {
+      console.error('Error registrando en shipment:', shipErr);
+    }
+
+    this.isSubmitting = false;
+    this.message.success(`Stock transferido y deuda registrada: $${roundedTotalDebitAmount.toFixed(2)}`);
+    this.modalRef.close({ success: true });
   }
 
   // ✅ NUEVO: Método para calcular el costo del distribuidor correctamente
@@ -246,10 +262,9 @@ export class InventoryTransferModalComponent implements OnInit {
       return this.product!.distributorCost;
     }
 
-    // 3️⃣ FALLBACK: Cálculo tradicional con descuentos
+    // 3️⃣ FALLBACK: precio con descuento de distribuidor, sin IVA automático
     const price = this.selectedVariant!.price || this.product!.price;
-    const priceWithoutVAT = price / (1 + this.VAT_RATE);
-    return priceWithoutVAT * (1 - this.DISTRIBUTOR_DISCOUNT_PERCENTAGE);
+    return price * (1 - this.DISTRIBUTOR_DISCOUNT_PERCENTAGE);
   }
 
   // ✅ NUEVO: Método auxiliar para verificar si hay distributorCost directo
@@ -264,13 +279,12 @@ export class InventoryTransferModalComponent implements OnInit {
     const distributorCost = this.calculateDistributorCost();
     const hasDirectCost = this.getDistributorCostDirect() !== null;
     const quantity = this.transferForm.get('quantity')?.value || 1;
-    const totalWithoutIVA = distributorCost * quantity;
-    const totalWithIVA = totalWithoutIVA * (1 + this.VAT_RATE);
+    const total = distributorCost * quantity;
 
     if (hasDirectCost) {
-      return `Costo distribuidor: $${distributorCost.toFixed(2)} x ${quantity} = $${totalWithoutIVA.toFixed(2)} + IVA (15%) = $${totalWithIVA.toFixed(2)}`;
+      return `Costo distribuidor: $${distributorCost.toFixed(2)} x ${quantity} = $${total.toFixed(2)}`;
     } else {
-      return `Costo calculado (fallback): $${distributorCost.toFixed(2)} x ${quantity} = $${totalWithoutIVA.toFixed(2)} + IVA (15%) = $${totalWithIVA.toFixed(2)}`;
+      return `Costo calculado (fallback): $${distributorCost.toFixed(2)} x ${quantity} = $${total.toFixed(2)}`;
     }
   }
 

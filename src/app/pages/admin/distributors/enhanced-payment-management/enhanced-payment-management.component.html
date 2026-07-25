@@ -165,7 +165,7 @@
                         <td nzAlign="center">
                             <!-- ✅ PARA DÉBITOS: Usar nueva lógica getReturnStatus -->
                             <ng-container *ngIf="entry.type === 'debit'">
-                                <ng-container *ngIf="getReturnStatus(entry) as returnStatus">
+                                <ng-container *ngIf="getReturnStatusCached(entry) as returnStatus">
                                     <!-- CASO 1: Devolución completa -->
                                     <nz-tag *ngIf="returnStatus.isCompleteReturn" nzColor="green">
                                         <span nz-icon nzType="undo"></span>
@@ -214,7 +214,7 @@
 
                         <!-- ✅ ACCIONES MEJORADAS CON NUEVA LÓGICA -->
                         <td nzAlign="center">
-                            <ng-container *ngIf="getReturnStatus(entry) as returnStatus">
+                            <ng-container *ngIf="getReturnStatusCached(entry) as returnStatus">
                                 <!-- ✅ BOTÓN DE PAGO: Solo mostrar según shouldShowPayButton -->
                                 <nz-button-group *ngIf="entry.type === 'debit' && returnStatus.shouldShowPayButton">
                                     <button nz-button nzType="primary" nzSize="small"

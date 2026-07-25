@@ -105,6 +105,7 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
   showCompleteStatement: boolean = false;
   statementFilter: 'all' | 'debit' | 'credit' | 'pending' = 'all';
   allTransactions: LedgerEntry[] = [];
+  private correctedDebitsMap = new Map<string, number>();
 
   // Almacena la lista original sin filtrar
   private originalGroupedInventory: GroupedInventoryProduct[] = [];
@@ -149,22 +150,52 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
         if (inventoryItems.length === 0) {
           return of({ grouped: [], stats: null });
         }
-        const productIds = [...new Set(inventoryItems.map(item => item.productId))];
-        const productObservables = productIds.map(id => this.productService.getProductById(id).pipe(catchError(() => of(null))));
+        // Items con snapshot ya guardado vs items legacy sin snapshot
+        const needsLookup = inventoryItems.filter(i => !i.productName);
+        const hasSnapshot = inventoryItems.filter(i => !!i.productName);
+
+        if (needsLookup.length === 0) {
+          // Todos tienen snapshot — no hace falta ir al catálogo
+          return of(null).pipe(
+            map(() => {
+              const enriched = inventoryItems.map(item => ({
+                ...item,
+                variantImageUrl: item.imageUrl || '',
+              }));
+              const stats = this.calculateStats(enriched);
+              const grouped = this.groupInventoryByProduct(enriched);
+              return { grouped, stats };
+            })
+          );
+        }
+
+        // Fallback: buscar productos del catálogo solo para items legacy
+        const productIds = [...new Set(needsLookup.map(item => item.productId))];
+        const productObservables = productIds.map(id =>
+          this.productService.getProductById(id).pipe(catchError(() => of(null)))
+        );
         return forkJoin(productObservables).pipe(
           map(products => {
             const productsMap = new Map<string, Product>();
             products.forEach(p => { if (p) productsMap.set(p.id, p); });
-            const enriched = inventoryItems.map(item => {
+
+            const enrichedLegacy = needsLookup.map(item => {
               const product = productsMap.get(item.productId);
-              const variant = product?.variants.find(v => v.id === item.variantId);
+              const variant = product?.variants?.find(v => v.id === item.variantId);
               return {
                 ...item,
                 productName: product?.name || 'Producto no encontrado',
                 productModel: product?.model || 'N/A',
-                variantImageUrl: variant?.imageUrl || product?.imageUrl
+                variantImageUrl: variant?.imageUrl || product?.imageUrl || '',
               };
             });
+
+            const enrichedSnapshot = hasSnapshot.map(item => ({
+              ...item,
+              variantImageUrl: item.imageUrl || '',
+            }));
+
+            const enriched = [...enrichedSnapshot, ...enrichedLegacy];
             const stats = this.calculateStats(enriched);
             const grouped = this.groupInventoryByProduct(enriched);
             return { grouped, stats };
@@ -212,6 +243,14 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
           return dateB - dateA;
         });
 
+        // Pre-computar montos corregidos para evitar O(n²) en el template
+        const correctedDebits = this.ledgerService.calculateRemainingAmountsForDebits(this.allTransactions);
+        this.correctedDebitsMap = new Map(
+          correctedDebits
+            .filter(d => d.id != null)
+            .map(d => [d.id as string, d.remainingAmount ?? 0])
+        );
+
         this.recentTransfers = debits.slice(0, 5);
 
         this.isLoadingFinancial = false;
@@ -253,11 +292,9 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
         return this.allTransactions.filter(t => t.type === 'credit');
 
       case 'pending':
-        const correctedDebits = this.ledgerService.calculateRemainingAmountsForDebits(this.allTransactions);
         return this.allTransactions.filter(t => {
           if (t.type !== 'debit') return false;
-          const corrected = correctedDebits.find(d => d.id === t.id);
-          const remaining = corrected?.remainingAmount ?? t.remainingAmount ?? t.amount;
+          const remaining = this.correctedDebitsMap.get(t.id ?? '') ?? t.remainingAmount ?? t.amount;
           return (t.paymentStatus === 'pending' || t.paymentStatus === 'partial') && remaining > 0;
         });
 
@@ -294,9 +331,7 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
 
   getCorrectedRemainingAmount(entry: LedgerEntry): number {
     if (entry.type !== 'debit') return 0;
-    const correctedDebits = this.ledgerService.calculateRemainingAmountsForDebits(this.allTransactions);
-    const corrected = correctedDebits.find(d => d.id === entry.id);
-    return corrected?.remainingAmount ?? entry.remainingAmount ?? entry.amount;
+    return this.correctedDebitsMap.get(entry.id ?? '') ?? entry.remainingAmount ?? entry.amount;
   }
 
   /**
@@ -507,34 +542,6 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
       nzContent: transactionInfo.join('<br>'),
       nzWidth: 500
     });
-  }
-
-  /**
-   * Obtiene el título del modal según el tipo de transacción
-   */
-  private getTransactionModalTitle(transaction: LedgerEntry): string {
-    return transaction.type === 'debit' ? '💳 Detalles de Débito' : '💰 Detalles de Pago';
-  }
-
-  /**
-   * Prepara los datos para el modal de detalles de transacción
-   */
-  private prepareTransactionModalData(transaction: LedgerEntry) {
-    const isDebit = transaction.type === 'debit';
-    const remainingAmount = transaction.remainingAmount || transaction.amount;
-
-    return {
-      title: isDebit ? '💳 Detalles de Débito' : '💰 Detalles de Pago',
-      transaction,
-      isDebit,
-      remainingAmount,
-      formattedDate: this.formatDateWithTime(transaction.createdAt),
-      formattedAmount: this.formatCurrency(transaction.amount),
-      formattedPaidAmount: this.formatCurrency(transaction.paidAmount || 0),
-      formattedRemainingAmount: this.formatCurrency(remainingAmount),
-      paymentStatusText: this.getPaymentStatusText(transaction.paymentStatus || 'pending'),
-      sourceTypeText: this.getSourceTypeText(transaction.sourceType)
-    };
   }
 
   /**

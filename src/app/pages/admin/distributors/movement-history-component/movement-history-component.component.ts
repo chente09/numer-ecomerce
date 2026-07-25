@@ -1,8 +1,8 @@
-import { Component, OnInit, Input, OnChanges, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, OnChanges, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { forkJoin, Observable, of } from 'rxjs';
+import { forkJoin, Observable, of, Subject } from 'rxjs';
 import { Timestamp } from '@angular/fire/firestore';
-import { catchError, finalize, map, switchMap } from 'rxjs/operators';
+import { catchError, finalize, map, switchMap, takeUntil } from 'rxjs/operators';
 
 // Servicios y Modelos
 import { DistributorService } from '../../../../services/admin/distributor/distributor.service';
@@ -52,7 +52,8 @@ export interface EnrichedMovement {
   templateUrl: './movement-history-component.component.html',
   styleUrl: './movement-history-component.component.css'
 })
-export class MovementHistoryComponent implements OnInit, OnChanges {
+export class MovementHistoryComponent implements OnInit, OnChanges, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   @Input() distributorId: string | null = null;
 
   private distributorService = inject(DistributorService);
@@ -84,6 +85,7 @@ export class MovementHistoryComponent implements OnInit, OnChanges {
 
     this.isLoading = true;
     this.distributorService.getDistributorInventoryMovements(this.distributorId).pipe(
+      takeUntil(this.destroy$),
       switchMap(movements => {
         if (!movements || movements.length === 0) return of([]);
         return this.enrichMovementData(movements);
@@ -181,5 +183,10 @@ export class MovementHistoryComponent implements OnInit, OnChanges {
     if (!date) return 'N/A';
     const d = date.seconds ? new Date(date.seconds * 1000) : new Date(date);
     return d.toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

@@ -78,111 +78,88 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     private modalService: NzModalService
   ) { }
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
     this.route.queryParams.pipe(
       takeUntil(this.destroy$)
-    ).subscribe(async params => {
-      const id = +params['id'] || 0;
-      const clientTxId = params['clientTransactionId'] || '';
-
-      // ✅ VALIDACIÓN
-      if (!id && !clientTxId) {
-        this.error = 'Parámetros de transacción inválidos';
+    ).subscribe(params => {
+      this.handleParams(params).catch(error => {
+        console.error('❌ Error procesando parámetros de pago:', error);
+        this.error = 'Error inesperado. Por favor, intenta nuevamente.';
         this.loading = false;
-        return;
-      }
+      });
+    });
+  }
 
-      try {
-        // ✅ VERIFICAR AUTENTICACIÓN
-        const currentUser = this.usersService.getCurrentUser();
-        if (!currentUser || currentUser.isAnonymous) {
-          this.error = 'Debes iniciar sesión para ver los detalles del pago';
-          this.loading = false;
+  private async handleParams(params: Record<string, string>): Promise<void> {
+    const id = +params['id'] || 0;
+    const clientTxId = params['clientTransactionId'] || '';
 
-          // Redirigir a login después de 2 segundos
-          setTimeout(() => {
-            this.router.navigate(['/login'], {
-              queryParams: {
-                returnUrl: '/respuesta-pago',
-                id: id,
-                clientTransactionId: clientTxId
-              }
-            });
-          }, 2000);
-          return;
-        }
+    if (!id && !clientTxId) {
+      this.error = 'Parámetros de transacción inválidos';
+      this.loading = false;
+      return;
+    }
 
-        // ✅ OBTENER TOKEN
-        let idToken: string | null = null;
-        try {
-          idToken = await this.usersService.getIdToken();
-          console.log('✅ Token obtenido para confirmación');
-        } catch (tokenError) {
-          console.error('❌ Error obteniendo token:', tokenError);
-          this.error = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
-          this.loading = false;
-          return;
-        }
-
-        if (!idToken) {
-          this.error = 'No se pudo verificar la autenticación';
-          this.loading = false;
-          return;
-        }
-
-        // ✅ CREAR HEADERS CON AUTENTICACIÓN
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+    const currentUser = this.usersService.getCurrentUser();
+    if (!currentUser || currentUser.isAnonymous) {
+      this.error = 'Debes iniciar sesión para ver los detalles del pago';
+      this.loading = false;
+      setTimeout(() => {
+        this.router.navigate(['/login'], {
+          queryParams: { returnUrl: '/respuesta-pago', id, clientTransactionId: clientTxId }
         });
+      }, 2000);
+      return;
+    }
 
-        // ✅ LLAMAR A LA API CON AUTENTICACIÓN
+    let idToken: string | null = null;
+    try {
+      idToken = await this.usersService.getIdToken();
+    } catch {
+      this.error = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
+      this.loading = false;
+      return;
+    }
+
+    if (!idToken) {
+      this.error = 'No se pudo verificar la autenticación';
+      this.loading = false;
+      return;
+    }
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${idToken}`
+    });
+
+    try {
+      const res = await firstValueFrom(
         this.http.post<any>(
           'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
           { id, clientTxId },
-          { headers }  // ✅ IMPORTANTE: Incluir headers
-        ).subscribe({
-          next: res => {
-            this.resultado = res;
-            this.currencyCode = res.currency || this.currencyCode;
-            this.loading = false;
-            this.checkAndClearCart(res);
-          },
-          error: err => {
-            console.error('❌ Error en confirmación:', err);
-
-            // ✅ MEJORAR MANEJO DE ERRORES
-            if (err.status === 401 || err.status === 403) {
-              this.error = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
-
-              // Modal de error
-              this.modalService.error({
-                nzTitle: 'Sesión Expirada',
-                nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
-                nzOnOk: () => {
-                  this.router.navigate(['/login'], {
-                    queryParams: {
-                      returnUrl: '/respuesta-pago',
-                      id: id,
-                      clientTransactionId: clientTxId
-                    }
-                  });
-                }
-              });
-            } else {
-              this.error = err.error?.error || 'Error al confirmar el pago';
-            }
-
-            this.loading = false;
-          }
+          { headers }
+        )
+      );
+      this.resultado = res;
+      this.currencyCode = res.currency || this.currencyCode;
+      this.loading = false;
+      this.checkAndClearCart(res);
+    } catch (err: any) {
+      console.error('❌ Error en confirmación de pago:', err);
+      if (err.status === 401 || err.status === 403) {
+        this.error = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
+        this.modalService.error({
+          nzTitle: 'Sesión Expirada',
+          nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+          nzOnOk: () => this.router.navigate(['/login'], {
+            queryParams: { returnUrl: '/respuesta-pago', id, clientTransactionId: clientTxId }
+          })
         });
-
-      } catch (error) {
-        console.error('❌ Error general:', error);
-        this.error = 'Error inesperado. Por favor, intenta nuevamente.';
-        this.loading = false;
+      } else {
+        this.error = err.error?.error || 'Error al confirmar el pago';
       }
-    });
+      this.loading = false;
+    }
   }
 
   ngOnDestroy(): void {
@@ -491,7 +468,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
         <p>Iliniza S7 - 90, Quito 170121</p>
         <p>Teléfono: +593 098 712 5801</p>
         <p>Email: numer.ec21@gmail.com</p>
-        <p>RUC: XXXXXXXXXXXXXXXXX</p>
+        <p>RUC: PENDIENTE</p><!-- TODO: reemplazar con RUC real de NUMER antes de producción -->
       </div>
     </div>
     

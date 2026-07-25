@@ -1,11 +1,12 @@
-import { AfterViewInit, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { Category } from '../../../services/admin/category/category.service';
 import { Product, Color, Size,AdditionalImageItem, } from '../../../models/models';
-import { finalize, take } from 'rxjs';
+import { Subject, finalize, take, takeUntil } from 'rxjs';
 
 // Importar módulos de ng-zorro necesarios
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -26,6 +27,7 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
+import { ProductVariantService } from '../../../services/admin/productVariante/product-variant.service';
 
 // 🚀 Interfaces para actualización optimista
 interface ProductBackup {
@@ -63,11 +65,13 @@ interface OptimisticProductUpdate {
     NzEmptyModule,
     NzAlertModule,
     NzRadioModule,
+    NzModalModule,
   ],
   templateUrl: './product-form.component.html',
   styleUrls: ['./product-form.component.css'],
 })
-export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
+export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   @Input() product: Product | null = null;
   @Input() isEditMode = false;
   @Input() categories: Category[] = [];
@@ -144,12 +148,15 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
 
   productForm: FormGroup = new FormGroup({});
   submitting = false;
+  variantImageWarnings: string[] = [];
   totalStock: number = 0;
   showVariantsMatrix = false;
   autoGenerateSku = true;
   autoGenerateBarcode = true;
   additionalImages: AdditionalImageItem[] = [];
   imagesToDelete: string[] = [];
+  // Colors removed in edit mode whose Firestore variants must be deleted on save
+  private colorNamesToDeleteVariants: string[] = [];
   maxAdditionalImages: number = 5;
   productFeatures: string[] = [];
   newFeature: string = '';
@@ -181,8 +188,10 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
     private fb: FormBuilder,
     private productService: ProductService,
     private message: NzMessageService,
+    private modal: NzModalService,
     private cdr: ChangeDetectorRef,
-    private inventoryService: ProductInventoryService
+    private inventoryService: ProductInventoryService,
+    private variantService: ProductVariantService
   ) { }
 
   ngOnInit(): void {
@@ -199,7 +208,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
     this.createVariantsMatrix();
 
     // 🆕 NUEVO: Listener para auto-generar model
-    this.productForm.get('name')?.valueChanges.subscribe(nameValue => {
+    this.productForm.get('name')?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(nameValue => {
       const modelValue = this.productForm.get('model')?.value;
 
       // Solo auto-generar si model está vacío y no estamos en modo edición
@@ -211,7 +220,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
           .replace(/\s+/g, ' ')
           .trim();
 
-        this.productForm.get('model')?.setValue(cleanModel);
+        this.productForm.get('model')?.setValue(cleanModel, { emitEvent: false });
       }
     });
   }
@@ -277,6 +286,37 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
     return this.colorForms.controls as FormGroup[];
   }
 
+  /** Colores que no tienen imagen cargada (ni nueva ni existente). */
+  get colorsWithoutImage(): string[] {
+    return this.colorFormsControls
+      .map(cf => cf.get('name')?.value as string)
+      .filter(name => name && !this.colorImages.get(name)?.url);
+  }
+
+  /** Lista de advertencias de completitud del producto. */
+  get completenessIssues(): string[] {
+    const issues: string[] = [];
+    const f = this.productForm?.value;
+    if (!f) return issues;
+
+    if (this.colorsWithoutImage.length > 0)
+      issues.push(`Colores sin imagen: ${this.colorsWithoutImage.join(', ')}`);
+    if (!f.metaTitle?.trim())
+      issues.push('Falta título SEO (metaTitle)');
+    if (!f.metaDescription?.trim())
+      issues.push('Falta descripción SEO (metaDescription)');
+    if (!f.technologies?.length)
+      issues.push('Sin tecnologías asignadas');
+    const tags = (f.tags || '').split(',').map((t: string) => t.trim()).filter(Boolean);
+    if (!tags.length)
+      issues.push('Sin etiquetas (tags)');
+    if (this.colorForms.length === 0)
+      issues.push('Sin colores — el producto no tendrá variantes');
+    if (this.variantImageWarnings.length > 0)
+      issues.push(...this.variantImageWarnings);
+    return issues;
+  }
+
   addColor(): void {
     const colorForm = this.fb.group({
       name: ['', [Validators.required]],
@@ -327,19 +367,41 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
           firstColorElement.classList.remove('new-color-highlight');
         }, 2000);
 
-        // Log para debugging
-        console.log('✅ Nuevo color agregado y resaltado aplicado');
       }
     }, 150); // Aumentar el timeout a 150ms
   }
 
   removeColor(index: number): void {
-    const colorName = this.colorForms.at(index).get('name')?.value;
-    if (colorName && this.colorImages.has(colorName)) {
-      this.colorImages.delete(colorName);
+    const colorControl = this.colorForms.at(index);
+    const colorName = colorControl.get('name')?.value;
+    const hasExistingImage = !!colorControl.get('imageUrl')?.value;
+    const hasExistingVariants = this.product?.variants?.some(v => v.colorName === colorName);
+
+    const doRemove = () => {
+      if (colorName) {
+        this.colorImages.delete(colorName);
+        if (this.isEditMode && (hasExistingImage || hasExistingVariants)) {
+          if (!this.colorNamesToDeleteVariants.includes(colorName)) {
+            this.colorNamesToDeleteVariants.push(colorName);
+          }
+        }
+      }
+      this.colorForms.removeAt(index);
+      this.createVariantsMatrix();
+    };
+
+    if (this.isEditMode && (hasExistingImage || hasExistingVariants)) {
+      this.modal.confirm({
+        nzTitle: `¿Eliminar el color "${colorName}"?`,
+        nzContent: `Se eliminarán todas las variantes y el stock asociado a este color al guardar el producto. Esta acción no se puede deshacer.`,
+        nzOkText: 'Sí, eliminar',
+        nzOkDanger: true,
+        nzCancelText: 'Cancelar',
+        nzOnOk: doRemove,
+      });
+    } else {
+      doRemove();
     }
-    this.colorForms.removeAt(index);
-    this.createVariantsMatrix();
   }
 
   // ==================== GESTIÓN DE TALLAS ====================
@@ -457,9 +519,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
     );
 
     if (!exists) {
-      console.log('🎨 Agregando color existente:', color.name);
-      console.log('📊 Colores antes:', this.colorForms.length);
-
       const colorForm = this.fb.group({
         name: [color.name, [Validators.required]],
         code: [color.code || '#000000', [Validators.required]],
@@ -468,7 +527,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
 
       // 🚀 CAMBIO PRINCIPAL: Usar insert(0) en lugar de push()
       this.colorForms.insert(0, colorForm);
-      console.log('📊 Colores después:', this.colorForms.length);
 
       // Agregar imagen si existe
       if (color.imageUrl) {
@@ -483,7 +541,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
 
       // 🚀 SCROLL AUTOMÁTICO hacia el nuevo color
       setTimeout(() => {
-        console.log('🎯 Ejecutando scroll para color existente...');
         this.scrollToNewColor();
       }, 100);
 
@@ -493,7 +550,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       // Forzar detección de cambios
       this.cdr.detectChanges();
 
-      console.log('✅ Color existente agregado correctamente');
     } else {
       this.message.info(`El color ${color.name} ya está agregado`);
     }
@@ -505,8 +561,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
     );
 
     if (!exists) {
-      console.log('📏 Agregando talla existente:', size.name);
-
       const sizeForm = this.fb.group({
         name: [size.name, [Validators.required]],
         stock: [size.stock || 0, [Validators.required, Validators.min(0)]],
@@ -585,7 +639,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
           this.additionalImages.push(newImage);
           this.cdr.detectChanges();
 
-          console.log('✅ Nueva imagen agregada:', newImage.id);
         };
 
         reader.onerror = (error) => {
@@ -614,11 +667,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       image.toDelete = true;
       this.imagesToDelete.push(image.url);
 
-      console.log('🗑️ Imagen marcada para eliminar de Firebase:', {
-        url: image.url,
-        id: image.id,
-      });
-
       this.message.info(
         'Imagen marcada para eliminar (se eliminará al guardar)'
       );
@@ -626,7 +674,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       // 🆕 Imagen nueva: eliminar inmediatamente del array
       this.additionalImages.splice(index, 1);
 
-      console.log('✅ Nueva imagen eliminada inmediatamente:', image.id);
     }
 
     this.cdr.detectChanges();
@@ -794,10 +841,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
         })
       );
 
-      console.log(
-        '📷 Imágenes adicionales cargadas:',
-        this.additionalImages.length
-      );
     }
 
     // Cargar características
@@ -904,6 +947,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
     });
 
     this.resetImages();
+    this.colorNamesToDeleteVariants = [];
   }
 
   generateModelFromName(): void {
@@ -920,7 +964,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
         .replace(/\s+/g, ' ') // Normalizar espacios
         .trim();
 
-      this.productForm.get('model')?.setValue(cleanModel);
+      this.productForm.get('model')?.setValue(cleanModel, { emitEvent: false });
     }
   }
 
@@ -1040,7 +1084,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   // 🚀 ==================== ENVÍO DE FORMULARIO CON ACTUALIZACIÓN OPTIMISTA ====================
-  submitForm(): void {
+  async submitForm(): Promise<void> {
     if (this.productForm.invalid) {
       Object.values(this.productForm.controls).forEach((control) => {
         if (control.invalid) {
@@ -1061,6 +1105,15 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
 
     const formData = this.productForm.value;
 
+    // Trim de campos de texto para evitar espacios fantasma
+    ['name', 'model', 'sku', 'barcode', 'season', 'collection', 'metaTitle', 'metaDescription'].forEach(field => {
+      const ctrl = this.productForm.get(field);
+      if (ctrl && typeof ctrl.value === 'string') {
+        ctrl.setValue(ctrl.value.trim(), { emitEvent: false });
+        formData[field] = ctrl.value;
+      }
+    });
+
     // Generar SKU y código de barras si es necesario
     if (this.autoGenerateSku && !formData.sku) {
       formData.sku = this.generateSku();
@@ -1070,6 +1123,15 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
     if (this.autoGenerateBarcode && !formData.barcode) {
       formData.barcode = this.generateEan13();
       this.productForm.get('barcode')?.setValue(formData.barcode);
+    }
+
+    // Verificar SKU duplicado antes de crear
+    if (!this.isEditMode && formData.sku) {
+      const skuTaken = await this.productService.checkSkuExists(formData.sku);
+      if (skuTaken) {
+        this.message.error(`El SKU "${formData.sku}" ya existe en otro producto. Usa un SKU único.`);
+        return;
+      }
     }
 
     this.submitting = true;
@@ -1090,8 +1152,8 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
 
       // Crear objeto de producto
       const productData: Omit<Product, 'id'> = {
-        name: formData.name,
-        model: formData.model || formData.name,
+        name: (formData.name || '').trim(),
+        model: (formData.model || formData.name || '').trim(),
         price: formData.price,
         distributorCost: formData.distributorCost,
         categories: formData.categories || [],
@@ -1218,10 +1280,11 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
             sizeImagesMap,
             variantImagesMap
           )
-          .pipe(finalize(() => (this.submitting = false)))
+          .pipe(take(1), finalize(() => (this.submitting = false)))
           .subscribe({
             next: () => {
-              this.deleteRemovedImages();
+              this.deleteRemovedImages();           // async, sin bloquear UI
+              this.deleteOrphanedVariantsByColor(); // async, sin bloquear UI
               this.message.success('Producto actualizado correctamente');
 
               this.syncStockAfterUpdate(this.product!.id);
@@ -1268,50 +1331,51 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
     }
   }
 
-  /**
- * 🚀 NUEVO: Sincroniza stock después de actualizar
- */
-  private syncStockAfterUpdate(productId: string): void {
-    console.log(`🔄 [FORM] Sincronizando stock para: ${productId}`);
+  private async deleteOrphanedVariantsByColor(): Promise<void> {
+    if (!this.product?.id || this.colorNamesToDeleteVariants.length === 0) return;
 
-    // Usar el método existente del inventoryService
+    const productId = this.product.id;
+    const colorNames = [...this.colorNamesToDeleteVariants];
+    this.colorNamesToDeleteVariants = [];
+
+    for (const colorName of colorNames) {
+      try {
+        const variants = await this.variantService.getVariantsByColor(colorName);
+        const toDelete = variants.filter(v => v.productId === productId);
+        await Promise.allSettled(toDelete.map(v => this.variantService.deleteVariant(v.id!)));
+      } catch (error) {
+        console.error(`❌ Error eliminando variantes del color "${colorName}":`, error);
+        this.message.warning(`No se pudieron eliminar las variantes del color "${colorName}". Revisa manualmente en inventario.`);
+      }
+    }
+  }
+
+  private syncStockAfterUpdate(productId: string): void {
     this.inventoryService.getVariantsByProductId(productId)
-      .pipe(take(1))
+      .pipe(take(1), takeUntil(this.destroy$))
       .subscribe({
-        next: (variants) => {
-          console.log('✅ [FORM] Variantes actualizadas:', variants.length);
-          // Opcional: Mostrar mensaje de confirmación
-          this.message.info('Stock sincronizado correctamente');
-        },
         error: (error) => {
-          console.error('❌ [FORM] Error sincronizando stock:', error);
-          this.message.warning('Producto actualizado, pero revise el stock manualmente');
+          console.error('❌ [FORM] Error al verificar variantes post-actualización:', error);
         }
       });
   }
 
-  private deleteRemovedImages(): void {
-    if (this.imagesToDelete.length === 0) {
-      console.log('🔍 No hay imágenes para eliminar');
-      return;
-    }
+  private async deleteRemovedImages(): Promise<void> {
+    if (this.imagesToDelete.length === 0) return;
 
-    console.log('🔥 Eliminando imágenes de Firebase:', this.imagesToDelete);
+    const urlsToDelete = [...this.imagesToDelete];
+    this.imagesToDelete = [];
 
-    // Usar el servicio de imágenes para eliminar
-    this.imagesToDelete.forEach(async (imageUrl) => {
-      try {
-        // Aquí necesitas llamar al método de eliminación de imágenes
-        // Esto depende de tu ProductImageService
-        await this.productService.deleteImage(imageUrl);
-        console.log('✅ Imagen eliminada de Firebase:', imageUrl);
-      } catch (error) {
-        console.error('❌ Error al eliminar imagen:', imageUrl, error);
+    const results = await Promise.allSettled(
+      urlsToDelete.map(url => this.productService.deleteImage(url))
+    );
+
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error('❌ Error al eliminar imagen:', urlsToDelete[i], result.reason);
+        this.message.warning(`No se pudo eliminar una imagen de Storage. Revisa manualmente.`);
       }
     });
-
-    // Limpiar la lista
-    this.imagesToDelete = [];
   }
 
   // 🚀 ==================== MÉTODOS DE ACTUALIZACIÓN OPTIMISTA ====================
@@ -1343,13 +1407,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       changes: updatedProduct,
     };
 
-    console.log('✅ [FORM] Actualización optimista aplicada:', {
-      productId: this.product.id,
-      oldStock: this.product.totalStock,
-      newStock: updatedProduct.totalStock,
-      oldName: this.product.name,
-      newName: updatedProduct.name,
-    });
   }
 
   /**
@@ -1377,12 +1434,15 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   cancelForm(): void {
-    // Si hay una operación pendiente, hacer rollback
     if (this.pendingOperation) {
       this.rollbackOptimisticUpdate();
     }
-
     this.formCancelled.emit();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   // ==================== CÁLCULO DE STOCK ====================
@@ -1401,7 +1461,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   listenToStockChanges(): void {
-    this.productForm.valueChanges.subscribe(() => {
+    this.productForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.updateTotalStock();
     });
   }
@@ -1497,7 +1557,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit {
       this.updateColorStock(sizeIndex, colorName, stock);
     }
 
-    this.updateTotalStock;
+    this.updateTotalStock();
   }
 
   getColorCode(colorName: string): string {

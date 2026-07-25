@@ -1,7 +1,8 @@
-import { Component, OnInit, Input, OnChanges, SimpleChanges, ViewChild, TemplateRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, OnChanges, SimpleChanges, ViewChild, TemplateRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { finalize } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { finalize, take, takeUntil } from 'rxjs/operators';
 
 // Servicios y Modelos
 import { DistributorLedgerService } from '../../../../services/admin/distributorLedger/distributor-ledger.service';
@@ -63,7 +64,8 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
   templateUrl: './enhanced-payment-management.component.html',
   styleUrl: './enhanced-payment-management.component.css'
 })
-export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
+export class EnhancedPaymentManagementComponent implements OnInit, OnChanges, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
 
   @Input() distributorId: string | null = null;
 
@@ -88,6 +90,15 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
   // Filtros para la tabla
   filteredEntries: LedgerEntry[] = [];
   statusFilter: 'all' | 'pending' | 'paid' | 'partial' | 'overdue' = 'all';
+
+  // Cache pre-computado para evitar O(n²) en el template
+  returnStatusCache = new Map<string, {
+    hasReturns: boolean;
+    isCompleteReturn: boolean;
+    isPartialReturn: boolean;
+    shouldShowPayButton: boolean;
+    statusTag: { text: string; color: string; icon: string };
+  }>();
 
   @ViewChild('paymentModalContent') paymentModalContent!: TemplateRef<any>;
   @ViewChild('markPaidModalContent') markPaidModalContent!: TemplateRef<any>;
@@ -121,6 +132,7 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
 
     this.isLoading = true;
     this.ledgerService.getLedgerEntries(this.distributorId)
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (entries) => {
           this.ledgerEntries = entries;
@@ -141,6 +153,14 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
   // =====================================
 
   applyStatusFilter(): void {
+    // Reconstruir el cache de returnStatus para todos los débitos
+    this.returnStatusCache.clear();
+    for (const entry of this.ledgerEntries) {
+      if (entry.type === 'debit' && entry.id) {
+        this.returnStatusCache.set(entry.id, this.getReturnStatus(entry));
+      }
+    }
+
     if (this.statusFilter === 'all') {
       this.filteredEntries = [...this.ledgerEntries];
     } else if (this.statusFilter === 'overdue') {
@@ -230,7 +250,7 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
 
     // Si es un crédito o débito pagado, cargar detalles adicionales
     if (entry.type === 'credit' || entry.paymentStatus === 'paid' || entry.paymentStatus === 'partial') {
-      this.ledgerService.getPaymentDetails(entry.id!).subscribe(details => {
+      this.ledgerService.getPaymentDetails(entry.id!).pipe(take(1)).subscribe(details => {
         this.selectedPaymentDetails = details;
         this.isDetailsModalVisible = true;
       });
@@ -383,6 +403,11 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
         debitEntry.paymentStatus !== 'paid',
       statusTag: this.determineStatusTag(isCompleteReturn, isPartialReturn, debitEntry, correctedRemainingAmount)
     };
+  }
+
+  /** Versión para el template — usa el cache pre-computado en applyStatusFilter */
+  getReturnStatusCached(entry: LedgerEntry) {
+    return this.returnStatusCache.get(entry.id ?? '') ?? this.getReturnStatus(entry);
   }
 
   /**
@@ -583,4 +608,8 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges {
       .length;
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 }

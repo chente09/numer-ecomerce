@@ -908,6 +908,13 @@ export class ProductService {
 
   // -------------------- MÉTODOS DE ACTUALIZACIÓN --------------------
 
+  /** Devuelve true si ya existe un producto con ese SKU (distinto al productId excluido). */
+  async checkSkuExists(sku: string, excludeProductId?: string): Promise<boolean> {
+    const ref = collection(this.firestore, this.productsCollection);
+    const snap = await getDocs(query(ref, where('sku', '==', sku)));
+    return snap.docs.some(d => d.id !== excludeProductId);
+  }
+
   /**
    * 🚀 CORREGIDO: Crea un nuevo producto completo con variantes
    */
@@ -1218,19 +1225,13 @@ export class ProductService {
     }
 
 
-    // ✅ NUEVO: Actualizar distributorCost en variantes si cambió
+    // Actualizar precio y distributorCost en variantes si cambió
     if (updateData.distributorCost !== undefined || updateData.price !== undefined) {
-      try {
-        await this.variantService.updatePricingForProduct(
-          productId,
-          updateData.price,
-          updateData.distributorCost
-        );
-        console.log('✅ ProductService: Precios actualizados en variantes');
-      } catch (error) {
-        console.error('❌ ProductService: Error actualizando precios en variantes:', error);
-        // No lanzar error para no interrumpir la actualización del producto
-      }
+      await this.variantService.updatePricingForProduct(
+        productId,
+        updateData.price,
+        updateData.distributorCost
+      );
     }
 
     const sanitizedData = this.sanitizeForFirestore(updateData);
@@ -1315,17 +1316,12 @@ export class ProductService {
         );
 
         if (variant) {
-          try {
-            const variantImageUrl = await this.imageService.uploadVariantImage(
-              productId,
-              variant.id,
-              imageFile
-            );
-
-            await this.variantService.updateVariantImage(variant.id, variantImageUrl);
-          } catch (error) {
-            console.error(`❌ Error al actualizar imagen de variante ${variantKey}:`, error);
-          }
+          const variantImageUrl = await this.imageService.uploadVariantImage(
+            productId,
+            variant.id,
+            imageFile
+          );
+          await this.variantService.updateVariantImage(variant.id, variantImageUrl);
         }
       }
     }
@@ -1489,8 +1485,8 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Registra una venta
    */
-  registerSale(productId: string, items: SaleItem[]): Observable<void> {
-    return this.inventoryService.registerSale(productId, items).pipe(
+  registerSale(productId: string, items: SaleItem[], orderId?: string): Observable<void> {
+    return this.inventoryService.registerSale(productId, items, orderId).pipe(
       take(1), // ✅ NUEVO: Forzar completar
       tap(() => this.invalidateProductCacheWithStrategy({ productId })),
     );
@@ -2249,28 +2245,6 @@ export class ProductService {
     return start;
   }
 
-  private getFallbackSalesHistory(productId: string, days: number): Observable<{ date: Date, sales: number }[]> {
-    return this.getProductById(productId).pipe(
-      map(product => {
-        const totalSales = product?.sales || 0;
-        const salesHistory: { date: Date, sales: number }[] = [];
-        const today = new Date();
-
-        for (let i = days - 1; i >= 0; i--) {
-          const date = new Date(today);
-          date.setDate(date.getDate() - i);
-
-          // Distribución más realista
-          const dayWeight = i === 0 ? 0.3 : i <= 7 ? 0.5 : 0.2;
-          const sales = Math.floor((totalSales / days) * dayWeight);
-
-          salesHistory.push({ date, sales });
-        }
-
-        return salesHistory;
-      })
-    );
-  }
 
   private getFallbackViewsData(productId: string): Observable<{ period: string, count: number }[]> {
     return this.getProductById(productId).pipe(

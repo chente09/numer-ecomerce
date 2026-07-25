@@ -180,7 +180,7 @@ export class ProductInventoryService {
   /**
    * 🚀 CORREGIDO: Registra una venta actualizando el stock y estadísticas
    */
-  registerSale(productId: string, items: SaleItem[]): Observable<void> {
+  registerSale(productId: string, items: SaleItem[], orderId?: string): Observable<void> {
 
     // Primero verificamos la disponibilidad
     return this.checkVariantsAvailability(items).pipe(
@@ -191,7 +191,7 @@ export class ProductInventoryService {
           return throwError(() => new Error('No hay suficiente stock para completar la venta'));
         }
 
-        return this.processSale(productId, items);
+        return this.processSale(productId, items, orderId);
       }),
       catchError(error => ErrorUtil.handleError(error, 'registerSale')),
       finalize(() => {
@@ -203,7 +203,7 @@ export class ProductInventoryService {
   /**
    * Procesa una venta actualizando inventario
    */
-  private processSale(productId: string, items: SaleItem[]): Observable<void> {
+  private processSale(productId: string, items: SaleItem[], orderId?: string): Observable<void> {
     return from((async () => {
 
       const batch = writeBatch(this.firestore);
@@ -225,7 +225,7 @@ export class ProductInventoryService {
           -item.quantity, // Cantidad negativa para venta
           'sale',
           undefined, // performedByUid (si no hay usuario específico para la venta)
-          { orderId: 'TODO_ORDER_ID', unitPrice: item.unitPrice } // Puedes pasar el orderId aquí
+          { orderId: orderId ?? 'PENDING', unitPrice: item.unitPrice }
         );
       }
 

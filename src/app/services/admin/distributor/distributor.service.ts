@@ -30,18 +30,22 @@ import { ErrorUtil } from '../../../utils/error-util'; // Asegúrate de tener es
 
 // 🆕 Interfaz para el documento de inventario del distribuidor
 export interface DistributorInventoryItem {
-  id?: string; // ID del documento de Firestore
+  id?: string;
   distributorId: string;
   productId: string;
   variantId: string;
   colorName: string;
   sizeName: string;
   sku: string;
-  stock: number; // Cantidad actual en posesión del distribuidor
-  lastTransferDate: Timestamp | Date | FieldValue; // Aceptar FieldValue para escritura
-  lastSaleDate?: Timestamp | Date | FieldValue; // Aceptar FieldValue para escritura
-  createdAt: Timestamp | Date | FieldValue; // Aceptar FieldValue para escritura
-  updatedAt: Timestamp | Date | FieldValue; // Aceptar FieldValue para escritura
+  stock: number;
+  // Snapshot del producto al momento de la transferencia — independiente del catálogo
+  productName?: string;
+  productModel?: string;
+  imageUrl?: string;
+  lastTransferDate: Timestamp | Date | FieldValue;
+  lastSaleDate?: Timestamp | Date | FieldValue;
+  createdAt: Timestamp | Date | FieldValue;
+  updatedAt: Timestamp | Date | FieldValue;
 }
 
 // 🆕 Interfaz para los detalles de la transferencia
@@ -177,7 +181,13 @@ export class DistributorService {
     );
     const distributorInventorySnap = await getDocs(qDistributorInventory);
 
-    const variantData = mainVariantSnap.data() as ProductVariant; // Usar datos de la variante principal
+    const variantData = mainVariantSnap.data() as ProductVariant;
+
+    // Leer producto para guardar snapshot (independiente del catálogo)
+    const productDoc = doc(this.firestore, 'products', productId);
+    const productSnap = await getDoc(productDoc);
+    const productData = productSnap.data();
+
     const distributorInventoryItem: DistributorInventoryItem = {
       distributorId,
       productId,
@@ -185,7 +195,10 @@ export class DistributorService {
       colorName: variantData.colorName,
       sizeName: variantData.sizeName,
       sku: variantData.sku,
-      stock: quantity, // Esto será incrementado o establecido
+      stock: quantity,
+      productName: productData?.['name'] || '',
+      productModel: productData?.['model'] || '',
+      imageUrl: variantData.imageUrl || productData?.['imageUrl'] || '',
       lastTransferDate: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -392,23 +405,6 @@ export class DistributorService {
   }
 
   /**
-   * 🛠️ Método de debugging para ver el estado del servicio.
-   */
-  debugDistributorService(): void {
-    console.group('📦 [DISTRIBUTOR SERVICE DEBUG] Estado del servicio');
-    this.getDistributors().pipe(take(1)).subscribe(distributors => {
-      console.log(`👥 Total Distribuidores: ${distributors.length}`);
-      distributors.forEach(d => {
-        console.log(`   - ${d.displayName || d.email} (UID: ${d.uid})`);
-        this.getDistributorInventory(d.uid).pipe(take(1)).subscribe(inventory => {
-          console.log(`     Inventario (${inventory.length} items):`, inventory);
-        });
-      });
-    });
-    console.groupEnd();
-  }
-
-  /**
  * 🆕 Registra una venta realizada por un distribuidor.
  * Decrementa el stock del distribuidor y registra el movimiento.
  * @param saleDetails Detalles de la venta.
@@ -447,12 +443,17 @@ export class DistributorService {
       throw new Error(`Stock insuficiente. Disponible: ${currentStock}, Venta: ${quantity}.`);
     }
 
-    // 2. Decrementar el stock en el inventario del distribuidor
-    batch.update(inventoryDocRef, {
-      stock: increment(-quantity),
-      lastSaleDate: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
+    // 2. Decrementar stock o eliminar el documento si llega a 0
+    const remainingStock = currentStock - quantity;
+    if (remainingStock <= 0) {
+      batch.delete(inventoryDocRef);
+    } else {
+      batch.update(inventoryDocRef, {
+        stock: increment(-quantity),
+        lastSaleDate: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
 
     // 3. Registrar el movimiento en el log del distribuidor
     const movementLogRef = doc(collection(this.firestore, this.distributorInventoryMovementsCollection));

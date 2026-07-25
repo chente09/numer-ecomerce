@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CartService } from '../services/cart/cart.service';
 import { CartItem, Cart } from '../../models/models';
-import { Subject, takeUntil, firstValueFrom, take, catchError, of, debounceTime, switchMap } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom, take, catchError, of, switchMap } from 'rxjs';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -64,7 +64,6 @@ export class CarritoComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private categoryNames: Map<string, string> = new Map();
   private categoriesLoaded = false;
-  private updateQuantityDebounced = debounceTime(300);
 
   constructor(
     private cartService: CartService,
@@ -101,21 +100,6 @@ export class CarritoComponent implements OnInit, OnDestroy {
       next: (cart) => {
         this.cart = cart;
         this.loading = false;
-        console.log('🛒 CART DEBUG:', {
-          totalItems: cart.items.length,
-          subtotal: cart.subtotal,
-          totalSavings: cart.totalSavings,
-          items: cart.items.map(item => ({
-            productName: item.product?.name,
-            unitPrice: item.unitPrice,
-            originalUnitPrice: item.originalUnitPrice, // ¿Existe?
-            appliedPromotionTitle: item.appliedPromotionTitle, // ¿Existe?
-            quantity: item.quantity,
-            totalPrice: item.totalPrice,
-            // Verificar si hay descuento
-            hasDiscount: !!item.originalUnitPrice && item.originalUnitPrice > item.unitPrice
-          }))
-        });
       },
       error: (error) => {
         console.error('❌ Error al cargar el carrito:', error);
@@ -443,10 +427,11 @@ export class CarritoComponent implements OnInit, OnDestroy {
           nzMaskClosable: false,
         });
 
-        modalRef.afterClose.subscribe(async (shippingInfo?: ShippingInfo) => {
-          if (shippingInfo) {
-            this.message.info('Registrando pedido...');
-            const result = await this.cartService.createDistributorOrder(shippingInfo);
+        modalRef.afterClose.pipe(take(1)).subscribe((shippingInfo?: ShippingInfo) => {
+          this.processingCheckout = false;
+          if (!shippingInfo) return;
+          this.message.info('Registrando pedido...');
+          this.cartService.createDistributorOrder(shippingInfo).then(result => {
             if (result.success) {
               this.cartService.clearCart();
               this.modal.success({
@@ -456,8 +441,9 @@ export class CarritoComponent implements OnInit, OnDestroy {
                 nzOnOk: () => this.router.navigate(['/shop'])
               });
             }
-          }
-          this.processingCheckout = false;
+          }).catch((error: Error) => {
+            this.message.error(`Error al registrar el pedido: ${error.message}`);
+          });
         });
       } else {
         // --- Flujo para Cliente Normal (CON posibles cupones validados) ---

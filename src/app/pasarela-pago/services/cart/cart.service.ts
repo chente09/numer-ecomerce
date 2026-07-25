@@ -27,6 +27,7 @@ export class CartService implements OnDestroy {
 
   // --- Propiedades de Estado ---
   private currentUserId: string | null = null;
+  private isDistributor = false;
   private readonly GUEST_CART_KEY = 'guestCart';
   private initialCartState: Cart = {
     items: [], totalItems: 0, subtotal: 0, tax: 0, shipping: 0, discount: 0, totalSavings: 0, total: 0
@@ -53,6 +54,13 @@ export class CartService implements OnDestroy {
   private async handleUserChange(user: User | null): Promise<void> {
     const wasLoggedIn = !!this.currentUserId;
     this.currentUserId = user ? user.uid : null;
+
+    if (this.currentUserId) {
+      const roles = await this.usersService.getUserRoles();
+      this.isDistributor = roles.includes('distributor');
+    } else {
+      this.isDistributor = false;
+    }
 
     if (this.currentUserId && !wasLoggedIn) {
       // Caso 1: Un invitado acaba de iniciar sesión -> Fusionar carritos
@@ -103,7 +111,7 @@ export class CartService implements OnDestroy {
       const currentItems = this.getCart().items;
       const existingItem = currentItems.find(i => i.variantId === variantId);
       const newQuantity = (existingItem?.quantity || 0) + quantity;
-      if (variant.stock < newQuantity) throw new Error(`Stock insuficiente. Disponibles: ${variant.stock}`);
+      if ((variant.stock ?? -1) < newQuantity) throw new Error(`Stock insuficiente. Disponibles: ${variant.stock ?? 0}`);
 
       // 3. ✅ NUEVA LÓGICA DE PRECIOS Y TÍTULOS: Lee la información que ya existe.
       let unitPrice = 0;
@@ -132,7 +140,7 @@ export class CartService implements OnDestroy {
       }
       // Prioridad 3: Usar el precio base si no hay descuentos.
       else {
-        unitPrice = variant.price || product.price;
+        unitPrice = variant.price !== undefined ? variant.price : product.price;
         originalUnitPrice = undefined;
         appliedPromotionTitle = undefined;
       }
@@ -268,20 +276,20 @@ export class CartService implements OnDestroy {
 
     if (!this.appliedCoupon) return;
 
-    try {
-      await this.couponUsageService.recordCouponUsage(
-        this.currentUserId,
-        this.appliedCoupon.id,
-        this.appliedCoupon.couponCode!,
-        orderId
-      );
+    // Capturar valores antes de limpiar para poder registrarlos.
+    // Se limpia ANTES de la llamada async para que, aunque el registro falle,
+    // el cupón no quede reutilizable en la sesión.
+    const couponId = this.appliedCoupon.id;
+    const couponCode = this.appliedCoupon.couponCode ?? '';
+    sessionStorage.removeItem('appliedCoupon');
+    this.appliedCoupon = null;
 
-      console.log(`Uso de cupón registrado: ${this.appliedCoupon.couponCode} en pedido ${orderId}`);
-      sessionStorage.removeItem('appliedCoupon');
-    } catch (error) {
-      console.error('Error registrando uso de cupón:', error);
-      // No lanzar error aquí para no afectar el checkout
-    }
+    await this.couponUsageService.recordCouponUsage(
+      this.currentUserId,
+      couponId,
+      couponCode,
+      orderId
+    );
   }
 
   /**
@@ -352,9 +360,10 @@ export class CartService implements OnDestroy {
     }
 
     // 3. Calcular impuestos y total final
+    // IVA suspendido para distribuidores (algunos facturan, otros no — se maneja individualmente)
     const baseForTax = newCart.subtotal - newCart.discount;
-    newCart.tax = baseForTax * 0.15; // Asumo IVA 15%
-    newCart.shipping = this.appliedCoupon?.discountType === 'shipping' ? 0 : 5; // Lógica de envío simple
+    newCart.tax = this.isDistributor ? 0 : baseForTax * 0.15;
+    newCart.shipping = this.appliedCoupon?.discountType === 'shipping' ? 0 : 5;
     newCart.total = baseForTax + newCart.tax + newCart.shipping;
 
     return newCart;

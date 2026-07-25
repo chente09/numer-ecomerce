@@ -1,4 +1,22 @@
 <div class="product-form-container">
+    <!-- Panel de completitud — visible cuando hay advertencias -->
+    <nz-alert
+        *ngIf="completenessIssues.length > 0"
+        nzType="warning"
+        nzShowIcon
+        [nzMessage]="completenessTitle"
+        [nzDescription]="completenessBody"
+        style="margin-bottom: 16px;">
+    </nz-alert>
+    <ng-template #completenessTitle>
+        Producto incompleto — {{ completenessIssues.length }} punto(s) pendiente(s)
+    </ng-template>
+    <ng-template #completenessBody>
+        <ul style="margin: 4px 0 0; padding-left: 18px;">
+            <li *ngFor="let issue of completenessIssues">{{ issue }}</li>
+        </ul>
+    </ng-template>
+
     <form [formGroup]="productForm" (ngSubmit)="submitForm()" nz-form nzLayout="vertical">
         <nz-tabset nzType="card">
             <!-- Pestaña de Información Básica -->
@@ -259,6 +277,15 @@
 
             <!-- Pestaña de Colores -->
             <nz-tab nzTitle="Colores">
+
+                <!-- Alerta solo en modo edición -->
+                <nz-alert *ngIf="isEditMode"
+                    nzType="warning"
+                    nzShowIcon
+                    style="margin-bottom: 16px;"
+                    nzMessage="Para eliminar un color debes hacerlo desde aquí (variantes del producto), no desde la lista global de colores. Al eliminar se borrarán todas las variantes y el stock asociado al guardar.">
+                </nz-alert>
+
                 <!-- Header sticky con botón y contador -->
                 <div class="tab-header">
                     <button type="button" nz-button nzType="primary" (click)="addColor()">
@@ -316,7 +343,13 @@
                                 </div>
                                 <div nz-col [nzXs]="24" [nzSm]="8">
                                     <nz-form-item>
-                                        <nz-form-label>Imagen</nz-form-label>
+                                        <nz-form-label>
+                                            Imagen
+                                            <nz-tag *ngIf="!colorImages.get(colorForm.get('name')?.value)?.url"
+                                                nzColor="warning" style="margin-left:6px;font-size:11px;">
+                                                ⚠ Pendiente
+                                            </nz-tag>
+                                        </nz-form-label>
                                         <nz-form-control>
                                             <div class="color-image-upload">
                                                 <div class="color-image-preview"

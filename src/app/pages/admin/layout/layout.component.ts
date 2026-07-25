@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { Router, RouterLink, RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
@@ -27,8 +27,7 @@ import { UsersService } from '../../../services/users/users.service';
     NzDropDownModule,
     NzBreadCrumbModule,
     NzModalModule,
-    NzSkeletonModule,
-    RouterLink
+    NzSkeletonModule
   ],
   templateUrl: './layout.component.html',
   styleUrls: ['./layout.component.css']
@@ -48,6 +47,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
     { title: 'Eventos', icon: 'flag', path: '/admin/eventos' },
     { title: 'Distribuidores', icon: 'deployment-unit', path: '/admin/distributors' },
     { title: 'Distribuidores Autorizados', icon: 'shop', path: '/admin/authorized-distributors' },
+    { title: 'Envíos a Distribuidores', icon: 'rocket', path: '/admin/shipments' },
     { title: 'Gestión de Usuarios', icon: 'team', path: '/admin/user-roles' },
     { title: 'Sitemap & SEO', icon: 'global', path: '/admin/sitemap' },
     { title: 'Banners', icon: 'picture', path: '/admin/heroes' },
@@ -56,6 +56,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   distributorMenuItems = [
     { title: 'Mi Inventario', icon: 'shop', path: '/admin/distribuidores' },
+    { title: 'Mis Envíos', icon: 'truck', path: '/admin/mis-envios' },
   ];
 
   visibleMenuItems: any[] = [];

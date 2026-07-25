@@ -790,29 +790,6 @@ export class ProductVariantService {
   /**
    * 🆕 NUEVO: Obtiene variantes por talla específica
    */
-  async getVariantsBySize(sizeName: string): Promise<ProductVariant[]> {
-    if (!sizeName) {
-      console.warn('⚠️ VariantService: SizeName no proporcionado');
-      return [];
-    }
-
-    try {
-      const variantsRef = collection(this.firestore, this.variantsCollection);
-      const q = query(variantsRef, where('sizeName', '==', sizeName));
-      const snapshot = await getDocs(q);
-
-      const variants = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ProductVariant));
-
-      return variants;
-    } catch (error) {
-      console.error(`❌ VariantService: Error obteniendo variantes por talla ${sizeName}:`, error);
-      return [];
-    }
-  }
-
   /**
    * 🆕 NUEVO: Obtiene el stock total por producto
    */
@@ -941,47 +918,6 @@ export class ProductVariantService {
     }
   }
 
-  /**
-   * 🆕 NUEVO: Método de debugging para ver el estado del servicio
-   */
-  debugVariantService(): void {
-    console.group('🧬 [VARIANT SERVICE DEBUG] Estado del servicio');
-
-    // Información de conexiones
-    console.log('🔧 Configuración:');
-    console.log(`   📦 Colección de productos: ${this.productsCollection}`);
-    console.log(`   🧬 Colección de variantes: ${this.variantsCollection}`);
-    console.log(`   🔥 Firestore:`, this.firestore ? '✅ Conectado' : '❌ No conectado');
-    console.log(`   📸 ImageService:`, this.imageService ? '✅ Disponible' : '❌ No disponible');
-
-    // Obtener estadísticas
-    this.getInventoryStats().then(stats => {
-      console.log('📊 Estadísticas actuales:');
-      console.table(stats);
-    }).catch(error => {
-      console.error('❌ Error obteniendo estadísticas:', error);
-    });
-
-    console.groupEnd();
-  }
-
-  /**
-   * 🆕 NUEVO: Exporta datos de variantes para backup o análisis
-   */
-  async exportVariantsData(productId?: string): Promise<ProductVariant[]> {
-
-    try {
-      const variants = productId
-        ? await this.getVariantsByProductId(productId)
-        : await this.getAllVariants();
-
-      return variants;
-    } catch (error) {
-      console.error(`❌ VariantService: Error exportando datos:`, error);
-      throw new Error(`Error al exportar datos: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
-  }
-
   // En ProductVariantService, agregar:
   async getVariantsByProductIdNoCache(productId: string): Promise<ProductVariant[]> {
     if (!productId) {
@@ -1004,54 +940,6 @@ export class ProductVariantService {
     } catch (error) {
       console.error('❌ Error obteniendo variantes sin caché:', error);
       return [];
-    }
-  }
-
-  // 🆕 AGREGAR en ProductVariantService
-
-  /**
-   * 🆕 Actualiza el distributorCost en todas las variantes de un producto
-   */
-  async updateDistributorCostForProduct(
-    productId: string,
-    distributorCost: number | undefined
-  ): Promise<void> {
-    if (!productId) {
-      throw new Error('ProductId es requerido');
-    }
-
-    try {
-      console.log('💰 [VARIANT SERVICE] Actualizando distributorCost para variantes:', {
-        productId,
-        distributorCost
-      });
-
-      // Obtener todas las variantes del producto
-      const variants = await this.getVariantsByProductId(productId);
-
-      if (variants.length === 0) {
-        console.log(`⚠️ No hay variantes para actualizar en producto ${productId}`);
-        return;
-      }
-
-      const batch = writeBatch(this.firestore);
-
-      // Actualizar cada variante
-      variants.forEach(variant => {
-        const variantRef = doc(this.firestore, this.variantsCollection, variant.id);
-        batch.update(variantRef, {
-          distributorCost: distributorCost,
-          updatedAt: new Date()
-        });
-      });
-
-      await batch.commit();
-
-      console.log(`✅ VariantService: distributorCost actualizado en ${variants.length} variantes`);
-
-    } catch (error) {
-      console.error(`❌ VariantService: Error actualizando distributorCost:`, error);
-      throw new Error(`Error al actualizar distributorCost: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
 

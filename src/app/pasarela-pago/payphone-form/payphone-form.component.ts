@@ -154,7 +154,6 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private handleLateConfirmation(params: any): void {
-    console.log('🔄 Procesando confirmación tardía desde URL:', params);
 
     this.setCurrentStep(2);
     this.setLoading(true);
@@ -186,8 +185,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
         tap((params) => {
           if (params['transId']) {
             this.transactionId = params['transId'];
-            console.log('Retomando transacción existente:', this.transactionId);
-          }
+            }
         }),
         // Continúa con inicialización
         switchMap(() => this.initializePayment()),
@@ -343,14 +341,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.cartService.cart$.pipe(
       take(1),
       switchMap(async (cart) => {
-        // 🔍 DEBUG: Verificar usuario actual
         const currentUser = this.usersService.getCurrentUser();
-        console.log('🔍 Usuario actual:', {
-          isAuthenticated: !!currentUser,
-          uid: currentUser?.uid,
-          email: currentUser?.email,
-          isAnonymous: currentUser?.isAnonymous
-        });
 
         // ✅ Verificar que el usuario no sea anónimo
         if (!currentUser || currentUser.isAnonymous) {
@@ -370,10 +361,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
         let idToken: string | null = null;
         try {
           idToken = await this.usersService.getIdToken();
-          console.log('✅ Token obtenido:', idToken ? 'Sí' : 'No');
-          console.log('📏 Longitud del token:', idToken?.length || 0);
         } catch (error) {
-          console.error('❌ Error obteniendo token:', error);
           throw new Error('Error de autenticación. Por favor, inicia sesión nuevamente.');
         }
 
@@ -385,12 +373,6 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
         const headers = new HttpHeaders({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`
-        });
-
-        // 🔍 DEBUG: Log de headers
-        console.log('📤 Enviando request con headers:', {
-          hasAuth: headers.has('Authorization'),
-          authLength: headers.get('Authorization')?.length
         });
 
         // ✅ OBTENER CUPÓN APLICADO
@@ -510,7 +492,6 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ✅ PRESERVADO: Manejo de pago exitoso (sin cambios en lógica)
   private handlePaymentSuccess(response: PayphoneResponse): void {
-    console.log('🎉 Pago exitoso:', response);
 
     // ✅ AGREGAR: Limpiar errores previos
     this.setError(null);
@@ -528,21 +509,13 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       this.setCurrentStep(2);
       this.setError(null);
 
-      // DEBUG: Verificar estado de autenticación
       const currentUser = this.usersService.getCurrentUser();
-      console.log('Usuario en confirmación:', {
-        isAuthenticated: !!currentUser,
-        uid: currentUser?.uid,
-        email: currentUser?.email
-      });
 
       // Obtener token con mejor manejo de errores
       let idToken: string | null = null;
       try {
         idToken = await this.usersService.getIdToken();
-        console.log('Token para confirmación obtenido:', !!idToken);
       } catch (tokenError) {
-        console.error('Error obteniendo token para confirmación:', tokenError);
 
         // Intentar reautenticar
         this.modalService.error({
@@ -569,17 +542,10 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
         'Authorization': `Bearer ${idToken}`
       });
 
-      // DEBUG: Log del request
       const confirmationPayload = {
         id: response['id'] || response.transactionId,
         clientTxId: response.clientTransactionId || this.transactionId
       };
-
-      console.log('Enviando confirmación:', {
-        url: 'https://backend-numer.netlify.app/.netlify/functions/confirmacion',
-        payload: confirmationPayload,
-        hasAuth: headers.has('Authorization')
-      });
 
       const confirmationResponse = await firstValueFrom(
         this.http.post<ConfirmationResponse>(
@@ -604,7 +570,6 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
         )
       );
 
-      console.log('Respuesta de confirmación:', confirmationResponse);
 
       const shouldClearCart = confirmationResponse && (
         confirmationResponse.inventoryProcessed === true ||
@@ -612,13 +577,11 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       );
 
       if (shouldClearCart) {
-        console.log('Inventario procesado exitosamente, limpiando carrito...');
         const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
         const transactionId = response['id'] || response.transactionId || this.transactionId;
 
         try {
           await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
-          console.log('Compra registrada exitosamente');
         } catch (error) {
           console.warn('Error registrando compra:', error);
         }
@@ -696,11 +659,6 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
     this.setError('Se produjo un error al procesar el pago. Por favor, intenta con otro método de pago o contacta con servicio al cliente.');
   }
 
-  // 🎯 OPTIMIZADO: Manejo de errores post-pago con categorización
-  private handlePostPaymentError(errorMessage: string, paymentId: string): void {
-    console.error('❌ Error después del pago exitoso:', errorMessage);
-  }
-
   // 🎯 NUEVO: Categorización de errores
   private categorizeError(errorMessage: string): 'inventory' | 'timeout' | 'generic' {
     const lowerMessage = errorMessage.toLowerCase();
@@ -715,19 +673,6 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       this.router.navigate(['/carrito'], { queryParams: { error: reason } });
     }, 2000);
   }
-
-  // ✅ PRESERVADO: Modal de éxito
-  private showSuccessModal(orderId: string, paymentId: string): void {
-    this.modalService.success({
-      nzTitle: '¡Pago Exitoso!',
-      nzContent: 'Tu pago ha sido procesado correctamente. Serás redirigido a la página de confirmación.',
-      nzOkText: 'Continuar',
-      nzOnOk: () => {
-        this.router.navigate(['/confirmacion'], { queryParams: { orderId, paymentId } });
-      }
-    });
-  }
-
 
   // 🛠️ UTILIDADES: Gestión de estado
   private setLoading(loading: boolean): void {
