@@ -139,7 +139,6 @@ export class CouponUsageService {
         }
       });
 
-      console.log(`✅ Uso de cupón registrado: ${couponCode} por usuario ${userId}`);
       
     } catch (error) {
       console.error('❌ Error registrando uso de cupón:', error);

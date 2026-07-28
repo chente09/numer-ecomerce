@@ -1981,7 +1981,6 @@ export class ProductService {
             const quantity = Math.abs(movement['quantity'] || 0);
 
             // --- INICIO DE LOGS DE DEPURACIÓN DE DOCUMENTOS ---
-            console.log(`DEBUG DOC: ID=${doc.id}, timestamp_raw=${JSON.stringify(movement['timestamp'])}, movementDate_LOCAL=${movementDate.toLocaleString()}, dateKey=${dateKey}, quantity=${quantity}`);
             // --- FIN DE LOGS DE DEPURACIÓN DE DOCUMENTOS ---
 
             const currentSales = salesByDate.get(dateKey) || 0;

@@ -36,12 +36,24 @@ export class TelegramAdminService {
   constructor(private http: HttpClient) { }
 
   /**
+   * Normaliza un número de teléfono ecuatoriano al formato internacional
+   * requerido por wa.me (sin +, sin 0 inicial).
+   * 0999086340 → 593999086340
+   * +593999086340 → 593999086340
+   */
+  private formatPhoneForWhatsApp(phone: string | undefined): string | undefined {
+    if (!phone) return phone;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('593')) return digits;
+    if (digits.startsWith('0')) return `593${digits.slice(1)}`;
+    return `593${digits}`;
+  }
+
+  /**
    * ✅ NUEVO: Envía notificación usando el backend seguro
    */
   async sendOrderNotification(orderData: OrderNotification): Promise<void> {
     try {
-      console.log('📱 Enviando notificación a través del backend...');
-
       const response = await fetch(`${this.BACKEND_URL}/telegram-notification`, {
         method: 'POST',
         headers: {
@@ -57,7 +69,7 @@ export class TelegramAdminService {
             authorizationCode: orderData.paymentInfo.authorizationCode,
             paymentMethod: orderData.paymentInfo.paymentMethod,
             email: orderData.customerInfo.email,
-            phone: orderData.customerInfo.phone,
+            phone: this.formatPhoneForWhatsApp(orderData.customerInfo.phone),
             document: orderData.customerInfo.document,
             name: orderData.customerInfo.name,
             cartItems: orderData.cartItems || []
@@ -199,8 +211,10 @@ export class TelegramAdminService {
         },
         body: JSON.stringify({
           type: 'distributor_request',
-          data: requestData,
-          apiKey: 'numer_secret_key_2024' // ⚠️ TEMPORAL - mover a environment después
+          data: {
+            ...requestData,
+            telefono: this.formatPhoneForWhatsApp(requestData.telefono) ?? requestData.telefono
+          }
         })
       });
 

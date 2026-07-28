@@ -30,8 +30,7 @@ export class ActivityLogService {
         },
         metadata: {
           productId,
-          userAgent: navigator.userAgent,
-          url: window.location.href
+          url: window.location.pathname
         }
       });
 
