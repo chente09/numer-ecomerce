@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Firestore, collection, collectionData, doc, addDoc, updateDoc, deleteDoc, getDoc, query, where } from '@angular/fire/firestore';
 import { Storage, ref, uploadBytes, getDownloadURL, deleteObject } from '@angular/fire/storage';
 import { Observable, of, from } from 'rxjs';
-import { catchError, map, shareReplay, switchMap } from 'rxjs/operators';
+import { catchError, map, shareReplay, switchMap, startWith } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
 import { CacheService } from '../cache/cache.service';
 import { ErrorUtil } from '../../../utils/error-util';
@@ -28,15 +28,21 @@ export class CategoryService {
     private cacheService: CacheService
   ) { }
 
-  // Obtener todas las categorías con caché
+  // Obtener todas las categorías con caché.
+  // Se re-suscribe al notificador de invalidación para que los componentes con
+  // una suscripción activa (async pipe) reciban la lista actualizada sin
+  // necesidad de recargar la página cuando otro usuario/pestaña crea o elimina una categoría.
   getCategories(): Observable<Category[]> {
-    return this.cacheService.getCached<Category[]>(this.cacheKey, () => {
-      const categoriesRef = collection(this.firestore, this.collectionName);
-      return collectionData(categoriesRef, { idField: 'id' }).pipe(
-        map(data => data as Category[]),
-        catchError(error => ErrorUtil.handleError(error, 'getCategories'))
-      );
-    });
+    return this.cacheService.getInvalidationNotifier(this.cacheKey).pipe(
+      startWith(undefined),
+      switchMap(() => this.cacheService.getCached<Category[]>(this.cacheKey, () => {
+        const categoriesRef = collection(this.firestore, this.collectionName);
+        return collectionData(categoriesRef, { idField: 'id' }).pipe(
+          map(data => data as Category[]),
+          catchError(error => ErrorUtil.handleError(error, 'getCategories'))
+        );
+      }))
+    );
   }
 
   // Invalidar caché
