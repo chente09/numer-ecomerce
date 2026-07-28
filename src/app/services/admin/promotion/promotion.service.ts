@@ -219,6 +219,34 @@ export class PromotionService {
           console.log(`✅ Productos limpiados correctamente.`);
         }
 
+        // 3b. Las promociones también pueden aplicarse a nivel de VARIANTE
+        //     (productVariants.promotionId), lo cual la limpieza de 'products' no cubre.
+        const variantsRef = collection(this.firestore, 'productVariants');
+        const variantsQuery = query(variantsRef, where('promotionId', '==', id));
+        const affectedVariantsSnapshot = await getDocs(variantsQuery);
+
+        if (!affectedVariantsSnapshot.empty) {
+          console.log(`🧹 Limpiando ${affectedVariantsSnapshot.size} variante(s) afectada(s) por la promoción ${id}`);
+
+          const variantsBatch = writeBatch(this.firestore);
+
+          affectedVariantsSnapshot.forEach(variantDoc => {
+            variantsBatch.update(variantDoc.ref, {
+              promotionId: deleteField(),
+              discountType: deleteField(),
+              discountValue: deleteField(),
+              discountedPrice: deleteField(),
+              originalPrice: deleteField()
+            });
+
+            const appliedPromoRef = doc(this.firestore, 'appliedPromotions', `${variantDoc.id}_${id}`);
+            variantsBatch.delete(appliedPromoRef);
+          });
+
+          await variantsBatch.commit();
+          console.log(`✅ Variantes limpiadas correctamente.`);
+        }
+
         // 5. Una vez que los productos están limpios, eliminamos el documento de la promoción
         const promotionDocRef = doc(this.firestore, this.collectionName, id);
         await deleteDoc(promotionDocRef);
@@ -226,6 +254,7 @@ export class PromotionService {
         // 6. Invalidamos cachés relevantes para que la UI se actualice
         this.cacheService.invalidate('promotions');
         this.cacheService.invalidate('products'); // Invalidamos productos porque acabamos de modificar varios
+        this.cacheService.invalidatePattern('product_variants'); // Variantes también pudieron cambiar
 
       } catch (error) {
         console.error(`❌ PromotionService: Error complejo al eliminar promoción ${id}:`, error);
