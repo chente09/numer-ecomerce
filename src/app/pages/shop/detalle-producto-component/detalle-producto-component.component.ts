@@ -127,12 +127,19 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
     this.detectUserLocation();
 
+    // 🔄 Si venimos de un flujo de pago, forzar recarga sin caché para no
+    // mostrar stock/precio desatualizados (el descuento de stock ocurre en el backend).
+    const shouldReload = sessionStorage.getItem('reloadAfterPurchase');
+    if (shouldReload) {
+      sessionStorage.removeItem('reloadAfterPurchase');
+    }
+
     this.route.paramMap.pipe(
       takeUntil(this.destroy$)
     ).subscribe(params => {
       const productId = params.get('id');
       if (productId) {
-        this.loadProduct(productId, false);
+        this.loadProduct(productId, !!shouldReload);
         // ✅ AGREGAR: Actualizar precios después de cargar
         setTimeout(() => {
           this.updateDisplayedPrice();
