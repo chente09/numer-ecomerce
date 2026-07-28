@@ -337,12 +337,19 @@ export class CarritoComponent implements OnInit, OnDestroy {
       // 3. Manejar errores de stock (sin cambios)
       if (validation.unavailableItems.length > 0) {
         this.message.remove();
-        const unavailableNames = validation.unavailableItems.map(item => item.product?.name).join(', ');
+        const unavailableNames = validation.unavailableItems
+          .map(item => item.product?.name || 'un producto que ya no está disponible')
+          .join(', ');
 
         this.modal.warning({
           nzTitle: 'Productos no disponibles',
-          nzContent: `Algunos productos en tu carrito ya no tienen stock suficiente: ${unavailableNames}. Por favor, ajusta las cantidades antes de continuar.`,
-          nzOkText: 'Entendido'
+          nzContent: `Algunos productos en tu carrito ya no tienen stock suficiente o fueron eliminados: ${unavailableNames}. Se quitarán de tu carrito para que puedas continuar.`,
+          nzOkText: 'Quitar y continuar',
+          nzOnOk: () => {
+            validation.unavailableItems.forEach(item => {
+              this.cartService.removeItem(item.variantId).subscribe();
+            });
+          }
         });
 
         this.processingCheckout = false;
