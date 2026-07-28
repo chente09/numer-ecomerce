@@ -115,7 +115,8 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (request.auth != null &&
             request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['inscritosActuales', 'updatedAt']));
+              .hasOnly(['inscritosActuales', 'updatedAt'])
+            && request.resource.data.inscritosActuales == resource.data.inscritosActuales + 1);
     }
 
     match /race-inscriptions/{inscriptionId} {

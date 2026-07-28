@@ -32,6 +32,13 @@
             </nz-form-item>
 
             <nz-form-item>
+                <nz-form-label nzRequired>Cédula</nz-form-label>
+                <nz-form-control nzErrorTip="Ingresa una cédula válida de 10 dígitos.">
+                    <input nz-input formControlName="clientCedula" placeholder="Ej: 1712345678" (keydown)="handleKeyDown($event)" />
+                </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
                 <nz-form-label nzRequired>Teléfono de Contacto</nz-form-label>
                 <nz-form-control nzErrorTip="Ingresa un número de 10 dígitos.">
                     <input nz-input formControlName="clientPhone" placeholder="Ej: 0991234567" type="tel" (keydown)="handleKeyDown($event)" />
@@ -43,6 +50,22 @@
                 <nz-form-control nzErrorTip="La dirección es requerida y debe ser detallada.">
                     <textarea nz-input formControlName="clientAddress" rows="3"
                         placeholder="Ej: Av. Amazonas N25-12 y Calle la Pinta, Edificio XYZ, Apto 5B, Quito" (keydown)="handleKeyDown($event)"></textarea>
+                </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+                <nz-form-label nzRequired>Ciudad</nz-form-label>
+                <nz-form-control nzErrorTip="La ciudad es requerida.">
+                    <input nz-input formControlName="clientCity" placeholder="Ej: Quito" (keydown)="handleKeyDown($event)" />
+                </nz-form-control>
+            </nz-form-item>
+
+            <nz-form-item>
+                <nz-form-label nzRequired>Provincia</nz-form-label>
+                <nz-form-control nzErrorTip="Selecciona una provincia.">
+                    <nz-select formControlName="clientProvince" nzPlaceHolder="Selecciona una provincia">
+                        <nz-option *ngFor="let p of provincias" [nzValue]="p" [nzLabel]="p"></nz-option>
+                    </nz-select>
                 </nz-form-control>
             </nz-form-item>
         </div>

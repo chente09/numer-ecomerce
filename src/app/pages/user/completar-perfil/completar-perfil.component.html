@@ -160,9 +160,11 @@
                     <div nz-col [nzXs]="24" [nzSm]="8">
                         <nz-form-item>
                             <nz-form-label nzRequired>Provincia</nz-form-label>
-                            <nz-form-control nzErrorTip="La provincia es requerida">
-                                <input nz-input formControlName="province" placeholder="Ej: Pichincha"
-                                    autocomplete="address-level1">
+                            <nz-form-control nzErrorTip="Selecciona tu provincia">
+                                <nz-select formControlName="province" nzPlaceHolder="Selecciona una provincia">
+                                    <nz-option *ngFor="let p of provincias" [nzValue]="p" [nzLabel]="p"></nz-option>
+                                    <nz-option nzValue="otro" nzLabel="Otro (fuera de Ecuador)"></nz-option>
+                                </nz-select>
                             </nz-form-control>
                         </nz-form-item>
                     </div>
@@ -178,28 +180,19 @@
                     </div>
                 </div>
 
-                <div nz-row [nzGutter]="[16, 16]">
-                    <!-- 🆕 NUEVO: Barrio/Sector -->
-                    <div nz-col [nzXs]="24" [nzSm]="12">
-                        <nz-form-item>
-                            <nz-form-label>Barrio/Sector</nz-form-label>
-                            <nz-form-control>
-                                <input nz-input formControlName="neighborhood" placeholder="Ej: La Carolina"
-                                    autocomplete="off">
-                            </nz-form-control>
-                        </nz-form-item>
-                    </div>
+                <nz-form-item>
+                    <nz-form-label>Barrio/Sector</nz-form-label>
+                    <nz-form-control>
+                        <input nz-input formControlName="neighborhood" placeholder="Ej: La Carolina"
+                            autocomplete="off">
+                    </nz-form-control>
+                </nz-form-item>
 
-                    <div nz-col [nzXs]="24" [nzSm]="12">
-                        <nz-form-item>
-                            <nz-form-label nzRequired>Código Postal</nz-form-label>
-                            <nz-form-control nzErrorTip="Formato: 6 dígitos (Ej: 170150)">
-                                <input nz-input formControlName="postalCode" placeholder="Ej: 170150"
-                                    autocomplete="postal-code">
-                            </nz-form-control>
-                        </nz-form-item>
-                    </div>
-                </div>
+                <nz-alert *ngIf="showInternationalAlert" nzType="warning"
+                    nzMessage="Envíos internacionales no disponibles"
+                    nzDescription="De momento solo realizamos envíos dentro de Ecuador. No podrás completar tu perfil con una dirección fuera del país."
+                    nzShowIcon style="margin-bottom: 16px;">
+                </nz-alert>
 
                 <!-- 🆕 NUEVO: Referencia -->
                 <nz-form-item>
@@ -210,45 +203,6 @@
                             (keydown)="onInputKeydown($event)" (input)="onInputChange($event, 'reference')"></textarea>
                         <small class="form-help">Esta información ayudará al repartidor a encontrar tu dirección más
                             fácilmente</small>
-                    </nz-form-control>
-                </nz-form-item>
-
-                <nz-divider></nz-divider>
-
-                <!-- 🆕 NUEVO: Contactos Adicionales (Opcional) -->
-                <h3>
-                    <i nz-icon nzType="phone" nzTheme="outline"></i>
-                    Contactos Adicionales
-                    <small>(Opcional)</small>
-                </h3>
-
-                <div nz-row [nzGutter]="[16, 16]">
-                    <div nz-col [nzXs]="24" [nzSm]="12">
-                        <nz-form-item>
-                            <nz-form-label>Teléfono Alternativo</nz-form-label>
-                            <nz-form-control>
-                                <input nz-input formControlName="alternativePhone" placeholder="Ej: 0987654321"
-                                    autocomplete="tel">
-                            </nz-form-control>
-                        </nz-form-item>
-                    </div>
-
-                    <div nz-col [nzXs]="24" [nzSm]="12">
-                        <nz-form-item>
-                            <nz-form-label>Contacto de Emergencia</nz-form-label>
-                            <nz-form-control>
-                                <input nz-input formControlName="emergencyContact" placeholder="Nombre completo"
-                                    autocomplete="name">
-                            </nz-form-control>
-                        </nz-form-item>
-                    </div>
-                </div>
-
-                <nz-form-item>
-                    <nz-form-label>Teléfono de Emergencia</nz-form-label>
-                    <nz-form-control>
-                        <input nz-input formControlName="emergencyPhone" placeholder="Ej: 0987654321"
-                            autocomplete="tel">
                     </nz-form-control>
                 </nz-form-item>
 

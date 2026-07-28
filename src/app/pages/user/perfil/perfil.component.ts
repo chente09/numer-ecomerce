@@ -437,13 +437,15 @@ export class PerfilComponent implements OnInit, OnDestroy {
     }
   }
 
-  setDefaultAddress(addressId: string) {
-    // Actualizar direcciones para establecer una como predeterminada
-    console.log('Establecer dirección predeterminada:', addressId);
-    this.addresses = this.addresses.map(addr => ({
-      ...addr,
-      isDefault: addr.id === addressId
-    }));
+  async setDefaultAddress(addressId: string) {
+    try {
+      await this.usersService.setUserDefaultAddress(addressId);
+      await this.loadAddresses();
+      this.message.success('Dirección predeterminada actualizada');
+    } catch (error) {
+      console.error('Error al establecer dirección predeterminada:', error);
+      this.message.error('No se pudo actualizar la dirección predeterminada');
+    }
   }
 
   viewOrderDetails(orderId: string) {

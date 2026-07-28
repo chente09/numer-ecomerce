@@ -52,6 +52,16 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
 
   actionContext: 'register' | 'complete' = 'complete';
 
+  provincias = [
+    'Azuay', 'Bolívar', 'Cañar', 'Carchi', 'Chimborazo', 'Cotopaxi',
+    'El Oro', 'Esmeraldas', 'Galápagos', 'Guayas', 'Imbabura', 'Loja',
+    'Los Ríos', 'Manabí', 'Morona Santiago', 'Napo', 'Orellana', 'Pastaza',
+    'Pichincha', 'Santa Elena', 'Santo Domingo de los Tsáchilas',
+    'Sucumbíos', 'Tungurahua', 'Zamora Chinchipe'
+  ];
+
+  showInternationalAlert = false;
+
   private userSubscription: Subscription | null = null;
 
   constructor(
@@ -76,16 +86,14 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
       // Campos de dirección
       address: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(200)]],
       city: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
-      province: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
+      province: ['', [Validators.required, this.notInternationalValidator()]],
       canton: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
       neighborhood: ['', [Validators.maxLength(50)]],
-      postalCode: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
-      reference: ['', [Validators.maxLength(200)]],
+      reference: ['', [Validators.maxLength(200)]]
+    });
 
-      // 🆕 Contactos adicionales (opcionales)
-      alternativePhone: ['', [this.optionalPhoneValidator()]],
-      emergencyContact: ['', [Validators.maxLength(100)]],
-      emergencyPhone: ['', [this.optionalPhoneValidator()]]
+    this.profileForm.get('province')?.valueChanges.subscribe(value => {
+      this.showInternationalAlert = value === 'otro';
     });
   }
 
@@ -124,13 +132,10 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
     };
   }
 
-  // 🛠️ Validador de teléfono opcional
-  private optionalPhoneValidator() {
+  // 🛠️ Validador de provincia: bloquea "otro" (aún no hay envíos internacionales)
+  private notInternationalValidator() {
     return (control: AbstractControl) => {
-      if (!control.value || control.value.trim() === '') return null;
-
-      const phonePattern = /^0[2-9]\d{8}$/;
-      return phonePattern.test(control.value) ? null : { ecuadorianPhone: true };
+      return control.value === 'otro' ? { international: true } : null;
     };
   }
 
@@ -298,10 +303,7 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
           phone: this.userProfile.phone || '',
           birthDate: birthDateValue, // 🛠️ CORRECCIÓN: Usar fecha procesada
           documentType: this.userProfile.documentType || 'cedula',
-          documentNumber: this.userProfile.documentNumber || '',
-          alternativePhone: this.userProfile.alternativePhone || '',
-          emergencyContact: this.userProfile.emergencyContact || '',
-          emergencyPhone: this.userProfile.emergencyPhone || ''
+          documentNumber: this.userProfile.documentNumber || ''
         });
 
         // Cargar dirección por defecto si existe
@@ -316,7 +318,6 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
               province: defaultAddress.province || '',
               canton: defaultAddress.canton || '',
               neighborhood: defaultAddress.neighborhood || '',
-              postalCode: defaultAddress.postalCode || '',
               reference: defaultAddress.reference || ''
             });
           }
@@ -390,9 +391,6 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
         birthDate: birthDateToSave, // 🛠️ CORRECCIÓN: Usar fecha procesada
         documentType: this.profileForm.value.documentType,
         documentNumber: this.profileForm.value.documentNumber.trim(),
-        alternativePhone: this.profileForm.value.alternativePhone?.trim() || null,
-        emergencyContact: this.profileForm.value.emergencyContact?.trim() || null,
-        emergencyPhone: this.profileForm.value.emergencyPhone?.trim() || null,
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
@@ -413,7 +411,6 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
           province: this.profileForm.value.province.trim(),
           canton: this.profileForm.value.canton.trim(),
           neighborhood: this.profileForm.value.neighborhood?.trim() || '',
-          postalCode: this.profileForm.value.postalCode.trim(),
           reference: this.profileForm.value.reference?.trim() || '',
           isDefault: true
         };

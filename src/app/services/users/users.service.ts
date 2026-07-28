@@ -21,6 +21,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -504,9 +505,48 @@ export class UsersService {
     try {
       const addressRef = doc(this.firestore, `users/${user.uid}/addresses`, addressId);
       await deleteDoc(addressRef);
+
+      // Resincronizar defaultAddress del doc de usuario para evitar que quede
+      // apuntando a una dirección ya eliminada (causaba envíos a direcciones fantasma)
+      const remainingAddresses = await this.getUserAddresses();
+      const userRef = doc(this.firestore, 'users', user.uid);
+      const newDefault = remainingAddresses.find(addr => addr['isDefault']) ?? remainingAddresses[0];
+
+      if (newDefault) {
+        await setDoc(userRef, { defaultAddress: newDefault, updatedAt: serverTimestamp() }, { merge: true });
+      } else {
+        await updateDoc(userRef, { defaultAddress: deleteField(), updatedAt: serverTimestamp() });
+      }
+
       console.log('✅ Dirección eliminada exitosamente');
     } catch (error) {
       console.error('❌ Error eliminando dirección:', error);
+      throw error;
+    }
+  }
+
+  async setUserDefaultAddress(addressId: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No hay usuario autenticado');
+    try {
+      const addresses = await this.getUserAddresses();
+      const target = addresses.find(addr => addr['id'] === addressId);
+      if (!target) throw new Error('Dirección no encontrada');
+
+      await Promise.all(addresses.map(addr => {
+        const addressRef = doc(this.firestore, `users/${user.uid}/addresses`, addr['id']);
+        return setDoc(addressRef, { isDefault: addr['id'] === addressId }, { merge: true });
+      }));
+
+      const userRef = doc(this.firestore, 'users', user.uid);
+      await setDoc(userRef, {
+        defaultAddress: { ...target, isDefault: true },
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      console.log('✅ Dirección predeterminada actualizada');
+    } catch (error) {
+      console.error('❌ Error estableciendo dirección predeterminada:', error);
       throw error;
     }
   }
