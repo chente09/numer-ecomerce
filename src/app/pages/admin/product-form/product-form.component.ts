@@ -29,6 +29,7 @@ import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
 import { ProductVariantService } from '../../../services/admin/productVariante/product-variant.service';
+import { TechnologyService } from '../../../services/admin/technology/technology.service';
 
 // 🚀 Interfaces para actualización optimista
 interface ProductBackup {
@@ -92,19 +93,8 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
   // 🚀 Control de operaciones optimistas
   private pendingOperation: OptimisticProductUpdate | null = null;
 
-  // Opciones predefinidas de tecnologías
-  technologiesOptions: { label: string; value: string }[] = [
-    { label: 'Secado Rápido', value: 'secado_rapido' },
-    { label: 'Protección UV', value: 'proteccion_uv' },
-    { label: 'Anti-transpirante', value: 'anti_transpirante' },
-    { label: 'Impermeable', value: 'impermeable' },
-    { label: 'Transpirable', value: 'transpirable' },
-    { label: 'Anti-bacterial', value: 'anti_bacterial' },
-    { label: 'Térmico', value: 'termico' },
-    { label: 'Elástico', value: 'elastico' },
-    { label: 'Resistente al viento', value: 'resistente_viento' },
-    { label: 'Sin costuras', value: 'sin_costuras' },
-  ];
+  // Tecnologías disponibles, cargadas desde Firestore (colección 'technologies')
+  technologiesOptions: { label: string; value: string }[] = [];
 
   newTechnology: string = '';
 
@@ -193,11 +183,21 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
     private modal: NzModalService,
     private cdr: ChangeDetectorRef,
     private inventoryService: ProductInventoryService,
-    private variantService: ProductVariantService
+    private variantService: ProductVariantService,
+    private technologyService: TechnologyService
   ) { }
 
   ngOnInit(): void {
     this.initProductForm();
+
+    this.technologyService.getTechnologies()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(technologies => {
+        this.technologiesOptions = technologies
+          .map(t => ({ label: t.name, value: t.id }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        this.cdr.detectChanges();
+      });
   }
 
   ngAfterViewInit(): void {
@@ -241,7 +241,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
       gender: ['unisex'],
       metaTitle: [''],
       metaDescription: [''],
-      searchKeywords: [''],
       tags: [''],
       technologies: [[], []],
       colors: this.fb.array([]),
@@ -746,7 +745,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
           : this.product.isBestSeller,
       metaTitle: this.product.metaTitle || '',
       metaDescription: this.product.metaDescription || '',
-      searchKeywords: this.product.searchKeywords?.join(', ') || '',
       tags: this.product.tags?.join(', ') || '',
       technologies: this.product.technologies || [],
     };
@@ -870,24 +868,23 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
   }
 
   // ==================== TECNOLOGÍAS ====================
-  addCustomTechnology(): void {
-    if (!this.newTechnology.trim()) {
-      return;
-    }
+  async addCustomTechnology(): Promise<void> {
+    const name = this.newTechnology.trim();
+    if (!name) return;
 
-    const value =
-      'custom_' + this.newTechnology.toLowerCase().replace(/\s+/g, '_');
-
-    const exists = this.technologiesOptions.some(
-      (tech) => tech.value === value
+    // Si ya existe una tecnología con ese nombre, la reutilizamos en vez de duplicarla
+    const existing = this.technologiesOptions.find(
+      (tech) => tech.label.toLowerCase() === name.toLowerCase()
     );
-    if (!exists) {
-      this.technologiesOptions.push({
-        label: this.newTechnology.trim(),
-        value: value,
-      });
 
-      this.technologiesOptions.sort((a, b) => a.label.localeCompare(b.label));
+    let value = existing?.value;
+    if (!value) {
+      try {
+        value = await this.technologyService.createTechnology(name);
+      } catch (error: any) {
+        this.message.error(error?.message || 'No se pudo crear la tecnología');
+        return;
+      }
     }
 
     const currentTechnologies =
@@ -899,6 +896,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
     }
 
     this.newTechnology = '';
+    this.cdr.detectChanges();
   }
 
   getTechnologyLabel(value: string): string {
@@ -1144,12 +1142,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
           .map((tag: string) => tag.trim())
           .filter(Boolean)
         : [];
-      const searchKeywords = formData.searchKeywords
-        ? formData.searchKeywords
-          .split(',')
-          .map((kw: string) => kw.trim())
-          .filter(Boolean)
-        : [];
 
       // Crear objeto de producto
       const productData: Omit<Product, 'id'> = {
@@ -1175,7 +1167,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
         colors: formData.colors,
         sizes: formData.sizes,
         tags,
-        searchKeywords,
         technologies: formData.technologies || [],
         rating: this.product?.rating || 5,
         totalStock: this.calculateTotalStock(), // 🚀 Calcular stock optimísticamente
