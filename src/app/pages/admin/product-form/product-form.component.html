@@ -44,7 +44,8 @@
         </nz-collapse-panel>
     </nz-collapse>
 
-    <form [formGroup]="productForm" (ngSubmit)="submitForm()" nz-form nzLayout="vertical">
+    <form [formGroup]="productForm" (ngSubmit)="submitForm()" (keydown.enter)="onFormKeydownEnter($event)"
+        nz-form nzLayout="vertical">
         <nz-tabset nzType="card">
             <!-- Pestaña de Información Básica -->
             <nz-tab nzTitle="Información Básica">
@@ -341,7 +342,7 @@
                     <div *ngIf="colorForms.length === 0" class="empty-message">
                         <nz-empty nzNotFoundContent="No hay colores agregados">
                             <ng-template #footer>
-                                <button nz-button nzType="primary" (click)="addColor()">
+                                <button type="button" nz-button nzType="primary" (click)="addColor()">
                                     <span nz-icon nzType="plus"></span> Agregar Primer Color
                                 </button>
                             </ng-template>
@@ -445,7 +446,7 @@
                     <div *ngIf="sizeForms.length === 0" class="empty-message">
                         <nz-empty nzNotFoundContent="No hay tallas agregadas">
                             <ng-template #footer>
-                                <button nz-button nzType="primary" (click)="addSize()">
+                                <button type="button" nz-button nzType="primary" (click)="addSize()">
                                     <span nz-icon nzType="plus"></span> Agregar Primera Talla
                                 </button>
                             </ng-template>
@@ -565,8 +566,9 @@
                         <nz-form-control>
                             <div class="custom-tech-input">
                                 <input nz-input [(ngModel)]="newTechnology" [ngModelOptions]="{standalone: true}"
-                                    placeholder="Ej. Aislamiento térmico" (keyup.enter)="addCustomTechnology()">
-                                <button nz-button nzType="primary" [disabled]="!newTechnology.trim()"
+                                    placeholder="Ej. Aislamiento térmico"
+                                    (keydown.enter)="$event.preventDefault(); addCustomTechnology()">
+                                <button type="button" nz-button nzType="primary" [disabled]="!newTechnology.trim()"
                                     (click)="addCustomTechnology()">
                                     <span nz-icon nzType="plus"></span> Agregar
                                 </button>

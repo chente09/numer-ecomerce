@@ -1083,6 +1083,19 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
   }
 
   // 🚀 ==================== ENVÍO DE FORMULARIO CON ACTUALIZACIÓN OPTIMISTA ====================
+  /**
+   * Evita que Enter en un input dispare el submit nativo del formulario
+   * (ej. al escribir el nombre y presionar Enter, o al usar el botón
+   * "Agregar" de tecnología). Permite Enter en textareas (salto de línea)
+   * y en el botón de guardar real.
+   */
+  onFormKeydownEnter(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'TEXTAREA') return;
+    if (target.tagName === 'BUTTON' && (target as HTMLButtonElement).type === 'submit') return;
+    event.preventDefault();
+  }
+
   async submitForm(): Promise<void> {
     if (this.productForm.invalid) {
       Object.values(this.productForm.controls).forEach((control) => {
