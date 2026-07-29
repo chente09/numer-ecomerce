@@ -509,7 +509,8 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         p.name.toLowerCase().includes(query) ||
         p.description?.toLowerCase().includes(query) ||
         p.tags?.some(tag => tag.toLowerCase().includes(query)) ||
-        p.sku.toLowerCase().includes(query)
+        p.sku.toLowerCase().includes(query) ||
+        p.colors?.some(color => color.name.toLowerCase().includes(query))
       );
     }
 
@@ -649,7 +650,8 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
         p.name.toLowerCase().includes(query) ||
         p.description?.toLowerCase().includes(query) ||
         p.tags?.some(tag => tag.toLowerCase().includes(query)) ||
-        p.sku.toLowerCase().includes(query)
+        p.sku.toLowerCase().includes(query) ||
+        p.colors?.some(color => color.name.toLowerCase().includes(query))
       );
     }
 
