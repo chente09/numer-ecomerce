@@ -1516,38 +1516,6 @@ html {
     color: #fa8c16;
 }
 
-/* Leyenda de disponibilidad */
-.size-availability-legend {
-    display: flex;
-    gap: 15px;
-    font-size: 12px;
-    margin-bottom: 10px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.legend-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-}
-
-.legend-indicator.available {
-    background-color: #53c41a5d;
-}
-
-.legend-indicator.low-stock {
-    background-color: #faad1458;
-}
-
-.legend-indicator.out-of-stock {
-    background-color: #d6070a64;
-}
-
 /* Indicador de stock en tallas */
 .size-stock-indicator {
     position: absolute;
@@ -2007,11 +1975,6 @@ html {
 }
 
 @media (max-width: 480px) {
-    .size-availability-legend {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
     .highlights-list {
         gap: 6px;
     }

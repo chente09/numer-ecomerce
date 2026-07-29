@@ -168,26 +168,6 @@
                     </button>
                 </div>
 
-                <!-- Mejorada información de tallas -->
-                <div class="size-info">
-
-                    <!-- Indicador de disponibilidad -->
-                    <div class="size-availability-legend">
-                        <div class="legend-item">
-                            <div class="legend-indicator available"></div>
-                            <span>Disponible</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-indicator low-stock"></div>
-                            <span>Pocas unidades</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-indicator out-of-stock"></div>
-                            <span>Agotado</span>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="size-options">
                     <div *ngFor="let sizeName of standardSizes" class="size-option" [ngClass]="{
                         'active': selectedSize?.name === sizeName,
