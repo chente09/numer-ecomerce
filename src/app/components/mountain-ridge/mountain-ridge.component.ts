@@ -160,6 +160,12 @@ export class MountainRidgeComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
+    // No interceptar atajos mientras el usuario escribe en un campo de formulario
+    const target = event.target as HTMLElement;
+    const isEditable = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA'
+      || target?.isContentEditable;
+    if (isEditable) return;
+
     switch(event.key.toLowerCase()) {
       case 'r':
       case 'm':
