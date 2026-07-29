@@ -27,7 +27,8 @@
                         <nz-form-item>
                             <nz-form-label nzRequired>Nombre del Producto</nz-form-label>
                             <nz-form-control nzErrorTip="Por favor ingrese el nombre del producto">
-                                <input nz-input formControlName="name" placeholder="Ej. Camisa Verde">
+                                <input nz-input formControlName="name" placeholder="Ej. Camisa Verde"
+                                    (blur)="generateModelFromName()">
                             </nz-form-control>
                         </nz-form-item>
 
@@ -35,8 +36,7 @@
                         <nz-form-item>
                             <nz-form-label nzRequired>Modelo</nz-form-label>
                             <nz-form-control nzErrorTip="Por favor ingrese el nombre del modelo">
-                                <input nz-input formControlName="model" placeholder="Ej. AGUACERO, SENDERO, EXTRALÍGERO"
-                                    (blur)="generateModelFromName()" />
+                                <input nz-input formControlName="model" placeholder="Ej. AGUACERO, SENDERO, EXTRALÍGERO" />
                                 <div class="form-help-text">
                                     Nombre del modelo del producto (se usa para agrupar variantes)
                                 </div>

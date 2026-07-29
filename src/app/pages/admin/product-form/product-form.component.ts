@@ -206,23 +206,6 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
   private setupFormListeners(): void {
     this.listenToStockChanges();
     this.createVariantsMatrix();
-
-    // 🆕 NUEVO: Listener para auto-generar model
-    this.productForm.get('name')?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(nameValue => {
-      const modelValue = this.productForm.get('model')?.value;
-
-      // Solo auto-generar si model está vacío y no estamos en modo edición
-      if (nameValue && !modelValue && !this.isEditMode) {
-        const cleanModel = nameValue
-          .trim()
-          .toUpperCase()
-          .replace(/[^A-Z0-9\s]/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-        this.productForm.get('model')?.setValue(cleanModel, { emitEvent: false });
-      }
-    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -954,8 +937,8 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
     const nameValue = this.productForm.get('name')?.value;
     const modelValue = this.productForm.get('model')?.value;
 
-    // Solo auto-generar si el campo model está vacío
-    if (nameValue && !modelValue) {
+    // Solo auto-generar si el campo model está vacío y no estamos editando un producto existente
+    if (nameValue && !modelValue && !this.isEditMode) {
       // Limpiar el nombre para crear un model más limpio
       const cleanModel = nameValue
         .trim()
