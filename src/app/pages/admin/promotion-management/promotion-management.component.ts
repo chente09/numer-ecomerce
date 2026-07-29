@@ -156,21 +156,6 @@ export class PromotionManagementComponent implements OnInit {
     couponCode?.updateValueAndValidity();
   }
 
-  private toggleCouponFields(enable: boolean): void {
-    const fields = ['couponCode', 'couponType', 'usageLimits'];
-    fields.forEach(fieldName => {
-      const control = this.promotionForm.get(fieldName);
-      if (control) {
-        if (enable) {
-          control.enable();
-        } else {
-          control.disable();
-          control.reset();
-        }
-      }
-    });
-  }
-
   private handleDiscountTypeChange(type: string): void {
     const discountValueControl = this.promotionForm.get('discountValue');
     if (type === 'shipping') {

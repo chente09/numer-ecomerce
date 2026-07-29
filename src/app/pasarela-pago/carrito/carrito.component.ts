@@ -343,7 +343,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
 
         this.modal.warning({
           nzTitle: 'Productos no disponibles',
-          nzContent: `Algunos productos en tu carrito ya no tienen stock suficiente o fueron eliminados: ${unavailableNames}. Se quitarán de tu carrito para que puedas continuar.`,
+          nzContent: `Algunos productos en tu carrito ya no tienen stock suficiente, fueron eliminados, o la promoción aplicada ya no está disponible para ti: ${unavailableNames}. Se quitarán de tu carrito para que puedas continuar.`,
           nzOkText: 'Quitar y continuar',
           nzOnOk: () => {
             validation.unavailableItems.forEach(item => {

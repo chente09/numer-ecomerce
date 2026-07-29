@@ -117,6 +117,7 @@ export class CartService implements OnDestroy {
       let unitPrice = 0;
       let originalUnitPrice: number | undefined = undefined;
       let appliedPromotionTitle: string | undefined = undefined;
+      let appliedPromotionId: string | undefined = undefined;
 
       // Prioridad 1: Usar el precio de la VARIANTE si tiene un descuento específico.
       if (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice) {
@@ -126,6 +127,7 @@ export class CartService implements OnDestroy {
         if (variant.promotionId) {
           const promo = await firstValueFrom(this.promotionService.getPromotionById(variant.promotionId));
           appliedPromotionTitle = promo?.name; // <-- AQUÍ SE OBTIENE EL NOMBRE
+          appliedPromotionId = variant.promotionId;
         }
       }
       // Prioridad 2: Usar el precio del PRODUCTO si tiene un descuento general.
@@ -136,6 +138,7 @@ export class CartService implements OnDestroy {
         if (product.promotionId) {
           const promo = await firstValueFrom(this.promotionService.getPromotionById(product.promotionId));
           appliedPromotionTitle = promo?.name; // <-- O AQUÍ SE OBTIENE EL NOMBRE
+          appliedPromotionId = product.promotionId;
         }
       }
       // Prioridad 3: Usar el precio base si no hay descuentos.
@@ -156,6 +159,7 @@ export class CartService implements OnDestroy {
         unitPrice,
         originalUnitPrice,
         appliedPromotionTitle, // <-- El nombre correcto se guarda aquí
+        appliedPromotionId,
         totalPrice: unitPrice * quantity,
       };
 
@@ -268,6 +272,24 @@ export class CartService implements OnDestroy {
  */
   public async recordCouponUsageForOrder(orderId: string): Promise<void> {
     if (!this.currentUserId) return;
+    const userId = this.currentUserId;
+
+    // Registrar uso de promociones automáticas (sin código, ej. descuento de
+    // lanzamiento) para cada ítem comprado que tenía una promoción con límite de uso.
+    // Debe leerse ANTES de limpiar el carrito.
+    const automaticPromotionIds = new Set(
+      this.getCart().items
+        .map(item => item.appliedPromotionId)
+        .filter((id): id is string => !!id)
+    );
+
+    for (const promotionId of automaticPromotionIds) {
+      try {
+        await this.couponUsageService.recordCouponUsage(userId, promotionId, '', orderId);
+      } catch (error) {
+        console.warn('No se pudo registrar el uso de la promoción automática:', promotionId, error);
+      }
+    }
 
     if (!this.appliedCoupon) {
       const stored = sessionStorage.getItem('appliedCoupon');
@@ -285,7 +307,7 @@ export class CartService implements OnDestroy {
     this.appliedCoupon = null;
 
     await this.couponUsageService.recordCouponUsage(
-      this.currentUserId,
+      userId,
       couponId,
       couponCode,
       orderId
@@ -390,6 +412,29 @@ export class CartService implements OnDestroy {
 
     await Promise.all(stockChecks);
 
+    // 1b. Validar límites de uso de promociones automáticas (aplicadas sin código,
+    // ej. descuento de lanzamiento "solo primera compra"). Sin esto, usageLimits
+    // solo se respetaba cuando el usuario ingresaba un cupón manualmente.
+    if (this.currentUserId) {
+      const promotionChecks = cart.items
+        .filter(item => item.appliedPromotionId && !unavailableItems.includes(item))
+        .map(async (item) => {
+          const promotion = await firstValueFrom(this.promotionService.getPromotionById(item.appliedPromotionId!));
+          if (!promotion?.usageLimits) return;
+
+          const usage = await this.couponUsageService.canUserUseCoupon(
+            this.currentUserId!,
+            item.appliedPromotionId!,
+            promotion
+          );
+          if (!usage.canUse) {
+            unavailableItems.push(item);
+          }
+        });
+
+      await Promise.all(promotionChecks);
+    }
+
     // 2. Validar cupón aplicado si existe
     let couponError: string | undefined = undefined;
 
@@ -459,6 +504,7 @@ export class CartService implements OnDestroy {
     unitPrice: item.unitPrice,
     originalUnitPrice: item.originalUnitPrice ?? null,
     appliedPromotionTitle: item.appliedPromotionTitle ?? null,
+    appliedPromotionId: item.appliedPromotionId ?? null,
     totalPrice: item.totalPrice || item.unitPrice * item.quantity
   });
 

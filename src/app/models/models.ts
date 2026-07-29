@@ -257,6 +257,7 @@ export interface CartItem {
     totalPrice: number;
     originalUnitPrice?: number; // Precio original sin descuento
     appliedPromotionTitle?: string; // Nombre de la promoción
+    appliedPromotionId?: string; // ID de la promoción (para validar límites de uso)
 }
 
 export interface Cart {
