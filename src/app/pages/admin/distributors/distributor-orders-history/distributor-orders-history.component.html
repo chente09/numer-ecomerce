@@ -8,6 +8,7 @@
                         <th>ID de Orden</th>
                         <th>Total</th>
                         <th>Estado</th>
+                        <th>Envío</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -19,6 +20,15 @@
                             <nz-tag [nzColor]="getStatusTag(order.status)">
                                 {{ order.status.replace('_', ' ') | titlecase }}
                             </nz-tag>
+                        </td>
+                        <td>
+                            <nz-tag *ngIf="order.shippingDetails?.shippingType === 'client'" nzColor="purple">
+                                Envío a cliente
+                            </nz-tag>
+                            <nz-tag *ngIf="order.shippingDetails?.shippingType === 'store'" nzColor="default">
+                                A tienda
+                            </nz-tag>
+                            <span *ngIf="!order.shippingDetails" style="color:#aaa">—</span>
                         </td>
                     </tr>
                 </tbody>

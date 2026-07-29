@@ -281,6 +281,17 @@ export interface Order {
     paymentMethod: 'distributor_credit' | 'payphone' | string;
     createdAt: Timestamp;
     updatedAt?: Timestamp;
+    // Solo presente en pedidos de distribuidor (creados vía createDistributorOrder)
+    shippingDetails?: {
+        shippingType: 'store' | 'client';
+        clientName?: string;
+        clientCedula?: string;
+        clientPhone?: string;
+        clientAddress?: string;
+        clientCity?: string;
+        clientProvince?: string;
+        shippingNotes?: string;
+    };
 }
 
 // =====================================
@@ -379,4 +390,27 @@ export interface PaymentReportData {
     periodDescription: string;
     generatedAt: Date;
     generatedBy: string;
+}
+
+export interface Shipment {
+    id?: string;
+    distributorId: string;
+    status: 'open' | 'sent' | 'delivered';
+    transferIds: string[];          // IDs de inventory transfers agrupados
+    itemSummary: ShipmentItem[];    // resumen legible de qué se envió
+    shippingCost?: number;          // el admin lo ingresa al marcar "sent"
+    trackingUrl?: string;           // link Servientrega (opcional)
+    notes?: string;
+    createdAt: Timestamp;
+    sentAt?: Timestamp;
+    deliveredAt?: Timestamp;
+    createdBy: string;              // UID del admin
+    sentBy?: string;                // UID del admin que marcó como enviado
+}
+
+export interface ShipmentItem {
+    productName: string;
+    variantLabel: string;           // ej. "Rojo / M"
+    quantity: number;
+    unitCost: number;
 }
