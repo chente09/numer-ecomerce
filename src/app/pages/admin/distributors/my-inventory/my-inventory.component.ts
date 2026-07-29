@@ -106,6 +106,7 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
   statementFilter: 'all' | 'debit' | 'credit' | 'pending' = 'all';
   allTransactions: LedgerEntry[] = [];
   private correctedDebitsMap = new Map<string, number>();
+  runningBalanceMap = new Map<string, number>();
 
   // Almacena la lista original sin filtrar
   private originalGroupedInventory: GroupedInventoryProduct[] = [];
@@ -233,6 +234,7 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
       next: (entries) => {
         this.ledgerEntries = entries;
         this.enhancedSummary = this.ledgerService.calculateEnhancedSummary(entries);
+        this.runningBalanceMap = this.ledgerService.calculateRunningBalance(entries);
 
         const debits = entries.filter(entry => entry.type === 'debit');
         const credits = entries.filter(entry => entry.type === 'credit');
@@ -332,6 +334,11 @@ export class MyInventoryComponent implements OnInit, OnDestroy {
   getCorrectedRemainingAmount(entry: LedgerEntry): number {
     if (entry.type !== 'debit') return 0;
     return this.correctedDebitsMap.get(entry.id ?? '') ?? entry.remainingAmount ?? entry.amount;
+  }
+
+  /** Saldo acumulado tras este movimiento (estado de cuenta) */
+  getRunningBalance(entry: LedgerEntry): number {
+    return this.runningBalanceMap.get(entry.id ?? '') ?? 0;
   }
 
   /**

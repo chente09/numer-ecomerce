@@ -114,6 +114,8 @@
                         <th nzWidth="100px" nzAlign="center">Monto</th>
                         <th nzWidth="120px" nzAlign="center">Estado</th>
                         <th nzWidth="100px" nzAlign="center">Pendiente</th>
+                        <th nzWidth="110px" nzAlign="center">Saldo acumulado</th>
+                        <th nzWidth="100px" nzAlign="center">Factura</th>
                         <th nzWidth="140px" nzAlign="center">Acciones</th>
                     </tr>
                 </thead>
@@ -210,6 +212,29 @@
                                 </strong>
                             </span>
                             <span *ngIf="entry.type === 'credit'" class="text-muted">-</span>
+                        </td>
+
+                        <!-- Saldo acumulado (estado de cuenta) -->
+                        <td nzAlign="center">
+                            <strong [style.color]="getRunningBalance(entry) > 0 ? '#cf1322' : '#3f8600'">
+                                {{ formatCurrency(getRunningBalance(entry)) }}
+                            </strong>
+                        </td>
+
+                        <!-- Factura (control manual, no hay facturación electrónica integrada aún) -->
+                        <td nzAlign="center">
+                            <a (click)="toggleInvoiceIssued(entry)">
+                                <nz-tag *ngIf="entry.invoiceIssued" nzColor="green" nz-tooltip
+                                    [nzTooltipTitle]="entry.invoiceNumber ? ('N° ' + entry.invoiceNumber) : 'Clic para desmarcar'">
+                                    <span nz-icon nzType="check-circle"></span>
+                                    Emitida
+                                </nz-tag>
+                                <nz-tag *ngIf="!entry.invoiceIssued" nzColor="default" nz-tooltip
+                                    nzTooltipTitle="Clic para marcar como emitida">
+                                    <span nz-icon nzType="file-exclamation"></span>
+                                    Pendiente
+                                </nz-tag>
+                            </a>
                         </td>
 
                         <!-- ✅ ACCIONES MEJORADAS CON NUEVA LÓGICA -->

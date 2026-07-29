@@ -262,6 +262,8 @@
                                         <th nzAlign="center" nzWidth="100px">Monto</th>
                                         <th nzAlign="center" nzWidth="100px">Estado</th>
                                         <th nzAlign="center" nzWidth="100px">Pendiente</th>
+                                        <th nzAlign="center" nzWidth="110px">Saldo acumulado</th>
+                                        <th nzAlign="center" nzWidth="90px">Factura</th>
                                         <th nzAlign="center" nzWidth="80px">Acciones</th>
                                     </tr>
                                 </thead>
@@ -350,6 +352,25 @@
                                                 {{ formatCurrency(getCorrectedRemainingAmount(transaction)) }}
                                             </strong>
                                             <span *ngIf="transaction.type === 'credit'" class="na-indicator">–</span>
+                                        </td>
+
+                                        <!-- Saldo acumulado (estado de cuenta) -->
+                                        <td nzAlign="center">
+                                            <strong
+                                                [style.color]="getRunningBalance(transaction) > 0 ? '#fa8c16' : '#52c41a'">
+                                                {{ formatCurrency(getRunningBalance(transaction)) }}
+                                            </strong>
+                                        </td>
+
+                                        <!-- Factura (solo lectura, la gestiona el admin) -->
+                                        <td nzAlign="center">
+                                            <nz-tag *ngIf="transaction.invoiceIssued" nzColor="green">
+                                                <span nz-icon nzType="check-circle"></span>
+                                                Emitida
+                                            </nz-tag>
+                                            <nz-tag *ngIf="!transaction.invoiceIssued" nzColor="default">
+                                                Pendiente
+                                            </nz-tag>
                                         </td>
 
                                         <!-- Acciones -->

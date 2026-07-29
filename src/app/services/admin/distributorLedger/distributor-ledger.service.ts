@@ -356,6 +356,40 @@ export class DistributorLedgerService {
   }
 
   /**
+   * ✅ NUEVO: Calcula el saldo acumulado (running balance) tipo estado de cuenta,
+   * en orden cronológico ascendente. Los débitos suman al saldo adeudado, los
+   * créditos restan. Devuelve un mapa id → saldo para uso O(1) en el template.
+   */
+  public calculateRunningBalance(entries: LedgerEntry[]): Map<string, number> {
+    const chronological = [...entries].sort(
+      (a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()
+    );
+
+    const balanceMap = new Map<string, number>();
+    let runningBalance = 0;
+
+    for (const entry of chronological) {
+      runningBalance += entry.type === 'debit' ? entry.amount : -entry.amount;
+      if (entry.id) balanceMap.set(entry.id, runningBalance);
+    }
+
+    return balanceMap;
+  }
+
+  /**
+   * ✅ NUEVO: Marca manualmente si la factura de un movimiento ya fue emitida.
+   * No hay sistema de facturación electrónica integrado aún, así que esto es
+   * un registro auditable a cargo del admin para evitar reclamos de clientes.
+   */
+  async setInvoiceStatus(entryId: string, issued: boolean, invoiceNumber?: string): Promise<void> {
+    const entryRef = doc(this.firestore, this.collectionName, entryId);
+    await updateDoc(entryRef, {
+      invoiceIssued: issued,
+      invoiceNumber: issued ? (invoiceNumber || '') : null
+    });
+  }
+
+  /**
    * ✅ NUEVO: Extrae información de producto/variante de la descripción
    * (Mantiene consistencia con la lógica del componente)
    */

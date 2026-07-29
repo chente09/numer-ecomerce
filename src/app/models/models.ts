@@ -325,6 +325,10 @@ export interface LedgerEntry {
     isPartialPayment?: boolean;
     parentDebitId?: string; // Para pagos parciales, referencia al débito original
     relatedDebitId?: string;   // ← para créditos de devolución
+
+    // ✅ Facturación manual (no hay sistema de facturación electrónica integrado aún)
+    invoiceIssued?: boolean;
+    invoiceNumber?: string;
 }
 
 // Interface base existente

@@ -100,6 +100,9 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges, On
     statusTag: { text: string; color: string; icon: string };
   }>();
 
+  // Saldo acumulado (estado de cuenta) pre-computado, id → saldo tras ese movimiento
+  runningBalanceMap = new Map<string, number>();
+
   @ViewChild('paymentModalContent') paymentModalContent!: TemplateRef<any>;
   @ViewChild('markPaidModalContent') markPaidModalContent!: TemplateRef<any>;
   @ViewChild('detailsModalContent') detailsModalContent!: TemplateRef<any>;
@@ -137,6 +140,7 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges, On
         next: (entries) => {
           this.ledgerEntries = entries;
           this.enhancedSummary = this.ledgerService.calculateEnhancedSummary(entries);
+          this.runningBalanceMap = this.ledgerService.calculateRunningBalance(entries);
           this.applyStatusFilter();
           this.isLoading = false;
         },
@@ -408,6 +412,26 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges, On
   /** Versión para el template — usa el cache pre-computado en applyStatusFilter */
   getReturnStatusCached(entry: LedgerEntry) {
     return this.returnStatusCache.get(entry.id ?? '') ?? this.getReturnStatus(entry);
+  }
+
+  /** Saldo acumulado tras este movimiento (estado de cuenta) */
+  getRunningBalance(entry: LedgerEntry): number {
+    return this.runningBalanceMap.get(entry.id ?? '') ?? 0;
+  }
+
+  /** Marca/desmarca manualmente si la factura de este movimiento ya fue emitida */
+  async toggleInvoiceIssued(entry: LedgerEntry, invoiceNumber?: string): Promise<void> {
+    if (!entry.id) return;
+    const nextValue = !entry.invoiceIssued;
+    try {
+      await this.ledgerService.setInvoiceStatus(entry.id, nextValue, invoiceNumber);
+      entry.invoiceIssued = nextValue;
+      entry.invoiceNumber = nextValue ? (invoiceNumber || '') : undefined;
+      this.message.success(nextValue ? 'Factura marcada como emitida' : 'Factura desmarcada');
+    } catch (error) {
+      this.message.error('No se pudo actualizar el estado de la factura');
+      console.error(error);
+    }
   }
 
   /**
