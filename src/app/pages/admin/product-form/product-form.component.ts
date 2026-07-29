@@ -26,6 +26,7 @@ import { FormsModule } from '@angular/forms';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
+import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
 import { ProductVariantService } from '../../../services/admin/productVariante/product-variant.service';
 
@@ -66,6 +67,7 @@ interface OptimisticProductUpdate {
     NzAlertModule,
     NzRadioModule,
     NzModalModule,
+    NzCollapseModule,
   ],
   templateUrl: './product-form.component.html',
   styleUrls: ['./product-form.component.css'],

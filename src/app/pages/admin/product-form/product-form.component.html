@@ -17,6 +17,33 @@
         </ul>
     </ng-template>
 
+    <!-- Guía: cómo completar un producto correctamente -->
+    <nz-collapse style="margin-bottom: 16px;" [nzBordered]="true">
+        <nz-collapse-panel nzHeader="¿Cómo completar un producto correctamente?" [nzActive]="false">
+            <div class="product-guide">
+                <p><strong>Información Básica</strong> — Nombre, Modelo, Precio, Costo para Distribuidores, Categoría e
+                    Imagen Principal. El Modelo agrupa las variantes de un mismo producto (ej. todas las tallas y
+                    colores de "AGUACERO" comparten el modelo "AGUACERO"). La Imagen Principal es la primera que ve el
+                    cliente en el catálogo, así que debe mostrar bien el producto.</p>
+                <p><strong>Colores</strong> — Agrega cada color en el que realmente tienes stock del producto, con una
+                    foto real de esa variante. Sin colores, el producto no puede tener variantes ni venderse.</p>
+                <p><strong>Tallas</strong> — Agrega todas las tallas que maneja el producto (S, M, L, etc.). Igual que
+                    con los colores, sin tallas no hay variantes que vender.</p>
+                <p><strong>Inventario</strong> — Se habilita después de tener al menos un color y una talla. Ahí se
+                    define el stock real para cada combinación (ej. cuántas unidades hay de "Rojo - M"). Este número es
+                    el que controla si el producto aparece como disponible en la tienda.</p>
+                <p><strong>Tecnologías</strong> — Las tecnologías o materiales destacados del producto (ej. Coolmax®,
+                    4 Way Stretch). Ayudan al cliente a entender qué hace especial a la prenda.</p>
+                <p><strong>SEO y Etiquetas</strong> — El Título y Descripción SEO son lo que Google muestra cuando
+                    alguien busca el producto en internet: deben ser claros y mencionar lo más importante (para qué
+                    sirve, con qué tecnología). Las Etiquetas ayudan a que el producto aparezca en la búsqueda interna
+                    del sitio (ej. "trekking", "mtb", "impermeable").</p>
+                <p style="margin-bottom: 0;"><strong>Tip:</strong> el aviso amarillo de arriba ("Producto incompleto")
+                    te dice en tiempo real qué le falta al producto antes de guardar.</p>
+            </div>
+        </nz-collapse-panel>
+    </nz-collapse>
+
     <form [formGroup]="productForm" (ngSubmit)="submitForm()" nz-form nzLayout="vertical">
         <nz-tabset nzType="card">
             <!-- Pestaña de Información Básica -->

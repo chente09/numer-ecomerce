@@ -5,6 +5,12 @@
   padding: 16px 0;
 }
 
+.product-guide p {
+  margin-bottom: 12px;
+  line-height: 1.5;
+  color: #595959;
+}
+
 /* Unified Form Item Base - Elimina redundancia entre .color-item y .size-item */
 .form-item-base {
   transition: all 0.3s ease;
