@@ -282,6 +282,22 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
     const f = this.productForm?.value;
     if (!f) return issues;
 
+    // Campos obligatorios del producto (marcados con * en el formulario)
+    if (!f.name?.trim())
+      issues.push('Falta el nombre del producto');
+    if (!f.model?.trim())
+      issues.push('Falta el modelo');
+    if (!f.price || f.price <= 0)
+      issues.push('Falta el precio');
+    if (!f.distributorCost || f.distributorCost <= 0)
+      issues.push('Falta el costo para distribuidores');
+    if (!f.categories?.length)
+      issues.push('Falta seleccionar al menos una categoría');
+    if (!this.mainImageUrl)
+      issues.push('Falta la imagen principal');
+    if (this.sizeForms.length === 0)
+      issues.push('Sin tallas — el producto no tendrá variantes');
+
     if (this.colorsWithoutImage.length > 0)
       issues.push(`Colores sin imagen: ${this.colorsWithoutImage.join(', ')}`);
     if (!f.metaTitle?.trim())
