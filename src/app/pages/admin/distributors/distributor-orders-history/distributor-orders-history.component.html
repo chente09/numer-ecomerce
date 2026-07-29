@@ -12,25 +12,46 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let order of ordersTable.data">
-                        <td>{{ order.createdAt.toDate() | date:'dd/MM/yyyy, h:mm a' }}</td>
-                        <td><code>{{ order.orderId }}</code></td>
-                        <td>{{ order.total | currency:'USD' }}</td>
-                        <td>
-                            <nz-tag [nzColor]="getStatusTag(order.status)">
-                                {{ order.status.replace('_', ' ') | titlecase }}
-                            </nz-tag>
-                        </td>
-                        <td>
-                            <nz-tag *ngIf="order.shippingDetails?.shippingType === 'client'" nzColor="purple">
-                                Envío a cliente
-                            </nz-tag>
-                            <nz-tag *ngIf="order.shippingDetails?.shippingType === 'store'" nzColor="default">
-                                A tienda
-                            </nz-tag>
-                            <span *ngIf="!order.shippingDetails" style="color:#aaa">—</span>
-                        </td>
-                    </tr>
+                    <ng-container *ngFor="let order of ordersTable.data">
+                        <tr>
+                            <td>{{ order.createdAt.toDate() | date:'dd/MM/yyyy, h:mm a' }}</td>
+                            <td><code>{{ order.orderId }}</code></td>
+                            <td>{{ order.total | currency:'USD' }}</td>
+                            <td>
+                                <nz-tag [nzColor]="getStatusTag(order.status)">
+                                    {{ order.status.replace('_', ' ') | titlecase }}
+                                </nz-tag>
+                            </td>
+                            <td>
+                                <a *ngIf="order.shippingDetails?.shippingType === 'client'"
+                                    (click)="toggleExpand(order.id)">
+                                    <nz-tag nzColor="purple">
+                                        Envío a cliente
+                                        <span nz-icon [nzType]="expandedOrderIds.has(order.id) ? 'up' : 'down'"></span>
+                                    </nz-tag>
+                                </a>
+                                <nz-tag *ngIf="order.shippingDetails?.shippingType === 'store'" nzColor="default">
+                                    A tienda
+                                </nz-tag>
+                                <span *ngIf="!order.shippingDetails" style="color:#aaa">—</span>
+                            </td>
+                        </tr>
+                        <tr *ngIf="expandedOrderIds.has(order.id) && order.shippingDetails">
+                            <td colspan="5" style="background:#fafafa">
+                                <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:13px;padding:8px 4px">
+                                    <span><strong>Cliente:</strong> {{ order.shippingDetails.clientName }}</span>
+                                    <span><strong>Cédula:</strong> {{ order.shippingDetails.clientCedula }}</span>
+                                    <span><strong>Teléfono:</strong> {{ order.shippingDetails.clientPhone }}</span>
+                                    <span><strong>Ciudad:</strong> {{ order.shippingDetails.clientCity }}</span>
+                                    <span><strong>Provincia:</strong> {{ order.shippingDetails.clientProvince }}</span>
+                                    <span style="flex-basis:100%"><strong>Dirección:</strong> {{ order.shippingDetails.clientAddress }}</span>
+                                    <span *ngIf="order.shippingDetails.shippingNotes" style="flex-basis:100%">
+                                        <strong>Notas:</strong> {{ order.shippingDetails.shippingNotes }}
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                    </ng-container>
                 </tbody>
             </nz-table>
         </div>

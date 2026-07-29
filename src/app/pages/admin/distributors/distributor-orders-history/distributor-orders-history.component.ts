@@ -12,6 +12,7 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-distributor-orders-history',
@@ -21,7 +22,8 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
     NzTableModule,
     NzSpinModule,
     NzTagModule,
-    NzEmptyModule
+    NzEmptyModule,
+    NzIconModule
   ],
   templateUrl: './distributor-orders-history.component.html',
   styleUrl: './distributor-orders-history.component.css'
@@ -33,6 +35,15 @@ export class DistributorOrdersHistoryComponent implements OnInit, OnChanges {
 
   orders$: Observable<Order[]> = of([]);
   isLoading = false;
+  expandedOrderIds = new Set<string>();
+
+  toggleExpand(orderId: string): void {
+    if (this.expandedOrderIds.has(orderId)) {
+      this.expandedOrderIds.delete(orderId);
+    } else {
+      this.expandedOrderIds.add(orderId);
+    }
+  }
 
   ngOnInit(): void {
     this.loadOrders();
