@@ -97,7 +97,7 @@ const PAYPHONE_CONFIG = {
   styleUrl: './payphone-form.component.css',
 })
 export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
-  readonly pagosSuspendidos = true;
+  readonly pagosSuspendidos = false;
 
   // Estado reactivo (preservado)
   private readonly loadingSubject = new BehaviorSubject<boolean>(true);
