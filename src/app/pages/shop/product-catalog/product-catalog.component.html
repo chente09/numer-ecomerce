@@ -221,13 +221,13 @@
                         </span>
                     </div>
 
-                    <!-- Fallback si no hay variante seleccionada -->
+                    <!-- Fallback si el producto no tiene variantes configuradas -->
                     <div *ngIf="!product.selectedVariant" class="variant-info">
                         <small class="variant-details no-variant">
-                            Selecciona color y talla
+                            Producto no disponible por el momento
                         </small>
                         <span class="stock-badge out-of-stock">
-                            Sin selección
+                            No disponible
                         </span>
                     </div>
 

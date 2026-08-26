@@ -417,7 +417,11 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
       // precios aquí. El ProductService ya hizo todo ese trabajo por nosotros.
 
       // 2. ✅ ASIGNAR Y CONTINUAR: Asignamos los productos listos para usar.
-      this.products = products.map(p => this.initializeProductVariantState(p));
+      // Se excluyen productos sin variantes reales (color/talla/stock) configuradas en el admin,
+      // ya que no pueden comprarse y confunden al cliente con un estado "sin selección".
+      this.products = products
+        .filter(p => p.variants?.length)
+        .map(p => this.initializeProductVariantState(p));
       this.updatePriceRange();
       this.applyFilters();
 
@@ -1225,7 +1229,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
   getAddToCartText(product: ProductWithSelectedVariant): string {
     if (!product.selectedVariant) {
-      return 'Seleccionar variante';
+      return 'No disponible';
     }
 
     if (product.selectedVariant.stock <= 0) {
