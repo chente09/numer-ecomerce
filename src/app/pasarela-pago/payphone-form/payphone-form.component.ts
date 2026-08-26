@@ -223,8 +223,20 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 🔍 OPTIMIZADO: Validación como Observable
   private validateCartAsObservable(): Observable<Cart> {
-    return this.cartService.cart$.pipe(
+    // Esperar a que el carrito termine de cargarse (Firestore/localStorage)
+    // antes de leerlo. Sin esto, una recarga directa en /pago podía tomar el
+    // snapshot inicial vacío del carrito y fallar con "carrito vacío" aunque
+    // el usuario sí tuviera productos.
+    return this.cartService.cartReady$.pipe(
+      filter(ready => ready),
       take(1),
+      // Si por algún error la carga del carrito nunca marca "listo", no dejar
+      // al usuario colgado en el spinner — seguir con el valor que haya en
+      // ese momento (si genuinamente está vacío, la validación de abajo lo
+      // captura igual que antes).
+      timeout({ first: 8000 }),
+      catchError(() => [true]),
+      switchMap(() => this.cartService.cart$.pipe(take(1))),
       switchMap(async (cart) => {
         // Validación de carrito vacío
         if (!cart || cart.items.length === 0) {

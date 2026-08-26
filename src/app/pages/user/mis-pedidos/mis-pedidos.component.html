@@ -28,7 +28,7 @@
                     <tr *ngFor="let order of orders">
                         <td><code>{{ order.orderId }}</code></td>
                         <td>{{ formatDate(order.createdAt) }}</td>
-                        <td>{{ order.items?.length || 0 }} producto(s)</td>
+                        <td>{{ order.items.length || 0 }} producto(s)</td>
                         <td>{{ order.total | currency:'USD' }}</td>
                         <td>
                             <nz-tag [nzColor]="getOrderStatusColor(order.status)">

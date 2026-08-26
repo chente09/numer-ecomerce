@@ -34,6 +34,13 @@ export class CartService implements OnDestroy {
   };
   private cartSubject = new BehaviorSubject<Cart>(this.initialCartState);
   public cart$: Observable<Cart> = this.cartSubject.asObservable();
+  // El carrito inicial es SIEMPRE items:[] hasta que handleUserChange() termine
+  // de cargar el estado real (Firestore o localStorage), que es async. Sin esto,
+  // un código que tome un snapshot de cart$ con take(1) demasiado pronto (ej. al
+  // recargar directo en /pago) ve el carrito vacío y falla con un falso
+  // "carrito vacío" aunque el usuario sí tenga productos.
+  private cartReadySubject = new BehaviorSubject<boolean>(false);
+  public cartReady$: Observable<boolean> = this.cartReadySubject.asObservable();
   private destroy$ = new Subject<void>();
   private appliedCoupon: Promotion | null = null;
 
@@ -74,6 +81,8 @@ export class CartService implements OnDestroy {
       const guestItems = this.getGuestCartItems();
       this.updateCartState(guestItems);
     }
+
+    this.cartReadySubject.next(true);
   }
 
   private async mergeLocalWithFirestore(): Promise<void> {
