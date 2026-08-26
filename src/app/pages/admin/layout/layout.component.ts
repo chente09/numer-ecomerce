@@ -40,19 +40,62 @@ export class LayoutComponent implements OnInit, OnDestroy {
   userRoles: string[] = [];
   private userSubscription: Subscription | null = null;
 
-  adminMenuItems = [
-    { title: 'Dashboard', icon: 'dashboard', path: '/admin/dashboard' },
-    { title: 'Productos', icon: 'shopping', path: '/admin/products' },
-    { title: 'Categorías', icon: 'appstore', path: '/admin/categories' },
-    { title: 'Eventos', icon: 'flag', path: '/admin/eventos' },
-    { title: 'Distribuidores', icon: 'deployment-unit', path: '/admin/distributors' },
-    { title: 'Distribuidores Autorizados', icon: 'shop', path: '/admin/authorized-distributors' },
-    { title: 'Envíos a Distribuidores', icon: 'rocket', path: '/admin/shipments' },
-    { title: 'Gestión de Usuarios', icon: 'team', path: '/admin/user-roles' },
-    { title: 'Sitemap & SEO', icon: 'global', path: '/admin/sitemap' },
-    { title: 'Banners', icon: 'picture', path: '/admin/heroes' },
-    { title: 'Reseñas', icon: 'star', path: '/admin/reviews' },
+  // Agrupado por dominio para el menú lateral (ver sección 01 de la auditoría de admin).
+  // Los títulos de "Distribuidores" y "Distribuidores Autorizados" se renombraron porque
+  // apuntaban a pantallas muy distintas (gestión interna vs. aprobación de solicitudes)
+  // con nombres casi idénticos.
+  adminMenuGroups = [
+    {
+      label: null, // Dashboard queda suelto, es el punto de entrada, no un grupo
+      items: [
+        { title: 'Dashboard', icon: 'dashboard', path: '/admin/dashboard' },
+      ]
+    },
+    {
+      label: 'Catálogo',
+      icon: 'appstore',
+      items: [
+        { title: 'Productos', icon: 'shopping', path: '/admin/products' },
+        { title: 'Categorías', icon: 'tags', path: '/admin/categories' },
+      ]
+    },
+    {
+      label: 'Contenido',
+      icon: 'picture',
+      items: [
+        { title: 'Banners', icon: 'picture', path: '/admin/heroes' },
+        { title: 'Reseñas', icon: 'star', path: '/admin/reviews' },
+        { title: 'Sitemap & SEO', icon: 'global', path: '/admin/sitemap' },
+      ]
+    },
+    {
+      label: 'Eventos',
+      icon: 'flag',
+      items: [
+        { title: 'Eventos', icon: 'flag', path: '/admin/eventos' },
+      ]
+    },
+    {
+      label: 'Clientes y usuarios',
+      icon: 'team',
+      items: [
+        { title: 'Clientes', icon: 'idcard', path: '/admin/clientes' },
+        { title: 'Gestión de Usuarios', icon: 'team', path: '/admin/user-roles' },
+      ]
+    },
+    {
+      label: 'Distribuidores',
+      icon: 'deployment-unit',
+      items: [
+        { title: 'Gestión de Distribuidores', icon: 'deployment-unit', path: '/admin/distributors' },
+        { title: 'Solicitudes de Distribuidor', icon: 'shop', path: '/admin/authorized-distributors' },
+        { title: 'Envíos a Distribuidores', icon: 'rocket', path: '/admin/shipments' },
+      ]
+    },
   ];
+
+  // Lista plana derivada de los grupos: la usan getActiveSectionName() y la asignación de rol.
+  adminMenuItems = this.adminMenuGroups.flatMap(g => g.items);
 
   distributorMenuItems = [
     { title: 'Mi Inventario', icon: 'shop', path: '/admin/distribuidores' },
@@ -60,6 +103,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   ];
 
   visibleMenuItems: any[] = [];
+  visibleMenuGroups: any[] = [];
 
   constructor(
     private usersService: UsersService,
@@ -94,8 +138,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
       
       if (this.userRoles.includes('admin')) {
         this.visibleMenuItems = this.adminMenuItems;
+        this.visibleMenuGroups = this.adminMenuGroups;
       } else if (this.userRoles.includes('distributor')) {
         this.visibleMenuItems = this.distributorMenuItems;
+        this.visibleMenuGroups = [{ label: null, items: this.distributorMenuItems }];
       } else {
         this.message.error('No tienes permisos para acceder a esta sección.');
         this.router.navigate(['/welcome']);
@@ -158,6 +204,10 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   get currentYear(): number {
     return new Date().getFullYear();
+  }
+
+  isGroupActive(group: { items: { path: string }[] }): boolean {
+    return group.items.some(item => this.router.url.includes(item.path));
   }
 
   closeMenu() {

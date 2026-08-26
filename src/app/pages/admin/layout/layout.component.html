@@ -9,11 +9,27 @@
             </a>
         </div>
         <ul nz-menu nzTheme="dark" nzMode="inline" [nzInlineCollapsed]="isCollapsed">
-            <li nz-menu-item *ngFor="let item of visibleMenuItems" [routerLink]="item.path"
-                routerLinkActive="ant-menu-item-selected">
-                <span nz-icon [nzType]="item.icon"></span>
-                <span>{{ item.title }}</span>
-            </li>
+            <ng-container *ngFor="let group of visibleMenuGroups">
+                <!-- Grupo con nombre: submenú desplegable/acordeón -->
+                <li *ngIf="group.label" nz-submenu [nzTitle]="group.label" [nzIcon]="group.icon"
+                    [nzOpen]="isGroupActive(group)">
+                    <ul>
+                        <li nz-menu-item *ngFor="let item of group.items" [routerLink]="item.path"
+                            routerLinkActive="ant-menu-item-selected">
+                            <span nz-icon [nzType]="item.icon"></span>
+                            <span>{{ item.title }}</span>
+                        </li>
+                    </ul>
+                </li>
+                <!-- Grupo sin nombre (ej. menú de distribuidor): ítems sueltos -->
+                <ng-container *ngIf="!group.label">
+                    <li nz-menu-item *ngFor="let item of group.items" [routerLink]="item.path"
+                        routerLinkActive="ant-menu-item-selected">
+                        <span nz-icon [nzType]="item.icon"></span>
+                        <span>{{ item.title }}</span>
+                    </li>
+                </ng-container>
+            </ng-container>
             <!-- Botón para volver al sitio principal -->
             <li nz-menu-item routerLink="/" class="go-to-site">
                 <span nz-icon nzType="global"></span>
