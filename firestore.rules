@@ -81,8 +81,12 @@ service cloud.firestore {
 
     match /orders/{orderId} {
       allow read: if isAdmin()
-        || (request.auth != null && resource.data.distributorId == request.auth.uid);
-      allow write: if false;
+        || (request.auth != null && resource.data.distributorId == request.auth.uid)
+        || (request.auth != null && resource.data.userId == request.auth.uid);
+      // Solo el admin puede actualizar (cambiar estado, agregar tracking).
+      // La creación la hace el backend vía Admin SDK, que ignora estas reglas.
+      allow update: if isAdmin();
+      allow create, delete: if false;
     }
 
     match /preOrders/{preOrderId} {

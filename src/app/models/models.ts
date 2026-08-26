@@ -271,12 +271,27 @@ export interface Cart {
     total: number;
 }
 
+// Forma plana en la que se guardan los ítems de un pedido — tanto los de
+// cliente (confirmacion.js) como los de distribuidor (create-distributor-order.js)
+// usan campos sueltos, no un CartItem completo con product/variant anidados.
+export interface OrderItem {
+    productId: string;
+    variantId: string;
+    productName?: string;
+    variant?: string;      // pedidos de cliente: "Rojo/M"
+    variantName?: string;  // pedidos de distribuidor: "Rojo/M"
+    sku?: string;
+    quantity: number;
+    unitPrice?: number;
+    totalPrice?: number;
+}
+
 export interface Order {
     id: string;
     orderId: string;
     distributorId?: string;
     userId?: string;
-    items: CartItem[];
+    items: OrderItem[];
     total: number;
     status: 'pending_distributor_payment' | 'pending_payment' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'completed';
     paymentMethod: 'distributor_credit' | 'payphone' | string;
@@ -293,6 +308,20 @@ export interface Order {
         clientProvince?: string;
         shippingNotes?: string;
     };
+    // Solo presente en pedidos de cliente (creados vía confirmacion.js tras el pago)
+    subtotal?: number;
+    discountAmount?: number;
+    tax?: number;
+    shipping?: number;
+    transactionId?: string;
+    trackingNumber?: string | null;
+    trackingCarrier?: string | null;
+    trackingUrl?: string | null;
+    statusHistory?: {
+        status: string;
+        date: Timestamp | Date;
+        note?: string;
+    }[];
 }
 
 // =====================================

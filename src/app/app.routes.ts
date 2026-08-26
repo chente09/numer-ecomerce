@@ -16,6 +16,7 @@ import { ReviewFormComponent } from './pages/review-form/review-form.component';
 import { ReviewManagementComponent } from './pages/admin/review-management/review-management.component';
 import { PerfilComponent } from './pages/user/perfil/perfil.component';
 import { CompletarPerfilComponent } from './pages/user/completar-perfil/completar-perfil.component';
+import { MisPedidosComponent } from './pages/user/mis-pedidos/mis-pedidos.component';
 import { ClientesComponent } from './pages/admin/clientes/clientes.component';
 import { UbicacionesComponent } from './pages/ubicaciones/ubicaciones.component';
 import { EmbajadoresAtletasComponent } from './pages/embajadores-atletas/embajadores-atletas.component';
@@ -27,6 +28,8 @@ import { DashboardComponent } from './pages/admin/dashboard/dashboard.component'
 import { MyInventoryComponent } from './pages/admin/distributors/my-inventory/my-inventory.component';
 import { AdminRacesComponent } from './pages/admin/admin-races/admin-races.component';
 import { RacesComponent } from './pages/eventos/races/races.component';
+import { AdminShipmentsComponent } from './pages/admin/shipments/admin-shipments.component';
+import { MyShipmentsComponent } from './pages/admin/distributors/my-shipments/my-shipments.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
@@ -55,6 +58,8 @@ export const routes: Routes = [
     // Rutas protegidas que requieren autenticación pero no perfil completo
     { path: 'perfil', component: PerfilComponent, canActivate: [authGuard] },
     { path: 'completar-perfil', component: CompletarPerfilComponent, canActivate: [authGuard] },
+    { path: 'mis-pedidos', component: MisPedidosComponent, canActivate: [authGuard] },
+    { path: 'mis-pedidos/:id', component: MisPedidosComponent, canActivate: [authGuard] },
 
     {
         path: 'admin',
@@ -73,6 +78,8 @@ export const routes: Routes = [
             { path: 'sitemap', component: SitemapAdminComponent, canActivate: [adminOnlyGuard] },
             { path: 'user-roles', component: UserRolesManagementComponent, canActivate: [adminOnlyGuard] },
             { path: 'distribuidores', component: MyInventoryComponent },
+            { path: 'shipments', component: AdminShipmentsComponent, canActivate: [adminOnlyGuard] },
+            { path: 'mis-envios', component: MyShipmentsComponent },
         ]
     },
 ];

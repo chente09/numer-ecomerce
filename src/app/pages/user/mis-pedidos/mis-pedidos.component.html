@@ -1,0 +1,115 @@
+<div class="mis-pedidos-container">
+    <nz-spin [nzSpinning]="loading">
+
+        <!-- ================= VISTA DE LISTA ================= -->
+        <div *ngIf="!orderId">
+            <div class="page-header">
+                <h1>Mis Pedidos</h1>
+                <p>Historial y estado de tus compras</p>
+            </div>
+
+            <nz-empty *ngIf="!loading && orders.length === 0" nzNotFoundContent="Todavía no tienes pedidos">
+                <a routerLink="/shop" nz-button nzType="primary">Ver Tienda</a>
+            </nz-empty>
+
+            <nz-table *ngIf="orders.length > 0" [nzData]="orders" [nzPageSize]="10" class="orders-table">
+                <thead>
+                    <tr>
+                        <th>Pedido</th>
+                        <th>Fecha</th>
+                        <th>Productos</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Guía de envío</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let order of orders">
+                        <td><code>{{ order.orderId }}</code></td>
+                        <td>{{ formatDate(order.createdAt) }}</td>
+                        <td>{{ order.items?.length || 0 }} producto(s)</td>
+                        <td>{{ order.total | currency:'USD' }}</td>
+                        <td>
+                            <nz-tag [nzColor]="getOrderStatusColor(order.status)">
+                                {{ getOrderStatusLabel(order.status) }}
+                            </nz-tag>
+                        </td>
+                        <td>
+                            <a *ngIf="order.trackingUrl" [href]="order.trackingUrl" target="_blank">
+                                {{ order.trackingNumber }}
+                            </a>
+                            <span *ngIf="!order.trackingUrl && order.trackingNumber">{{ order.trackingNumber }}</span>
+                            <span *ngIf="!order.trackingNumber" style="color:#aaa">—</span>
+                        </td>
+                        <td>
+                            <a [routerLink]="['/mis-pedidos', order.orderId]" nz-button nzType="link" nzSize="small">
+                                Ver detalle
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </nz-table>
+        </div>
+
+        <!-- ================= VISTA DE DETALLE ================= -->
+        <div *ngIf="orderId">
+            <a routerLink="/mis-pedidos" class="back-link">
+                <span nz-icon nzType="arrow-left"></span> Volver a mis pedidos
+            </a>
+
+            <nz-empty *ngIf="!loading && !selectedOrder" nzNotFoundContent="No se encontró este pedido"></nz-empty>
+
+            <div *ngIf="selectedOrder">
+                <div class="page-header">
+                    <h1>Pedido {{ selectedOrder.orderId }}</h1>
+                    <nz-tag [nzColor]="getOrderStatusColor(selectedOrder.status)" style="font-size:14px">
+                        {{ getOrderStatusLabel(selectedOrder.status) }}
+                    </nz-tag>
+                </div>
+
+                <nz-card nzTitle="Seguimiento" style="margin-bottom:16px" *ngIf="selectedOrder.statusHistory?.length">
+                    <nz-timeline>
+                        <nz-timeline-item *ngFor="let step of selectedOrder.statusHistory">
+                            <strong>{{ getOrderStatusLabel(step.status) }}</strong>
+                            <div style="color:#888;font-size:13px">{{ formatDate(step.date) }}</div>
+                            <div *ngIf="step.note">{{ step.note }}</div>
+                        </nz-timeline-item>
+                    </nz-timeline>
+
+                    <div *ngIf="selectedOrder.trackingNumber" class="tracking-box">
+                        <span nz-icon nzType="car"></span>
+                        Guía {{ selectedOrder.trackingCarrier || '' }}: <strong>{{ selectedOrder.trackingNumber }}</strong>
+                        <a *ngIf="selectedOrder.trackingUrl" [href]="selectedOrder.trackingUrl" target="_blank">
+                            Rastrear envío
+                        </a>
+                    </div>
+                </nz-card>
+
+                <nz-card nzTitle="Productos">
+                    <div *ngFor="let item of selectedOrder.items" class="order-item-row">
+                        <span>{{ item.productName || 'Producto' }} <small *ngIf="item.variant">({{ item.variant }})</small></span>
+                        <span>x{{ item.quantity }}</span>
+                        <span>{{ item.totalPrice | currency:'USD' }}</span>
+                    </div>
+                    <nz-divider></nz-divider>
+                    <div class="order-item-row" *ngIf="selectedOrder.subtotal != null">
+                        <span>Subtotal</span><span></span><span>{{ selectedOrder.subtotal | currency:'USD' }}</span>
+                    </div>
+                    <div class="order-item-row" *ngIf="selectedOrder.discountAmount">
+                        <span>Descuento</span><span></span><span>-{{ selectedOrder.discountAmount | currency:'USD' }}</span>
+                    </div>
+                    <div class="order-item-row" *ngIf="selectedOrder.tax != null">
+                        <span>IVA</span><span></span><span>{{ selectedOrder.tax | currency:'USD' }}</span>
+                    </div>
+                    <div class="order-item-row" *ngIf="selectedOrder.shipping != null">
+                        <span>Envío</span><span></span><span>{{ selectedOrder.shipping | currency:'USD' }}</span>
+                    </div>
+                    <div class="order-item-row total-row">
+                        <span>Total</span><span></span><span>{{ selectedOrder.total | currency:'USD' }}</span>
+                    </div>
+                </nz-card>
+            </div>
+        </div>
+    </nz-spin>
+</div>

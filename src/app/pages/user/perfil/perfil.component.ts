@@ -27,6 +27,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 
 import { UsersService } from '../../../services/users/users.service';
+import { OrderService, getOrderStatusLabel, getOrderStatusColor } from '../../../services/order/order.service';
 
 @Component({
   selector: 'app-perfil',
@@ -86,7 +87,8 @@ export class PerfilComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private router: Router,
     private message: NzMessageService,
-    private modal: NzModalService
+    private modal: NzModalService,
+    private orderService: OrderService
   ) {
     // Inicializa formularios vacíos
     this.profileForm = this.fb.group({
@@ -217,32 +219,24 @@ export class PerfilComponent implements OnInit, OnDestroy {
 
   // Cargar pedidos recientes (los últimos 5)
   async loadRecentOrders() {
-    try {
-      this.loadingOrders = true;
-      // Reemplazar esto con tu servicio real de órdenes
-      setTimeout(() => {
-        this.recentOrders = [
-          {
-            id: 'ORD001',
-            date: new Date('2025-05-10'),
-            total: 128.99,
-            status: 'completed',
-            items: 3
-          },
-          {
-            id: 'ORD002',
-            date: new Date('2025-05-15'),
-            total: 76.50,
-            status: 'processing',
-            items: 2
-          }
-        ];
+    if (!this.currentUser) return;
+    this.loadingOrders = true;
+    this.orderService.getOrdersByUser(this.currentUser.uid, 5).subscribe({
+      next: (orders) => {
+        this.recentOrders = orders.map(o => ({
+          id: o.orderId,
+          date: o.createdAt?.toDate ? o.createdAt.toDate() : o.createdAt,
+          total: o.total,
+          status: o.status,
+          items: o.items?.length || 0
+        }));
         this.loadingOrders = false;
-      }, 1000);
-    } catch (error) {
-      console.error('Error al cargar pedidos:', error);
-      this.loadingOrders = false;
-    }
+      },
+      error: (error) => {
+        console.error('Error al cargar pedidos:', error);
+        this.loadingOrders = false;
+      }
+    });
   }
 
   // Cargar direcciones guardadas
@@ -447,6 +441,9 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.message.error('No se pudo actualizar la dirección predeterminada');
     }
   }
+
+  getOrderStatusLabel = getOrderStatusLabel;
+  getOrderStatusColor = getOrderStatusColor;
 
   viewOrderDetails(orderId: string) {
     // Navegar a la página de detalles del pedido

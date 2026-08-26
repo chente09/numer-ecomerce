@@ -355,10 +355,8 @@
                                     <td>{{ order.date | date:'dd/MM/yyyy' }}</td>
                                     <td>${{ order.total | number:'1.2-2' }}</td>
                                     <td>
-                                        <nz-tag
-                                            [nzColor]="order.status === 'completed' ? 'green' : order.status === 'processing' ? 'blue' : 'orange'">
-                                            {{ order.status === 'completed' ? 'Completado' :
-                                            order.status === 'processing' ? 'En Proceso' : 'Pendiente' }}
+                                        <nz-tag [nzColor]="getOrderStatusColor(order.status)">
+                                            {{ getOrderStatusLabel(order.status) }}
                                         </nz-tag>
                                     </td>
                                     <td>

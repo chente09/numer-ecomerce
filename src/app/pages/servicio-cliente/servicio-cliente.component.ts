@@ -14,6 +14,8 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { SeoService } from '../../services/seo/seo.service';
+import { UsersService } from '../../services/users/users.service';
+import { OrderService, getOrderStatusLabel } from '../../services/order/order.service';
 
 interface FAQ {
   question: string;
@@ -108,7 +110,9 @@ export class ServicioClienteComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private message: NzMessageService,
-    private seoService: SeoService
+    private seoService: SeoService,
+    private usersService: UsersService,
+    private orderService: OrderService
   ) {}
 
   ngOnInit(): void {
@@ -175,50 +179,35 @@ export class ServicioClienteComponent implements OnInit {
       return;
     }
 
-    // Aquí se conectaría con tu servicio de seguimiento de pedidos
-    // Por ahora, simularemos datos de un pedido
-    setTimeout(() => {
-      // Simulación de búsqueda
-      if (this.orderNumber.startsWith('ORD-')) {
+    const currentUser = this.usersService.getCurrentUser();
+    if (!currentUser || currentUser.isAnonymous) {
+      this.message.warning('Inicia sesión para rastrear tu pedido — el número de pedido solo no es suficiente para mostrar datos de un cliente.');
+      return;
+    }
+
+    this.orderService.getOrderById(this.orderNumber).subscribe({
+      next: (order) => {
+        if (!order || order.userId !== currentUser.uid) {
+          this.message.error('No se encontró ningún pedido con ese número asociado a tu cuenta. Verifica e intenta nuevamente.');
+          this.orderStatus = null;
+          return;
+        }
+
         this.orderStatus = {
-          orderNumber: this.orderNumber,
-          status: 'En proceso',
-          steps: [
-            {
-              title: 'Pedido recibido',
-              description: 'Hemos recibido tu pedido correctamente.',
-              date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 días atrás
-              completed: true
-            },
-            {
-              title: 'Pago confirmado',
-              description: 'El pago ha sido procesado correctamente.',
-              date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 días atrás
-              completed: true
-            },
-            {
-              title: 'Preparando envío',
-              description: 'Tu pedido está siendo preparado en nuestro almacén.',
-              date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 día atrás
-              completed: true
-            },
-            {
-              title: 'En tránsito',
-              description: 'Tu pedido está en camino.',
-              date: new Date(), // Hoy
-              completed: true
-            },
-            {
-              title: 'Entregado',
-              description: 'Tu pedido ha sido entregado.',
-              completed: false
-            }
-          ]
+          orderNumber: order.orderId,
+          status: getOrderStatusLabel(order.status),
+          steps: (order.statusHistory || []).map(step => ({
+            title: getOrderStatusLabel(step.status),
+            description: step.note || '',
+            date: (step.date as any)?.toDate ? (step.date as any).toDate() : new Date(step.date as any),
+            completed: true
+          }))
         };
-      } else {
+      },
+      error: () => {
         this.message.error('No se encontró ningún pedido con ese número. Verifica e intenta nuevamente.');
         this.orderStatus = null;
       }
-    }, 1000);
+    });
   }
 }
