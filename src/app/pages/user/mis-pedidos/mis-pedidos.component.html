@@ -9,7 +9,7 @@
             </div>
 
             <nz-empty *ngIf="!loading && orders.length === 0" nzNotFoundContent="Todavía no tienes pedidos">
-                <a routerLink="/shop" nz-button nzType="primary">Ver Tienda</a>
+                <a routerLink="/shop" nz-button class="btn-brand">Ver Tienda</a>
             </nz-empty>
 
             <nz-table *ngIf="orders.length > 0" [nzData]="orders" [nzPageSize]="10" class="orders-table">
@@ -43,7 +43,7 @@
                             <span *ngIf="!order.trackingNumber" style="color:#aaa">—</span>
                         </td>
                         <td>
-                            <a [routerLink]="['/mis-pedidos', order.orderId]" nz-button nzType="link" nzSize="small">
+                            <a [routerLink]="['/mis-pedidos', order.orderId]" class="detail-link">
                                 Ver detalle
                             </a>
                         </td>

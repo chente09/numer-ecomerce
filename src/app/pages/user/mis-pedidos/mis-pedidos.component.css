@@ -33,6 +33,41 @@
     align-items: center;
     gap: 6px;
     margin-bottom: 16px;
+    color: #212121;
+}
+
+.back-link:hover {
+    color: #000000;
+}
+
+.detail-link {
+    color: #212121;
+    font-weight: 500;
+    text-decoration: underline;
+}
+
+.detail-link:hover {
+    color: #000000;
+}
+
+.btn-brand {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border-color: #000000 !important;
+}
+
+.btn-brand:hover {
+    background-color: #333333 !important;
+    color: #ffffff !important;
+    border-color: #333333 !important;
+}
+
+::ng-deep .mis-pedidos-container .ant-pagination-item-active {
+    border-color: #000000;
+}
+
+::ng-deep .mis-pedidos-container .ant-pagination-item-active a {
+    color: #000000;
 }
 
 .tracking-box {

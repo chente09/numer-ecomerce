@@ -28,13 +28,13 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 };
 
 const ORDER_STATUS_COLORS: Record<string, string> = {
-  pending_payment: 'orange',
-  processing: 'blue',
-  shipped: 'geekblue',
-  delivered: 'green',
-  cancelled: 'red',
-  completed: 'green',
-  pending_distributor_payment: 'orange'
+  pending_payment: '#f57c00',
+  processing: '#424242',
+  shipped: '#212121',
+  delivered: '#2b7b2b',
+  cancelled: '#d32f2f',
+  completed: '#2b7b2b',
+  pending_distributor_payment: '#f57c00'
 };
 
 export function getOrderStatusLabel(status: string): string {
