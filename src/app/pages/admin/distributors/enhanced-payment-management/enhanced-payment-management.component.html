@@ -1,5 +1,12 @@
 <div class="enhanced-payment-management">
 
+    <p class="epm-help" *ngIf="!isLoading">
+        <span nz-icon nzType="info-circle"></span>
+        <strong>Saldo Pendiente</strong> es lo que el distribuidor te debe hoy. Registrar un pago lo descuenta;
+        registrar una devolución o reversión ajusta la deuda hacia atrás — ambas quedan en el historial y no se
+        pueden deshacer desde acá, así que verificá el monto y el motivo antes de confirmar.
+    </p>
+
     <!-- =============================================== -->
     <!-- 📊 RESUMEN FINANCIERO MEJORADO -->
     <!-- =============================================== -->

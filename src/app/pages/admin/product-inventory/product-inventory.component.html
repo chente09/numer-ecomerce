@@ -11,6 +11,11 @@
                 <h2>Gestión de Inventario</h2>
                 <p>Producto: <strong>{{ product.name }}</strong></p>
                 <p>Stock Total: <strong>{{ product.totalStock || 0 }}</strong></p>
+                <p class="inventory-warning">
+                    <span nz-icon nzType="info-circle"></span>
+                    Los cambios de stock aquí son inmediatos: afectan lo que un cliente puede comprar ahora mismo
+                    en la tienda y quedan registrados en el historial de movimientos.
+                </p>
             </div>
 
             <!-- 🆕 SECCIÓN DE FILTROS -->

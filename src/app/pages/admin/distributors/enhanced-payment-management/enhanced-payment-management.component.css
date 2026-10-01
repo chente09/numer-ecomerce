@@ -361,3 +361,17 @@ tr.paid-row {
     font-size: 14px;
 }
 
+.epm-help {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    background: #f3e9d3;
+    color: #a8791f;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.epm-help span[nz-icon] {
+    margin-right: 4px;
+}
+

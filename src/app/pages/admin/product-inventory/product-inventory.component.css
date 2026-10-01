@@ -34,6 +34,18 @@
     font-size: 0.9rem;
 }
 
+.inventory-warning {
+    margin-top: 10px !important;
+    padding: 9px 12px;
+    background: #f3e9d3;
+    color: #a8791f;
+    border-radius: 6px;
+    font-size: 0.82rem !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* ==================== FILTROS ==================== */
 .filters-card {
     margin-bottom: 12px;

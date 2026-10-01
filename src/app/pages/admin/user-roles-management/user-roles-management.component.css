@@ -18,6 +18,21 @@
     gap: 8px;
 }
 
+.role-help {
+    margin: 0;
+    padding: 10px 12px;
+    background: #f5f5f0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #5b5f58;
+    line-height: 1.6;
+}
+
+.role-help-icon {
+    color: #5f7048;
+    margin-right: 4px;
+}
+
 .user-display-name {
     font-weight: 500;
 }
