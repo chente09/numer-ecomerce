@@ -1,1 +1,61 @@
-<app-review-management></app-review-management>
+<div class="clientes-container">
+    <nz-card nzTitle="Clientes" class="mb-4">
+        <div class="card-actions">
+            <button nz-button nzType="default" (click)="loadCustomers()" [nzLoading]="loading">
+                <span nz-icon nzType="reload"></span>
+                Recargar Clientes
+            </button>
+        </div>
+        <p class="clientes-help">
+            <span nz-icon nzType="info-circle"></span>
+            Personas registradas en la tienda con rol <strong>cliente</strong>. Para dar acceso de distribuidor o
+            admin, usá <em>Gestión de Usuarios</em>.
+        </p>
+    </nz-card>
+
+    <nz-card class="mb-4">
+        <div nz-row [nzGutter]="[16, 16]">
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+                <nz-input-group [nzSuffix]="suffixIconSearch">
+                    <input type="text" nz-input [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()"
+                        placeholder="Buscar por nombre, email o teléfono...">
+                </nz-input-group>
+                <ng-template #suffixIconSearch>
+                    <span nz-icon nzType="search"></span>
+                </ng-template>
+            </div>
+        </div>
+    </nz-card>
+
+    <nz-card>
+        <nz-table #customerTable [nzData]="filteredCustomers" [nzLoading]="loading" [nzShowPagination]="true"
+            [nzPageSize]="10">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Registrado</th>
+                    <th>Último acceso</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let customer of customerTable.data">
+                    <td>
+                        <div class="user-info">
+                            <nz-avatar [nzSrc]="customer.photoURL || 'assets/default-avatar.png'"
+                                nzSize="small"></nz-avatar>
+                            <span class="user-display-name">{{ displayName(customer) }}</span>
+                        </div>
+                    </td>
+                    <td>{{ customer.email || '—' }}</td>
+                    <td>{{ customer.phone || '—' }}</td>
+                    <td>{{ formatDate(customer.createdAt) }}</td>
+                    <td>{{ formatDate(customer.lastLogin) }}</td>
+                </tr>
+            </tbody>
+        </nz-table>
+        <nz-empty *ngIf="!loading && filteredCustomers.length === 0" nzNotFoundContent="No se encontraron clientes">
+        </nz-empty>
+    </nz-card>
+</div>
