@@ -18,9 +18,16 @@
     </ng-template>
 
 
+    <nz-card class="mb-4" *ngIf="colors && colors.length > 0">
+        <nz-input-group [nzSuffix]="searchIcon" style="max-width: 360px">
+            <input type="text" nz-input [(ngModel)]="searchTerm" placeholder="Buscar color por nombre o código..." />
+        </nz-input-group>
+        <ng-template #searchIcon><span nz-icon nzType="search"></span></ng-template>
+    </nz-card>
+
     <!-- Tabla de colores -->
     <div class="table-responsive" *ngIf="colors && colors.length > 0">
-        <nz-table #tabla [nzData]="colors" [nzBordered]="true" [nzShowPagination]="true" [nzPageSize]="10">
+        <nz-table #tabla [nzData]="filteredColors" [nzBordered]="true" [nzShowPagination]="true" [nzPageSize]="10">
             <thead>
                 <tr>
                     <th nzWidth="70px">Muestra</th>

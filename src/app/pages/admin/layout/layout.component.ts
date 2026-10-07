@@ -52,6 +52,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      label: 'Ventas',
+      icon: 'shopping-cart',
+      items: [
+        { title: 'Pedidos', icon: 'file-done', path: '/admin/orders' },
+      ]
+    },
+    {
       label: 'Catálogo',
       icon: 'appstore',
       items: [

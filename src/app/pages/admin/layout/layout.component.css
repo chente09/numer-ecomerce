@@ -10,7 +10,7 @@
     padding-left: 16px;
     overflow: hidden;
     line-height: 64px;
-    background: #001529;
+    background: #0d0d0d;
     transition: all .3s;
     display: flex;
     align-items: center;
@@ -35,14 +35,14 @@
 
 nz-sider {
     height: 100vh;
-    background: #001529;
+    background: #0d0d0d;
 }
 
 .menu-sidebar {
     position: relative;
     z-index: 10;
     min-height: 100vh;
-    box-shadow: 2px 0 6px rgba(0, 21, 41, .35);
+    box-shadow: 2px 0 6px rgba(0, 0, 0, .35);
     position: sticky;
     top: 0;
 }

@@ -17,12 +17,18 @@
         <button nz-button nzType="primary" (click)="openModal()">Crear primera talla</button>
     </ng-template>
 
+    <nz-card class="mb-4" *ngIf="sizes && sizes.length > 0">
+        <nz-input-group [nzSuffix]="searchIcon" style="max-width: 360px">
+            <input type="text" nz-input [(ngModel)]="searchTerm" placeholder="Buscar talla por nombre..." />
+        </nz-input-group>
+        <ng-template #searchIcon><span nz-icon nzType="search"></span></ng-template>
+    </nz-card>
+
     <!-- Tabla de tallas -->
     <div class="table-responsive" *ngIf="sizes && sizes.length > 0">
-        <nz-table #tabla [nzData]="sizes" [nzBordered]="true" [nzShowPagination]="true" [nzPageSize]="10">
+        <nz-table #tabla [nzData]="filteredSizes" [nzBordered]="true" [nzShowPagination]="true" [nzPageSize]="10">
             <thead>
                 <tr>
-                    <th nzWidth="auto">Imagen</th>
                     <th nzWidth="auto">Nombre</th>
                     <th nzWidth="auto" class="hide-sm">Stock</th>
                     <th nzWidth="auto" class="hide-md">Categorías</th>
@@ -33,13 +39,6 @@
             <tbody>
                 <tr *ngFor="let size of tabla.data" [class.highlight-row]="selectedSize?.id === size.id"
                     [class.inactive-row]="!size.active">
-                    <td>
-                        <nz-avatar *ngIf="size.imageUrl" [nzSrc]="size.imageUrl" nzShape="square" nzSize="large"
-                            [nzAlt]="size.name" (error)="handleImageError($event)"></nz-avatar>
-                        <div *ngIf="!size.imageUrl" class="no-image">
-                            <span nz-icon nzType="picture" nzTheme="outline"></span>
-                        </div>
-                    </td>
                     <td>{{ size.name }}</td>
                     <td class="hide-sm">{{ size.stock || 0 }}</td>
                     <td class="hide-md">
@@ -144,27 +143,6 @@
                     </nz-form-control>
                 </nz-form-item>
 
-                <nz-form-item>
-                    <nz-form-label>Imagen (opcional)</nz-form-label>
-                    <nz-form-control>
-                        <div class="upload-container">
-                            <nz-upload [nzFileList]="fileList" [nzBeforeUpload]="beforeUpload"
-                                [nzShowUploadList]="{ showPreviewIcon: true, showRemoveIcon: true }"
-                                [nzPreview]="handlePreview" [nzRemove]="handleRemove" nzListType="picture-card">
-                                <div *ngIf="fileList.length < 1">
-                                    <span nz-icon nzType="plus"></span>
-                                    <div class="ant-upload-text">Subir</div>
-                                </div>
-                            </nz-upload>
-                        </div>
-                        <div *ngIf="imageErrorMessage" class="error-message">
-                            {{ imageErrorMessage }}
-                        </div>
-                        <div class="form-help-text">
-                            Sube una imagen representativa de la talla (opcional)
-                        </div>
-                    </nz-form-control>
-                </nz-form-item>
             </form>
         </ng-container>
     </nz-modal>
@@ -174,9 +152,6 @@
         (nzOnCancel)="detailsModalVisible = false" [nzFooter]="null" [nzWidth]="320" nzCentered>
         <ng-container *nzModalContent>
             <div *ngIf="selectedSize" class="size-details">
-                <div *ngIf="selectedSize.imageUrl" class="detail-image">
-                    <img [src]="selectedSize.imageUrl" [alt]="selectedSize.name" (error)="handleImageError($event)">
-                </div>
                 <div class="detail-content">
                     <h3>{{ selectedSize.name }}</h3>
                     <p *ngIf="selectedSize.description"><strong>Descripción:</strong> {{ selectedSize.description }}</p>

@@ -1,1 +1,133 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* ==========================================================================
+   Admin theme: reemplaza el azul por defecto de Ant Design por la marca (negro).
+   Acotado a .admin-layout para no afectar el sitio público.
+   Nota: modales/dropdowns/mensajes se renderizan en el overlay (fuera de
+   .admin-layout), por eso no quedan cubiertos por este bloque.
+   ========================================================================== */
+.admin-layout {
+  --admin-ink: #111111;
+  --admin-ink-hover: #333333;
+  --admin-ink-soft: #f0f0eb;
+  --admin-ring: rgba(17, 17, 17, 0.12);
+}
+
+/* Botones primarios */
+.admin-layout .ant-btn-primary:not(:disabled) {
+  background: var(--admin-ink);
+  border-color: var(--admin-ink);
+  box-shadow: none;
+}
+.admin-layout .ant-btn-primary:not(:disabled):hover,
+.admin-layout .ant-btn-primary:not(:disabled):focus {
+  background: var(--admin-ink-hover);
+  border-color: var(--admin-ink-hover);
+}
+.admin-layout .ant-btn-default:not(:disabled):hover,
+.admin-layout .ant-btn-default:not(:disabled):focus,
+.admin-layout .ant-btn-dashed:not(:disabled):hover {
+  color: var(--admin-ink);
+  border-color: var(--admin-ink);
+}
+.admin-layout .ant-btn-link:not(:disabled) {
+  color: var(--admin-ink);
+}
+.admin-layout .ant-btn-link:not(:disabled):hover {
+  color: var(--admin-ink-hover);
+}
+
+/* Enlaces dentro del contenido */
+.admin-layout .ant-layout-content a:not(.ant-btn):not(.ant-menu-item):not([class*="ant-pagination"]) {
+  color: var(--admin-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Menú lateral: ítem activo en blanco sobre fondo oscuro */
+.admin-layout .ant-layout-sider,
+.admin-layout .ant-menu-dark,
+.admin-layout .ant-menu-dark .ant-menu-sub {
+  background: #0d0d0d;
+}
+.admin-layout .ant-menu-dark .ant-menu-item-selected,
+.admin-layout .ant-menu-dark .ant-menu-item-selected:hover {
+  background: #ffffff;
+  color: var(--admin-ink);
+}
+.admin-layout .ant-menu-dark .ant-menu-item-selected .anticon,
+.admin-layout .ant-menu-dark .ant-menu-item-selected a {
+  color: var(--admin-ink);
+}
+.admin-layout .ant-menu-dark .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  color: #ffffff;
+}
+
+/* Tags azules -> grafito */
+.admin-layout .ant-tag-blue,
+.admin-layout .ant-tag-geekblue,
+.admin-layout .ant-tag-processing {
+  background: var(--admin-ink-soft);
+  border-color: #d4d4cc;
+  color: var(--admin-ink);
+}
+
+/* Pestañas */
+.admin-layout .ant-tabs-ink-bar {
+  background: var(--admin-ink);
+}
+.admin-layout .ant-tabs-tab:hover,
+.admin-layout .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--admin-ink);
+}
+
+/* Paginación */
+.admin-layout .ant-pagination-item-active {
+  border-color: var(--admin-ink);
+}
+.admin-layout .ant-pagination-item-active a,
+.admin-layout .ant-pagination-item:hover a {
+  color: var(--admin-ink);
+}
+.admin-layout .ant-pagination-item:hover,
+.admin-layout .ant-pagination-prev:hover .ant-pagination-item-link,
+.admin-layout .ant-pagination-next:hover .ant-pagination-item-link {
+  border-color: var(--admin-ink);
+  color: var(--admin-ink);
+}
+
+/* Controles de formulario */
+.admin-layout .ant-input:hover,
+.admin-layout .ant-input:focus,
+.admin-layout .ant-input-focused,
+.admin-layout .ant-input-affix-wrapper:hover,
+.admin-layout .ant-input-affix-wrapper-focused,
+.admin-layout .ant-input-number:hover,
+.admin-layout .ant-input-number-focused,
+.admin-layout .ant-select:not(.ant-select-disabled):hover .ant-select-selector,
+.admin-layout .ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+  border-color: var(--admin-ink);
+  box-shadow: 0 0 0 2px var(--admin-ring);
+}
+.admin-layout .ant-checkbox-checked .ant-checkbox-inner,
+.admin-layout .ant-radio-checked .ant-radio-inner {
+  background-color: var(--admin-ink);
+  border-color: var(--admin-ink);
+}
+.admin-layout .ant-radio-checked .ant-radio-inner::after {
+  background-color: #ffffff;
+}
+.admin-layout .ant-switch-checked {
+  background: var(--admin-ink);
+}
+.admin-layout .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: var(--admin-ink-soft);
+}
+
+/* Indicadores de carga */
+.admin-layout .ant-spin-dot-item {
+  background-color: var(--admin-ink);
+}
+.admin-layout .ant-spin {
+  color: var(--admin-ink);
+}

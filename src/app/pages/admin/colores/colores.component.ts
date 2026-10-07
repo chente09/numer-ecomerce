@@ -51,6 +51,14 @@ import { takeUntil, finalize, take } from 'rxjs/operators';
 export class ColoresComponent implements OnInit, OnDestroy {
   // Variables principales
   colors: Color[] = [];
+  searchTerm = '';
+
+  get filteredColors(): Color[] {
+    const term = this.searchTerm.trim().toLowerCase();
+    return term
+      ? this.colors.filter(c => c.name?.toLowerCase().includes(term) || c.code?.toLowerCase().includes(term))
+      : this.colors;
+  }
   loading = false;
   saving = false;
   modalVisible = false;

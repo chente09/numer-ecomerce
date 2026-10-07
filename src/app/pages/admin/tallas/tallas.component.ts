@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
@@ -33,6 +33,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     NzButtonModule,
     NzModalModule,
     NzTableModule,
@@ -57,6 +58,12 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 export class TallasComponent implements OnInit, OnDestroy {
   // Variables principales
   sizes: Size[] = [];
+  searchTerm = '';
+
+  get filteredSizes(): Size[] {
+    const term = this.searchTerm.trim().toLowerCase();
+    return term ? this.sizes.filter(s => s.name?.toLowerCase().includes(term)) : this.sizes;
+  }
   categories: Category[] = [];
   loading = false;
   categoriesLoading = false;
