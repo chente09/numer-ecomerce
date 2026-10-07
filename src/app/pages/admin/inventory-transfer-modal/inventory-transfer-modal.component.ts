@@ -250,7 +250,7 @@ export class InventoryTransferModalComponent implements OnInit, OnDestroy {
     this.modalRef.close({ success: true });
   }
 
-  // ✅ NUEVO: Método para calcular el costo del distribuidor correctamente
+  // Método para calcular el costo del distribuidor correctamente
   private calculateDistributorCost(): number {
     // 1️⃣ PRIORIDAD: distributorCost específico de la variante
     if (this.selectedVariant!.distributorCost && this.selectedVariant!.distributorCost > 0) {
@@ -267,12 +267,12 @@ export class InventoryTransferModalComponent implements OnInit, OnDestroy {
     return price * (1 - this.DISTRIBUTOR_DISCOUNT_PERCENTAGE);
   }
 
-  // ✅ NUEVO: Método auxiliar para verificar si hay distributorCost directo
+  // Método auxiliar para verificar si hay distributorCost directo
   public getDistributorCostDirect(): number | null {
     return this.selectedVariant!.distributorCost || this.product!.distributorCost || null;
   }
 
-  // ✅ NUEVO: Método para mostrar información de precios en el template
+  // Método para mostrar información de precios en el template
   getCalculatedCostInfo(): string {
     if (!this.selectedVariant) return '';
 

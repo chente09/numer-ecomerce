@@ -587,7 +587,7 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
     ] : [];
 
     // Mostrar galería actual
-    this.existingGalleryUrls = race.galeria || []; // ✅ NUEVO: Guardar URLs existentes
+    this.existingGalleryUrls = race.galeria || []; // Guardar URLs existentes
     this.galleryFileList = race.galeria ? race.galeria.map((url, index) => ({
       uid: `-gallery-${index}`,
       name: `imagen-${index + 1}.webp`,
@@ -597,7 +597,7 @@ export class AdminRacesComponent implements OnInit, OnDestroy {
 
     this.mainImageFile = null;
     this.galleryImageFiles = []; // Nuevas imágenes a agregar
-    this.galleryImagesToDelete = []; // ✅ NUEVO: Resetear lista de eliminación
+    this.galleryImagesToDelete = []; // Resetear lista de eliminación
 
     this.modalVisible = true;
     this.setModalWidth();

@@ -187,7 +187,6 @@ export class LayoutComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ✅ MÉTODO CORREGIDO
   getActiveSectionName(): string {
     const url = this.router.url;
     // Ahora busca en el array correcto, que es 'visibleMenuItems'

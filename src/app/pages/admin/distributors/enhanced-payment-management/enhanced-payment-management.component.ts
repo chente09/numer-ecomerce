@@ -195,7 +195,7 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges, On
   openMarkAsPaidModal(entry: LedgerEntry): void {
     this.selectedEntry = entry;
 
-    // ✅ CORREGIDO: Usar remainingAmount que considera devoluciones automáticas
+    // Usar remainingAmount que considera devoluciones automáticas
     const correctedRemainingAmount = this.getCorrectedRemainingAmount(entry);
 
     this.markPaidForm.reset({
@@ -204,7 +204,7 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges, On
       paidDate: new Date()
     });
 
-    // ✅ CORREGIDO: Configurar validador máximo basado en el monto pendiente correcto
+    // Configurar validador máximo basado en el monto pendiente correcto
     this.markPaidForm.get('paidAmount')?.setValidators([
       Validators.required,
       Validators.min(0.01),
@@ -363,7 +363,7 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges, On
   }
 
   // ===============================================
-  // 🔄 NUEVOS MÉTODOS OPTIMIZADOS PARA DETECCIÓN DE DEVOLUCIONES
+  // 🔄 MÉTODOS OPTIMIZADOS PARA DETECCIÓN DE DEVOLUCIONES
   // ===============================================
 
   /**
@@ -394,14 +394,14 @@ export class EnhancedPaymentManagementComponent implements OnInit, OnChanges, On
     const isCompleteReturn = analysis.isComplete;
     const isPartialReturn = hasReturns && !isCompleteReturn;
 
-    // ✅ NUEVO: Calcular remainingAmount para decidir si mostrar botón de pago
+    // Calcular remainingAmount para decidir si mostrar botón de pago
     const correctedRemainingAmount = this.getCorrectedRemainingAmount(debitEntry);
 
     return {
       hasReturns,
       isCompleteReturn,
       isPartialReturn,
-      // ✅ CORREGIDO: Solo mostrar botón si hay monto pendiente > 0 y no está completamente devuelto o pagado
+      // Solo mostrar botón si hay monto pendiente > 0 y no está completamente devuelto o pagado
       shouldShowPayButton: correctedRemainingAmount > 0 &&
         !isCompleteReturn &&
         debitEntry.paymentStatus !== 'paid',

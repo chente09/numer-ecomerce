@@ -1372,7 +1372,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
           updatedProduct
         });
 
-        // 🆕 NUEVO: BROADCASTING A TODOS LOS COMPONENTES
+        // BROADCASTING A TODOS LOS COMPONENTES
         this.broadcastVariantPromotionRemoved(variant, promotionId!);
 
         this.loading = true;
@@ -1405,7 +1405,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
               updatedProduct: rolledBackProduct
             });
 
-            // 🆕 NUEVO: BROADCASTING DE ROLLBACK (reaplicar promoción)
+            // BROADCASTING DE ROLLBACK (reaplicar promoción)
             const promotion = this.promotions.find(p => p.id === promotionId);
             if (promotion) {
               this.broadcastVariantPromotionApplied(variant, promotion);
@@ -1418,7 +1418,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
     });
   }
 
-  // 🆕 NUEVO: Método para broadcasting cuando se aplica promoción a variante
+  // Método para broadcasting cuando se aplica promoción a variante
   private broadcastVariantPromotionApplied(variant: ProductVariant, promotion: Promotion): void {
     if (!this.product || !variant || !promotion) {
       console.warn('❌ [BROADCAST] Datos insuficientes para broadcast');
@@ -1448,7 +1448,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
 
 
 
-  // 🆕 NUEVO: Método para broadcasting cuando se remueve promoción de variante
+  // Método para broadcasting cuando se remueve promoción de variante
   private broadcastVariantPromotionRemoved(variant: ProductVariant, promotionId: string): void {
     if (!this.product) return;
 

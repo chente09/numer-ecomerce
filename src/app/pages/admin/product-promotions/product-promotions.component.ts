@@ -60,7 +60,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
   loading = false;
   applying = false;
 
-  // 🆕 NUEVO: Nombre del componente para registro
+  // Nombre del componente para registro
   private readonly COMPONENT_NAME = 'ProductPromotionsComponent';
 
   constructor(
@@ -83,13 +83,12 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     }
   }
 
-  // 🆕 NUEVO: ngOnDestroy para cleanup
+  // ngOnDestroy para cleanup
   ngOnDestroy(): void {
     // 🗑️ Desregistrar componente
     this.promotionStateService.unregisterComponent(this.COMPONENT_NAME);
   }
 
-  // ⬅️ AGREGAR ESTE MÉTODO
   loadCategories(): void {
     this.categoryService.getCategories()
       .pipe(
@@ -107,7 +106,6 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
       });
   }
 
-  // ⬅️ AGREGAR ESTE MÉTODO PARA MÚLTIPLES CATEGORÍAS
   getCategoriesNames(): string {
     if (!this.product?.categories || this.product.categories.length === 0) {
       return 'Sin categorías';
@@ -127,7 +125,6 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     return categoryNames.join(', ');
   }
 
-  // ⬅️ MÉTODO ALTERNATIVO SI NECESITAS MÁS CONTROL
   getCategoriesDisplay(): { names: string[], count: number, hasUnknown: boolean } {
     if (!this.product?.categories || this.product.categories.length === 0) {
       return { names: [], count: 0, hasUnknown: false };
@@ -480,7 +477,7 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
                 })
               };
 
-              // 🆕 NUEVO: Broadcasting para múltiples promociones
+              // Broadcasting para múltiples promociones
               affectedPromotionIds.forEach(promotionId => {
                 this.promotionStateService.notifyPromotionDeactivated(
                   promotionId,

@@ -86,7 +86,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
     action: string;
     productId: string;
     requiresReload?: boolean;
-    optimisticUpdate?: Product; // 🚀 NUEVO: Enviar producto actualizado optimísticamente
+    optimisticUpdate?: Product; // Enviar producto actualizado optimísticamente
   }>();
   @Output() formCancelled = new EventEmitter<void>();
 
@@ -820,7 +820,7 @@ export class ProductFormComponent implements OnInit, OnChanges, AfterViewInit, O
       });
     }
 
-    // 🔄 CARGAR IMÁGENES ADICIONALES EXISTENTES - CORREGIDO
+    // 🔄 CARGAR IMÁGENES ADICIONALES EXISTENTES
     this.additionalImages = [];
     this.imagesToDelete = [];
 

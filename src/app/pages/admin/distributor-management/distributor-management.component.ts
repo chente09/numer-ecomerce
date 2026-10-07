@@ -86,7 +86,7 @@ export interface GroupedInventoryProduct {
     NzBadgeModule,
     MovementHistoryComponent,
     DistributorOrdersHistoryComponent,
-    EnhancedPaymentManagementComponent // ✅ NUEVO COMPONENTE
+    EnhancedPaymentManagementComponent
   ],
   templateUrl: './distributor-management.component.html',
   styleUrls: ['./distributor-management.component.css']
@@ -108,7 +108,7 @@ export class DistributorManagementComponent implements OnInit {
   isLoadingLedger = false;
   ledgerEntries: LedgerEntry[] = [];
   ledgerSummary: LedgerSummary | null = null;
-  enhancedLedgerSummary: EnhancedLedgerSummary | null = null; // ✅ NUEVO
+  enhancedLedgerSummary: EnhancedLedgerSummary | null = null;
 
   // Propiedades del modal de pago simple (mantenemos compatibilidad)
   isPaymentModalVisible = false;
@@ -155,7 +155,7 @@ export class DistributorManagementComponent implements OnInit {
     this.inventoryValue = 0;
     this.ledgerEntries = [];
     this.ledgerSummary = null;
-    this.enhancedLedgerSummary = null; // ✅ NUEVO
+    this.enhancedLedgerSummary = null;
     this.hasSearched = !!distributorId;
 
     if (!distributorId) return;

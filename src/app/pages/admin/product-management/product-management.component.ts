@@ -195,7 +195,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🆕 NUEVO: Método para escuchar actualizaciones globales
+  // Método para escuchar actualizaciones globales
   private subscribeToGlobalPromotionUpdates(): void {
     this.promotionStateService.onGlobalUpdate()
       .pipe(
@@ -208,7 +208,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       });
   }
 
-  // 🆕 NUEVO: Manejar actualizaciones globales
+  // Manejar actualizaciones globales
   private handleGlobalPromotionUpdate(globalUpdate: any): void {
     const event = globalUpdate.data;
 
@@ -223,7 +223,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       case 'deactivated':
       case 'removed':
       case 'deleted':
-        // NUEVO: Si es limpieza total (promotionId = 'ALL'), forzar recarga completa
+        // Si es limpieza total (promotionId = 'ALL'), forzar recarga completa
         if (event.promotionId === 'ALL') {
           this.products = [];
           this.cdr.detectChanges();
@@ -242,7 +242,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🆕 NUEVO: Manejar activación de promoción
+  // Manejar activación de promoción
   private handlePromotionActivated(event: any): void {
     if (event.affectedProducts && event.affectedProducts.length > 0) {
       // Actualizar productos específicos
@@ -264,7 +264,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  // 🆕 NUEVO: Manejar desactivación de promoción
+  // Manejar desactivación de promoción
   private handlePromotionDeactivated(event: any): void {
     if (event.affectedProducts && event.affectedProducts.length > 0) {
       // Actualizar productos específicos
@@ -280,7 +280,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🆕 NUEVO: Manejar actualización de promoción
+  // Manejar actualización de promoción
   private handlePromotionUpdated(event: any): void {
     if (event.affectedProducts && event.affectedProducts.length > 0) {
       event.affectedProducts.forEach((productId: string) => {
@@ -294,7 +294,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  // 🆕 NUEVO: Mostrar notificaciones de promociones
+  // Mostrar notificaciones de promociones
   private showPromotionNotification(action: string, affectedCount?: number): void {
     const messages = {
       'activated': affectedCount
@@ -401,7 +401,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  // 🆕 NUEVO: Método para verificar promociones activas
+  // Método para verificar promociones activas
   hasActivePromotions(product: Product): boolean {
     // Verificar descuento directo en el producto
     if (product.discountPercentage && product.discountPercentage > 0) {
@@ -737,7 +737,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       );
     }
 
-    // ✅ FILTRO DE CATEGORÍAS CORREGIDO (igual que el otro componente)
+    // ✅ FILTRO DE CATEGORÍAS (igual que el otro componente)
     if (filter.categories && filter.categories.length > 0) {
 
       filtered = filtered.filter(p => {
@@ -907,7 +907,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
       });
   }
 
-  // 🆕 NUEVO: Método para forzar re-render completo
+  // Método para forzar re-render completo
   forceTableRefresh(): void {
 
     // Crear nueva referencia del array
