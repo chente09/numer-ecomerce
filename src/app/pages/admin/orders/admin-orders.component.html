@@ -1,0 +1,149 @@
+<div class="orders-container">
+    <nz-card nzTitle="Pedidos de clientes" class="mb-4">
+        <p class="orders-help">
+            <span nz-icon nzType="info-circle"></span>
+            Compras hechas en la tienda y pagadas con Payphone. Abre un pedido para ver la dirección de envío,
+            cambiar su estado o registrar la guía de Servientrega; el cliente ve esos cambios en
+            <strong>Mis Pedidos</strong>. Cancelar un pedido no devuelve el stock ni reembolsa el pago: ambos pasos
+            son manuales.
+        </p>
+        <div class="status-summary">
+            <button type="button" class="summary-chip" [class.active]="statusFilter === null"
+                (click)="statusFilter = null">
+                Todos <strong>{{ orders.length }}</strong>
+            </button>
+            <button type="button" class="summary-chip" *ngFor="let s of statusOptions"
+                [class.active]="statusFilter === s" (click)="statusFilter = s">
+                {{ getOrderStatusLabel(s) }} <strong>{{ countByStatus(s) }}</strong>
+            </button>
+        </div>
+    </nz-card>
+
+    <nz-card class="mb-4">
+        <div nz-row [nzGutter]="[16, 16]">
+            <div nz-col [nzXs]="24" [nzSm]="14" [nzMd]="10">
+                <nz-input-group [nzSuffix]="searchIcon">
+                    <input type="text" nz-input [(ngModel)]="searchTerm"
+                        placeholder="Buscar por número, cliente, email o guía..." />
+                </nz-input-group>
+                <ng-template #searchIcon><span nz-icon nzType="search"></span></ng-template>
+            </div>
+        </div>
+    </nz-card>
+
+    <nz-card>
+        <nz-table #ordersTable [nzData]="filteredOrders" [nzLoading]="loading" [nzPageSize]="10"
+            [nzShowPagination]="true">
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Guía</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let order of ordersTable.data" class="order-row" (click)="openOrder(order)">
+                    <td><code>{{ order.orderId }}</code></td>
+                    <td>{{ formatDate(order.createdAt) }}</td>
+                    <td>
+                        <div>{{ order.customerInfo?.name || 'Sin datos' }}</div>
+                        <small class="muted">{{ order.customerInfo?.email || '' }}</small>
+                    </td>
+                    <td>{{ order.total | currency:'USD' }}</td>
+                    <td>
+                        <nz-tag [nzColor]="getOrderStatusColor(order.status)">
+                            {{ getOrderStatusLabel(order.status) }}
+                        </nz-tag>
+                    </td>
+                    <td>{{ order.trackingNumber || '—' }}</td>
+                    <td><a>Gestionar</a></td>
+                </tr>
+            </tbody>
+        </nz-table>
+        <nz-empty *ngIf="!loading && filteredOrders.length === 0"
+            [nzNotFoundContent]="orders.length === 0 ? 'Todavía no hay pedidos' : 'Ningún pedido coincide con el filtro'">
+        </nz-empty>
+    </nz-card>
+</div>
+
+<nz-drawer [nzVisible]="drawerVisible" [nzWidth]="560" nzPlacement="right" nzTitle="Detalle del pedido"
+    (nzOnClose)="closeDrawer()">
+    <ng-container *nzDrawerContent>
+        <ng-container *ngIf="selectedOrder as order">
+            <div class="drawer-head">
+                <code>{{ order.orderId }}</code>
+                <nz-tag [nzColor]="getOrderStatusColor(order.status)">{{ getOrderStatusLabel(order.status) }}</nz-tag>
+            </div>
+            <div class="muted">{{ formatDate(order.createdAt) }}</div>
+
+            <nz-divider nzText="Cliente y envío"></nz-divider>
+            <ng-container *ngIf="order.customerInfo || order.shippingAddress; else noContact">
+                <div class="info-grid">
+                    <span class="label">Nombre</span><span>{{ order.customerInfo?.name || '—' }}</span>
+                    <span class="label">Email</span><span>{{ order.customerInfo?.email || '—' }}</span>
+                    <span class="label">Teléfono</span><span>{{ order.customerInfo?.phone || '—' }}</span>
+                    <span class="label">Documento</span><span>{{ order.customerInfo?.document || '—' }}</span>
+                    <span class="label">Dirección</span>
+                    <span>{{ order.shippingAddress?.formatted || 'El cliente no tenía dirección guardada' }}</span>
+                    <ng-container *ngIf="order.shippingAddress?.reference">
+                        <span class="label">Referencia</span><span>{{ order.shippingAddress?.reference }}</span>
+                    </ng-container>
+                </div>
+            </ng-container>
+            <ng-template #noContact>
+                <p class="muted">
+                    Este pedido es anterior al registro de datos de contacto. Búscalo por su número en la
+                    notificación de Telegram o en la colección <code>preOrders</code>.
+                </p>
+            </ng-template>
+
+            <nz-divider nzText="Productos"></nz-divider>
+            <div class="item-row" *ngFor="let item of order.items">
+                <span>{{ item.productName || 'Producto' }} <small *ngIf="item.variant" class="muted">({{ item.variant }})</small></span>
+                <span>x{{ item.quantity }}</span>
+                <span>{{ item.totalPrice | currency:'USD' }}</span>
+            </div>
+            <div class="item-row sub" *ngIf="order.subtotal != null"><span>Subtotal</span><span></span><span>{{ order.subtotal | currency:'USD' }}</span></div>
+            <div class="item-row sub" *ngIf="order.discountAmount"><span>Descuento</span><span></span><span>-{{ order.discountAmount | currency:'USD' }}</span></div>
+            <div class="item-row sub" *ngIf="order.tax != null"><span>IVA</span><span></span><span>{{ order.tax | currency:'USD' }}</span></div>
+            <div class="item-row sub" *ngIf="order.shipping != null"><span>Envío</span><span></span><span>{{ order.shipping | currency:'USD' }}</span></div>
+            <div class="item-row total"><span>Total</span><span></span><span>{{ order.total | currency:'USD' }}</span></div>
+
+            <nz-divider nzText="Guía de envío"></nz-divider>
+            <div class="form-stack">
+                <input nz-input [(ngModel)]="trackingCarrier" placeholder="Transportadora (ej. Servientrega)" />
+                <input nz-input [(ngModel)]="trackingNumber" placeholder="Número de guía" />
+                <input nz-input [(ngModel)]="trackingUrl" placeholder="URL de rastreo (opcional)" />
+                <button nz-button nzType="primary" [nzLoading]="savingTracking" (click)="saveTracking()">
+                    {{ order.status === 'processing' ? 'Guardar guía y marcar como enviado' : 'Guardar guía' }}
+                </button>
+            </div>
+
+            <nz-divider nzText="Estado del pedido"></nz-divider>
+            <div class="form-stack">
+                <nz-select [(ngModel)]="newStatus" nzPlaceHolder="Nuevo estado">
+                    <nz-option *ngFor="let s of statusOptions" [nzValue]="s" [nzLabel]="getOrderStatusLabel(s)"></nz-option>
+                </nz-select>
+                <input nz-input [(ngModel)]="statusNote" placeholder="Nota para el historial (opcional)" />
+                <button nz-button nzType="primary" [nzLoading]="savingStatus"
+                    [disabled]="!newStatus || newStatus === order.status" (click)="requestStatusChange()">
+                    Actualizar estado
+                </button>
+            </div>
+
+            <nz-divider nzText="Historial"></nz-divider>
+            <nz-timeline *ngIf="order.statusHistory?.length; else noHistory">
+                <nz-timeline-item *ngFor="let step of order.statusHistory">
+                    <strong>{{ getOrderStatusLabel(step.status) }}</strong>
+                    <div class="muted">{{ formatDate(step.date) }}</div>
+                    <div *ngIf="step.note">{{ step.note }}</div>
+                </nz-timeline-item>
+            </nz-timeline>
+            <ng-template #noHistory><p class="muted">Sin historial registrado.</p></ng-template>
+        </ng-container>
+    </ng-container>
+</nz-drawer>

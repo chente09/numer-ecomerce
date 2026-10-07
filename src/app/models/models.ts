@@ -317,6 +317,19 @@ export interface Order {
     trackingNumber?: string | null;
     trackingCarrier?: string | null;
     trackingUrl?: string | null;
+    // Copia del contacto y la dirección al momento de pagar (pedidos anteriores no la tienen)
+    customerInfo?: {
+        name?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        document?: string | null;
+    } | null;
+    shippingAddress?: {
+        formatted: string;
+        recipient?: string | null;
+        phone?: string | null;
+        reference?: string | null;
+    } | null;
     statusHistory?: {
         status: string;
         date: Timestamp | Date;

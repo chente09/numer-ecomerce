@@ -30,6 +30,7 @@ import { AdminRacesComponent } from './pages/admin/admin-races/admin-races.compo
 import { RacesComponent } from './pages/eventos/races/races.component';
 import { AdminShipmentsComponent } from './pages/admin/shipments/admin-shipments.component';
 import { MyShipmentsComponent } from './pages/admin/distributors/my-shipments/my-shipments.component';
+import { AdminOrdersComponent } from './pages/admin/orders/admin-orders.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
@@ -75,6 +76,7 @@ export const routes: Routes = [
             { path: 'heroes', component: HeroesComponent, canActivate: [adminOnlyGuard] },
             { path: 'reviews', component: ReviewManagementComponent, canActivate: [adminOnlyGuard] },
             { path: 'clientes', component: ClientesComponent, canActivate: [adminOnlyGuard] },
+            { path: 'orders', component: AdminOrdersComponent, canActivate: [adminOnlyGuard] },
             { path: 'sitemap', component: SitemapAdminComponent, canActivate: [adminOnlyGuard] },
             { path: 'user-roles', component: UserRolesManagementComponent, canActivate: [adminOnlyGuard] },
             { path: 'distribuidores', component: MyInventoryComponent },
