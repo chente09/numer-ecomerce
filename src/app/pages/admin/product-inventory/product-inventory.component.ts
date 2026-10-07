@@ -28,6 +28,7 @@ import { NzPopoverModule } from 'ng-zorro-antd/popover';
 import { ProductPriceService } from '../../../services/admin/price/product-price.service';
 import { StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
+import { PendingOperationsStore } from '../../../services/admin/shared/pending-operations-store';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
@@ -111,7 +112,7 @@ export class ProductInventoryComponent implements OnInit, OnChanges, OnDestroy {
 
 
   // 🚀 Control de operaciones optimistas
-  private pendingOperations = new Map<string, OptimisticOperation>();
+  private pendingOperations = new PendingOperationsStore<string, OptimisticOperation>();
   private readonly COMPONENT_NAME = 'ProductInventoryComponent';
 
   // ==================== 🆕 NUEVAS PROPIEDADES PARA FILTROS ====================

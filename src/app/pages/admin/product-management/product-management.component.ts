@@ -45,6 +45,7 @@ import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
+import { PendingOperationsStore } from '../../../services/admin/shared/pending-operations-store';
 
 // 🚀 Interfaces para actualización optimista
 interface ProductBackup {
@@ -126,7 +127,7 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   isEditMode = false;
 
   // 🚀 Control de operaciones optimistas
-  private pendingOperations = new Map<string, OptimisticProductOperation>();
+  private pendingOperations = new PendingOperationsStore<string, OptimisticProductOperation>();
   private originalProductsBackup: Product[] = [];
 
   private productPromotionsMap = new Map<string, Promotion[]>();
