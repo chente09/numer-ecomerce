@@ -324,6 +324,15 @@ export interface Order {
         phone?: string | null;
         document?: string | null;
     } | null;
+    // Datos escritos en el formulario de Payphone (pueden ser de otra persona que la cuenta)
+    payer?: {
+        name?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        document?: string | null;
+        cardBrand?: string | null;
+        lastDigits?: string | null;
+    } | null;
     shippingAddress?: {
         formatted: string;
         recipient?: string | null;

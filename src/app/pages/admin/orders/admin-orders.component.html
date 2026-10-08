@@ -87,6 +87,7 @@
                     <span class="label">Email</span><span>{{ order.customerInfo?.email || '—' }}</span>
                     <span class="label">Teléfono</span><span>{{ order.customerInfo?.phone || '—' }}</span>
                     <span class="label">Documento</span><span>{{ order.customerInfo?.document || '—' }}</span>
+                    <span class="label">ID de cuenta</span><span><code>{{ order.userId }}</code></span>
                     <span class="label">Dirección</span>
                     <span>{{ order.shippingAddress?.formatted || 'El cliente no tenía dirección guardada' }}</span>
                     <ng-container *ngIf="order.shippingAddress?.reference">
@@ -100,6 +101,22 @@
                     notificación de Telegram o en la colección <code>preOrders</code>.
                 </p>
             </ng-template>
+
+            <ng-container *ngIf="order.payer">
+                <nz-divider nzText="Datos del pago (Payphone)"></nz-divider>
+                <p class="muted">
+                    Lo que se escribió al pagar. Pueden ser de otra persona distinta a la cuenta que compró;
+                    para el envío usa los datos de "Cliente y envío".
+                </p>
+                <div class="info-grid">
+                    <span class="label">Nombre</span><span>{{ order.payer.name || '—' }}</span>
+                    <span class="label">Email</span><span>{{ order.payer.email || '—' }}</span>
+                    <span class="label">Teléfono</span><span>{{ order.payer.phone || '—' }}</span>
+                    <span class="label">Documento</span><span>{{ order.payer.document || '—' }}</span>
+                    <span class="label">Tarjeta</span>
+                    <span>{{ order.payer.cardBrand || '—' }}<ng-container *ngIf="order.payer.lastDigits"> ···· {{ order.payer.lastDigits }}</ng-container></span>
+                </div>
+            </ng-container>
 
             <nz-divider nzText="Productos"></nz-divider>
             <div class="item-row" *ngFor="let item of order.items">
