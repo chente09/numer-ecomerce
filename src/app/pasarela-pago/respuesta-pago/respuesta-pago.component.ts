@@ -146,7 +146,14 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
       this.checkAndClearCart(res);
     } catch (err: any) {
       console.error('❌ Error en confirmación de pago:', err);
-      if (err.status === 401 || err.status === 403) {
+      // El backend envía un código y un mensaje pensado para el cliente (sin stock, otra cuenta,
+      // pago reversado, etc.). Tiene prioridad sobre el manejo genérico por status HTTP.
+      if (err.error?.code && err.error?.error) {
+        this.error = err.error.error;
+        if (err.error.transactionId) {
+          this.error += ` N.º de transacción: ${err.error.transactionId}.`;
+        }
+      } else if (err.status === 401 || err.status === 403) {
         this.error = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
         this.modalService.error({
           nzTitle: 'Sesión Expirada',

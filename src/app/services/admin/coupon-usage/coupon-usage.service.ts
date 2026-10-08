@@ -109,6 +109,8 @@ export class CouponUsageService {
         if (usageDoc.exists()) {
           // Actualizar registro existente
           const currentData = usageDoc.data() as CouponUsage;
+          // Idempotente: el backend también registra el uso al confirmar el pago; no contar dos veces
+          if ((currentData.orderIds || []).includes(orderId)) return;
           const updatedOrderIds = [...(currentData.orderIds || []), orderId];
           
           transaction.update(usageRef, {

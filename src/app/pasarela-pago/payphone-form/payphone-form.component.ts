@@ -411,6 +411,11 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       catchError(error => {
         console.error('❌ Error en callPayphoneAPI:', error);
 
+        // Sin stock: el backend explica qué producto falta (antes de que el cliente ingrese su tarjeta)
+        if (error?.error?.code === 'OUT_OF_STOCK' && error.error.error) {
+          this.friendlyApiError = error.error.error;
+        }
+
         // Mejorar mensajes de error
         if (error.message.includes('autenticación')) {
           this.modalService.error({
@@ -441,11 +446,15 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private friendlyApiError: string | null = null;
+
   // ✅ PRESERVADO: Manejo de errores de API
   private handleApiError(error: any): void {
     const errorMsg = ErrorUtil.formatError(error, 'PayphoneInit');
     console.error(errorMsg);
-    this.setError('No se pudo conectar con el servicio de pago. Por favor, intenta de nuevo más tarde.');
+    this.setError(this.friendlyApiError
+      || 'No se pudo conectar con el servicio de pago. Por favor, intenta de nuevo más tarde.');
+    this.friendlyApiError = null;
     this.setLoading(false);
   }
 
@@ -568,6 +577,17 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           catchError(error => {
             console.error('Error HTTP en confirmación:', error);
 
+            // Mensaje del backend pensado para el cliente (sin stock, otra cuenta, pago reversado...)
+            if (error.error?.code && error.error?.error) {
+              const friendly: any = new Error(
+                error.error.transactionId
+                  ? `${error.error.error} N.º de transacción: ${error.error.transactionId}.`
+                  : error.error.error
+              );
+              friendly.userMessage = friendly.message;
+              throw friendly;
+            }
+
             // Analizar el tipo de error
             if (error.status === 401) {
               throw new Error('Error de autenticación. Por favor, inicia sesión nuevamente.');
@@ -613,7 +633,9 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
       // Mejorar el mensaje de error basado en el tipo
       let errorMessage = 'Error en confirmación';
-      if (error.message.includes('autenticación') || error.message.includes('Token')) {
+      if (error.userMessage) {
+        errorMessage = error.userMessage;
+      } else if (error.message.includes('autenticación') || error.message.includes('Token')) {
         errorMessage = 'Error de autenticación. Por favor, inicia sesión nuevamente.';
       } else if (error.message.includes('conexión')) {
         errorMessage = 'Error de conexión. Por favor, verifica tu internet e intenta nuevamente.';
