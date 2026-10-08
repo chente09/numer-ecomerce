@@ -1,5 +1,5 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
-import { BehaviorSubject, Observable, from, of, forkJoin, map, catchError, Subject, takeUntil, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, Observable, from, of, forkJoin, map, catchError, Subject, takeUntil, firstValueFrom, filter, take, timeout } from 'rxjs';
 import { Promotion, ProductVariant, Cart, CartItem } from '../../../models/models';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { ProductService } from '../../../services/admin/product/product.service';
@@ -210,7 +210,28 @@ export class CartService implements OnDestroy {
   public clearCart(): void {
     this.appliedCoupon = null;
     sessionStorage.removeItem('appliedCoupon');
-    this.updateAndSync([]);
+
+    if (this.cartReadySubject.value) {
+      this.updateAndSync([]);
+      return;
+    }
+
+    // La carga inicial (Firestore/localStorage) sigue en curso: si se vaciara ahora, esa carga
+    // repondría el carrito viejo y el cliente seguiría viendo los productos ya pagados.
+    this.waitUntilReady().then(() => this.updateAndSync([]));
+  }
+
+  /** Resuelve cuando el carrito terminó su carga inicial (o tras un tiempo máximo para no bloquear). */
+  public waitUntilReady(timeoutMs = 10000): Promise<void> {
+    return firstValueFrom(
+      this.cartReady$.pipe(
+        filter(ready => ready),
+        take(1),
+        timeout({ first: timeoutMs }),
+        catchError(() => of(true)),
+        map(() => undefined)
+      )
+    );
   }
 
   public applyDiscount(code: string, amount: number): boolean {
@@ -354,8 +375,14 @@ export class CartService implements OnDestroy {
       : this.saveGuestCartToStorage(items);
   }
 
+  // Cada actualización pide detalles de productos de forma asíncrona y puede terminar fuera de
+  // orden (la del carrito viejo tarda más que la del vacío). Solo la última solicitud se aplica.
+  private cartUpdateSeq = 0;
+
   private updateCartState(items: CartItem[]): void {
+    const seq = ++this.cartUpdateSeq;
     this.loadItemDetails(items).then(enrichedItems => {
+      if (seq !== this.cartUpdateSeq) return;
       const newCart = this.recalculateCart(enrichedItems);
       this.cartSubject.next(newCart);
     });

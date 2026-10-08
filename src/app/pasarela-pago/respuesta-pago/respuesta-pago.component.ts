@@ -184,6 +184,10 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     if (shouldClearCart) {
       console.log('Pago confirmado, limpiando carrito...');
 
+      // Tras la redirección de Payphone la página se recarga: esperar a que el carrito termine de
+      // cargar antes de leerlo (cupones/compra) y vaciarlo.
+      await this.cartService.waitUntilReady();
+
       // Obtener datos del carrito ANTES de limpiarlo
       const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
       const transactionId = confirmationResponse.transactionId;

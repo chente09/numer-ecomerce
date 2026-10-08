@@ -609,6 +609,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       );
 
       if (shouldClearCart) {
+        await this.cartService.waitUntilReady();
         const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
         const transactionId = response['id'] || response.transactionId || this.transactionId;
 
