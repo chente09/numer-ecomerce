@@ -15,6 +15,8 @@ import { NzDividerModule } from 'ng-zorro-antd/divider';
 
 import { UsersService } from '../../../services/users/users.service';
 import { OrderService, getOrderStatusLabel, getOrderStatusColor } from '../../../services/order/order.service';
+import { ReceiptService } from '../../../services/receipt/receipt.service';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { Order } from '../../../models/models';
 
 @Component({
@@ -51,7 +53,9 @@ export class MisPedidosComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private usersService: UsersService,
-    private orderService: OrderService
+    private orderService: OrderService,
+    private receiptService: ReceiptService,
+    private message: NzMessageService
   ) {}
 
   ngOnInit(): void {
@@ -91,6 +95,21 @@ export class MisPedidosComponent implements OnInit, OnDestroy {
       },
       error: () => { this.loading = false; }
     });
+  }
+
+  downloadingReceipt = false;
+
+  async downloadReceipt(order: Order): Promise<void> {
+    if (this.downloadingReceipt) return;
+    this.downloadingReceipt = true;
+    try {
+      await this.receiptService.download(this.receiptService.fromOrder(order));
+    } catch (error) {
+      console.error('Error generando el comprobante:', error);
+      this.message.error('No se pudo generar el comprobante. Intenta de nuevo.');
+    } finally {
+      this.downloadingReceipt = false;
+    }
   }
 
   formatDate(date: any): string {

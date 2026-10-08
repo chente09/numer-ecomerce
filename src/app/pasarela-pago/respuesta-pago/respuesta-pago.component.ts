@@ -1,3 +1,4 @@
+import { ReceiptService } from '../../services/receipt/receipt.service';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
@@ -75,7 +76,8 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     private message: NzMessageService,
     private activityLogService: ActivityLogService,
     private usersService: UsersService,  // ✅ AGREGAR
-    private modalService: NzModalService
+    private modalService: NzModalService,
+    private receiptService: ReceiptService
   ) { }
 
   ngOnInit(): void {
@@ -243,6 +245,23 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     this.location.back();
   }
 
+  downloadingReceipt = false;
+
+  async downloadReceipt(): Promise<void> {
+    if (this.downloadingReceipt) return;
+    this.downloadingReceipt = true;
+    try {
+      const clientTxId = this.resultado?.clientTransactionId
+        || this.route.snapshot.queryParams['clientTransactionId'] || '';
+      await this.receiptService.downloadForPayment(clientTxId, this.resultado);
+    } catch (error) {
+      console.error('Error generando el comprobante:', error);
+      this.message.error('No se pudo generar el comprobante. Puedes descargarlo después desde Mis Pedidos.');
+    } finally {
+      this.downloadingReceipt = false;
+    }
+  }
+
   printTicket(): void {
     // Crear ventana de impresión
     const printWindow = window.open('', '_blank', 'width=800,height=600');
@@ -267,7 +286,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
   }
 
   private generatePrintContent(): string {
-    const logoBase64 = 'https://i.postimg.cc/7LgKRbyJ/Logo-Numer-negro.png';
+    const logoBase64 = '/img/logo-negro.png';
 
     return `
     <!DOCTYPE html>

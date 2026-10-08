@@ -343,9 +343,9 @@
 
           <!-- Acciones -->
           <div class="ticket-actions">
-            <button nz-button nzSize="large" (click)="printTicket()">
-              <span nz-icon nzType="printer"></span>
-              Imprimir comprobante
+            <button nz-button nzSize="large" [nzLoading]="downloadingReceipt" (click)="downloadReceipt()">
+              <span nz-icon nzType="download"></span>
+              Descargar comprobante
             </button>
 
             <button nz-button nzType="primary" nzSize="large" (click)="goBackToShopping()">

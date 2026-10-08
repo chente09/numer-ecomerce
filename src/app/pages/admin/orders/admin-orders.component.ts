@@ -18,6 +18,7 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { Subject, takeUntil } from 'rxjs';
 import { Order } from '../../../models/models';
 import { OrderService, getOrderStatusColor, getOrderStatusLabel } from '../../../services/order/order.service';
+import { ReceiptService } from '../../../services/receipt/receipt.service';
 
 @Component({
   selector: 'app-admin-orders',
@@ -72,6 +73,7 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
     private orderService: OrderService,
     private message: NzMessageService,
     private modal: NzModalService,
+    private receiptService: ReceiptService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -125,6 +127,15 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
     this.trackingNumber = order.trackingNumber || '';
     this.trackingUrl = order.trackingUrl || '';
     this.drawerVisible = true;
+  }
+
+  async downloadReceipt(order: Order): Promise<void> {
+    try {
+      await this.receiptService.download(this.receiptService.fromOrder(order));
+    } catch (error) {
+      console.error('Error generando el comprobante:', error);
+      this.message.error('No se pudo generar el comprobante');
+    }
   }
 
   closeDrawer(): void {

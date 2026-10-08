@@ -66,6 +66,10 @@
                     <nz-tag [nzColor]="getOrderStatusColor(selectedOrder.status)" style="font-size:14px">
                         {{ getOrderStatusLabel(selectedOrder.status) }}
                     </nz-tag>
+                    <button nz-button class="btn-brand" [nzLoading]="downloadingReceipt"
+                        (click)="downloadReceipt(selectedOrder)">
+                        <span nz-icon nzType="download"></span> Descargar comprobante
+                    </button>
                 </div>
 
                 <nz-card nzTitle="Seguimiento" style="margin-bottom:16px" *ngIf="selectedOrder.statusHistory?.length">

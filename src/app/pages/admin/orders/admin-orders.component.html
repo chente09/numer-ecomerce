@@ -79,6 +79,9 @@
                 <nz-tag [nzColor]="getOrderStatusColor(order.status)">{{ getOrderStatusLabel(order.status) }}</nz-tag>
             </div>
             <div class="muted">{{ formatDate(order.createdAt) }}</div>
+            <button nz-button nzSize="small" style="margin-top:8px" (click)="downloadReceipt(order)">
+                <span nz-icon nzType="download"></span> Descargar comprobante
+            </button>
 
             <nz-divider nzText="Cliente y envío"></nz-divider>
             <ng-container *ngIf="order.customerInfo || order.shippingAddress; else noContact">
@@ -143,8 +146,14 @@
             <nz-divider nzText="Estado del pedido"></nz-divider>
             <div class="form-stack">
                 <nz-select [(ngModel)]="newStatus" nzPlaceHolder="Nuevo estado">
-                    <nz-option *ngFor="let s of statusOptions" [nzValue]="s" [nzLabel]="getOrderStatusLabel(s)"></nz-option>
+                    <nz-option *ngFor="let s of statusOptions" [nzValue]="s"
+                        [nzLabel]="s === 'cancelled' ? 'Cancelado (requiere reembolso)' : getOrderStatusLabel(s)"></nz-option>
                 </nz-select>
+                <p class="muted status-help">
+                    El pago ya se cobró al comprar. El pedido avanza así: <strong>En proceso → Enviado → Entregado</strong>.
+                    <strong>Cancelado</strong> es solo para pedidos que NO se van a enviar (sin stock, el cliente lo pide,
+                    dirección imposible de entregar): después debes devolver el dinero desde Payphone y reponer el stock a mano.
+                </p>
                 <input nz-input [(ngModel)]="statusNote" placeholder="Nota para el historial (opcional)" />
                 <button nz-button nzType="primary" [nzLoading]="savingStatus"
                     [disabled]="!newStatus || newStatus === order.status" (click)="requestStatusChange()">

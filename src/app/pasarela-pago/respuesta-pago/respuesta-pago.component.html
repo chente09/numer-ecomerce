@@ -176,9 +176,15 @@
 
         <!-- Acciones principales -->
         <div class="main-actions">
-          <button nz-button nzSize="large" (click)="printTicket()">
-            <span nz-icon nzType="printer"></span>
-            Imprimir comprobante
+          <button nz-button nzSize="large" [nzLoading]="downloadingReceipt" (click)="downloadReceipt()">
+            <span nz-icon nzType="download"></span>
+            Descargar comprobante
+          </button>
+
+          <button nz-button nzSize="large" [routerLink]="['/mis-pedidos', resultado?.clientTransactionId]"
+            *ngIf="resultado?.clientTransactionId">
+            <span nz-icon nzType="file-search"></span>
+            Ver mi pedido
           </button>
           
           <button nz-button  nzSize="large" [routerLink]="['/shop']" routerLinkActive="router-link-active" >
