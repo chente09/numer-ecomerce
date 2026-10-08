@@ -1,9 +1,10 @@
+import { PayphoneAssetsService } from '../services/payphone-assets.service';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CartService } from '../services/cart/cart.service';
-import { CartItem, Cart } from '../../models/models';
+import { CartItem, Cart, ProductVariant } from '../../models/models';
 import { Subject, takeUntil, firstValueFrom, take, catchError, of, switchMap } from 'rxjs';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -48,6 +49,7 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
 export class CarritoComponent implements OnInit, OnDestroy {
   cart: Cart | null = null;
   loading = true;
+  private cartReady = false;
   updating = false;
   discountCode = '';
   processingCheckout = false;
@@ -60,6 +62,11 @@ export class CarritoComponent implements OnInit, OnDestroy {
   canCheckout = false;
   checkoutMessage = '';
 
+  // Variantes de cada producto del carrito, para cambiar talla/color sin quitar y volver a agregar
+  variantsByProduct: Record<string, ProductVariant[]> = {};
+  private variantsRequested = new Set<string>();
+  private readonly sizeOrder = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+
   // ✅ CORRECCIÓN: Usar Subject para limpiar suscripciones
   private destroy$ = new Subject<void>();
   private categoryNames: Map<string, string> = new Map();
@@ -71,10 +78,13 @@ export class CarritoComponent implements OnInit, OnDestroy {
     private modal: NzModalService,
     private message: NzMessageService,
     private usersService: UsersService,
-    private categoryService: CategoryService
+    private categoryService: CategoryService,
+    private payphoneAssets: PayphoneAssetsService
   ) { }
 
   ngOnInit(): void {
+    // El cliente probablemente irá a pagar: adelantar la descarga del botón de Payphone
+    this.payphoneAssets.ensureLoaded().catch(() => { /* se reintenta en la página de pago */ });
 
     this.loadCategories();
 
@@ -93,13 +103,20 @@ export class CarritoComponent implements OnInit, OnDestroy {
       this.isDistributor = roles.includes('distributor');
     });
 
+    this.cartService.waitUntilReady().then(() => {
+      this.cartReady = true;
+      this.loading = false;
+    });
+
     // ✅ CORRECCIÓN: Usar takeUntil para la suscripción del carrito
     this.cartService.cart$.pipe(
       takeUntil(this.destroy$)
     ).subscribe({
       next: (cart) => {
         this.cart = cart;
-        this.loading = false;
+        // El primer valor del carrito suele ser el vacío inicial: no mostrar "Carrito vacío" antes de tiempo
+        if (this.cartReady) this.loading = false;
+        this.ensureVariantOptions(cart);
       },
       error: (error) => {
         console.error('❌ Error al cargar el carrito:', error);
@@ -107,6 +124,114 @@ export class CarritoComponent implements OnInit, OnDestroy {
         this.loading = false;
       }
     });
+  }
+
+  // ───────── Cambio de talla / color desde el carrito ─────────
+
+  private ensureVariantOptions(cart: Cart, force = false): void {
+    for (const item of cart.items) {
+      if (!force && this.variantsRequested.has(item.productId)) continue;
+      this.variantsRequested.add(item.productId);
+      this.cartService.getProductVariants(item.productId).pipe(
+        take(1),
+        takeUntil(this.destroy$)
+      ).subscribe(variants => {
+        this.variantsByProduct[item.productId] = variants || [];
+      });
+    }
+  }
+
+  private variantsOf(item: CartItem): ProductVariant[] {
+    return this.variantsByProduct[item.productId] || [];
+  }
+
+  colorOptions(item: CartItem): { name: string; code: string; available: boolean; selected: boolean }[] {
+    const seen = new Map<string, { name: string; code: string; available: boolean; selected: boolean }>();
+    for (const v of this.variantsOf(item)) {
+      const entry = seen.get(v.colorName) || {
+        name: v.colorName,
+        code: v.colorCode || '#e0e0e0',
+        available: false,
+        selected: item.variant?.colorName === v.colorName
+      };
+      if ((v.stock ?? 0) > 0) entry.available = true;
+      seen.set(v.colorName, entry);
+    }
+    return [...seen.values()];
+  }
+
+  sizeOptions(item: CartItem): { name: string; stock: number; available: boolean; selected: boolean }[] {
+    const color = item.variant?.colorName;
+    const sizes = this.variantsOf(item)
+      .filter(v => v.colorName === color)
+      .map(v => ({
+        name: v.sizeName,
+        stock: v.stock ?? 0,
+        available: (v.stock ?? 0) > 0,
+        selected: item.variantId === v.id
+      }));
+    const rank = (n: string) => {
+      const i = this.sizeOrder.indexOf((n || '').toUpperCase());
+      return i === -1 ? 100 : i;
+    };
+    return sizes.sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
+  }
+
+  // Selector plegado por defecto: evita tarjetas enormes (hay productos con 12 colores) y saltos al cargar
+  private expandedPickers = new Set<string>();
+
+  isPickerOpen(item: CartItem): boolean {
+    return this.expandedPickers.has(item.variantId);
+  }
+
+  togglePicker(item: CartItem): void {
+    if (this.expandedPickers.has(item.variantId)) this.expandedPickers.delete(item.variantId);
+    else this.expandedPickers.add(item.variantId);
+  }
+
+  hasVariantChoices(item: CartItem): boolean {
+    return this.colorOptions(item).length > 1 || this.sizeOptions(item).length > 1;
+  }
+
+  async selectColor(item: CartItem, colorName: string): Promise<void> {
+    const options = this.variantsOf(item).filter(v => v.colorName === colorName && (v.stock ?? 0) > 0);
+    // Se conserva la talla si existe en el color nuevo; si no, la primera disponible
+    const target = options.find(v => v.sizeName === item.variant?.sizeName) || options[0];
+    if (target) await this.changeVariant(item, target);
+  }
+
+  async selectSize(item: CartItem, sizeName: string): Promise<void> {
+    const target = this.variantsOf(item).find(v =>
+      v.colorName === item.variant?.colorName && v.sizeName === sizeName && (v.stock ?? 0) > 0);
+    if (target) await this.changeVariant(item, target);
+  }
+
+  private async changeVariant(item: CartItem, target: ProductVariant): Promise<void> {
+    if (this.updating || target.id === item.variantId) return;
+    this.updating = true;
+    try {
+      const wasOpen = this.expandedPickers.has(item.variantId);
+      const result = await firstValueFrom(this.cartService.changeItemVariant(item.variantId, target.id));
+      if (result.success) {
+        this.expandedPickers.delete(item.variantId);
+        if (wasOpen) this.expandedPickers.add(target.id);
+        if (result.message) this.message.success(result.message);
+      } else {
+        this.message.warning(result.message);
+      }
+    } finally {
+      this.updating = false;
+      // Stock fresco para las siguientes decisiones
+      if (this.cart) this.ensureVariantOptions(this.cart, true);
+    }
+  }
+
+  quantityHint(item: CartItem): string {
+    const stock = item.variant?.stock;
+    if (stock === undefined || stock === null) return '';
+    if (item.quantity >= stock) return `Máximo disponible (${stock})`;
+    if (stock <= 10) return `Quedan ${stock}`;
+    return '';
   }
 
   ngOnDestroy(): void {
@@ -184,6 +309,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
       const availableStock = item.variant.stock || 0;
       if (quantity > availableStock) {
         this.message.warning(`Solo hay ${availableStock} unidades disponibles`);
+        item.quantity = previousQuantity; // el cuadro de cantidad no debe quedarse mostrando lo que no se aceptó
         return; // No continuar si excede stock
       }
     }

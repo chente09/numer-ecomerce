@@ -1,6 +1,7 @@
+import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { BehaviorSubject, Observable, from, of, forkJoin, map, catchError, Subject, takeUntil, firstValueFrom, filter, take, timeout } from 'rxjs';
-import { Promotion, ProductVariant, Cart, CartItem } from '../../../models/models';
+import { Promotion, Product, ProductVariant, Cart, CartItem } from '../../../models/models';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { UsersService } from '../../../services/users/users.service';
@@ -21,6 +22,7 @@ export class CartService implements OnDestroy {
   private productService = inject(ProductService);
   private usersService = inject(UsersService);
   private promotionService = inject(PromotionService);
+  private inventoryService = inject(ProductInventoryService);
   private couponUsageService = inject(CouponUsageService);
   private message = inject(NzMessageService);
   private http = inject(HttpClient);
@@ -122,40 +124,9 @@ export class CartService implements OnDestroy {
       const newQuantity = (existingItem?.quantity || 0) + quantity;
       if ((variant.stock ?? -1) < newQuantity) throw new Error(`Stock insuficiente. Disponibles: ${variant.stock ?? 0}`);
 
-      // 3. ✅ NUEVA LÓGICA DE PRECIOS Y TÍTULOS: Lee la información que ya existe.
-      let unitPrice = 0;
-      let originalUnitPrice: number | undefined = undefined;
-      let appliedPromotionTitle: string | undefined = undefined;
-      let appliedPromotionId: string | undefined = undefined;
-
-      // Prioridad 1: Usar el precio de la VARIANTE si tiene un descuento específico.
-      if (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice) {
-        unitPrice = variant.discountedPrice;
-        originalUnitPrice = variant.originalPrice;
-        // Obtenemos el nombre de la promoción de la variante
-        if (variant.promotionId) {
-          const promo = await firstValueFrom(this.promotionService.getPromotionById(variant.promotionId));
-          appliedPromotionTitle = promo?.name; // <-- AQUÍ SE OBTIENE EL NOMBRE
-          appliedPromotionId = variant.promotionId;
-        }
-      }
-      // Prioridad 2: Usar el precio del PRODUCTO si tiene un descuento general.
-      else if (product.currentPrice && product.originalPrice && product.currentPrice < product.originalPrice) {
-        unitPrice = product.currentPrice;
-        originalUnitPrice = product.originalPrice;
-        // Obtenemos el nombre de la promoción del producto
-        if (product.promotionId) {
-          const promo = await firstValueFrom(this.promotionService.getPromotionById(product.promotionId));
-          appliedPromotionTitle = promo?.name; // <-- O AQUÍ SE OBTIENE EL NOMBRE
-          appliedPromotionId = product.promotionId;
-        }
-      }
-      // Prioridad 3: Usar el precio base si no hay descuentos.
-      else {
-        unitPrice = variant.price !== undefined ? variant.price : product.price;
-        originalUnitPrice = undefined;
-        appliedPromotionTitle = undefined;
-      }
+      // 3. Precio final y promoción aplicada (misma lógica que usa el cambio de variante del carrito)
+      const { unitPrice, originalUnitPrice, appliedPromotionTitle, appliedPromotionId } =
+        await this.resolveItemPricing(product, variant);
 
       // 4. Construir y guardar el item del carrito con el título correcto
       let newItems: CartItem[];
@@ -192,13 +163,120 @@ export class CartService implements OnDestroy {
     );
   }
 
+  /** Precio unitario y promoción de una variante: variante > producto > precio base. */
+  private async resolveItemPricing(product: Product, variant: ProductVariant): Promise<{
+    unitPrice: number;
+    originalUnitPrice?: number;
+    appliedPromotionTitle?: string;
+    appliedPromotionId?: string;
+  }> {
+    // Prioridad 1: la VARIANTE tiene un descuento específico.
+    if (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice) {
+      let appliedPromotionTitle: string | undefined;
+      let appliedPromotionId: string | undefined;
+      if (variant.promotionId) {
+        const promo = await firstValueFrom(this.promotionService.getPromotionById(variant.promotionId));
+        appliedPromotionTitle = promo?.name;
+        appliedPromotionId = variant.promotionId;
+      }
+      return { unitPrice: variant.discountedPrice, originalUnitPrice: variant.originalPrice, appliedPromotionTitle, appliedPromotionId };
+    }
+    // Prioridad 2: el PRODUCTO tiene un descuento general.
+    if (product.currentPrice && product.originalPrice && product.currentPrice < product.originalPrice) {
+      let appliedPromotionTitle: string | undefined;
+      let appliedPromotionId: string | undefined;
+      if (product.promotionId) {
+        const promo = await firstValueFrom(this.promotionService.getPromotionById(product.promotionId));
+        appliedPromotionTitle = promo?.name;
+        appliedPromotionId = product.promotionId;
+      }
+      return { unitPrice: product.currentPrice, originalUnitPrice: product.originalPrice, appliedPromotionTitle, appliedPromotionId };
+    }
+    // Prioridad 3: precio base.
+    return { unitPrice: variant.price !== undefined ? variant.price : product.price };
+  }
+
+  /** Variantes (color/talla/stock) de un producto, siempre frescas, para elegir en el carrito. */
+  public getProductVariants(productId: string): Observable<ProductVariant[]> {
+    return this.inventoryService.getVariantsByProductId(productId);
+  }
+
+  /**
+   * Cambia la talla/color de una línea del carrito. Verifica el stock de la variante nueva con
+   * datos frescos, recalcula el precio, y si esa variante ya estaba en el carrito suma ambas
+   * líneas sin pasar del stock.
+   */
+  public changeItemVariant(oldVariantId: string, newVariantId: string): Observable<{ success: boolean; message: string }> {
+    const promise = (async () => {
+      if (oldVariantId === newVariantId) return { success: true, message: '' };
+
+      const items = this.getCart().items;
+      const current = items.find(i => i.variantId === oldVariantId);
+      if (!current) return { success: false, message: 'No encontramos ese producto en tu carrito.' };
+
+      const [product, variant] = await Promise.all([
+        firstValueFrom(this.productService.getProductById(current.productId)),
+        firstValueFrom(this.getVariantById(newVariantId))
+      ]);
+      if (!product || !variant || variant.productId !== current.productId) {
+        return { success: false, message: 'Esa combinación ya no está disponible.' };
+      }
+      const stock = variant.stock ?? 0;
+      if (stock <= 0) return { success: false, message: 'Esa combinación está agotada.' };
+
+      const existing = items.find(i => i.variantId === newVariantId);
+      const wanted = current.quantity + (existing?.quantity || 0);
+      const quantity = Math.min(wanted, stock);
+      const pricing = await this.resolveItemPricing(product, variant);
+
+      const replacement: CartItem = {
+        productId: current.productId,
+        variantId: newVariantId,
+        quantity,
+        product,
+        variant,
+        unitPrice: pricing.unitPrice,
+        originalUnitPrice: pricing.originalUnitPrice,
+        appliedPromotionTitle: pricing.appliedPromotionTitle,
+        appliedPromotionId: pricing.appliedPromotionId,
+        totalPrice: pricing.unitPrice * quantity
+      };
+
+      // La línea nueva ocupa el lugar de la vieja; si la variante ya existía, se fusionan en una.
+      const newItems = items
+        .filter(i => i.variantId !== newVariantId || i.variantId === oldVariantId)
+        .map(i => (i.variantId === oldVariantId ? replacement : i));
+      this.updateAndSync(newItems);
+
+      return {
+        success: true,
+        message: quantity < wanted
+          ? `Cambiado. Ajustamos la cantidad a ${quantity}, que es el stock disponible.`
+          : 'Producto actualizado.'
+      };
+    })();
+
+    return from(promise).pipe(
+      catchError(() => of({ success: false, message: 'No se pudo cambiar el producto. Intenta de nuevo.' }))
+    );
+  }
+
   public updateItemQuantity(variantId: string, quantity: number): Observable<boolean> {
     if (quantity <= 0) {
       return this.removeItem(variantId);
     }
-    const newItems = this.getCart().items.map(item => item.variantId === variantId ? { ...item, quantity } : item);
-    this.updateAndSync(newItems);
-    return of(true);
+
+    // Verifica el stock con datos frescos: el que muestra la pantalla pudo haber cambiado desde que cargó.
+    const promise = (async () => {
+      const variant = await firstValueFrom(this.getVariantById(variantId));
+      if (variant && (variant.stock ?? 0) < quantity) return false;
+
+      const newItems = this.getCart().items.map(item => item.variantId === variantId ? { ...item, quantity } : item);
+      this.updateAndSync(newItems);
+      return true;
+    })();
+
+    return from(promise).pipe(catchError(() => of(false)));
   }
 
   public removeItem(variantId: string): Observable<boolean> {

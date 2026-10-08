@@ -288,8 +288,8 @@
 }
 
 .qty-btn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border: none;
     background: #f0f0f0;
     display: flex;
@@ -314,7 +314,7 @@
 
 .qty-input {
     width: 60px;
-    height: 40px;
+    height: 44px;
     border: none;
     background: #ffffff;
     text-align: center;
@@ -1002,4 +1002,174 @@
         font-size: 9px;
         padding: 2px 4px;
     }
+}
+
+/* ───────── Cantidad: pista de stock ───────── */
+.qty-hint {
+    font-size: 11px;
+    color: #8a5a00;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+.qty-btn:focus-visible,
+.qty-input:focus-visible {
+    outline: 2px solid #000000;
+    outline-offset: 2px;
+}
+
+/* ───────── Selector de color y talla ───────── */
+.variant-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 0 4px;
+}
+
+.picker-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.picker-label {
+    width: 44px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666666;
+}
+
+.picker-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.swatch,
+.size-chip {
+    position: relative;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid #d4d4d4;
+    background: #ffffff;
+    color: #000000;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.size-chip {
+    padding: 0 14px;
+}
+
+.swatch-dot {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--swatch, #e0e0e0);
+    border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.swatch:hover:not(:disabled):not(.selected),
+.size-chip:hover:not(:disabled):not(.selected) {
+    border-color: #000000;
+}
+
+/* Seleccionado: borde grueso + marca, no depende solo del color */
+.swatch.selected {
+    border: 2px solid #000000;
+}
+
+.swatch.selected::after {
+    content: '✓';
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #000000;
+    color: #ffffff;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+}
+
+.size-chip.selected {
+    background: #000000;
+    border-color: #000000;
+    color: #ffffff;
+}
+
+/* Agotado: atenuado y tachado */
+.swatch.unavailable,
+.size-chip.unavailable {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.swatch.unavailable::before,
+.size-chip.unavailable::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top right, transparent calc(50% - 1px), #666666 50%, transparent calc(50% + 1px));
+    pointer-events: none;
+}
+
+.swatch:focus-visible,
+.size-chip:focus-visible {
+    outline: 2px solid #000000;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .swatch,
+    .size-chip,
+    .qty-btn {
+        transition: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .variant-picker {
+        grid-column: 1 / -1;
+    }
+
+    .qty-hint {
+        text-align: center;
+    }
+}
+
+
+.picker-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    margin-top: 8px;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #000000;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.picker-toggle:focus-visible {
+    outline: 2px solid #000000;
+    outline-offset: 2px;
 }

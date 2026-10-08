@@ -70,6 +70,44 @@
               </div>
             </div>
 
+            <!-- Cambiar color / talla sin quitar el producto -->
+            <button type="button" class="picker-toggle" *ngIf="hasVariantChoices(item)"
+              [attr.aria-expanded]="isPickerOpen(item)" (click)="togglePicker(item)">
+              {{ isPickerOpen(item) ? 'Ocultar opciones' : 'Cambiar color o talla' }}
+              <span nz-icon [nzType]="isPickerOpen(item) ? 'up' : 'down'" nzTheme="outline"></span>
+            </button>
+            <div class="variant-picker" *ngIf="hasVariantChoices(item) && isPickerOpen(item)">
+              <div class="picker-row" *ngIf="colorOptions(item).length > 1">
+                <span class="picker-label" [id]="'color-' + item.variantId">Color</span>
+                <div class="picker-options" role="radiogroup" [attr.aria-labelledby]="'color-' + item.variantId">
+                  <button type="button" *ngFor="let c of colorOptions(item)" class="swatch"
+                    [class.selected]="c.selected" [class.unavailable]="!c.available"
+                    [style.--swatch]="c.code" role="radio" [attr.aria-checked]="c.selected"
+                    [attr.aria-label]="c.name + (c.available ? '' : ' (agotado)')"
+                    [title]="c.name + (c.available ? '' : ' · agotado')"
+                    [disabled]="updating || (!c.available && !c.selected)"
+                    (click)="selectColor(item, c.name)">
+                    <span class="swatch-dot"></span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="picker-row" *ngIf="sizeOptions(item).length > 1">
+                <span class="picker-label" [id]="'size-' + item.variantId">Talla</span>
+                <div class="picker-options" role="radiogroup" [attr.aria-labelledby]="'size-' + item.variantId">
+                  <button type="button" *ngFor="let s of sizeOptions(item)" class="size-chip"
+                    [class.selected]="s.selected" [class.unavailable]="!s.available"
+                    role="radio" [attr.aria-checked]="s.selected"
+                    [attr.aria-label]="'Talla ' + s.name + (s.available ? '' : ' (agotada)')"
+                    [title]="s.available ? 'Talla ' + s.name : 'Talla ' + s.name + ' · agotada'"
+                    [disabled]="updating || (!s.available && !s.selected)"
+                    (click)="selectSize(item, s.name)">
+                    {{ s.name }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="price-section">
               <!-- ✅ Badge de promoción (si aplica) -->
               <div *ngIf="hasItemDiscount(item)" class="promotion-badge-container">
@@ -108,13 +146,14 @@
               <span class="quantity-label">Cantidad</span>
               <div class="quantity-controls">
                 <button class="qty-btn" [disabled]="updating || item.quantity <= 1"
-                  (click)="updateQuantity(item, item.quantity - 1)">−</button>
+                  (click)="updateQuantity(item, item.quantity - 1)" aria-label="Disminuir cantidad">−</button>
                 <input type="number" [(ngModel)]="item.quantity" [disabled]="updating"
                   (change)="updateQuantity(item, item.quantity)" min="1" [max]="item.variant?.stock || 10"
                   class="qty-input">
                 <button class="qty-btn" [disabled]="updating || item.quantity >= (item.variant?.stock || 0)"
-                  (click)="updateQuantity(item, item.quantity + 1)">+</button>
+                  (click)="updateQuantity(item, item.quantity + 1)" aria-label="Aumentar cantidad">+</button>
               </div>
+              <span class="qty-hint" *ngIf="quantityHint(item)" aria-live="polite">{{ quantityHint(item) }}</span>
             </div>
 
             <div class="remove-section">
