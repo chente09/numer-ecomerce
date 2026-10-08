@@ -63,7 +63,7 @@
             <nz-form-item>
                 <nz-form-label nzRequired>Provincia</nz-form-label>
                 <nz-form-control nzErrorTip="Selecciona una provincia.">
-                    <nz-select formControlName="clientProvince" nzPlaceHolder="Selecciona una provincia">
+                    <nz-select formControlName="clientProvince" nzPlaceHolder="Selecciona una provincia" nzShowSearch>
                         <nz-option *ngFor="let p of provincias" [nzValue]="p" [nzLabel]="p"></nz-option>
                     </nz-select>
                 </nz-form-control>

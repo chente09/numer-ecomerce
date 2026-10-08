@@ -52,7 +52,7 @@
                 <tr *ngFor="let user of userTable.data">
                     <td>
                         <div class="user-info">
-                            <nz-avatar [nzSrc]="user.photoURL || 'assets/default-avatar.png'"
+                            <nz-avatar [nzSrc]="user.photoURL || undefined" nzIcon="user"
                                 nzSize="small"></nz-avatar>
                             <span class="user-display-name">{{ user.displayName || user.firstName + ' ' + user.lastName
                                 || 'N/A' }}</span>

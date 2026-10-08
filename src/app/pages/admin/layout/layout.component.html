@@ -55,7 +55,7 @@
 
                 <div class="header-actions">
                     <div class="header-user" *ngIf="!loading; else loadingTpl">
-                        <nz-avatar [nzSrc]="currentUser?.photoURL || 'assets/default-avatar.png'" [nzSize]="32">
+                        <nz-avatar [nzSrc]="currentUser?.photoURL || undefined" nzIcon="user" [nzSize]="32">
                         </nz-avatar>
                         <span class="username">{{ userProfile?.firstName || currentUser?.displayName || 'Admin'
                             }}</span>

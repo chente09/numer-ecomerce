@@ -31,7 +31,7 @@
         <nz-card>
             <div class="profile-header">
                 <div class="avatar-section">
-                    <nz-avatar [nzSize]="80" [nzSrc]="currentUser.photoURL || 'assets/default-avatar.png'"></nz-avatar>
+                    <nz-avatar [nzSize]="80" [nzSrc]="currentUser.photoURL || undefined" nzIcon="user"></nz-avatar>
                 </div>
                 <div class="user-info">
                     <h2 *ngIf="!editMode">

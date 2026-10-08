@@ -12,8 +12,6 @@
     background-repeat: no-repeat;
     background-attachment: scroll;
     -webkit-background-size: cover;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
 
     /* Transición suave para cambios */
     transition: background-image 0.6s ease-in-out, background-color 0.3s ease;
@@ -484,15 +482,6 @@
     .hero-section.is-gif .hero-subtitle,
     .hero-section.is-gif .view-all-btn {
         animation: none !important;
-    }
-}
-
-/* 🔍 Optimización para pantallas de alta densidad */
-@media (-webkit-min-device-pixel-ratio: 2),
-(min-resolution: 192dpi) {
-    .hero-section {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
     }
 }
 

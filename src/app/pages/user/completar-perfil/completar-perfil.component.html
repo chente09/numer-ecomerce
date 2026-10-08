@@ -137,6 +137,11 @@
                     Dirección de Envío
                 </h3>
 
+                <nz-alert nzType="warning" nzShowIcon class="address-alert"
+                    nzMessage="Revisa que tu dirección sea exacta"
+                    nzDescription="Enviamos tu pedido tal como lo escribas aquí. Si la dirección o la referencia son incorrectas o están incompletas, el envío puede retrasarse o no llegar, y la tienda no se hace responsable por pedidos entregados en una dirección errónea.">
+                </nz-alert>
+
                 <nz-form-item>
                     <nz-form-label nzRequired>Dirección Completa</nz-form-label>
                     <nz-form-control nzErrorTip="Ingresa tu dirección completa (mínimo 10 caracteres)">
@@ -161,7 +166,7 @@
                         <nz-form-item>
                             <nz-form-label nzRequired>Provincia</nz-form-label>
                             <nz-form-control nzErrorTip="Selecciona tu provincia">
-                                <nz-select formControlName="province" nzPlaceHolder="Selecciona una provincia">
+                                <nz-select formControlName="province" nzPlaceHolder="Selecciona una provincia" nzShowSearch>
                                     <nz-option *ngFor="let p of provincias" [nzValue]="p" [nzLabel]="p"></nz-option>
                                     <nz-option nzValue="otro" nzLabel="Otro (fuera de Ecuador)"></nz-option>
                                 </nz-select>
