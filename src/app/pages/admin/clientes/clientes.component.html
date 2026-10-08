@@ -8,54 +8,100 @@
         </div>
         <p class="clientes-help">
             <span nz-icon nzType="info-circle"></span>
-            Personas registradas en la tienda con rol <strong>cliente</strong>. Para dar acceso de distribuidor o
-            admin, usá <em>Gestión de Usuarios</em>.
+            Tu base de clientes: quién compra, quién cumple años pronto y quién recibe el newsletter. Úsala para
+            decidir a quién escribirle o ofrecerle una promoción. Los permisos (admin, distribuidor) se cambian en
+            <em>Gestión de Usuarios</em>.
         </p>
     </nz-card>
 
+    <div nz-row [nzGutter]="[16, 16]" class="mb-4">
+        <div nz-col [nzXs]="12" [nzMd]="6">
+            <nz-card class="stat-card"><nz-statistic nzTitle="Clientes" [nzValue]="totalCustomers"></nz-statistic></nz-card>
+        </div>
+        <div nz-col [nzXs]="12" [nzMd]="6">
+            <nz-card class="stat-card"><nz-statistic nzTitle="Con compras" [nzValue]="buyersCount"></nz-statistic></nz-card>
+        </div>
+        <div nz-col [nzXs]="12" [nzMd]="6">
+            <nz-card class="stat-card"><nz-statistic nzTitle="Suscritos al newsletter" [nzValue]="subscribedCount"></nz-statistic></nz-card>
+        </div>
+        <div nz-col [nzXs]="12" [nzMd]="6">
+            <nz-card class="stat-card">
+                <nz-statistic [nzTitle]="'Cumpleaños en ' + birthdayWindow + ' días'" [nzValue]="upcomingBirthdays"></nz-statistic>
+            </nz-card>
+        </div>
+    </div>
+
     <nz-card class="mb-4">
         <div nz-row [nzGutter]="[16, 16]">
-            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="10">
                 <nz-input-group [nzSuffix]="suffixIconSearch">
-                    <input type="text" nz-input [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()"
+                    <input type="text" nz-input [(ngModel)]="searchTerm"
                         placeholder="Buscar por nombre, email o teléfono...">
                 </nz-input-group>
                 <ng-template #suffixIconSearch>
                     <span nz-icon nzType="search"></span>
                 </ng-template>
             </div>
+            <div nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+                <nz-select [(ngModel)]="quickFilter" style="width: 100%">
+                    <nz-option nzValue="all" nzLabel="Todos los clientes"></nz-option>
+                    <nz-option nzValue="birthday" [nzLabel]="'Cumpleaños en ' + birthdayWindow + ' días'"></nz-option>
+                    <nz-option nzValue="subscribed" nzLabel="Suscritos al newsletter"></nz-option>
+                    <nz-option nzValue="buyers" nzLabel="Con compras"></nz-option>
+                    <nz-option nzValue="noPurchase" nzLabel="Sin compras todavía"></nz-option>
+                </nz-select>
+            </div>
         </div>
     </nz-card>
 
     <nz-card>
-        <nz-table #customerTable [nzData]="filteredCustomers" [nzLoading]="loading" [nzShowPagination]="true"
-            [nzPageSize]="10">
+        <nz-table #customerTable [nzData]="filteredRows" [nzLoading]="loading" [nzShowPagination]="true"
+            [nzPageSize]="10" [nzScroll]="{ x: '900px' }">
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Email</th>
-                    <th>Teléfono</th>
-                    <th>Registrado</th>
-                    <th>Último acceso</th>
+                    <th [nzSortFn]="sortByBirthday">Cumpleaños</th>
+                    <th>Newsletter</th>
+                    <th>Perfil</th>
+                    <th [nzSortFn]="sortByOrders">Pedidos</th>
+                    <th [nzSortFn]="sortBySpent">Gastado</th>
+                    <th>Último pedido</th>
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let customer of customerTable.data">
+                <tr *ngFor="let row of customerTable.data">
                     <td>
                         <div class="user-info">
-                            <nz-avatar [nzSrc]="customer.photoURL || 'assets/default-avatar.png'"
+                            <nz-avatar [nzSrc]="row.user.photoURL || undefined" nzIcon="user"
                                 nzSize="small"></nz-avatar>
-                            <span class="user-display-name">{{ displayName(customer) }}</span>
+                            <div>
+                                <div class="user-display-name">{{ row.name }}</div>
+                                <small class="muted">{{ row.email || '—' }}<ng-container *ngIf="row.phone"> · {{ row.phone }}</ng-container></small>
+                            </div>
                         </div>
                     </td>
-                    <td>{{ customer.email || '—' }}</td>
-                    <td>{{ customer.phone || '—' }}</td>
-                    <td>{{ formatDate(customer.createdAt) }}</td>
-                    <td>{{ formatDate(customer.lastLogin) }}</td>
+                    <td>
+                        <div>{{ birthdayLabel(row) }}</div>
+                        <nz-tag *ngIf="birthdayCountdown(row)" class="birthday-tag">{{ birthdayCountdown(row) }}</nz-tag>
+                    </td>
+                    <td>
+                        <nz-tag *ngIf="row.subscribed" nzColor="#2b7b2b">Suscrito</nz-tag>
+                        <span *ngIf="!row.subscribed" class="muted">No</span>
+                    </td>
+                    <td>
+                        <nz-tag *ngIf="row.profileCompleted" nzColor="#2b7b2b">Completo</nz-tag>
+                        <nz-tag *ngIf="!row.profileCompleted"
+                            nz-tooltip nzTooltipTitle="Le faltan datos como fecha de nacimiento, documento o dirección">
+                            Incompleto
+                        </nz-tag>
+                    </td>
+                    <td>{{ row.ordersCount }}</td>
+                    <td>{{ row.totalSpent | currency:'USD' }}</td>
+                    <td>{{ formatDate(row.lastOrderAt) }}</td>
                 </tr>
             </tbody>
         </nz-table>
-        <nz-empty *ngIf="!loading && filteredCustomers.length === 0" nzNotFoundContent="No se encontraron clientes">
+        <nz-empty *ngIf="!loading && filteredRows.length === 0" nzNotFoundContent="No se encontraron clientes">
         </nz-empty>
     </nz-card>
 </div>

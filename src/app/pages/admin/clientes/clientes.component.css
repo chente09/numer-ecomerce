@@ -32,3 +32,19 @@
     color: #5f7048;
     margin-right: 4px;
 }
+
+.muted {
+    color: #8b8f85;
+    font-size: 12.5px;
+}
+
+.stat-card {
+    height: 100%;
+}
+
+.birthday-tag {
+    margin-top: 4px;
+    background: #f3e9d3;
+    border-color: #e6d4a8;
+    color: #a8791f;
+}

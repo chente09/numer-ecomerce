@@ -611,6 +611,18 @@ export class UsersService {
     }
   }
 
+  /** Admin: emails (en minúsculas) con suscripción activa al newsletter */
+  async getActiveNewsletterEmails(): Promise<Set<string>> {
+    const subscriptionsRef = collection(this.firestore, 'newsletter_subscriptions');
+    const snapshot = await getDocs(query(subscriptionsRef, where('isActive', '==', true)));
+    const emails = new Set<string>();
+    snapshot.docs.forEach(d => {
+      const email = d.data()['email'];
+      if (typeof email === 'string') emails.add(email.toLowerCase().trim());
+    });
+    return emails;
+  }
+
   async unsubscribeFromNewsletter(email: string): Promise<void> {
     try {
       const subscriptionsRef = collection(this.firestore, 'newsletter_subscriptions');
