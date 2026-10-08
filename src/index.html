@@ -58,7 +58,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="preconnect" href="https://cdn.payphonetodoesposible.com">
   <link rel="preconnect" href="https://www.googletagmanager.com">
   <link rel="preconnect" href="https://www.google-analytics.com">
   <link rel="dns-prefetch" href="https://firebase.googleapis.com">
@@ -76,7 +75,7 @@
         "url": "https://numer.store/",
         "logo": {
           "@type": "ImageObject",
-          "url": "https://i.postimg.cc/rF259NHm/Logo-Numer-blanco.png",
+          "url": "https://numer.store/img/logo-hex-blanco.png",
           "width": 240,
           "height": 240
         },
@@ -126,7 +125,7 @@
         "@type": "LocalBusiness",
         "@id": "https://numer.store/#localbusiness",
         "name": "NUMER",
-        "image": "https://i.postimg.cc/rF259NHm/Logo-Numer-blanco.png",
+        "image": "https://numer.store/img/logo-hex-blanco.png",
         "description": "Tienda de ropa técnica para deportes outdoor en Ecuador. Especialistas en pantalones Extraligero trail y chompas impermeables AGUACERO",
         "address": {
           "@type": "PostalAddress",
@@ -270,8 +269,9 @@
   </script>
 
   <!-- ==================== EXTERNAL STYLESHEETS ==================== -->
-  <link rel="stylesheet" href="https://cdn.payphonetodoesposible.com/box/v1.1/payphone-payment-box.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <!-- Iconos: no bloquean el primer pintado -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"></noscript>
 
   <!-- ==================== PWA OPTIMIZATION ==================== -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -317,8 +317,6 @@
   </app-root>
 
   <!-- External Scripts -->
-  <script type="module" src="https://cdn.payphonetodoesposible.com/box/v1.1/payphone-payment-box.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 

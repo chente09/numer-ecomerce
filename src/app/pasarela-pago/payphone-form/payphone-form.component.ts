@@ -1,3 +1,5 @@
+import { PayphoneAssetsService } from '../services/payphone-assets.service';
+import { ReceiptService } from '../../services/receipt/receipt.service';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -124,13 +126,18 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
     private http: HttpClient,
     private modalService: NzModalService,
     private usersService: UsersService,
-    private activityLogService: ActivityLogService
+    private activityLogService: ActivityLogService,
+    private receiptService: ReceiptService,
+    private payphoneAssets: PayphoneAssetsService
   ) {
     this.cartSummary$ = this.cartService.cart$;
   }
 
 
   ngOnInit(): void {
+    // Empezar ya a bajar el botón de Payphone (en paralelo a la pre-orden); se espera antes de dibujarlo
+    this.payphoneAssets.ensureLoaded().catch(() => { /* se reporta al dibujar el botón */ });
+
     // ✅ Verificar si hay un pago pendiente al cargar
     this.route.queryParams.pipe(take(1)).subscribe(params => {
       if (params['id'] && params['clientTransactionId']) {
@@ -460,6 +467,12 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ✅ PRESERVADO: Renderizado del botón (sin cambios)
   private renderPayphoneButton(data: any): void {
+    this.payphoneAssets.ensureLoaded()
+      .then(() => this.startPayphoneRender(data))
+      .catch(() => this.setError('No se pudo cargar el botón de pago. Verifica tu conexión e intenta recargar la página.'));
+  }
+
+  private startPayphoneRender(data: any): void {
     console.log('🎨 Renderizando botón de Payphone...');
 
     let retries = 0;
@@ -678,8 +691,20 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
     return s === 'Canceled' || s === 'Cancelled';
   }
 
-  printTicket(): void {
-    window.print();
+  downloadingReceipt = false;
+
+  async downloadReceipt(): Promise<void> {
+    if (this.downloadingReceipt) return;
+    const result: any = this.paymentResultSubject.value;
+    this.downloadingReceipt = true;
+    try {
+      await this.receiptService.downloadForPayment(result?.clientTransactionId || this.transactionId, result);
+    } catch (error) {
+      console.error('Error generando el comprobante:', error);
+      this.setError('No se pudo generar el comprobante. Puedes descargarlo después desde Mis Pedidos.');
+    } finally {
+      this.downloadingReceipt = false;
+    }
   }
 
   // ✅ NUEVO: Volver a comprar

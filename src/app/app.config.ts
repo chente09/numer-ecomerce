@@ -1,5 +1,6 @@
 import { ApplicationConfig, provideZoneChangeDetection, importProvidersFrom } from '@angular/core';
-import { provideRouter, withInMemoryScrolling } from '@angular/router';
+import { provideRouter, withInMemoryScrolling, withPreloading } from '@angular/router';
+import { SelectivePreloadStrategy } from './core/selective-preload.strategy';
 
 import { routes } from './app.routes';
 import { icons } from './icons-provider';
@@ -35,7 +36,8 @@ export const appConfig: ApplicationConfig = {
       withInMemoryScrolling({
         scrollPositionRestoration: 'top',
         anchorScrolling: 'enabled'
-      })
+      }),
+      withPreloading(SelectivePreloadStrategy)
     ),
     provideNzIcons(icons), 
     provideNzI18n(es_ES), 

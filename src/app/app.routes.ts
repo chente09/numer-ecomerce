@@ -1,87 +1,55 @@
 import { Routes } from '@angular/router';
-import { PayphoneFormComponent } from './pasarela-pago/payphone-form/payphone-form.component';
-import { CarritoComponent } from './pasarela-pago/carrito/carrito.component';
-import { RespuestaPagoComponent } from './pasarela-pago/respuesta-pago/respuesta-pago.component';
-import { NosotrosComponent } from './pages/nosotros/nosotros.component';
-import { DetalleProductoComponent } from './pages/shop/detalle-producto-component/detalle-producto-component.component';
-import { ProductCatalogComponent } from './pages/shop/product-catalog/product-catalog.component';
 import { WelcomeComponent } from './pages/welcome/welcome.component';
-import { LayoutComponent } from './pages/admin/layout/layout.component';
-import { ProductManagementComponent } from './pages/admin/product-management/product-management.component';
-import { CategoriasComponent } from './pages/admin/categorias/categorias.component';
-import { ServicioClienteComponent } from './pages/servicio-cliente/servicio-cliente.component';
-import { CuidadoProductoComponent } from './pages/cuidado-producto/cuidado-producto.component';
-import { HeroesComponent } from './pages/admin/heroes/heroes.component';
-import { ReviewFormComponent } from './pages/review-form/review-form.component';
-import { ReviewManagementComponent } from './pages/admin/review-management/review-management.component';
-import { PerfilComponent } from './pages/user/perfil/perfil.component';
-import { CompletarPerfilComponent } from './pages/user/completar-perfil/completar-perfil.component';
-import { MisPedidosComponent } from './pages/user/mis-pedidos/mis-pedidos.component';
-import { ClientesComponent } from './pages/admin/clientes/clientes.component';
-import { UbicacionesComponent } from './pages/ubicaciones/ubicaciones.component';
-import { EmbajadoresAtletasComponent } from './pages/embajadores-atletas/embajadores-atletas.component';
-import { SitemapAdminComponent } from './pages/admin/sitemap-admin/sitemap-admin.component';
-import { UserRolesManagementComponent } from './pages/admin/user-roles-management/user-roles-management.component';
-import { DistributorManagementComponent } from './pages/admin/distributor-management/distributor-management.component';
-import { DistribuidoresComponent } from './pages/admin/distribuidores/distribuidores.component';
-import { DashboardComponent } from './pages/admin/dashboard/dashboard.component';
-import { MyInventoryComponent } from './pages/admin/distributors/my-inventory/my-inventory.component';
-import { AdminRacesComponent } from './pages/admin/admin-races/admin-races.component';
-import { RacesComponent } from './pages/eventos/races/races.component';
-import { AdminShipmentsComponent } from './pages/admin/shipments/admin-shipments.component';
-import { MyShipmentsComponent } from './pages/admin/distributors/my-shipments/my-shipments.component';
-import { AdminOrdersComponent } from './pages/admin/orders/admin-orders.component';
 
 import { authGuard } from './guards/auth-guard.guard';
 import { profileCompletionGuard } from './guards/profile-completion.guard';
 import { adminGuardGuard } from './guards/admin-guard.guard';
 import { adminOnlyGuard } from './guards/admin-only.guard';
-import { RaceDetailComponent } from './pages/eventos/race-detail/race-detail.component';
 
 
 export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: '/welcome' },
     { path: 'welcome', component: WelcomeComponent },
-    { path: 'servicio-cliente', component: ServicioClienteComponent },
-    { path: 'carrito', component: CarritoComponent },
-    { path: 'pago', component: PayphoneFormComponent, canActivate: [authGuard, profileCompletionGuard] },
-    { path: 'respuesta-pago', component: RespuestaPagoComponent, canActivate: [authGuard] },
-    { path: 'nosotros', component: NosotrosComponent, pathMatch: 'full' },
-    { path: 'products/:id', component: DetalleProductoComponent },
-    { path: 'shop', component: ProductCatalogComponent },
-    { path: 'cuidado-producto', component: CuidadoProductoComponent },
-    { path: 'review-form', component: ReviewFormComponent },
-    { path: 'ubicaciones', component: UbicacionesComponent },
-    { path: 'embajadores', component: EmbajadoresAtletasComponent },
-    { path: 'eventos', component: RacesComponent },
-    { path: 'eventos/:slug', component: RaceDetailComponent,title: 'Detalle del Evento - NUMER' },
+    { path: 'servicio-cliente', loadComponent: () => import('./pages/servicio-cliente/servicio-cliente.component').then(m => m.ServicioClienteComponent) },
+    { path: 'carrito', loadComponent: () => import('./pasarela-pago/carrito/carrito.component').then(m => m.CarritoComponent), data: { preload: true } },
+    { path: 'pago', loadComponent: () => import('./pasarela-pago/payphone-form/payphone-form.component').then(m => m.PayphoneFormComponent), canActivate: [authGuard, profileCompletionGuard] },
+    { path: 'respuesta-pago', loadComponent: () => import('./pasarela-pago/respuesta-pago/respuesta-pago.component').then(m => m.RespuestaPagoComponent), canActivate: [authGuard] },
+    { path: 'nosotros', loadComponent: () => import('./pages/nosotros/nosotros.component').then(m => m.NosotrosComponent), pathMatch: 'full' },
+    { path: 'products/:id', loadComponent: () => import('./pages/shop/detalle-producto-component/detalle-producto-component.component').then(m => m.DetalleProductoComponent), data: { preload: true } },
+    { path: 'shop', loadComponent: () => import('./pages/shop/product-catalog/product-catalog.component').then(m => m.ProductCatalogComponent), data: { preload: true } },
+    { path: 'cuidado-producto', loadComponent: () => import('./pages/cuidado-producto/cuidado-producto.component').then(m => m.CuidadoProductoComponent) },
+    { path: 'review-form', loadComponent: () => import('./pages/review-form/review-form.component').then(m => m.ReviewFormComponent) },
+    { path: 'ubicaciones', loadComponent: () => import('./pages/ubicaciones/ubicaciones.component').then(m => m.UbicacionesComponent) },
+    { path: 'embajadores', loadComponent: () => import('./pages/embajadores-atletas/embajadores-atletas.component').then(m => m.EmbajadoresAtletasComponent) },
+    { path: 'eventos', loadComponent: () => import('./pages/eventos/races/races.component').then(m => m.RacesComponent) },
+    { path: 'eventos/:slug', loadComponent: () => import('./pages/eventos/race-detail/race-detail.component').then(m => m.RaceDetailComponent),title: 'Detalle del Evento - NUMER' },
 
     // Rutas protegidas que requieren autenticación pero no perfil completo
-    { path: 'perfil', component: PerfilComponent, canActivate: [authGuard] },
-    { path: 'completar-perfil', component: CompletarPerfilComponent, canActivate: [authGuard] },
-    { path: 'mis-pedidos', component: MisPedidosComponent, canActivate: [authGuard] },
-    { path: 'mis-pedidos/:id', component: MisPedidosComponent, canActivate: [authGuard] },
+    { path: 'perfil', loadComponent: () => import('./pages/user/perfil/perfil.component').then(m => m.PerfilComponent), canActivate: [authGuard] },
+    { path: 'completar-perfil', loadComponent: () => import('./pages/user/completar-perfil/completar-perfil.component').then(m => m.CompletarPerfilComponent), canActivate: [authGuard] },
+    { path: 'mis-pedidos', loadComponent: () => import('./pages/user/mis-pedidos/mis-pedidos.component').then(m => m.MisPedidosComponent), canActivate: [authGuard] },
+    { path: 'mis-pedidos/:id', loadComponent: () => import('./pages/user/mis-pedidos/mis-pedidos.component').then(m => m.MisPedidosComponent), canActivate: [authGuard] },
 
     {
         path: 'admin',
-        component: LayoutComponent,
+        loadComponent: () => import('./pages/admin/layout/layout.component').then(m => m.LayoutComponent),
         canActivate: [adminGuardGuard],
         children: [
-            { path: '', component: DashboardComponent }, 
-            { path: 'products', component: ProductManagementComponent, canActivate: [adminOnlyGuard] },
-            { path: 'categories', component: CategoriasComponent, canActivate: [adminOnlyGuard] },
-            { path: 'eventos', component: AdminRacesComponent, canActivate: [adminOnlyGuard] },
-            { path: 'distributors', component: DistributorManagementComponent, canActivate: [adminOnlyGuard] },
-            { path: 'authorized-distributors', component: DistribuidoresComponent, canActivate: [adminOnlyGuard] },
-            { path: 'heroes', component: HeroesComponent, canActivate: [adminOnlyGuard] },
-            { path: 'reviews', component: ReviewManagementComponent, canActivate: [adminOnlyGuard] },
-            { path: 'clientes', component: ClientesComponent, canActivate: [adminOnlyGuard] },
-            { path: 'orders', component: AdminOrdersComponent, canActivate: [adminOnlyGuard] },
-            { path: 'sitemap', component: SitemapAdminComponent, canActivate: [adminOnlyGuard] },
-            { path: 'user-roles', component: UserRolesManagementComponent, canActivate: [adminOnlyGuard] },
-            { path: 'distribuidores', component: MyInventoryComponent },
-            { path: 'shipments', component: AdminShipmentsComponent, canActivate: [adminOnlyGuard] },
-            { path: 'mis-envios', component: MyShipmentsComponent },
+            { path: '', loadComponent: () => import('./pages/admin/dashboard/dashboard.component').then(m => m.DashboardComponent) }, 
+            { path: 'products', loadComponent: () => import('./pages/admin/product-management/product-management.component').then(m => m.ProductManagementComponent), canActivate: [adminOnlyGuard] },
+            { path: 'categories', loadComponent: () => import('./pages/admin/categorias/categorias.component').then(m => m.CategoriasComponent), canActivate: [adminOnlyGuard] },
+            { path: 'eventos', loadComponent: () => import('./pages/admin/admin-races/admin-races.component').then(m => m.AdminRacesComponent), canActivate: [adminOnlyGuard] },
+            { path: 'distributors', loadComponent: () => import('./pages/admin/distributor-management/distributor-management.component').then(m => m.DistributorManagementComponent), canActivate: [adminOnlyGuard] },
+            { path: 'authorized-distributors', loadComponent: () => import('./pages/admin/distribuidores/distribuidores.component').then(m => m.DistribuidoresComponent), canActivate: [adminOnlyGuard] },
+            { path: 'heroes', loadComponent: () => import('./pages/admin/heroes/heroes.component').then(m => m.HeroesComponent), canActivate: [adminOnlyGuard] },
+            { path: 'reviews', loadComponent: () => import('./pages/admin/review-management/review-management.component').then(m => m.ReviewManagementComponent), canActivate: [adminOnlyGuard] },
+            { path: 'clientes', loadComponent: () => import('./pages/admin/clientes/clientes.component').then(m => m.ClientesComponent), canActivate: [adminOnlyGuard] },
+            { path: 'orders', loadComponent: () => import('./pages/admin/orders/admin-orders.component').then(m => m.AdminOrdersComponent), canActivate: [adminOnlyGuard] },
+            { path: 'sitemap', loadComponent: () => import('./pages/admin/sitemap-admin/sitemap-admin.component').then(m => m.SitemapAdminComponent), canActivate: [adminOnlyGuard] },
+            { path: 'user-roles', loadComponent: () => import('./pages/admin/user-roles-management/user-roles-management.component').then(m => m.UserRolesManagementComponent), canActivate: [adminOnlyGuard] },
+            { path: 'distribuidores', loadComponent: () => import('./pages/admin/distributors/my-inventory/my-inventory.component').then(m => m.MyInventoryComponent) },
+            { path: 'shipments', loadComponent: () => import('./pages/admin/shipments/admin-shipments.component').then(m => m.AdminShipmentsComponent), canActivate: [adminOnlyGuard] },
+            { path: 'mis-envios', loadComponent: () => import('./pages/admin/distributors/my-shipments/my-shipments.component').then(m => m.MyShipmentsComponent) },
         ]
     },
 ];

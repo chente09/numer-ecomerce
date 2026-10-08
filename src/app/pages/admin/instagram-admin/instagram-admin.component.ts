@@ -101,7 +101,7 @@ export class InstagramAdminComponent implements OnInit, OnDestroy {
     this.postForm = this.fb.group({
       caption: ['', [Validators.required, Validators.maxLength(2200)]],
       username: ['numer.ec', [Validators.required]],
-      userAvatar: ['https://i.postimg.cc/7LgKRbyJ/Logo-Numer-negro.png'],
+      userAvatar: ['/img/logo-negro.png'],
       hashtags: [''],
       isActive: [true],
       priority: [999, [Validators.min(1)]]
@@ -210,7 +210,7 @@ export class InstagramAdminComponent implements OnInit, OnDestroy {
     this.modalVisible = true;
     this.postForm.reset({
       username: 'numer.ec',
-      userAvatar: 'https://i.postimg.cc/7LgKRbyJ/Logo-Numer-negro.png',
+      userAvatar: '/img/logo-negro.png',
       isActive: true,
       priority: 999
     });
