@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import {
-  Firestore, collection, collectionData, doc, getDoc, where, query, deleteDoc, getDocs,
+  Firestore, collection, collectionData, doc, getDoc, where, query, deleteDoc, getDocs, getDocsFromServer,
   writeBatch, Timestamp,
   increment,
   updateDoc, FieldValue // Importar FieldValue
@@ -60,11 +60,8 @@ export class ProductService {
    */
   getProducts(): Observable<Product[]> {
     return this.cacheService.getCached<Product[]>(this.productsCacheKey, () => {
-      const productsRef = collection(this.firestore, this.productsCollection);
-      return collectionData(productsRef, { idField: 'id' }).pipe(
-        take(1), // ✅ CRÍTICO: Forzar completar
-        map(data => data as Product[]),
-        switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+      return from(this.fetchAllProductsFromServer()).pipe(
+        switchMap(products => this.enrichProductsStrict(products)),
         catchError(error => {
           console.error('❌ ProductService: Error en getProducts:', error);
           return ErrorUtil.handleError(error, 'getProducts');
@@ -99,10 +96,8 @@ export class ProductService {
    * siempre muestre la información de promociones correctamente.
    */
   getProductsNoCache(): Observable<Product[]> {
-    const productsRef = collection(this.firestore, this.productsCollection);
-    return from(getDocs(productsRef)).pipe(
-      map(querySnapshot => querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product))),
-      switchMap(products => this.enrichProductsWithRealTimeStock(products)),
+    return from(this.fetchAllProductsFromServer()).pipe(
+      switchMap(products => this.enrichProductsStrict(products)),
       // ✅ PASO CLAVE Y CONSISTENTE: Siempre calcular precios antes de devolver.
       switchMap(enrichedProducts => this.priceService.calculateDiscountedPrices(enrichedProducts)),
       catchError(error => {
@@ -298,6 +293,65 @@ export class ProductService {
   /**
    * 🚀 CORREGIDO: Enriquece múltiples productos con stock calculado en tiempo real (OPTIMIZADO)
    */
+
+  // ───────── Carga estricta del catálogo ─────────
+  // Si el servidor no responde, el SDK de Firestore puede devolver SOLO lo que ya leyó en esa sesión
+  // (por ejemplo los productos del carrito) sin avisar. Para la tienda eso se vería como un catálogo
+  // casi vacío. Aquí se lee siempre del servidor, se reintenta una vez, y si no hay respuesta se
+  // devuelve un error en vez de una lista incompleta.
+
+  private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 900): Promise<T> {
+    let lastError: unknown;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        if (i < attempts - 1) await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+    throw lastError;
+  }
+
+  private fetchAllProductsFromServer(): Promise<Product[]> {
+    return this.withRetry(async () => {
+      const snapshot = await getDocsFromServer(collection(this.firestore, this.productsCollection));
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+    });
+  }
+
+  /** Todas las variantes con consultas "in" de a 30 productos (en vez de una consulta por producto). */
+  private fetchVariantsFromServer(productIds: string[]): Promise<ProductVariant[]> {
+    const ids = productIds.filter(id => !!id && id.trim().length > 0);
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+
+    return this.withRetry(async () => {
+      const results = await Promise.all(chunks.map(async chunk => {
+        const q = query(collection(this.firestore, 'productVariants'), where('productId', 'in', chunk));
+        const snapshot = await getDocsFromServer(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ProductVariant));
+      }));
+      return results.flat();
+    });
+  }
+
+  private enrichProductsStrict(products: Product[]): Observable<Product[]> {
+    if (!products || products.length === 0) return of([]);
+
+    return from(this.fetchVariantsFromServer(products.map(p => p.id))).pipe(
+      map(allVariants => {
+        const variantsByProduct = new Map<string, ProductVariant[]>();
+        allVariants.forEach(variant => {
+          const list = variantsByProduct.get(variant.productId) || [];
+          list.push(variant);
+          variantsByProduct.set(variant.productId, list);
+        });
+        return products.map(product =>
+          this.enrichProductWithVariants(product, variantsByProduct.get(product.id) || []));
+      })
+    );
+  }
 
   private enrichProductsWithRealTimeStock(products: Product[]): Observable<Product[]> {
     if (!products || products.length === 0) {
