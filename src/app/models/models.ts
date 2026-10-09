@@ -333,6 +333,12 @@ export interface Order {
         cardBrand?: string | null;
         lastDigits?: string | null;
     } | null;
+    // Datos del cobro (código de autorización, referencia, moneda) para el comprobante
+    payment?: {
+        authorizationCode?: string | null;
+        reference?: string | null;
+        currency?: string | null;
+    } | null;
     shippingAddress?: {
         formatted: string;
         recipient?: string | null;
