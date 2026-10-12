@@ -92,3 +92,85 @@
     font-weight: 600;
     font-size: 16px;
 }
+
+.order-item-row > span:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Order cards: mobile only */
+.orders-cards {
+    display: none;
+}
+
+.order-card {
+    display: block;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid #e5e6df;
+    border-radius: 10px;
+    background: #fff;
+    color: #111;
+}
+
+.order-card-top,
+.order-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.order-card-top code {
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.order-card-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 8px 0;
+    font-size: 13px;
+    color: #888;
+}
+
+.order-card-bottom strong {
+    font-size: 16px;
+}
+
+.order-card-tracking {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #5b5f58;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+    .orders-cards {
+        display: block;
+    }
+
+    .orders-table {
+        display: none;
+    }
+
+    .mis-pedidos-container {
+        padding: 16px 12px;
+    }
+
+    .page-header h1 {
+        font-size: 19px;
+        overflow-wrap: anywhere;
+    }
+
+    .page-header .btn-brand {
+        width: 100%;
+    }
+
+    .order-item-row {
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+        font-size: 14px;
+    }
+}

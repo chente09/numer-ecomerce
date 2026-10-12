@@ -78,6 +78,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
   savingAddress = false;
 
   private userSubscription: Subscription | null = null;
+  private ordersSubscription: Subscription | null = null;
 
   // Referencia al template del modal
   @ViewChild('addressModalTemplate') addressModalTemplate!: TemplateRef<any>;
@@ -221,7 +222,10 @@ export class PerfilComponent implements OnInit, OnDestroy {
   async loadRecentOrders() {
     if (!this.currentUser) return;
     this.loadingOrders = true;
-    this.orderService.getOrdersByUser(this.currentUser.uid, 5).subscribe({
+    // Close the previous listener: after a sign-in the old uid loses permission
+    // and its error would otherwise overwrite the fresh list with an empty one
+    this.ordersSubscription?.unsubscribe();
+    this.ordersSubscription = this.orderService.getOrdersByUser(this.currentUser.uid, 5).subscribe({
       next: (orders) => {
         this.recentOrders = orders.map(o => ({
           id: o.orderId,
@@ -451,6 +455,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.ordersSubscription?.unsubscribe();
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }

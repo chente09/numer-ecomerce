@@ -543,6 +543,16 @@ button.ant-btn-primary:hover {
   border-radius: 4px;
 }
 
+/* Orders table: never push the page wider than the screen */
+:host ::ng-deep .orders-table .ant-table-content {
+  overflow-x: auto;
+}
+
+:host ::ng-deep .orders-table td:first-child {
+  overflow-wrap: anywhere;
+  min-width: 110px;
+}
+
 /* Responsive para la tabla de pedidos */
 @media (max-width: 768px) {
   :host ::ng-deep .ant-table {
