@@ -256,13 +256,21 @@ service cloud.firestore {
 
     match /newsletter_subscriptions/{docId} {
       allow create: if true;
-      allow read: if isAdmin() || request.auth != null;
+      // Each person can only read their own subscription (found by the email of their account);
+      // the full list of subscribers is for admins only.
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.token.email != null
+            && resource.data.email == request.auth.token.email.lower());
       allow delete: if isAdmin();
-      // Solo el propio usuario o admin pueden actualizar su suscripción
+      // Admin, the owner of the subscription (by uid or by account email) can update it.
+      // The email field itself can never be changed by a non-admin.
       allow update: if isAdmin()
-        || (request.auth != null && resource.data.userId == request.auth.uid)
+        || (request.auth != null && request.auth.token.email != null
+            && request.resource.data.email == resource.data.email
+            && (resource.data.userId == request.auth.uid
+                || resource.data.email == request.auth.token.email.lower()))
         || (request.auth == null && request.resource.data.diff(resource.data)
-              .affectedKeys().hasOnly(['isActive', 'updatedAt']));
+              .affectedKeys().hasOnly(['isActive', 'updatedAt', 'unsubscribedAt']));
     }
 
     // ==================== SITEMAP ====================

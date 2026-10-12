@@ -13,6 +13,7 @@ import {
   orderBy,
   Timestamp,
   serverTimestamp,
+  increment,
   getDocs
 } from '@angular/fire/firestore';
 import {
@@ -371,10 +372,11 @@ export class RaceService {
         }
 
         const docRef = doc(this.firestore, `${this.collectionName}/${raceId}`);
-        const newCount = race.inscritosActuales + 1;
 
+        // increment(1) is applied on the server, so it stays correct even if the cached race is stale
+        // and satisfies the Firestore rule that only allows "current value + 1"
         return from(updateDoc(docRef, {
-          inscritosActuales: newCount,
+          inscritosActuales: increment(1),
           updatedAt: serverTimestamp()
         }));
       }),
