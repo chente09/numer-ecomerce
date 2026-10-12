@@ -243,6 +243,11 @@ export interface UserProfile {
     documentType?: string;
     documentNumber?: string;
     profileCompleted?: boolean;
+    // Consents: terms are required to register; marketing is an optional, separate opt-in
+    termsVersion?: string;
+    termsAcceptedAt?: any;
+    marketingConsent?: boolean;
+    marketingConsentAt?: any;
     defaultAddress?: any;
     updatedAt?: Timestamp | Date;
 }

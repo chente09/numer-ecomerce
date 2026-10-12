@@ -53,8 +53,16 @@
                             <p class="newsletter-text">Suscríbete para recibir actualizaciones, acceso a ofertas
                                 exclusivas y más.</p>
                             <div class="newsletter-form">
-                                <input type="email" nz-input placeholder="Correo Electrónico" />
-                                <button nz-button nzType="primary">Suscribirse</button>
+                                <button nz-button nzType="primary" class="newsletter-btn-footer"
+                                    [class.is-subscribed]="isSubscribed" [disabled]="subscribing || isSubscribed"
+                                    (click)="subscribeToNewsletter()">
+                                    {{ isSubscribed ? '✓ Ya estás suscrito' : (subscribing ? 'Suscribiendo...' : 'Suscribirme con mi cuenta') }}
+                                </button>
+                                <small class="newsletter-note" *ngIf="!isSubscribed">Usaremos el correo de tu cuenta
+                                    de Google. Al suscribirte aceptas recibir novedades y promociones; puedes darte de
+                                    baja cuando quieras.</small>
+                                <small class="newsletter-note" *ngIf="isSubscribed">Gracias por ser parte de la
+                                    comunidad. Para darte de baja, escríbenos.</small>
                             </div>
                         </div>
                     </div>

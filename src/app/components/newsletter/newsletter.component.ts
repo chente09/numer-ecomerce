@@ -22,6 +22,7 @@ export class NewsletterComponent implements OnInit, OnDestroy {
   public usersService = inject(UsersService);
   private message = inject(NzMessageService);
   private subscription?: Subscription;
+  private statusSubscription?: Subscription;
 
   isLoading = false;
   isUserLoggedIn = false;
@@ -29,6 +30,11 @@ export class NewsletterComponent implements OnInit, OnDestroy {
   isSubscribed = false;
 
   ngOnInit() {
+    // Follows the shared state, so subscribing from the footer is reflected here immediately
+    this.statusSubscription = this.usersService.newsletterSubscribed$.subscribe(value => {
+      this.isSubscribed = value;
+    });
+
     this.subscription = this.usersService.user$.subscribe(async user => {
       this.isUserLoggedIn = !!user;
       
@@ -45,6 +51,7 @@ export class NewsletterComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscription?.unsubscribe();
+    this.statusSubscription?.unsubscribe();
   }
 
   async handleNewsletterAction() {
@@ -138,12 +145,7 @@ export class NewsletterComponent implements OnInit, OnDestroy {
   private async checkSubscriptionStatus() {
     if (!this.userEmail) return;
 
-    try {
-      this.isSubscribed = await this.usersService.isEmailSubscribedToNewsletter(this.userEmail);
-    } catch (error) {
-      console.warn('Error verificando estado de suscripción:', error);
-      this.isSubscribed = false;
-    }
+    await this.usersService.refreshNewsletterStatus();
   }
 
   // Método auxiliar para obtener el texto del botón

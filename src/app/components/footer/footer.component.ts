@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { RouterLink } from '@angular/router';
@@ -6,6 +7,8 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { Category, CategoryService } from '../../services/admin/category/category.service';
 import { MountainRidgeComponent } from "../mountain-ridge/mountain-ridge.component";
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { UsersService } from '../../services/users/users.service';
 
 @Component({
   selector: 'app-footer',
@@ -20,19 +23,53 @@ import { MountainRidgeComponent } from "../mountain-ridge/mountain-ridge.compone
   templateUrl: './footer.component.html',
   styleUrl: './footer.component.css'
 })
-export class FooterComponent implements OnInit {
+export class FooterComponent implements OnInit, OnDestroy {
   categories: Category[] = [];
   categoriesLoading = true;
 
+  subscribing = false;
+  isSubscribed = false;
+  private newsletterSub?: Subscription;
+
   constructor(
-      private categoryService: CategoryService
+      private categoryService: CategoryService,
+      private usersService: UsersService,
+      private message: NzMessageService
     ) { }
+
+  async subscribeToNewsletter(): Promise<void> {
+    if (this.subscribing) return;
+    this.subscribing = true;
+    try {
+      const result = await this.usersService.subscribeToNewsletterWithAccount('footer-google-auth');
+      if (result === 'already_subscribed') {
+        this.message.info('Ya estás suscrito a nuestro newsletter 📧');
+      } else {
+        this.message.success('¡Te has suscrito exitosamente a nuestro newsletter! 🎉');
+      }
+    } catch (error: any) {
+      if (error?.code === 'auth/popup-closed-by-user') {
+        this.message.info('Proceso de login cancelado');
+      } else if (error?.code === 'auth/popup-blocked') {
+        this.message.warning('Permite las ventanas emergentes para continuar');
+      } else {
+        this.message.error('No se pudo completar la suscripción. Inténtalo de nuevo.');
+      }
+    } finally {
+      this.subscribing = false;
+    }
+  }
   
     
   currentYear = new Date().getFullYear();
 
   ngOnInit(): void {
     this.loadCategories();
+    this.newsletterSub = this.usersService.newsletterSubscribed$.subscribe(v => (this.isSubscribed = v));
+  }
+
+  ngOnDestroy(): void {
+    this.newsletterSub?.unsubscribe();
   }
 
   loadCategories(): void {
@@ -65,7 +102,6 @@ export class FooterComponent implements OnInit {
   
   companyLinks = [
     { label: 'Sobre Nosotros', link: '/nosotros' },
-    { label: 'Sostenibilidad', link: '/sustainability' },
     { label: 'Eventos', link: '/eventos' },
     { label: 'Embajadores', link: '/embajadores' },
   ];

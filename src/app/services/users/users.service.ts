@@ -30,7 +30,7 @@ import {
   Timestamp,
   updateDoc
 } from '@angular/fire/firestore';
-import { Observable, from, of } from 'rxjs';
+import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
 export interface LoginInfo {
@@ -56,6 +56,11 @@ export interface UserProfile {
   documentType?: string;
   documentNumber?: string;
   profileCompleted?: boolean;
+  // Consents: terms are required to register; marketing is an optional, separate opt-in
+  termsVersion?: string;
+  termsAcceptedAt?: any;
+  marketingConsent?: boolean;
+  marketingConsentAt?: any;
   defaultAddress?: any; // Considerar definir una interfaz para Address
   updatedAt?: Timestamp | Date | FieldValue; 
 }
@@ -69,13 +74,45 @@ export class UsersService {
 
   private firestore = inject(Firestore);
 
+  // Shared newsletter state so the footer, the home section and any other view always agree
+  private newsletterSubject = new BehaviorSubject<boolean>(false);
+  readonly newsletterSubscribed$ = this.newsletterSubject.asObservable();
+
   constructor(private auth: Auth) {
     this.user$ = authState(this.auth);
     this.user$.subscribe(user => {
       if (user && !user.isAnonymous) {
         this.saveUserData(user);
       }
+      this.refreshNewsletterStatus();
     });
+  }
+
+  /** Re-reads whether the signed-in account is subscribed and publishes it on newsletterSubscribed$ */
+  async refreshNewsletterStatus(): Promise<void> {
+    const user = this.auth.currentUser;
+    const email = user?.email?.toLowerCase().trim();
+    if (!user || user.isAnonymous || !email) {
+      this.newsletterSubject.next(false);
+      return;
+    }
+    try {
+      const snapshot = await getDocs(query(
+        collection(this.firestore, 'newsletter_subscriptions'),
+        where('email', '==', email),
+        where('isActive', '==', true)
+      ));
+      this.newsletterSubject.next(!snapshot.empty);
+    } catch (error) {
+      // If the subscriptions cannot be read, fall back to the flag saved on the user's own profile
+      console.warn('No se pudo verificar la suscripción, usando el perfil:', error);
+      try {
+        const profile: any = await this.getUserProfile(user.uid);
+        this.newsletterSubject.next(profile?.newsletterSubscribed === true);
+      } catch {
+        this.newsletterSubject.next(false);
+      }
+    }
   }
 
   private async saveUserData(user: User): Promise<void> {
@@ -297,11 +334,20 @@ export class UsersService {
     if (!user) throw new Error('No hay usuario autenticado');
     try {
       const userRef = doc(this.firestore, 'users', user.uid);
-      const dataToSave = {
+      // createdAt is set only the first time: overwriting it on every save would erase
+      // the real "customer since" date used by the Clientes CRM
+      const existing = await getDoc(userRef);
+      const hasCreatedAt = existing.exists() && !!existing.data()?.['createdAt'];
+      const dataToSave: any = {
         ...userData,
-        updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp() // Siempre usar serverTimestamp para createdAt si no existe
+        updatedAt: serverTimestamp()
       };
+      if (!hasCreatedAt) {
+        dataToSave.createdAt = serverTimestamp();
+      } else {
+        // userData may carry the old value read from the profile; never write it back
+        delete dataToSave.createdAt;
+      }
       await setDoc(userRef, dataToSave, { merge: true });
       await this.logUserActivity('update_profile', 'user_data');
     } catch (error) {
@@ -583,6 +629,9 @@ export class UsersService {
         });
         console.log('✅ Nueva suscripción al newsletter creada');
       }
+      if (subscriptionData.email === this.auth.currentUser?.email?.toLowerCase().trim()) {
+        this.newsletterSubject.next(true);
+      }
       if (subscriptionData.userId) {
         await this.logUserActivity('newsletter_subscription', 'newsletter', {
           email: subscriptionData.email,
@@ -593,6 +642,60 @@ export class UsersService {
       console.error('❌ Error guardando suscripción al newsletter:', error);
       throw new Error(`Error al suscribirse al newsletter: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
+  }
+
+  /**
+   * Stores the consents given at login/registration. Terms are always recorded with their version;
+   * marketing is stored as an explicit true/false so a later "no" is also evidence.
+   */
+  async recordConsent(consent: { terms?: boolean; marketing?: boolean }, termsVersion: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user || user.isAnonymous) return;
+    const data: any = { updatedAt: serverTimestamp() };
+    if (consent.terms) {
+      data.termsVersion = termsVersion;
+      data.termsAcceptedAt = serverTimestamp();
+    }
+    if (typeof consent.marketing === 'boolean') {
+      data.marketingConsent = consent.marketing;
+      data.marketingConsentAt = serverTimestamp();
+    }
+    await setDoc(doc(this.firestore, 'users', user.uid), data, { merge: true });
+  }
+
+  /**
+   * One-click newsletter subscription (footer): the address always comes from the signed-in
+   * account, so it signs in with Google first when needed.
+   */
+  async subscribeToNewsletterWithAccount(source: string): Promise<'subscribed' | 'already_subscribed'> {
+    let user = this.getCurrentUser();
+    if (!user || user.isAnonymous) {
+      const result = await this.loginWithGoogle();
+      user = result?.user ?? this.getCurrentUser();
+    }
+    const email = user?.email?.toLowerCase().trim();
+    if (!user || !email) throw new Error('No se pudo obtener el correo de tu cuenta');
+
+    if (await this.isEmailSubscribedToNewsletter(email)) {
+      this.newsletterSubject.next(true);
+      return 'already_subscribed';
+    }
+
+    await this.saveNewsletterSubscription({
+      email,
+      subscribedAt: new Date(),
+      source,
+      isActive: true,
+      userId: user.uid
+    });
+
+    try {
+      const profile = await this.getUserProfile();
+      await this.saveUserProfile({ ...profile, newsletterSubscribed: true, newsletterSubscribedAt: new Date() });
+    } catch (error) {
+      console.warn('No se pudo guardar la preferencia en el perfil:', error);
+    }
+    return 'subscribed';
   }
 
   async isEmailSubscribedToNewsletter(email: string): Promise<boolean> {
