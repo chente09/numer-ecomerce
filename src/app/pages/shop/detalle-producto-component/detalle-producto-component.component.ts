@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { CategoryService } from '../../../services/admin/category/category.service';
 import { SeoService } from '../../../services/seo/seo.service';
+import { FLAT_SHIPPING_USD, RETURN_DAYS } from '../../../core/legal';
 import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
 import { Product, Color, Size, ProductVariant } from '../../../models/models';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
@@ -70,6 +71,9 @@ interface ExtendedProduct extends Product {
   styleUrl: './detalle-producto-component.component.css'
 })
 export class DetalleProductoComponent implements OnInit, OnDestroy {
+  readonly returnDays = RETURN_DAYS;
+  readonly shippingCost = FLAT_SHIPPING_USD;
+
   // Propiedades principales
   product: ExtendedProduct | null = null;
   relatedProducts: Product[] = [];

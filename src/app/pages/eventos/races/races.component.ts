@@ -296,7 +296,7 @@ export class RacesComponent implements OnInit {
             if (race.slug) {
               sessionStorage.setItem('returnUrl', `/eventos/${race.slug}`);
             }
-            this.router.navigate(['/mi-cuenta']);
+            this.router.navigate(['/perfil']);
           }
         });
 
@@ -314,7 +314,7 @@ export class RacesComponent implements OnInit {
                 nzContent: 'Ya tienes una inscripción activa para este evento.',
                 nzOkText: 'Ver Mis Inscripciones',
                 nzOnOk: () => {
-                  this.router.navigate(['/mi-cuenta/inscripciones']);
+                  this.router.navigate(['/perfil']);
                 }
               });
               return;
@@ -364,12 +364,7 @@ export class RacesComponent implements OnInit {
     // Mostrar modal de éxito
     this.modal.success({
       nzTitle: 'Inscripción Exitosa',
-      nzContent: 'Tu inscripción se ha creado correctamente. Ahora serás redirigido al checkout para completar el pago.',
-      nzOnOk: () => {
-        // TODO: Navegar a checkout
-        // this.router.navigate(['/checkout', inscriptionId]);
-        this.message.info('Funcionalidad de checkout en desarrollo');
-      }
+      nzContent: 'Tu inscripción quedó registrada y está pendiente de pago. El pago en línea de inscripciones estará disponible muy pronto; nos pondremos en contacto contigo por WhatsApp para coordinarlo.'
     });
   }
 

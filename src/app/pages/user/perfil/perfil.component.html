@@ -335,7 +335,7 @@
 
                         <div *ngIf="!loadingOrders && recentOrders.length === 0" class="empty-state">
                             <nz-empty nzDescription="No tienes pedidos realizados"></nz-empty>
-                            <a routerLink="/productos" nz-button nzType="primary">Ver Productos</a>
+                            <a routerLink="/shop" nz-button nzType="primary">Ver Productos</a>
                         </div>
 
                         <nz-table *ngIf="!loadingOrders && recentOrders.length > 0" #ordersTable [nzData]="recentOrders"

@@ -1,0 +1,105 @@
+<div class="terms-page">
+    <h1>Términos y Condiciones</h1>
+    <p class="meta">Versión {{ version }}</p>
+
+    <nav class="toc" aria-label="Contenido">
+        <a href="#aceptacion" (click)="scrollTo('aceptacion', $event)">Aceptación</a>
+        <a href="#precios" (click)="scrollTo('precios', $event)">Precios</a>
+        <a href="#pagos" (click)="scrollTo('pagos', $event)">Pagos</a>
+        <a href="#envios" (click)="scrollTo('envios', $event)">Envíos</a>
+        <a href="#devoluciones" (click)="scrollTo('devoluciones', $event)">Cambios y devoluciones</a>
+        <a href="#pedidos" (click)="scrollTo('pedidos', $event)">Pedidos y stock</a>
+        <a href="#eventos" (click)="scrollTo('eventos', $event)">Eventos</a>
+        <a href="#privacidad" (click)="scrollTo('privacidad', $event)">Privacidad</a>
+        <a href="#contacto" (click)="scrollTo('contacto', $event)">Contacto</a>
+    </nav>
+
+    <section id="aceptacion">
+        <h2>1. Aceptación</h2>
+        <p>Al comprar en esta tienda aceptas estos términos. Los aceptas de forma expresa antes de pagar, y
+            guardamos constancia de la aceptación con su fecha y versión.</p>
+    </section>
+
+    <section id="precios">
+        <h2>2. Productos y precios</h2>
+        <p>Los precios se muestran en dólares de los Estados Unidos (USD). El valor del IVA, los descuentos y el
+            envío se detallan en el resumen de tu compra antes de pagar. El precio que ves al pagar es el que se
+            cobra.</p>
+        <p>Las fotografías son referenciales; los colores pueden variar levemente según la pantalla. Revisa las
+            tallas y medidas de cada producto antes de comprar.</p>
+    </section>
+
+    <section id="pagos">
+        <h2>3. Pagos</h2>
+        <p>El pago se realiza en línea con tarjeta de crédito o débito a través de Payphone. No almacenamos los
+            datos de tu tarjeta. Tu pedido se crea cuando el pago es aprobado.</p>
+    </section>
+
+    <section id="envios">
+        <h2>4. Envíos</h2>
+        <p>Enviamos a todo el Ecuador. El costo de envío es de ${{ shipping }} por pedido, salvo promociones de
+            envío gratis que se indican al pagar. Los tiempos de entrega son estimados (1 a 5 días hábiles según
+            la ciudad de destino). Cuando despachamos tu pedido, la guía de seguimiento aparece en
+            "Mis pedidos".</p>
+        <p>Es tu responsabilidad ingresar una dirección y un teléfono de contacto correctos en tu perfil.</p>
+    </section>
+
+    <section id="devoluciones">
+        <h2>5. Cambios y devoluciones</h2>
+        <ul>
+            <li><strong>Plazo:</strong> tienes {{ returnDays }} días, contados desde que recibes tu pedido, para
+                solicitar un cambio o una devolución.</li>
+            <li><strong>Estado del producto:</strong> debe estar sin uso, sin lavar, con todas sus etiquetas y su
+                empaque original.</li>
+            <li><strong>Quién paga el envío:</strong> el cliente paga el envío de la devolución, salvo que el
+                producto tenga un defecto o que hayamos cometido un error en tu pedido (producto, talla o color
+                distintos a los comprados). En esos casos el envío corre por nuestra cuenta.</li>
+            <li><strong>Cómo solicitarlo:</strong> escríbenos por <a [href]="whatsapp" target="_blank"
+                    rel="noopener">WhatsApp</a> o a {{ email }} indicando tu número de pedido y el motivo. Te
+                confirmaremos cómo y adónde enviar el producto.</li>
+            <li><strong>Reembolso:</strong> una vez recibido y revisado el producto, devolvemos el valor pagado
+                por el mismo medio de pago, <strong>descontando la comisión de la pasarela de pago
+                    (Payphone)</strong>, que ya se cobró y no es recuperable. Si la devolución se debe a un
+                defecto o a un error nuestro, devolvemos el valor completo. El tiempo en que lo ves reflejado
+                depende de tu banco o emisor de tarjeta.</li>
+            <li><strong>Cambio de talla o color:</strong> sujeto a disponibilidad. Si no hay stock de lo que
+                necesitas y prefieres la devolución del dinero, aplica el mismo descuento de la comisión de la
+                pasarela de pago.</li>
+        </ul>
+        <p>La garantía por defectos de fabricación es independiente de este plazo y se rige por la
+            <a href="/cuidado-producto">política de garantía</a>.</p>
+        <p>Estas condiciones no limitan los derechos que la ley reconoce a los consumidores.</p>
+    </section>
+
+    <section id="pedidos">
+        <h2>6. Pedidos, stock y cancelaciones</h2>
+        <p>Si por un error de inventario no pudiéramos entregarte un producto que pagaste, anulamos el cobro y
+            te lo informamos.</p>
+        <p>Si quieres cancelar tu pedido antes de que sea despachado, escríbenos cuanto antes. Una vez
+            despachado, se maneja como devolución según la sección 5.</p>
+    </section>
+
+    <section id="eventos">
+        <h2>7. Eventos e inscripciones</h2>
+        <p>Las inscripciones a carreras y eventos se rigen por las condiciones de cada evento y por el
+            <a href="/deslinde">deslinde de responsabilidad</a>. El plazo de cambios y devoluciones de la sección 5
+            aplica a productos, no a inscripciones.</p>
+    </section>
+
+    <section id="privacidad">
+        <h2>8. Privacidad</h2>
+        <p>Cómo tratamos tus datos personales está explicado en nuestra
+            <a href="/privacy">Política de Privacidad</a>.</p>
+    </section>
+
+    <section id="contacto">
+        <h2>9. Contacto y casos especiales</h2>
+        <p>Si tu situación no está prevista aquí, escríbenos: revisaremos tu caso y te daremos una solución por
+            escrito.</p>
+        <p>
+            WhatsApp (atención prioritaria): <a [href]="whatsapp" target="_blank" rel="noopener">+593 98 712 5801</a><br />
+            Correo: {{ email }}<br />
+            Horario: lunes a viernes de 8:00 AM a 5:00 PM; sábados bajo cita previa.
+        </p>
+    </section>
+</div>

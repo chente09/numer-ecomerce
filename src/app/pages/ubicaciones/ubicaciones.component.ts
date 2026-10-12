@@ -79,7 +79,7 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
     ciudad: 'Quito',
     provincia: 'Pichincha',
     telefono: '+593 2 225 4589',
-    whatsapp: '+593 98 765 4321',
+    whatsapp: '+593 98 712 5801',
     email: 'numer.ec21@gmail.com',
     horarios: 'Lunes a Viernes: 8:00 AM - 5:00 PM\nSábados: Bajo cita previa\nDomingos: Cerrado',
     coordenadas: {

@@ -1,52 +1,30 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
-import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
-import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
-import { NzUploadChangeParam, NzUploadModule } from 'ng-zorro-antd/upload';
-import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 
 @Component({
   selector: 'app-cuidado-producto',
   imports: [
     CommonModule,
-    ReactiveFormsModule,
     RouterModule,
     NzTabsModule,
     NzCardModule,
     NzGridModule,
     NzCollapseModule,
     NzDividerModule,
-    NzTimelineModule,
-    NzFormModule,
-    NzInputModule,
-    NzSelectModule,
-    NzDatePickerModule,
-    NzUploadModule,
-    NzButtonModule,
-    NzIconModule,
-    NzSpinModule
+    NzTimelineModule
   ],
   templateUrl: './cuidado-producto.component.html',
   styleUrl: './cuidado-producto.component.css'
 })
-export class CuidadoProductoComponent implements OnInit {
+export class CuidadoProductoComponent {
 
-  // Formulario para registro de garantía
-  warrantyForm!: FormGroup;
-  
   // Categorías de cuidado de productos
   productCareCategories = [
     {
@@ -59,30 +37,6 @@ export class CuidadoProductoComponent implements OnInit {
         'No usar suavizante',
         'Dejar secar a temperatura ambiente',
         'Guardar en un lugar fresco y seco'
-      ]
-    },
-    {
-      title: 'Equipamiento de Escalada',
-      description: 'Mantenimiento adecuado para material de escalada y seguridad',
-      imageUrl: 'https://i.postimg.cc/ZYXTw8jQ/bg.jpg',
-      instructions: [
-        'Revisar visualmente antes de cada uso',
-        'Limpiar con agua tibia y jabón neutro',
-        'Secar completamente antes de guardar',
-        'Almacenar lejos de productos químicos',
-        'Reemplazar según las recomendaciones del fabricante'
-      ]
-    },
-    {
-      title: 'Esquí y Deportes de Invierno',
-      description: 'Consejos para mantener tu equipo de esquí y snowboard',
-      imageUrl: 'https://i.postimg.cc/RZNyyyFQ/53894.jpg',
-      instructions: [
-        'Limpiar después de cada uso',
-        'Aplicar cera según condiciones de nieve',
-        'Almacenar en lugar seco y temperatura estable',
-        'Revisar fijaciones periódicamente',
-        'Proteger de la humedad y óxido'
       ]
     }
   ];
@@ -119,7 +73,7 @@ export class CuidadoProductoComponent implements OnInit {
         'Realiza inspecciones periódicas de costuras y cierres',
         'Renueva el tratamiento DWR cuando notes que el agua ya no se desliza',
         'Utiliza productos específicos para cada tipo de material',
-        'Consulta nuestro servicio técnico para reparaciones complejas'
+        'Escríbenos por WhatsApp si tienes dudas sobre una reparación'
       ]
     }
   ];
@@ -128,7 +82,7 @@ export class CuidadoProductoComponent implements OnInit {
   warrantyFaqs = [
     {
       question: '¿Cómo puedo saber si mi problema está cubierto por la garantía?',
-      answer: 'Si tu producto presenta un defecto en los materiales o fabricación bajo uso normal y dentro del período de garantía, generalmente estará cubierto. Los signos de defectos de fabricación incluyen costuras que se deshacen, cremalleras que fallan sin causa aparente, o materiales que se deterioran prematuramente. Si tienes dudas, puedes enviarnos fotos a <strong>garantia@numer.ec</strong> para una evaluación inicial.'
+      answer: 'Si tu producto presenta un defecto en los materiales o fabricación bajo uso normal y dentro del período de garantía, generalmente estará cubierto. Los signos de defectos de fabricación incluyen costuras que se deshacen, cremalleras que fallan sin causa aparente, o materiales que se deterioran prematuramente. Si tienes dudas, puedes enviarnos fotos a <strong>numer.ec21@gmail.com</strong> para una evaluación inicial.'
     },
     {
       question: '¿Puedo transferir la garantía si regalo o vendo el producto?',
@@ -136,7 +90,7 @@ export class CuidadoProductoComponent implements OnInit {
     },
     {
       question: '¿Qué pasa si no tengo el recibo de compra?',
-      answer: 'El comprobante de compra es necesario para validar la garantía. Sin embargo, en algunos casos podemos verificar la compra a través de nuestro sistema si proporcionas información detallada como la fecha aproximada, método de pago y tienda donde realizaste la compra. También puedes registrar tu producto en nuestra web tras la compra para facilitar este proceso.'
+      answer: 'El comprobante de compra es necesario para validar la garantía. Si compraste en esta tienda en línea, tu compra queda registrada en "Mis pedidos" y podemos verificarla con tu número de pedido o el correo de tu cuenta.'
     },
     {
       question: '¿Cuánto tiempo tarda el proceso de garantía?',
@@ -144,65 +98,8 @@ export class CuidadoProductoComponent implements OnInit {
     },
     {
       question: '¿Numer cubre los gastos de envío para la garantía?',
-      answer: 'Para productos dentro del primer año de garantía, Numer cubre los gastos de envío en ambas direcciones. Para productos entre 1-2 años, el cliente debe cubrir el costo de envío inicial, y Numer cubrirá el costo de devolución si el caso está cubierto por la garantía.'
+      answer: 'Sí. Si el caso está cubierto por la garantía (1 año desde la compra), Numer cubre los gastos de envío en ambas direcciones.'
     }
   ];
   
-  // Modelos de productos para el formulario
-  productModels = [
-    { value: 'sendero', label: 'Pantalón Sendero' },
-    { value: 'barranco', label: 'Pantalón Barranco' },
-    { value: 'aguacero', label: 'Chaqueta Aguacero' },
-    { value: 'cumbre', label: 'Mochila Cumbre' },
-    { value: 'rocio', label: 'Camiseta Rocío' },
-    { value: 'bosque', label: 'Polar Bosque' }
-  ];
-
-  constructor(
-    private fb: FormBuilder,
-    private message: NzMessageService
-  ) {}
-
-  ngOnInit(): void {
-    this.initForm();
-  }
-
-  // Inicializar formulario con validaciones
-  initForm(): void {
-    this.warrantyForm = this.fb.group({
-      fullName: [null, [Validators.required]],
-      email: [null, [Validators.required, Validators.email]],
-      productModel: [null, [Validators.required]],
-      serialNumber: [null, [Validators.required]],
-      purchaseDate: [null, [Validators.required]],
-      receipt: [null]
-    });
-  }
-
-  // Manejar cambios en la carga de archivos
-  handleUploadChange(info: NzUploadChangeParam): void {
-    if (info.file.status === 'done') {
-      this.message.success(`${info.file.name} se ha subido correctamente`);
-    } else if (info.file.status === 'error') {
-      this.message.error(`${info.file.name} no se pudo subir.`);
-    }
-  }
-
-  // Enviar formulario de garantía
-  submitWarrantyForm(): void {
-    if (this.warrantyForm.valid) {
-      // Aquí iría la lógica para enviar el formulario al backend
-      console.log('Formulario enviado:', this.warrantyForm.value);
-      this.message.success('¡Tu producto ha sido registrado correctamente!');
-      this.warrantyForm.reset();
-    } else {
-      Object.values(this.warrantyForm.controls).forEach(control => {
-        if (control.invalid) {
-          control.markAsDirty();
-          control.updateValueAndValidity({ onlySelf: true });
-        }
-      });
-    }
-  }
-
 }

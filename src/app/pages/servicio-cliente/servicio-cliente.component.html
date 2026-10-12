@@ -34,7 +34,7 @@
                         <div nz-col [nzXs]="24" [nzMd]="12">
                             <nz-card class="content-box">
                                 <form [formGroup]="contactForm" (ngSubmit)="submitContactForm()">
-                                    <h3>Envíanos un mensaje</h3>
+                                    <h3>Escríbenos por WhatsApp</h3>
                                     <div class="custom-divider"></div>
 
                                     <nz-form-item>
@@ -66,7 +66,7 @@
                                     </nz-form-item>
 
                                     <button nz-button nzType="primary" [disabled]="contactForm.invalid" nzBlock>Enviar
-                                        mensaje</button>
+                                        por WhatsApp</button>
                                 </form>
                             </nz-card>
                         </div>
@@ -83,7 +83,7 @@
                                         <div>
                                             <strong>Teléfono</strong>
                                             <p>+593 98 712 5801</p>
-                                            <p class="text-muted">Lun-Vie: 9am - 6pm / Sábados: 9am - 2pm</p>
+                                            <p class="text-muted">Lunes a Viernes: 8:00 AM - 5:00 PM / Sábados: bajo cita previa</p>
                                         </div>
                                     </li>
                                     <li>
@@ -91,8 +91,8 @@
                                                 nzTheme="outline"></i></span>
                                         <div>
                                             <strong>Email</strong>
-                                            <p>soporte&#64;numer.ec</p>
-                                            <p class="text-muted">Responderemos en menos de 24 horas</p>
+                                            <p>numer.ec21&#64;gmail.com</p>
+                                            <p class="text-muted">Para una respuesta más rápida, escríbenos por WhatsApp</p>
                                         </div>
                                     </li>
                                     <li>
@@ -110,6 +110,7 @@
                                         <div>
                                             <strong>WhatsApp</strong>
                                             <p>+593 98 712 5801</p>
+                                            <p class="text-muted">Atención prioritaria: respondemos primero los mensajes de WhatsApp</p>
                                             <a href="https://wa.me/593987125801" target="_blank" nz-button
                                                 nzType="default">
                                                 <i nz-icon nzType="whats-app" nzTheme="outline"></i> Chatea con nosotros
@@ -180,63 +181,42 @@
 
                         <nz-collapse>
                             <nz-collapse-panel nzHeader="¿Cuánto tiempo tengo para devolver un producto?">
-                                <p>Dispones de 30 días desde la recepción de tu pedido para solicitar una devolución.
-                                </p>
+                                <p>Dispones de {{ returnDays }} días desde la recepción de tu pedido para solicitar un
+                                    cambio o una devolución.</p>
                             </nz-collapse-panel>
                             <nz-collapse-panel nzHeader="¿Qué productos puedo devolver?">
-                                <p>Todos los productos pueden ser devueltos siempre y cuando estén en su estado
-                                    original,
-                                    sin usar y con todas las etiquetas y embalajes.</p>
+                                <p>Los productos deben estar en su estado original: sin uso, sin lavar, con todas
+                                    las etiquetas y su empaque.</p>
+                            </nz-collapse-panel>
+                            <nz-collapse-panel nzHeader="¿Quién paga el envío de la devolución?">
+                                <p>El envío de la devolución lo paga el cliente, salvo que el producto tenga un defecto
+                                    o que hayamos cometido un error con tu pedido: en ese caso el envío corre por
+                                    nuestra cuenta.</p>
+                            </nz-collapse-panel>
+                            <nz-collapse-panel nzHeader="¿Cuánto dinero se me devuelve?">
+                                <p>Se devuelve el valor pagado por el mismo medio de pago, descontando la comisión
+                                    de la pasarela de pago (Payphone), que ya se cobró y no es recuperable. Si la
+                                    devolución se debe a un defecto o a un error nuestro, se devuelve el valor
+                                    completo.</p>
                             </nz-collapse-panel>
                             <nz-collapse-panel nzHeader="¿Cómo inicio el proceso de devolución?">
-                                <p>Para iniciar una devolución, sigue estos pasos:</p>
+                                <p>Escríbenos dentro del plazo indicando tu número de pedido:</p>
                                 <ol>
-                                    <li>Accede a tu cuenta y ve a "Mis pedidos"</li>
-                                    <li>Selecciona el pedido con el artículo que deseas devolver</li>
-                                    <li>Haz clic en "Solicitar devolución" y sigue las instrucciones</li>
+                                    <li>Abre nuestro WhatsApp con el botón de abajo o escribe a numer.ec21&#64;gmail.com</li>
+                                    <li>Indica el número de pedido (lo ves en "Mis pedidos") y el motivo</li>
+                                    <li>Te confirmaremos cómo y adónde enviar el producto</li>
                                 </ol>
-                                <p>También puedes contactarnos directamente a través del formulario de contacto.</p>
+                                <a href="https://wa.me/593987125801?text=Hola%2C%20quiero%20solicitar%20una%20devoluci%C3%B3n%20de%20mi%20pedido"
+                                    target="_blank" rel="noopener" nz-button nzType="default">
+                                    <i nz-icon nzType="whats-app" nzTheme="outline"></i> Solicitar por WhatsApp
+                                </a>
                             </nz-collapse-panel>
                         </nz-collapse>
 
                         <nz-divider></nz-divider>
 
-                        <h3>Iniciar proceso de devolución</h3>
-                        <div class="custom-divider"></div>
-                        <p>Completa el siguiente formulario para iniciar el proceso de devolución de un producto</p>
-
-                        <form [formGroup]="returnForm" (ngSubmit)="submitReturnForm()">
-                            <nz-form-item>
-                                <nz-form-control>
-                                    <input nz-input formControlName="orderNumber" placeholder="Número de orden" />
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-control>
-                                    <input nz-input formControlName="email" placeholder="Correo electrónico" />
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-control>
-                                    <nz-select formControlName="reason" nzPlaceHolder="Motivo de la devolución">
-                                        <nz-option *ngFor="let reason of returnReasons" [nzValue]="reason.value"
-                                            [nzLabel]="reason.label"></nz-option>
-                                    </nz-select>
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-control>
-                                    <textarea nz-input formControlName="comments" rows="4"
-                                        placeholder="Comentarios adicionales"></textarea>
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <button nz-button nzType="primary" [disabled]="returnForm.invalid">Solicitar
-                                devolución</button>
-                        </form>
+                        <p>Consulta el detalle completo en nuestros
+                            <a routerLink="/terms">Términos y Condiciones</a>.</p>
                     </nz-card>
                 </div>
             </nz-tab>

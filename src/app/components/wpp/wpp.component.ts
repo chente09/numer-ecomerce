@@ -22,7 +22,7 @@ import { FormsModule } from '@angular/forms';
 })
 export class WppComponent implements OnInit {
   // Configuración
-  phoneNumber: string = '5930987125801';
+  phoneNumber: string = '593987125801';
   
   // Estados
   showTooltip: boolean = false;

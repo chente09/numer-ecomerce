@@ -107,7 +107,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
       this.error = 'Debes iniciar sesión para ver los detalles del pago';
       this.loading = false;
       setTimeout(() => {
-        this.router.navigate(['/login'], {
+        this.router.navigate(['/welcome'], {
           queryParams: { returnUrl: '/respuesta-pago', id, clientTransactionId: clientTxId }
         });
       }, 2000);
@@ -160,7 +160,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
         this.modalService.error({
           nzTitle: 'Sesión Expirada',
           nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
-          nzOnOk: () => this.router.navigate(['/login'], {
+          nzOnOk: () => this.router.navigate(['/welcome'], {
             queryParams: { returnUrl: '/respuesta-pago', id, clientTransactionId: clientTxId }
           })
         });
@@ -496,7 +496,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
       <div class="company-info">
         <h1>NUMER</h1>
         <p>Iliniza S7 - 90, Quito 170121</p>
-        <p>Teléfono: +593 098 712 5801</p>
+        <p>Teléfono: +593 98 712 5801</p>
         <p>Email: numer.ec21@gmail.com</p>
         <p>RUC: PENDIENTE</p><!-- TODO: reemplazar con RUC real de NUMER antes de producción -->
       </div>

@@ -11,6 +11,9 @@ export const routes: Routes = [
     { path: '', pathMatch: 'full', redirectTo: '/welcome' },
     { path: 'welcome', component: WelcomeComponent },
     { path: 'servicio-cliente', loadComponent: () => import('./pages/servicio-cliente/servicio-cliente.component').then(m => m.ServicioClienteComponent) },
+    { path: 'terms', loadComponent: () => import('./pages/terms/terms.component').then(m => m.TermsComponent) },
+    { path: 'privacy', loadComponent: () => import('./pages/legal/legal-page.component').then(m => m.LegalPageComponent), data: { doc: 'privacy' } },
+    { path: 'deslinde', loadComponent: () => import('./pages/legal/legal-page.component').then(m => m.LegalPageComponent), data: { doc: 'deslinde' } },
     { path: 'carrito', loadComponent: () => import('./pasarela-pago/carrito/carrito.component').then(m => m.CarritoComponent), data: { preload: true } },
     { path: 'pago', loadComponent: () => import('./pasarela-pago/payphone-form/payphone-form.component').then(m => m.PayphoneFormComponent), canActivate: [authGuard, profileCompletionGuard] },
     { path: 'respuesta-pago', loadComponent: () => import('./pasarela-pago/respuesta-pago/respuesta-pago.component').then(m => m.RespuestaPagoComponent), canActivate: [authGuard] },
@@ -52,5 +55,7 @@ export const routes: Routes = [
             { path: 'mis-envios', loadComponent: () => import('./pages/admin/distributors/my-shipments/my-shipments.component').then(m => m.MyShipmentsComponent) },
         ]
     },
-];
 
+    // Unknown URLs go home instead of rendering a blank page
+    { path: '**', redirectTo: '/welcome' }
+];

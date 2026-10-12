@@ -272,7 +272,7 @@
                                 </div>
                                 <div class="tip-item">
                                     <i nz-icon nzType="sync" nzTheme="outline"></i>
-                                    <p>Si no te queda chevere, cambios gratis en Quito y envío sin costo</p>
+                                    <p>Tienes {{ returnDays }} días para solicitar un cambio. Revisa los <a href="/terms" target="_blank" rel="noopener">términos</a></p>
                                 </div>
                             </div>
                         </div>
@@ -435,25 +435,32 @@
                             <h4><i nz-icon nzType="truck" nzTheme="outline"></i> Envío en Ecuador</h4>
                             <div class="shipping-options">
                                 <div class="shipping-option">
-                                    <strong>Quito y Valles</strong>
-                                    <p>Entrega el mismo día o al siguiente - Desde $2,5</p>
+                                    <strong>Quito</strong>
+                                    <p>1-2 días hábiles - Envío ${{ shippingCost }}</p>
+                                </div>
+                                <div class="shipping-option">
+                                    <strong>Otras ciudades principales</strong>
+                                    <p>2-3 días hábiles - Envío ${{ shippingCost }}</p>
                                 </div>
                                 <div class="shipping-option">
                                     <strong>Resto del país</strong>
-                                    <p>24-72 horas - Desde $6 </p>
+                                    <p>3-5 días hábiles - Envío ${{ shippingCost }}</p>
                                 </div>
                                 <div class="shipping-option">
                                     <strong>Zonas rurales</strong>
-                                    <p>Coordinamos contigo para la mejor opción</p>
+                                    <p>Escríbenos y coordinamos contigo la mejor opción</p>
                                 </div>
                             </div>
                         </div>
 
                         <div class="return-section">
-                            <h4><i nz-icon nzType="sync" nzTheme="outline"></i> Devoluciones sin problemas</h4>
+                            <h4><i nz-icon nzType="sync" nzTheme="outline"></i> Cambios y devoluciones</h4>
                             <ul>
-                                <li>30 días para cambios y devoluciones</li>
+                                <li>{{ returnDays }} días desde que recibes tu pedido</li>
                                 <li>Productos sin usar y con etiquetas</li>
+                                <li>El envío de la devolución lo paga el cliente, salvo defecto o error nuestro</li>
+                                <li>Se descuenta la comisión de la pasarela de pago, salvo defecto o error nuestro</li>
+                                <li><a href="/terms" target="_blank" rel="noopener">Ver términos y condiciones</a></li>
                             </ul>
                         </div>
                     </div>

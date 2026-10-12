@@ -3,7 +3,8 @@ import { ReceiptService } from '../../services/receipt/receipt.service';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { RETURN_DAYS, TERMS_VERSION } from '../../core/legal';
 import { CartService } from '../services/cart/cart.service';
 import { Cart } from '../../models/models';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -83,6 +84,7 @@ const PAYPHONE_CONFIG = {
   imports: [
     CommonModule,
     FormsModule,
+    RouterLink,
     NzSpinModule,
     NzAlertModule,
     NzButtonModule,
@@ -118,6 +120,18 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   transactionId = '';
   currencyCode = 'USD';
+
+  // Terms must be accepted before the Payphone button can be used
+  acceptedTerms = false;
+  readonly returnDays = RETURN_DAYS;
+
+  onTermsChange(accepted: boolean): void {
+    if (!accepted) return;
+    // Evidence of acceptance (who, when, which version); never blocks the payment if it fails
+    this.usersService
+      .logUserActivity('accept_terms', 'checkout', { version: TERMS_VERSION })
+      .catch(() => { /* non-critical */ });
+  }
 
   constructor(
     private route: ActivatedRoute,
@@ -429,7 +443,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
             nzTitle: 'Error de Autenticación',
             nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
             nzOnOk: () => {
-              this.router.navigate(['/login'], {
+              this.router.navigate(['/welcome'], {
                 queryParams: { returnUrl: '/pago' }
               });
             }
@@ -556,7 +570,7 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           nzTitle: 'Sesión Expirada',
           nzContent: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
           nzOnOk: () => {
-            this.router.navigate(['/login'], {
+            this.router.navigate(['/welcome'], {
               queryParams: {
                 returnUrl: '/pago',
                 transId: this.transactionId

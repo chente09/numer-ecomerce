@@ -16,6 +16,7 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { SeoService } from '../../services/seo/seo.service';
 import { UsersService } from '../../services/users/users.service';
 import { OrderService, getOrderStatusLabel } from '../../services/order/order.service';
+import { RETURN_DAYS, SUPPORT_WHATSAPP } from '../../core/legal';
 
 interface FAQ {
   question: string;
@@ -58,7 +59,6 @@ interface OrderStatus {
 export class ServicioClienteComponent implements OnInit {
 
   contactForm!: FormGroup;
-  returnForm!: FormGroup;
   orderNumber: string = '';
   orderStatus: OrderStatus | null = null;
 
@@ -71,19 +71,13 @@ export class ServicioClienteComponent implements OnInit {
     { value: 'other', label: 'Otros' }
   ];
 
-  returnReasons = [
-    { value: 'wrong_size', label: 'Talla incorrecta' },
-    { value: 'damaged', label: 'Producto dañado' },
-    { value: 'not_as_described', label: 'No corresponde a la descripción' },
-    { value: 'wrong_item', label: 'Producto incorrecto' },
-    { value: 'other', label: 'Otro motivo' }
-  ];
+  readonly returnDays = RETURN_DAYS;
 
   // Preguntas frecuentes
   faqs: FAQ[] = [
     {
       question: '¿Cuáles son los métodos de pago aceptados?',
-      answer: 'Aceptamos tarjetas de crédito/débito (Visa, Mastercard), transferencias bancarias y pago contra entrega en determinadas zonas.'
+      answer: 'Pagas en línea con tarjeta de crédito o débito a través de Payphone, de forma segura.'
     },
     {
       question: '¿Cuánto tiempo tarda en llegar mi pedido?',
@@ -91,7 +85,7 @@ export class ServicioClienteComponent implements OnInit {
     },
     {
       question: '¿Cómo puedo cambiar la talla de un producto?',
-      answer: 'Para cambiar la talla, dirígete a la sección "Mis pedidos" en tu cuenta, selecciona el pedido y elige la opción "Solicitar cambio". Alternativamente, puedes contactarnos directamente a través del botón de contacto o WhatsApp.'
+      answer: `Tienes ${RETURN_DAYS} días desde que recibes tu pedido para solicitar un cambio. Escríbenos por WhatsApp indicando tu número de pedido (lo ves en "Mis pedidos") y la talla que necesitas. El producto debe estar sin uso y con sus etiquetas. Revisa los <a href="/terms">Términos y Condiciones</a>.`
     },
     {
       question: '¿Ofrecen envío internacional?',
@@ -99,11 +93,11 @@ export class ServicioClienteComponent implements OnInit {
     },
     {
       question: '¿Tienen tiendas físicas?',
-      answer: 'Sí, tenemos tiendas físicas en Quito, Guayaquil y Cuenca. Puedes encontrar las direcciones y horarios en la sección "Nuestras Tiendas".'
+      answer: 'Nuestra tienda es el Workshop de NUMER en Quito (Iliniza S7 - 90), y además contamos con distribuidores autorizados en el país. Encuentra direcciones y horarios en la sección <a href="/ubicaciones">Ubicaciones</a>.'
     },
     {
       question: '¿Puedo cancelar mi pedido?',
-      answer: 'Puedes cancelar tu pedido dentro de las primeras 2 horas después de realizarlo. Para hacerlo, ve a "Mis pedidos" y selecciona la opción de cancelar, o contáctanos inmediatamente.'
+      answer: 'Si aún no ha sido enviado, escríbenos cuanto antes por WhatsApp indicando tu número de pedido y lo revisamos. Una vez despachado se maneja como devolución, según nuestros <a href="/terms">Términos y Condiciones</a>.'
     }
   ];
 
@@ -128,14 +122,6 @@ export class ServicioClienteComponent implements OnInit {
       message: ['', [Validators.required, Validators.minLength(10)]]
     });
 
-    // Configurar formulario de devolución
-    this.returnForm = this.fb.group({
-      orderNumber: ['', [Validators.required, Validators.pattern(/^ORD-\d{5}$/)]],
-      email: ['', [Validators.required, Validators.email]],
-      reason: ['', [Validators.required]],
-      comments: ['']
-    });
-
     // Establecer la primera FAQ como abierta por defecto
     if (this.faqs.length > 0) {
       this.faqs[0].active = true;
@@ -144,30 +130,15 @@ export class ServicioClienteComponent implements OnInit {
 
   submitContactForm(): void {
     if (this.contactForm.valid) {
-      // Aquí implementarías la lógica para enviar el formulario
-      console.log('Formulario de contacto enviado:', this.contactForm.value);
-      
-      // Simulación de éxito
-      this.message.success('Tu mensaje ha sido enviado. Te responderemos en breve.');
+      // There is no backend inbox: hand the message over to WhatsApp so it is never lost silently
+      const { name, email, subject, message } = this.contactForm.value;
+      const subjectLabel = this.subjects.find(s => s.value === subject)?.label || subject;
+      const text = `Hola, soy ${name} (${email}).\nAsunto: ${subjectLabel}\n${message}`;
+      window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
       this.contactForm.reset();
     } else {
       // Marcar todos los campos como touched para mostrar validaciones
       Object.values(this.contactForm.controls).forEach(control => {
-        control.markAsTouched();
-      });
-    }
-  }
-
-  submitReturnForm(): void {
-    if (this.returnForm.valid) {
-      // Aquí implementarías la lógica para procesar la devolución
-      console.log('Solicitud de devolución:', this.returnForm.value);
-      
-      // Simulación de éxito
-      this.message.success('Tu solicitud de devolución ha sido recibida. Recibirás instrucciones por correo electrónico.');
-      this.returnForm.reset();
-    } else {
-      Object.values(this.returnForm.controls).forEach(control => {
         control.markAsTouched();
       });
     }

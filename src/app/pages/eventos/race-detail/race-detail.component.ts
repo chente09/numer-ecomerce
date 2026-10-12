@@ -362,7 +362,7 @@ export class RaceDetailComponent implements OnInit, OnDestroy {
           nzOkText: 'Completar Perfil',
           nzOnOk: () => {
             sessionStorage.setItem('returnUrl', this.router.url);
-            this.router.navigate(['/mi-cuenta']);
+            this.router.navigate(['/perfil']);
           }
         });
 
@@ -380,7 +380,7 @@ export class RaceDetailComponent implements OnInit, OnDestroy {
                 nzContent: 'Ya tienes una inscripción activa para este evento. Puedes revisar tus inscripciones en "Mi Cuenta".',
                 nzOkText: 'Ver Mis Inscripciones',
                 nzOnOk: () => {
-                  this.router.navigate(['/mi-cuenta/inscripciones']);
+                  this.router.navigate(['/perfil']);
                 }
               });
               return;
@@ -437,12 +437,7 @@ export class RaceDetailComponent implements OnInit, OnDestroy {
     // Mostrar modal de éxito
     this.modal.success({
       nzTitle: 'Inscripción Exitosa',
-      nzContent: 'Tu inscripción se ha creado correctamente. Ahora serás redirigido al checkout para completar el pago.',
-      nzOnOk: () => {
-        // TODO: Navegar a checkout
-        // this.router.navigate(['/checkout', inscriptionId]);
-        this.message.info('Funcionalidad de checkout en desarrollo');
-      }
+      nzContent: 'Tu inscripción quedó registrada y está pendiente de pago. El pago en línea de inscripciones estará disponible muy pronto; nos pondremos en contacto contigo por WhatsApp para coordinarlo.'
     });
   }
 

@@ -271,6 +271,27 @@
   background-color: #000000 !important;
 }
 
+/* Long values (transaction ids, authorization codes) must wrap, not overflow */
+.transaction-code,
+.detail-row .value,
+.detail-row span:last-child {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.detail-row {
+  gap: 12px;
+}
+
+.detail-row span:last-child {
+  text-align: right;
+  min-width: 0;
+}
+
+.error-actions {
+  flex-wrap: wrap;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .payment-layout {
@@ -300,11 +321,19 @@
   }
   
   .main-title {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
   }
-  
+
   .confirmation-content {
     padding: 1rem;
+  }
+
+  .error-actions {
+    flex-direction: column;
+  }
+
+  .error-actions button {
+    width: 100%;
   }
   
   .main-actions {

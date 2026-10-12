@@ -1,0 +1,149 @@
+<div class="legal-page">
+
+    <!-- ================= POLÍTICA DE PRIVACIDAD ================= -->
+    <ng-container *ngIf="doc === 'privacy'">
+        <h1>Política de Privacidad</h1>
+        <p class="meta">Versión {{ version }}</p>
+
+        <section>
+            <h2>1. Quién es el responsable de tus datos</h2>
+            <p>NUMER, con domicilio en Iliniza S7 - 90, Quito, Ecuador. Para cualquier asunto relacionado con tus
+                datos personales escríbenos a {{ email }} o por <a [href]="whatsapp" target="_blank"
+                    rel="noopener">WhatsApp</a>.</p>
+        </section>
+
+        <section>
+            <h2>2. Qué datos recopilamos</h2>
+            <ul>
+                <li><strong>Cuenta:</strong> nombre y correo electrónico, que obtenemos al iniciar sesión con Google.
+                </li>
+                <li><strong>Perfil y entrega:</strong> teléfono, número de documento, fecha de nacimiento y
+                    direcciones de envío, que ingresas al completar tu perfil.</li>
+                <li><strong>Compras:</strong> productos, montos, fecha y datos del pago que nos informa Payphone
+                    (por ejemplo, estado de la transacción, código de autorización y los últimos dígitos de la
+                    tarjeta). No almacenamos el número completo de tu tarjeta.</li>
+                <li><strong>Eventos:</strong> si te inscribes en una carrera o evento, además los datos que pide el
+                    formulario: contacto de emergencia, talla, club, experiencia y, si decides informarlo,
+                    condiciones médicas (dato sensible).</li>
+                <li><strong>Preferencias:</strong> si aceptas recibir novedades y promociones, guardamos esa
+                    preferencia.</li>
+                <li><strong>Uso del sitio:</strong> datos técnicos y de navegación mediante herramientas de
+                    analítica.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>3. Para qué los usamos</h2>
+            <ul>
+                <li>Procesar tu compra, cobrarla, despacharla y darte seguimiento.</li>
+                <li>Atender cambios, devoluciones, garantías y consultas.</li>
+                <li>Gestionar tu inscripción y la seguridad en eventos.</li>
+                <li>Enviarte novedades y promociones, solo si te suscribiste (puedes darte de baja cuando quieras).
+                </li>
+                <li>Mejorar el sitio y prevenir fraudes.</li>
+                <li>Cumplir obligaciones legales y tributarias.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>4. Con quién los compartimos</h2>
+            <p>Solo con quienes necesitamos para prestarte el servicio:</p>
+            <ul>
+                <li><strong>Payphone</strong>, para procesar el pago.</li>
+                <li><strong>Servientrega</strong>, para entregar tu pedido (nombre, teléfono y dirección).</li>
+                <li><strong>Google</strong> (inicio de sesión, almacenamiento en la nube y analítica). Sus servidores
+                    pueden estar fuera de Ecuador.</li>
+                <li>Autoridades, cuando la ley lo exija.</li>
+            </ul>
+            <p>No vendemos tus datos personales.</p>
+        </section>
+
+        <section>
+            <h2>5. Cuánto tiempo los conservamos</h2>
+            <p>Mientras mantengas tu cuenta y durante el tiempo que exijan las obligaciones legales, tributarias y de
+                garantía. Luego los eliminamos o anonimizamos.</p>
+        </section>
+
+        <section>
+            <h2>6. Tus derechos</h2>
+            <p>Puedes solicitar el acceso, la rectificación, la actualización o la eliminación de tus datos, oponerte
+                a su tratamiento, pedir su suspensión o portabilidad y retirar tu consentimiento, en los términos de
+                la Ley Orgánica de Protección de Datos Personales. Escríbenos a {{ email }} indicando tu solicitud y
+                el correo de tu cuenta; te responderemos en los plazos que establece la ley.</p>
+        </section>
+
+        <section>
+            <h2>7. Seguridad</h2>
+            <p>Aplicamos medidas técnicas y organizativas para proteger tu información: conexión cifrada, control
+                de acceso a la administración y pagos procesados por un proveedor especializado.</p>
+        </section>
+
+        <section>
+            <h2>8. Menores de edad</h2>
+            <p>Nuestra tienda está dirigida a mayores de edad. La inscripción de menores en eventos requiere la
+                autorización de su representante legal.</p>
+        </section>
+
+        <section>
+            <h2>9. Cambios en esta política</h2>
+            <p>Si la actualizamos, publicaremos la nueva versión en esta página con su fecha.</p>
+        </section>
+
+        <p class="see-also">Consulta también los <a routerLink="/terms">Términos y Condiciones</a>.</p>
+    </ng-container>
+
+    <!-- ================= DESLINDE DE RESPONSABILIDAD ================= -->
+    <ng-container *ngIf="doc === 'deslinde'">
+        <h1>Deslinde de Responsabilidad</h1>
+        <p class="meta">Versión {{ version }} · Eventos y carreras NUMER</p>
+
+        <section>
+            <h2>1. Participación voluntaria</h2>
+            <p>Participo de forma libre y voluntaria en el evento al que me inscribo. Conozco su naturaleza,
+                recorrido y exigencia.</p>
+        </section>
+
+        <section>
+            <h2>2. Riesgos</h2>
+            <p>Entiendo que las actividades de montaña, trail running y deportes al aire libre implican riesgos
+                propios, como caídas, lesiones, cambios bruscos del clima, altura, deshidratación, fatiga y otros
+                que no pueden eliminarse por completo, aun con la debida organización.</p>
+        </section>
+
+        <section>
+            <h2>3. Condición física y salud</h2>
+            <p>Declaro estar en condiciones físicas y de salud adecuadas para participar, y que la información
+                médica y de contacto que entrego es veraz. Me comprometo a informar cualquier condición que
+                pueda afectar mi seguridad.</p>
+        </section>
+
+        <section>
+            <h2>4. Reglas y seguridad</h2>
+            <p>Me comprometo a cumplir el reglamento del evento, las indicaciones de la organización y las normas
+                de cuidado del entorno natural. La organización puede retirar de la actividad a quien ponga en
+                riesgo su seguridad o la de otros.</p>
+        </section>
+
+        <section>
+            <h2>5. Atención médica de emergencia</h2>
+            <p>Autorizo a la organización a gestionar mi atención médica o traslado en caso de emergencia y a
+                contactar a la persona de emergencia que indiqué.</p>
+        </section>
+
+        <section>
+            <h2>6. Alcance de este deslinde</h2>
+            <p>Libero a NUMER y a su organización de responsabilidad por los daños que deriven de los riesgos
+                propios de la actividad y de mi propia conducta. Este deslinde no excluye la responsabilidad que
+                la ley no permite excluir, como la derivada de dolo o negligencia grave de la organización.</p>
+        </section>
+
+        <section>
+            <h2>7. Cancelaciones y cambios</h2>
+            <p>La organización puede modificar, suspender o cancelar el evento por razones de seguridad, clima u
+                otras causas, y te informará las condiciones aplicables.</p>
+        </section>
+
+        <p class="see-also">Consulta también la <a routerLink="/privacy">Política de Privacidad</a> y los
+            <a routerLink="/terms">Términos y Condiciones</a>.</p>
+    </ng-container>
+</div>

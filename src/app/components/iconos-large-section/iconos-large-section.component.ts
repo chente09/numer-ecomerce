@@ -50,7 +50,7 @@ export class IconosLargeSectionComponent implements OnInit, OnDestroy {
       id: 'tiendas',
       icon: 'shop',
       title: 'Encuéntranos',
-      description: 'Visítanos en nuestras tiendas',
+      description: 'Visítanos en nuestro Workshop en Quito',
       link: '/ubicaciones',
       order: 3,
       isActive: true

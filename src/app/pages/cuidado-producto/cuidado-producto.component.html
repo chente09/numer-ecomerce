@@ -49,19 +49,6 @@
                         </nz-collapse>
                     </div>
 
-                    <nz-divider></nz-divider>
-
-                    <!-- Video demostrativo -->
-                    <div class="video-section text-center">
-                        <h3>Video Demostrativo: Cómo Limpiar y Mantener tus Productos</h3>
-                        <div class="video-container">
-                            <iframe width="560" height="315" src="https://www.youtube.com/embed/your-video-id"
-                                title="Cuidado de Producto Numer" frameborder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowfullscreen>
-                            </iframe>
-                        </div>
-                    </div>
                 </div>
             </nz-tab>
 
@@ -77,7 +64,7 @@
                         <nz-timeline [nzMode]="'left'">
                             <nz-timeline-item nzColor="green">
                                 <h4>Duración de la Garantía</h4>
-                                <p>Todos los productos Numer están garantizados por un período de 2 años desde la fecha
+                                <p>Todos los productos Numer están garantizados por un período de 1 año desde la fecha
                                     de compra para defectos de fabricación.</p>
                             </nz-timeline-item>
 
@@ -106,82 +93,15 @@
                                 <h4>Proceso de Reclamación</h4>
                                 <p>Para hacer uso de la garantía, sigue estos pasos:</p>
                                 <ol>
-                                    <li>Contacta con nuestro servicio al cliente a través del formulario en la sección
-                                        "Contacto" o directamente por correo electrónico</li>
-                                    <li>Presenta prueba de compra (factura o recibo)</li>
-                                    <li>Proporciona fotos del defecto</li>
+                                    <li>Escríbenos por WhatsApp (+593 98 712 5801) o a numer.ec21&#64;gmail.com</li>
+                                    <li>Indica tu número de pedido (lo ves en "Mis pedidos") o adjunta tu comprobante
+                                        de compra</li>
+                                    <li>Envíanos fotos del defecto</li>
                                     <li>Nuestro equipo evaluará el caso y te contactará con instrucciones para la
                                         reparación o reemplazo</li>
                                 </ol>
                             </nz-timeline-item>
                         </nz-timeline>
-                    </div>
-
-                    <div class="warranty-registration content-section">
-                        <h3>Registra tu Producto</h3>
-                        <p>Registra tu producto para activar completamente tu garantía y recibir actualizaciones sobre
-                            cuidados específicos:</p>
-
-                        <form nz-form [formGroup]="warrantyForm" (ngSubmit)="submitWarrantyForm()">
-                            <nz-form-item>
-                                <nz-form-label [nzSpan]="6" nzRequired>Nombre completo</nz-form-label>
-                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor ingresa tu nombre completo">
-                                    <input nz-input formControlName="fullName" placeholder="Nombre completo" />
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-label [nzSpan]="6" nzRequired>Correo electrónico</nz-form-label>
-                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor ingresa un correo válido">
-                                    <input nz-input formControlName="email" placeholder="correo@ejemplo.com" />
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-label [nzSpan]="6" nzRequired>Modelo del producto</nz-form-label>
-                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor selecciona un modelo">
-                                    <nz-select formControlName="productModel" nzPlaceHolder="Selecciona un modelo">
-                                        <nz-option *ngFor="let model of productModels" [nzValue]="model.value"
-                                            [nzLabel]="model.label"></nz-option>
-                                    </nz-select>
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-label [nzSpan]="6" nzRequired>Número de serie</nz-form-label>
-                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor ingresa el número de serie">
-                                    <input nz-input formControlName="serialNumber" placeholder="Ej. NM-2023-12345" />
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-label [nzSpan]="6" nzRequired>Fecha de compra</nz-form-label>
-                                <nz-form-control [nzSpan]="14" nzErrorTip="Por favor selecciona la fecha de compra">
-                                    <nz-date-picker formControlName="purchaseDate"
-                                        [nzFormat]="'dd/MM/yyyy'"></nz-date-picker>
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-label [nzSpan]="6">Factura/Recibo</nz-form-label>
-                                <nz-form-control [nzSpan]="14">
-                                    <nz-upload nzAction="https://api.numer.ec/upload"
-                                        [nzHeaders]="{ authorization: 'authorization-text' }"
-                                        (nzChange)="handleUploadChange($event)">
-                                        <button nz-button>
-                                            <i nz-icon nzType="upload"></i> Subir archivo
-                                        </button>
-                                    </nz-upload>
-                                </nz-form-control>
-                            </nz-form-item>
-
-                            <nz-form-item>
-                                <nz-form-control [nzOffset]="6" [nzSpan]="14">
-                                    <button nz-button nzType="primary" [disabled]="!warrantyForm.valid">Registrar
-                                        Producto</button>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </form>
                     </div>
 
                     <div class="content-section">
