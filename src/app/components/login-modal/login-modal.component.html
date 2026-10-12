@@ -18,8 +18,26 @@
 
             <p class="login-message">{{ message }}</p>
 
-            <button nz-button nzSize="large" nzBlock [nzLoading]="loading" (click)="handleLogin()"
-                class="google-login-btn">
+            <div class="consent-box">
+                <label class="consent-row">
+                    <input type="checkbox" [(ngModel)]="acceptedTerms" />
+                    <span>
+                        He leído y acepto los <a href="/terms" target="_blank" rel="noopener">Términos y
+                            Condiciones</a> y la <a href="/privacy" target="_blank" rel="noopener">Política de
+                            Privacidad</a>.
+                    </span>
+                </label>
+                <label class="consent-row consent-promos">
+                    <input type="checkbox" [(ngModel)]="acceptedPromos" />
+                    <span>
+                        <strong>Quiero ser de los primeros en saber</strong> de lanzamientos y ofertas exclusivas, y
+                        recibir un saludo en mi cumpleaños. <em>(Opcional)</em>
+                    </span>
+                </label>
+            </div>
+
+            <button nz-button nzSize="large" nzBlock [nzLoading]="loading" [disabled]="!acceptedTerms"
+                (click)="handleLogin()" class="google-login-btn">
                 <span *ngIf="!loading" class="btn-content">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"
                         class="google-icon" />
@@ -29,11 +47,8 @@
             </button>
 
             <div class="login-footer">
-                <p class="footer-text">
-                    Al continuar, aceptas nuestros
-                    <a href="/terminos" target="_blank">Términos de Servicio</a>
-                    y
-                    <a href="/privacidad" target="_blank">Política de Privacidad</a>
+                <p class="footer-text" *ngIf="!acceptedTerms">
+                    Acepta los términos para continuar con Google.
                 </p>
             </div>
         </div>

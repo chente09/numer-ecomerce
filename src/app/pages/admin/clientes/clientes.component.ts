@@ -119,7 +119,8 @@ export class ClientesComponent implements OnInit {
         phone: user.phone || '',
         birthday,
         daysToBirthday: birthday ? this.daysUntilNextBirthday(birthday) : null,
-        subscribed: !!email && subscribedEmails.has(email),
+        // Accepts promotions = subscribed to the newsletter OR ticked the promotions consent at sign-up
+        subscribed: (!!email && subscribedEmails.has(email)) || user.marketingConsent === true,
         profileCompleted: !!user.profileCompleted,
         ordersCount: stats?.count || 0,
         totalSpent: Math.round((stats?.spent || 0) * 100) / 100,

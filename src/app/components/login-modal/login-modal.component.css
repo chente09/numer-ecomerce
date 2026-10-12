@@ -139,3 +139,43 @@
         font-size: 15px;
     }
 }
+.consent-box {
+    margin: 16px 0;
+    padding: 12px;
+    background: #fafafa;
+    border: 1px solid #eeeeee;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.consent-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #424242;
+    cursor: pointer;
+}
+
+.consent-row + .consent-row {
+    margin-top: 10px;
+}
+
+.consent-row input {
+    margin-top: 3px;
+    width: 17px;
+    height: 17px;
+    accent-color: #000;
+    flex-shrink: 0;
+}
+
+.consent-row a {
+    color: #000;
+    text-decoration: underline;
+}
+
+.consent-promos {
+    padding-top: 10px;
+    border-top: 1px dashed #e0e0e0;
+}

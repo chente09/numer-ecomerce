@@ -10,6 +10,7 @@ import { filter } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ScrollService } from './services/scroll/scroll.service';
 import { CartButtonComponent } from './components/cart-button/cart-button.component';
+import { ConsentGateComponent } from './components/consent-gate/consent-gate.component';
 
 @Component({
   selector: 'app-root',
@@ -22,7 +23,8 @@ import { CartButtonComponent } from './components/cart-button/cart-button.compon
     NavBarComponent,
     FooterComponent,
     WppComponent,
-    CartButtonComponent
+    CartButtonComponent,
+    ConsentGateComponent
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'

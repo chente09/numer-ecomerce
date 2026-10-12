@@ -8,7 +8,7 @@
         </div>
         <p class="clientes-help">
             <span nz-icon nzType="info-circle"></span>
-            Tu base de clientes: quién compra, quién cumple años pronto y quién recibe el newsletter. Úsala para
+            Tu base de clientes: quién compra, quién cumple años pronto y quién aceptó recibir promociones (solo a ellos se les puede escribir con ofertas o saludos de cumpleaños). Úsala para
             decidir a quién escribirle o ofrecerle una promoción. Los permisos (admin, distribuidor) se cambian en
             <em>Gestión de Usuarios</em>.
         </p>
@@ -22,7 +22,7 @@
             <nz-card class="stat-card"><nz-statistic nzTitle="Con compras" [nzValue]="buyersCount"></nz-statistic></nz-card>
         </div>
         <div nz-col [nzXs]="12" [nzMd]="6">
-            <nz-card class="stat-card"><nz-statistic nzTitle="Suscritos al newsletter" [nzValue]="subscribedCount"></nz-statistic></nz-card>
+            <nz-card class="stat-card"><nz-statistic nzTitle="Aceptan promociones" [nzValue]="subscribedCount"></nz-statistic></nz-card>
         </div>
         <div nz-col [nzXs]="12" [nzMd]="6">
             <nz-card class="stat-card">
@@ -46,7 +46,7 @@
                 <nz-select [(ngModel)]="quickFilter" style="width: 100%">
                     <nz-option nzValue="all" nzLabel="Todos los clientes"></nz-option>
                     <nz-option nzValue="birthday" [nzLabel]="'Cumpleaños en ' + birthdayWindow + ' días'"></nz-option>
-                    <nz-option nzValue="subscribed" nzLabel="Suscritos al newsletter"></nz-option>
+                    <nz-option nzValue="subscribed" nzLabel="Aceptan promociones (se les puede escribir)"></nz-option>
                     <nz-option nzValue="buyers" nzLabel="Con compras"></nz-option>
                     <nz-option nzValue="noPurchase" nzLabel="Sin compras todavía"></nz-option>
                 </nz-select>
@@ -61,7 +61,7 @@
                 <tr>
                     <th>Cliente</th>
                     <th [nzSortFn]="sortByBirthday">Cumpleaños</th>
-                    <th>Newsletter</th>
+                    <th>Promociones</th>
                     <th>Perfil</th>
                     <th [nzSortFn]="sortByOrders">Pedidos</th>
                     <th [nzSortFn]="sortBySpent">Gastado</th>
@@ -85,8 +85,8 @@
                         <nz-tag *ngIf="birthdayCountdown(row)" class="birthday-tag">{{ birthdayCountdown(row) }}</nz-tag>
                     </td>
                     <td>
-                        <nz-tag *ngIf="row.subscribed" nzColor="#2b7b2b">Suscrito</nz-tag>
-                        <span *ngIf="!row.subscribed" class="muted">No</span>
+                        <nz-tag *ngIf="row.subscribed" nzColor="#2b7b2b">Acepta</nz-tag>
+                        <span *ngIf="!row.subscribed" class="muted">No acepta</span>
                     </td>
                     <td>
                         <nz-tag *ngIf="row.profileCompleted" nzColor="#2b7b2b">Completo</nz-tag>

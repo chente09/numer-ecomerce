@@ -213,6 +213,28 @@
 
                 <nz-divider></nz-divider>
 
+                <!-- Consentimientos -->
+                <div class="consent-section">
+                    <label class="consent-item">
+                        <input type="checkbox" formControlName="acceptTerms" />
+                        <span>
+                            He leído y acepto los
+                            <a href="/terms" target="_blank" rel="noopener">Términos y Condiciones</a> y la
+                            <a href="/privacy" target="_blank" rel="noopener">Política de Privacidad</a>.
+                            <span class="required-mark">*</span>
+                        </span>
+                    </label>
+                    <label class="consent-item consent-promos">
+                        <input type="checkbox" formControlName="marketingConsent" />
+                        <span>
+                            <strong>Quiero ser de los primeros en saber</strong> de lanzamientos y ofertas
+                            exclusivas, y recibir un saludo en mi cumpleaños. <em>(Opcional)</em>
+                        </span>
+                    </label>
+                    <small class="form-help">Declaro ser mayor de 18 años. Puedes cambiar tu elección cuando quieras
+                        escribiéndonos.</small>
+                </div>
+
                 <!-- Botones de acción -->
                 <div class="form-actions">
                     <button nz-button nzType="default" (click)="goBack()" [disabled]="isSubmitting" class="cancel-btn">

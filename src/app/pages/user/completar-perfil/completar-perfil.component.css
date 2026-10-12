@@ -492,3 +492,45 @@ h3 small {
 .address-alert {
     margin-bottom: 20px;
 }
+
+.consent-section {
+    margin: 8px 0 20px;
+    padding: 14px;
+    background: #fafafa;
+    border: 1px solid #eeeeee;
+    border-radius: 8px;
+}
+
+.consent-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #262626;
+    cursor: pointer;
+}
+
+.consent-item + .consent-item {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e0e0e0;
+}
+
+.consent-item input {
+    margin-top: 4px;
+    width: 18px;
+    height: 18px;
+    accent-color: #000;
+    flex-shrink: 0;
+}
+
+.consent-item a {
+    color: #000;
+    text-decoration: underline;
+}
+
+.required-mark {
+    color: #ff4d4f;
+    margin-left: 2px;
+}

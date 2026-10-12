@@ -1,3 +1,4 @@
+import { MIN_AGE, TERMS_VERSION } from '../../../core/legal';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { UsersService } from '../../../services/users/users.service';
@@ -77,7 +78,7 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
       phone: ['', [Validators.required, this.ecuadorianPhoneValidator()]],
 
       // 🎂 Fecha de nacimiento con validación mejorada
-      birthDate: ['', [Validators.required, this.minimumAgeValidator(13)]],
+      birthDate: ['', [Validators.required, this.minimumAgeValidator(MIN_AGE)]],
 
       // 🆕 Documento de identidad con validación dinámica
       documentType: ['cedula', Validators.required],
@@ -89,7 +90,11 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
       province: ['', [Validators.required, this.notInternationalValidator()]],
       canton: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
       neighborhood: ['', [Validators.maxLength(50)]],
-      reference: ['', [Validators.maxLength(200)]]
+      reference: ['', [Validators.maxLength(200)]],
+
+      // Consents: terms are mandatory, promotions are an optional and separate opt-in
+      acceptTerms: [false, Validators.requiredTrue],
+      marketingConsent: [false]
     });
 
     this.profileForm.get('province')?.valueChanges.subscribe(value => {
@@ -303,7 +308,10 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
           phone: this.userProfile.phone || '',
           birthDate: birthDateValue, // 🛠️ CORRECCIÓN: Usar fecha procesada
           documentType: this.userProfile.documentType || 'cedula',
-          documentNumber: this.userProfile.documentNumber || ''
+          documentNumber: this.userProfile.documentNumber || '',
+          // Already accepted the current terms? Keep them accepted; otherwise ask again
+          acceptTerms: this.userProfile.termsVersion === TERMS_VERSION,
+          marketingConsent: !!this.userProfile.marketingConsent
         });
 
         // Cargar dirección por defecto si existe
@@ -396,6 +404,14 @@ export class CompletarPerfilComponent implements OnInit, OnDestroy {
         displayName: user.displayName,
         photoURL: user.photoURL,
         profileCompleted: true,
+        // Consent evidence: terms version/date only when newly accepted; marketing always as explicit true/false
+        ...(this.userProfile?.termsVersion !== TERMS_VERSION
+          ? { termsVersion: TERMS_VERSION, termsAcceptedAt: new Date() }
+          : {}),
+        marketingConsent: !!this.profileForm.value.marketingConsent,
+        ...(!!this.profileForm.value.marketingConsent !== !!this.userProfile?.marketingConsent
+          ? { marketingConsentAt: new Date() }
+          : {}),
         updatedAt: new Date(),
         createdAt: this.userProfile?.createdAt || new Date()
       };

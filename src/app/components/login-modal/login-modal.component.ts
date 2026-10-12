@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 
 // Servicios
 import { UsersService } from '../../services/users/users.service';
+import { FormsModule } from '@angular/forms';
+import { TERMS_VERSION } from '../../core/legal';
 
 // NG-Zorro
 import { NzModalModule } from 'ng-zorro-antd/modal';
@@ -16,6 +18,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     NzModalModule,
     NzButtonModule,
     NzIconModule,
@@ -33,6 +36,8 @@ export class LoginModalComponent {
   @Output() modalClosed = new EventEmitter<void>();
 
   loading = false;
+  acceptedTerms = false;
+  acceptedPromos = false;
 
   constructor(
     private usersService: UsersService,
@@ -40,7 +45,7 @@ export class LoginModalComponent {
   ) { }
 
   async handleLogin(): Promise<void> {
-    if (this.loading) return;
+    if (this.loading || !this.acceptedTerms) return;
 
     this.loading = true;
 
@@ -58,6 +63,11 @@ export class LoginModalComponent {
 
       if (result && result.user) {
         this.messageService.success('¡Inicio de sesión exitoso!');
+
+        // Consent evidence (never blocks the login if it fails)
+        this.usersService
+          .recordConsent({ terms: true, marketing: this.acceptedPromos }, TERMS_VERSION)
+          .catch(err => console.warn('No se pudo registrar el consentimiento:', err));
 
         // 3. Registrar actividad (sin bloquear el flujo si falla)
         try {
