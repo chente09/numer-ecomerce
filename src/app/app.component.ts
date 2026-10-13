@@ -7,6 +7,7 @@ import { NavBarComponent } from "./components/nav-bar/nav-bar.component";
 import { FooterComponent } from "./components/footer/footer.component";
 import { WppComponent } from "./components/wpp/wpp.component";
 import { filter } from 'rxjs';
+import { ScreenTrackingService, UserTrackingService } from '@angular/fire/analytics';
 import { CommonModule } from '@angular/common';
 import { ScrollService } from './services/scroll/scroll.service';
 import { CartButtonComponent } from './components/cart-button/cart-button.component';
@@ -34,7 +35,11 @@ export class AppComponent {
 
   constructor(
     private router: Router,
-    private scrollService: ScrollService
+    private scrollService: ScrollService,
+    // Providers are lazy: injecting them is what actually starts Firebase Analytics, the
+    // per-route screen_view events and the user id tracking
+    private screenTracking: ScreenTrackingService,
+    private userTracking: UserTrackingService
   ) { }
 
   ngOnInit(): void {
