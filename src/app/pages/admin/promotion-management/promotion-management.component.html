@@ -9,6 +9,10 @@
         </div>
     </nz-card>
 
+    <nz-alert nzType="info" nzShowIcon class="mb-4" nzMessage="¿Cómo funcionan las promociones y los cupones?"
+        nzDescription="Hay dos tipos. Una Promoción (etiqueta «Estándar») es una plantilla que tú aplicas a productos concretos y baja su precio directamente, sin código. Un Cupón (etiqueta «Cupón») es un código que el cliente escribe en el carrito y descuenta sobre toda su compra. Los límites de uso, el monto mínimo y el tope se validan en el servidor al pagar; el cliente no puede saltárselos.">
+    </nz-alert>
+
     <nz-card *ngIf="!loading">
         <nz-table #promotionsTable [nzData]="promotions" [nzBordered]="true" [nzShowPagination]="promotions.length > 10"
             [nzPageSize]="10" *ngIf="promotions.length > 0">
@@ -93,6 +97,8 @@
                             <h4>Promoción para Productos</h4>
                             <p>Crea una plantilla de descuento (ej: 20% OFF) que luego aplicarás manualmente a productos
                                 específicos.</p>
+                            <p class="selection-hint">Úsala para: rebajas y ofertas de temporada. El cliente ve el
+                                precio ya rebajado en el producto, sin escribir ningún código.</p>
                         </div>
                     </div>
                     <div nz-col [nzSpan]="12">
@@ -101,6 +107,8 @@
                             <h4>Código de Descuento</h4>
                             <p>Crea un código (ej: BIENVENIDA10) para que los clientes lo usen en el carrito de compras.
                             </p>
+                            <p class="selection-hint">Úsalo para: campañas, bienvenida a nuevos clientes, envío gratis o
+                                promociones por correo. Se puede limitar por compra mínima y por número de usos.</p>
                         </div>
                     </div>
                 </div>
@@ -111,7 +119,8 @@
                     <div nz-col [nzSpan]="12">
                         <nz-form-item>
                             <nz-form-label nzRequired>Nombre (Uso interno)</nz-form-label>
-                            <nz-form-control nzErrorTip="El nombre es requerido">
+                            <nz-form-control nzErrorTip="El nombre es requerido"
+                                nzExtra="Es una etiqueta para ti: el cliente no la ve. Ej.: «Lanzamiento octubre».">
                                 <input nz-input formControlName="name" />
                             </nz-form-control>
                         </nz-form-item>
@@ -126,7 +135,8 @@
 
                         <nz-form-item>
                             <nz-form-label nzRequired>Fechas de Validez</nz-form-label>
-                            <nz-form-control nzErrorTip="Seleccione un rango de fechas">
+                            <nz-form-control nzErrorTip="Seleccione un rango de fechas"
+                                nzExtra="Desde el inicio hasta el fin del último día. Fuera de este rango deja de aplicarse.">
                                 <nz-range-picker formControlName="dates" style="width: 100%;"></nz-range-picker>
                             </nz-form-control>
                         </nz-form-item>
@@ -150,7 +160,8 @@
 
                         <nz-form-item *ngIf="promotionForm.get('discountType')?.value !== 'shipping'">
                             <nz-form-label nzRequired>Valor del Descuento</nz-form-label>
-                            <nz-form-control nzErrorTip="El valor es requerido">
+                            <nz-form-control nzErrorTip="El valor es requerido"
+                                nzExtra="Si el tipo es porcentaje, escribe 10 para un 10 %. Si es monto fijo, escribe los dólares (ej. 5 = $5 de descuento).">
                                 <nz-input-number formControlName="discountValue" [nzMin]="0.01"
                                     style="width: 100%;"></nz-input-number>
                             </nz-form-control>
@@ -158,7 +169,8 @@
 
                         <nz-form-item>
                             <nz-form-label>Estado</nz-form-label>
-                            <nz-form-control>
+                            <nz-form-control
+                                nzExtra="Inactiva = no se aplica aunque esté dentro de las fechas. Útil para pausarla sin borrarla.">
                                 <nz-switch formControlName="isActive" nzCheckedChildren="Activa"
                                     nzUnCheckedChildren="Inactiva"></nz-switch>
                             </nz-form-control>
@@ -172,7 +184,8 @@
                         <div nz-col [nzSpan]="16">
                             <nz-form-item>
                                 <nz-form-label nzRequired>Código de Cupón</nz-form-label>
-                                <nz-form-control nzErrorTip="El código es requerido">
+                                <nz-form-control nzErrorTip="El código es requerido"
+                                    nzExtra="Es lo que el cliente escribe en el carrito. Solo letras MAYÚSCULAS y números, sin espacios, mínimo 4 caracteres (ej. VERANO25). Usa un código distinto para cada cupón.">
                                     <input nz-input formControlName="couponCode" placeholder="VERANO25" />
                                 </nz-form-control>
                             </nz-form-item>
@@ -182,7 +195,9 @@
                         <div nz-col [nzSpan]="12">
                             <nz-form-item>
                                 <nz-form-label>Monto Mínimo de Compra</nz-form-label>
-                                <nz-form-control>
+                                <nz-form-control
+                                    nzExtra="Subtotal mínimo del carrito (antes de IVA y envío) para poder usar el cupón. Vacío = sin mínimo.">
+
                                     <nz-input-number formControlName="minPurchaseAmount" [nzMin]="0"
                                         style="width: 100%;" placeholder="Opcional"></nz-input-number>
                                 </nz-form-control>
@@ -191,7 +206,9 @@
                         <div nz-col [nzSpan]="12">
                             <nz-form-item>
                                 <nz-form-label>Descuento Máximo ($)</nz-form-label>
-                                <nz-form-control>
+                                <nz-form-control
+                                    nzExtra="Tope en dólares del descuento (ej. 20 % pero nunca más de $8). Vacío = sin tope.">
+
                                     <nz-input-number formControlName="maxDiscountAmount" [nzMin]="0"
                                         style="width: 100%;" placeholder="Opcional"></nz-input-number>
                                 </nz-form-control>
@@ -202,7 +219,9 @@
                         <div nz-col [nzSpan]="12">
                             <nz-form-item>
                                 <nz-form-label>Límite de Usos por Usuario</nz-form-label>
-                                <nz-form-control>
+                                <nz-form-control
+                                    nzExtra="Cuántas veces puede usarlo cada cliente. 1 = una sola vez por persona (ej. bienvenida).">
+
                                     <nz-input-number formControlName="perUser" [nzMin]="1" style="width: 100%;"
                                         placeholder="Opcional, ej: 1"></nz-input-number>
                                 </nz-form-control>
@@ -211,7 +230,9 @@
                         <div nz-col [nzSpan]="12">
                             <nz-form-item>
                                 <nz-form-label>Límite de Usos Global</nz-form-label>
-                                <nz-form-control>
+                                <nz-form-control
+                                    nzExtra="Total de usos entre todos los clientes. Al llegar a ese número el cupón deja de funcionar.">
+
                                     <nz-input-number formControlName="global" [nzMin]="1" style="width: 100%;"
                                         placeholder="Opcional, ej: 100"></nz-input-number>
                                 </nz-form-control>

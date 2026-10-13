@@ -263,8 +263,10 @@ export class PromotionManagementComponent implements OnInit {
       promotionType: type,
       discountType: formValue.discountType,
       discountValue: formValue.discountValue,
-      startDate: formValue.dates[0],
-      endDate: formValue.dates[1],
+      // El selector devuelve la hora actual: se normaliza para que el cupón valga desde las 00:00 del
+      // primer día hasta las 23:59 del último, no hasta la hora en que se creó.
+      startDate: this.startOfDay(formValue.dates[0]),
+      endDate: this.endOfDay(formValue.dates[1]),
       isActive: formValue.isActive,
     };
 
@@ -359,6 +361,18 @@ export class PromotionManagementComponent implements OnInit {
     return promotion.discountType === 'percentage'
       ? `${promotion.discountValue}%`
       : `$${promotion.discountValue.toFixed(2)}`;
+  }
+
+  private startOfDay(value: Date): Date {
+    const d = new Date(value);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  private endOfDay(value: Date): Date {
+    const d = new Date(value);
+    d.setHours(23, 59, 59, 999);
+    return d;
   }
 
   couponCodeValidator(control: AbstractControl): { [key: string]: any } | null {
