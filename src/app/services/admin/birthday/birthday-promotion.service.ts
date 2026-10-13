@@ -23,7 +23,8 @@ export class BirthdayPromotionService {
         return { hasBirthdayPromotion: false, daysUntilBirthday: 0, discountPercentage: 0 };
       }
 
-      const birthDate = new Date(userProfile.birthDate);
+      const raw: any = userProfile.birthDate;
+      const birthDate: Date = typeof raw?.toDate === 'function' ? raw.toDate() : new Date(raw);
       const today = new Date();
       
       const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
