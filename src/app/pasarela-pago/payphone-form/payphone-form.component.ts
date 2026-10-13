@@ -432,8 +432,10 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
       catchError(error => {
         console.error('❌ Error en callPayphoneAPI:', error);
 
-        // Sin stock: el backend explica qué producto falta (antes de que el cliente ingrese su tarjeta)
-        if (error?.error?.code === 'OUT_OF_STOCK' && error.error.error) {
+        // Rechazos con explicación (antes de que el cliente ingrese su tarjeta): sin stock, cupón no
+        // válido o ya usado, promoción de uso limitado agotada
+        const explainedCodes = ['OUT_OF_STOCK', 'COUPON_INVALID', 'COUPON_LIMIT', 'PROMOTION_LIMIT'];
+        if (explainedCodes.includes(error?.error?.code) && error.error.error) {
           this.friendlyApiError = error.error.error;
         }
 
