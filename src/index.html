@@ -225,49 +225,6 @@
     })(window, document, 'script', 'dataLayer', 'GTM-MF9PPR6C');</script>
   <!-- End Google Tag Manager -->
 
-  <!-- ==================== FIREBASE ANALYTICS ==================== -->
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getAnalytics, logEvent } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyB4NSF26zLhm9qsXGrJZ6rNAUw2Z2T8k3o",
-      authDomain: "numer-16f35.firebaseapp.com",
-      projectId: "numer-16f35",
-      storageBucket: "numer-16f35.firebasestorage.app",
-      messagingSenderId: "1010054110379",
-      appId: "1:1010054110379:web:212389b0d3e9e17a896bee",
-      measurementId: "G-GVGLYZ4RJJ"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-
-    // Track page views
-    logEvent(analytics, 'page_view', {
-      page_title: document.title,
-      page_location: window.location.href
-    });
-
-    // Track productos estrella views
-    logEvent(analytics, 'view_item_list', {
-      item_list_id: "featured_products",
-      item_list_name: "Productos Estrella",
-      items: [
-        {
-          item_id: "pantalon_extraligero",
-          item_name: "Pantalón Extraligero",
-          item_category: "Pantalones Trail"
-        },
-        {
-          item_id: "chompa_aguacero",
-          item_name: "Chompa AGUACERO",
-          item_category: "Chompas Impermeables"
-        }
-      ]
-    });
-  </script>
-
   <!-- ==================== EXTERNAL STYLESHEETS ==================== -->
   <!-- Iconos: no bloquean el primer pintado -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" media="print" onload="this.media='all'">
