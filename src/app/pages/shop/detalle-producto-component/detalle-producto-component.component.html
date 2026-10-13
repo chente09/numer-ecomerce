@@ -24,7 +24,7 @@
             <div class="thumbnail-images" *ngIf="product.additionalImages && product.additionalImages.length > 0">
                 <h5 class="gallery-subtitle">Otras vistas</h5>
                 <div class="thumbnails-grid">
-                    <img *ngFor="let image of product.additionalImages; let i = index" [src]="image"
+                    <img loading="lazy" decoding="async" *ngFor="let image of product.additionalImages; let i = index" [src]="image"
                         [alt]="product.name + ' - Vista ' + (i + 1)" [class.active]="currentImageUrl === image"
                         (click)="showImagePreview(image)">
                 </div>
@@ -152,7 +152,7 @@
                         [ngClass]="{'active': selectedColor?.name === color.name, 'out-of-stock': !hasStockForColor(color)}"
                         (click)="selectColor(color)">
                         <div class="color-thumbnail">
-                            <img [src]="color.imageUrl" [alt]="color.name">
+                            <img loading="lazy" decoding="async" [src]="color.imageUrl" [alt]="color.name">
                         </div>
                         <span class="color-name">{{ color.name }}</span>
                     </div>
@@ -229,7 +229,7 @@
                                 <div *ngFor="let size of product.sizes" class="size-grid-item">
                                     <div *ngIf="size.imageUrl" class="size-cell-image"
                                         (click)="showImagePreview(size.imageUrl)">
-                                        <img [src]="size.imageUrl" [alt]="'Talla ' + size.name">
+                                        <img loading="lazy" decoding="async" [src]="size.imageUrl" [alt]="'Talla ' + size.name">
                                         <div class="image-zoom-icon">
                                             <i nz-icon nzType="zoom-in" nzTheme="outline"></i>
                                         </div>
@@ -246,8 +246,8 @@
                             <!-- Imagen del cuadro de tallas (fuera del ngFor) -->
                             <div class="size-item">
                                 <div class="size-image"
-                                    (click)="showImagePreview('https://i.postimg.cc/15fRBmqy/tallas-table-2.png')">
-                                    <img src="https://i.postimg.cc/15fRBmqy/tallas-table-2.png" alt="Guía de tallas"
+                                    (click)="showImagePreview('/img/guia-tallas.webp')">
+                                    <img loading="lazy" decoding="async" src="/img/guia-tallas.webp" alt="Guía de tallas"
                                         class="size-cell-image-guia">
                                     <div class="image-zoom-icon">
                                         <i nz-icon nzType="zoom-in" nzTheme="outline"></i>

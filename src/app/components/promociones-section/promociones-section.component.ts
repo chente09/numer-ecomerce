@@ -31,7 +31,7 @@ export class PromocionesSectionComponent implements OnInit, OnDestroy {
     limitedOffers = [
       {
         title: 'Pantalón Extra Ligero',
-        imageUrl: 'https://i.postimg.cc/3wM0s6fq/VERDE-PINO.png',
+        imageUrl: '/img/promo-verde-pino.webp',
         originalPrice: 58,
         currentPrice: 38,
         discountPercentage: 20,
@@ -44,7 +44,7 @@ export class PromocionesSectionComponent implements OnInit, OnDestroy {
       },
       {
         title: 'Pantalón Barranco',
-        imageUrl: 'https://i.postimg.cc/L578zYrW/MENTA-GRIS.png',
+        imageUrl: '/img/promo-menta-gris.webp',
         originalPrice: 48,
         currentPrice: 38,
         discountPercentage: 23,

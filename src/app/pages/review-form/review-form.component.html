@@ -107,8 +107,7 @@
             <nz-tab nzTitle="Todas las reseñas">
                 <!-- Mensaje si no hay reseñas -->
                 <div *ngIf="reviews.length === 0" class="empty-state">
-                    <nz-empty nzDescription="Aún no hay reseñas. ¡Sé el primero en compartir tu experiencia!"
-                        [nzNotFoundImage]="'https://i.postimg.cc/WpSFTWP4/empty-reviews.png'">
+                    <nz-empty nzDescription="Aún no hay reseñas. ¡Sé el primero en compartir tu experiencia!">
                         <button nz-button nzType="primary" (click)="toggleForm()">
                             Escribir una reseña
                         </button>

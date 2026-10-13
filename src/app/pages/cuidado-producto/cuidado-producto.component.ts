@@ -30,7 +30,7 @@ export class CuidadoProductoComponent {
     {
       title: 'Ropa de Montaña',
       description: 'Cuidado específico para prendas técnicas y de alto rendimiento',
-      imageUrl: 'https://i.postimg.cc/RZNyyyFQ/53894.jpg',
+      imageUrl: '/img/cuidado-ropa-montana.webp',
       instructions: [
         'Lavar a mano o en ciclo suave con agua fría',
         'Usar detergente especial para telas técnicas',
