@@ -53,7 +53,7 @@
                     <!-- Imagen del modelo -->
                     <div class="model-image-container">
                         <!-- 🔄 ÚNICO CAMBIO: usar modelName en lugar de name -->
-                        <img [src]="getDisplayImageUrl(model)" [alt]="model.modelName" class="model-image"
+                        <img loading="lazy" decoding="async" [src]="getDisplayImageUrl(model)" [alt]="model.modelName" class="model-image"
                             loading="lazy" />
                     </div>
 

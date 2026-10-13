@@ -7,7 +7,7 @@
             <div nz-col [nzXs]="24" [nzMd]="12">
                 <div class="offer-card">
                     <div class="offer-image">
-                        <img [src]="limitedOffers[0].imageUrl" alt="Oferta especial">
+                        <img loading="lazy" decoding="async" [src]="limitedOffers[0].imageUrl" alt="Oferta especial">
                         <div class="discount-badge">-{{ limitedOffers[0].discountPercentage }}%</div>
                     </div>
                     <div class="offer-details">
@@ -48,7 +48,7 @@
             <div nz-col [nzXs]="24" [nzMd]="12">
                 <div class="offer-card">
                     <div class="offer-image">
-                        <img [src]="limitedOffers[1].imageUrl" alt="Oferta especial">
+                        <img loading="lazy" decoding="async" [src]="limitedOffers[1].imageUrl" alt="Oferta especial">
                         <div class="discount-badge">-{{ limitedOffers[1].discountPercentage }}%</div>
                     </div>
                     <div class="offer-details">

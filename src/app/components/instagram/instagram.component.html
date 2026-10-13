@@ -19,7 +19,7 @@
                 <div *ngFor="let post of instagramFeed" nz-col [nzXs]="8" [nzSm]="8" [nzMd]="4">
                     <div class="instagram-post" (click)="openPostModal(post)">
                         <div class="instagram-image">
-                            <img [src]="post.imageUrl" [alt]="post.caption" (error)="handleImageError($event)">
+                            <img loading="lazy" decoding="async" [src]="post.imageUrl" [alt]="post.caption" (error)="handleImageError($event)">
                             <div class="instagram-overlay">
                                 <div class="instagram-stats">
                                     <span class="likes">
@@ -95,7 +95,7 @@
             <!-- ✅ COMENTARIOS: Altura controlada -->
             <div class="post-comments">
                 <div *ngFor="let comment of selectedPost.comments" class="comment">
-                    <img [src]="comment.userAvatar || getUserAvatar()" alt="Avatar" class="comment-avatar">
+                    <img loading="lazy" decoding="async" [src]="comment.userAvatar || getUserAvatar()" alt="Avatar" class="comment-avatar">
                     <div class="comment-content">
                         <span class="comment-header">
                             <span class="username">{{ comment.username }}</span>

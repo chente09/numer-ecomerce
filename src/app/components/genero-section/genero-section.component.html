@@ -14,7 +14,7 @@
                 (click)="onItemClick(item)" tabindex="0" role="button">
                 <!-- Imagen optimizada -->
                 <picture class="product-picture">
-                    <img [src]="getImageUrl(item)" [alt]="item.alt || item.title" class="product-image"
+                    <img loading="lazy" decoding="async" [src]="getImageUrl(item)" [alt]="item.alt || item.title" class="product-image"
                         [class.loaded]="isImageLoaded(item.id)" loading="eager" decoding="async"
                         (load)="onImageLoad(item.id)" (error)="onImageError($event)" />
                 </picture>
@@ -42,7 +42,7 @@
                 [attr.aria-label]="'Explorar ' + item.title" (click)="onItemClick(item)" tabindex="0" role="button">
                 <!-- Imagen optimizada -->
                 <picture class="product-picture">
-                    <img [src]="getImageUrl(item)" [alt]="item.alt || item.title" class="product-image"
+                    <img loading="lazy" decoding="async" [src]="getImageUrl(item)" [alt]="item.alt || item.title" class="product-image"
                         [class.loaded]="isImageLoaded(item.id)" loading="eager" decoding="async"
                         (load)="onImageLoad(item.id)" (error)="onImageError($event)" />
                 </picture>
