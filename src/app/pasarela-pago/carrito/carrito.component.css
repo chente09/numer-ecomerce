@@ -930,11 +930,11 @@
 }
 
 .promotion-badge {
-    background: #52c41a;
+    background: #000000;
     color: #ffffff;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 0;
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.8px;
@@ -969,8 +969,8 @@
 }
 
 .total-price.discounted-total {
-    color: #ff4d4f;
-    font-weight: 600;
+    color: #444444;
+    font-weight: 500;
 }
 
 /* Información de ahorro - Estilo minimalista */
@@ -979,28 +979,22 @@
 }
 
 .savings-text {
-    color: #52c41a;
-    font-weight: 600;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    background: #f6ffed;
-    padding: 3px 6px;
-    border-radius: 2px;
+    color: #444444;
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.3px;
     display: inline-block;
-    border: 1px solid #52c41a;
 }
 
 /* Responsive para móviles */
 @media (max-width: 768px) {
     .promotion-badge {
-        font-size: 8px;
-        padding: 1px 4px;
+        font-size: 9px;
+        padding: 1px 6px;
     }
 
     .savings-text {
-        font-size: 9px;
-        padding: 2px 4px;
+        font-size: 11px;
     }
 }
 

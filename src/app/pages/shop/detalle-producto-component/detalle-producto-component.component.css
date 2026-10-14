@@ -157,6 +157,7 @@ html {
 
 .sale-badge {
     background-color: #ff4d4f;
+    letter-spacing: 0.5px;
 }
 
 /* Imagen principal */
@@ -1999,4 +2000,35 @@ html {
         width: 50px;
         height: 50px;
     }
+}
+
+/* Single promotion note under the price */
+.promo-note {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background-color: #f7f7f7;
+    border-left: 3px solid #000;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 14px;
+    font-size: 13px;
+    color: #222;
+}
+
+.promo-note-title {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-size: 12px;
+}
+
+.promo-note-saving {
+    color: #444;
+}
+
+.promo-note-scope {
+    flex-basis: 100%;
+    color: #777;
+    font-size: 12px;
 }

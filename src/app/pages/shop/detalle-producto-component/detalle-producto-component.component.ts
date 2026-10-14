@@ -274,20 +274,20 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
       case 'deactivated':
       case 'removed':
       case 'deleted':
-        this.message.warning('🏷️ La promoción de este producto ya no está disponible');
+        this.message.warning('La promoción de este producto ya no está disponible');
         break;
 
       case 'activated':
       case 'applied':
-        this.message.success('🎉 ¡Nueva promoción disponible para este producto!');
+        this.message.success('Hay una nueva promoción disponible para este producto');
         break;
 
       case 'updated':
-        this.message.info('🔄 Se ha actualizado la promoción de este producto');
+        this.message.info('Se actualizó la promoción de este producto');
         break;
 
       default:
-        this.message.info('🔄 Se ha actualizado la información del producto');
+        this.message.info('Se actualizó la información del producto');
     }
   }
 
@@ -350,17 +350,17 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
       : 'esta variante';
 
     if (update.source === 'admin' && stockChange > 0) {
-      this.message.success(`¡Chevere! Se agregaron ${stockChange} unidades a ${colorSize} 🎒`);
+      this.message.success(`Se agregaron ${stockChange} unidades a ${colorSize}`);
     } else if (update.source === 'admin' && stockChange < 0) {
-      this.message.info(`Stock actualizado, loco: ${update.newStock} unidades disponibles para ${colorSize}`);
+      this.message.info(`Stock actualizado: ${update.newStock} unidades disponibles para ${colorSize}`);
     } else if (update.source === 'purchase' && stockChange < 0) {
       if (update.newStock === 0) {
-        this.message.warning(`¡Uy! ${colorSize} se acabó al toque 😱`);
+        this.message.warning(`${colorSize} se agotó`);
       } else if (update.newStock <= 3) {
-        this.message.warning(`¡Apúrate! Solo quedan ${update.newStock} de ${colorSize} 🏃‍♂️`);
+        this.message.warning(`Quedan ${update.newStock} unidades de ${colorSize}`);
       }
     } else if (update.source === 'restock' && stockChange > 0) {
-      this.message.success(`¡Llegó más! Ahora hay ${update.newStock} unidades de ${colorSize} 📦`);
+      this.message.success(`Hay ${update.newStock} unidades de ${colorSize}`);
     }
   }
 
@@ -427,7 +427,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
    * 🔥 Obtiene el nombre de la promoción activa
    */
   getActivePromotionName(product: ExtendedProduct): string {
-    return this.displayedPriceInfo?.promotionName || 'OFERTA ESPECIAL';
+    return this.displayedPriceInfo?.promotionName || 'Oferta';
   }
 
   /**
@@ -909,7 +909,9 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
       hasDiscount: price.hasDiscount,
       discountPercentage: price.discountPercentage,
       savings: price.savings,
-      promotionName: price.hasDiscount ? 'OFERTA ESPECIAL' : ''
+      promotionName: price.hasDiscount ? 'Oferta' : '',
+      // true when only the selected variant is discounted (not the whole product)
+      variantOnly: price.hasDiscount && !resolveEffectivePrice(this.product).hasDiscount
     };
 
     if (price.hasDiscount && price.promotionId) {
@@ -948,8 +950,8 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   addToCart(): void {
     if (!this.product || !this.selectedVariant) {
       this.modalService.warning({
-        nzTitle: '¡Ey, mi loco!',
-        nzContent: 'Primero escoge una talla y un color antes de agregar a tu mochila.'
+        nzTitle: 'Elige talla y color',
+        nzContent: 'Selecciona una talla y un color antes de agregar al carrito.'
       });
       return;
     }
@@ -961,7 +963,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
         if (!hasStock) {
           this.modalService.warning({
             nzTitle: 'No hay suficiente stock',
-            nzContent: `Solo hay ${this.selectedVariant!.stock} unidades disponibles. ¡Apúrate que se acaba!`
+            nzContent: `Solo hay ${this.selectedVariant!.stock} unidades disponibles.`
           });
           return of(false);
         }
@@ -996,7 +998,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     this.saveToWishlist();
 
     if (this.isInWishlist) {
-      this.message.success('¡Guardado en favoritos! 💝');
+      this.message.success('Guardado en favoritos');
     } else {
       this.message.info('Eliminado de favoritos');
     }

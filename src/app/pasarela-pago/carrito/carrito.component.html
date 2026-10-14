@@ -111,7 +111,7 @@
             <div class="price-section">
               <!-- ✅ Badge de promoción (si aplica) -->
               <div *ngIf="hasItemDiscount(item)" class="promotion-badge-container">
-                <span class="promotion-badge">🏷️ {{ item.appliedPromotionTitle }}</span>
+                <span class="promotion-badge">{{ item.appliedPromotionTitle }}</span>
               </div>
 
               <!-- ✅ Precio unitario (con descuento si aplica) -->
@@ -126,9 +126,6 @@
 
               <!-- ✅ Total (manteniendo formato original) -->
               <div class="total-price-container">
-                <span *ngIf="hasItemDiscount(item)" class="original-total-price">
-                  ${{ getItemOriginalTotal(item) | number:'1.2-2' }}
-                </span>
                 <span class="total-price" [class.discounted-total]="hasItemDiscount(item)">
                   x{{ item.quantity }} = ${{ item.totalPrice | number:'1.2-2' }}
                 </span>
@@ -136,7 +133,7 @@
 
               <!-- ✅ Ahorro (si aplica) -->
               <div *ngIf="hasItemDiscount(item)" class="savings-info">
-                <small class="savings-text">AHORRAS: ${{ getItemSavings(item) | number:'1.2-2' }}</small>
+                <small class="savings-text">Ahorras ${{ getItemSavings(item) | number:'1.2-2' }}</small>
               </div>
             </div>
           </div>

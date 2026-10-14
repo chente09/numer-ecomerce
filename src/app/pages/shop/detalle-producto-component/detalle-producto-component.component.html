@@ -7,10 +7,10 @@
 <div *ngIf="product" class="product-detail-container">
     <div class="product-gallery">
         <div class="product-badges">
-            <span *ngIf="product.isNew" class="new-badge">¡RECIÉN LLEGADO!</span>
+            <span *ngIf="product.isNew" class="new-badge">NUEVO</span>
             <span *ngIf="product.isBestSeller" class="bestseller-badge">EL MÁS VENDIDO</span>
-            <span *ngIf="hasActivePromotions(product)" class="sale-badge">
-                ¡PRECIO INMEJORABLE! {{ getPromotionText(product) }}
+            <span *ngIf="displayedPriceInfo?.hasDiscount" class="sale-badge">
+                -{{ displayedPriceInfo.discountPercentage }}%
             </span>
         </div>
 
@@ -94,7 +94,7 @@
                 <span class="rating-count">{{ product.views }} aventureros lo han elegido</span>
             </div>
 
-            <!-- 🏷️ PRECIO ÚNICO - SIN DUPLICACIONES -->
+            <!-- Precio y promoción (una sola fuente: displayedPriceInfo) -->
             <div *ngIf="displayedPriceInfo">
                 <div class="product-price-container">
                     <span *ngIf="displayedPriceInfo.hasDiscount" class="original-price">
@@ -104,32 +104,17 @@
                     <span class="product-price">${{ displayedPriceInfo.currentPrice | number:'1.2-2' }}</span>
 
                     <span *ngIf="displayedPriceInfo.hasDiscount" class="discount-badge">
-                        -{{ displayedPriceInfo.discountPercentage }}% ¡Qué chévere!
+                        -{{ displayedPriceInfo.discountPercentage }}%
                     </span>
                 </div>
 
-                <div *ngIf="displayedPriceInfo.hasDiscount" class="active-promotion product-promotion">
-                    <span class="promotion-tag">
-                        🔥 {{ displayedPriceInfo.promotionName }} - ¡Ahorras ${{ displayedPriceInfo.savings |
-                        number:'1.2-2' }}!
+                <div *ngIf="displayedPriceInfo.hasDiscount" class="promo-note">
+                    <span class="promo-note-title">{{ displayedPriceInfo.promotionName }}</span>
+                    <span class="promo-note-saving">Ahorras ${{ displayedPriceInfo.savings | number:'1.2-2' }}</span>
+                    <span *ngIf="displayedPriceInfo.variantOnly && selectedVariant" class="promo-note-scope">
+                        Aplica a {{ selectedVariant.colorName }}, talla {{ selectedVariant.sizeName }}
                     </span>
                 </div>
-            </div>
-
-            <!-- 🏷️ PROMOCIÓN ÚNICA - SIN DUPLICACIONES -->
-            <!-- 🆕 PROMOCIÓN ESPECÍFICA DE VARIANTE (prioridad) -->
-            <div *ngIf="shouldShowVariantPromotion()" class="active-promotion variant-promotion">
-                <span class="promotion-tag variant-promotion-tag">
-                    🎯 {{ getVariantPromotionName() }} - ¡Solo en {{ selectedVariant?.colorName }} {{
-                    selectedVariant?.sizeName }}!
-                </span>
-                <span class="promotion-details">{{ getVariantPromotionText() }}</span>
-            </div>
-
-            <!-- 🆕 PROMOCIÓN DEL PRODUCTO (solo si NO hay promoción de variante) -->
-            <div *ngIf="!shouldShowVariantPromotion() && hasActivePromotions(product)"
-                class="active-promotion product-promotion">
-                <span class="promotion-tag">🔥 {{ getActivePromotionName(product) }} - ¡No te la pierdas, loco!</span>
             </div>
 
             <!-- Características especiales del producto -->
@@ -268,7 +253,7 @@
                                 </div>
                                 <div class="tip-item">
                                     <i nz-icon nzType="message" nzTheme="outline"></i>
-                                    <p>¿Tienes dudas? Mándanos un WhatsApp y te asesoramos al toque</p>
+                                    <p>¿Tienes dudas? Escríbenos por WhatsApp y te asesoramos</p>
                                 </div>
                                 <div class="tip-item">
                                     <i nz-icon nzType="sync" nzTheme="outline"></i>
@@ -311,7 +296,7 @@
                     </span>
                     <span *ngIf="selectedVariant.stock > 0 && selectedVariant.stock <= 10" class="low-stock">
                         <i nz-icon nzType="exclamation-circle" nzTheme="fill"></i>
-                        ¡Apúrate! Solo quedan {{ selectedVariant.stock }}
+                        Quedan {{ selectedVariant.stock }} unidades
                     </span>
                     <span *ngIf="selectedVariant.stock === 0" class="out-of-stock">
                         <i nz-icon nzType="close-circle" nzTheme="fill"></i>
