@@ -708,3 +708,26 @@
         opacity: 1;
     }
 }
+
+/* Variant-level offer: wider badge text and a dot on colors that have a discounted size */
+.variant-offer-badge {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.color-option.has-offer {
+  position: relative;
+}
+
+.color-option.has-offer::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  border: 1px solid #fff;
+}

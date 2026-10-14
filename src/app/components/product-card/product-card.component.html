@@ -4,6 +4,7 @@
         <span *ngIf="product.isNew" class="new-badge">NEW</span>
         <span *ngIf="product.isBestSeller" class="new-badge">BESTSELLER</span>
         <span *ngIf="hasDiscount()" class="discount-badge">-{{ getDiscountPercentage() }}%</span>
+        <span *ngIf="!hasDiscount() && variantOfferLabel()" class="discount-badge variant-offer-badge">{{ variantOfferLabel() }}</span>
     </div>
 
     <!-- Imagen del producto -->
@@ -27,7 +28,7 @@
             [attr.aria-label]="'Seleccionar color para ' + product.name">
 
             <div *ngFor="let color of product.colors; let i = index" class="color-option"
-                [ngClass]="{'active': isColorActive(i)}"
+                [ngClass]="{'active': isColorActive(i), 'has-offer': colorHasOffer(color)}"
                 [style.background-image]="color.imageUrl ? 'url(' + color.imageUrl + ')' : null"
                 [style.background-size]="color.imageUrl ? 'cover' : null"
                 [style.background-position]="color.imageUrl ? 'center' : null"
@@ -52,9 +53,9 @@
         </h3>
 
         <div class="product-price">
-            <span *ngIf="hasDiscount()" class="original-price">${{ formatPrice(getOriginalPrice()) }}</span>
-            <span class="current-price" [ngClass]="{ discounted: hasDiscount() }">
-                ${{ formatPrice(getCurrentPrice()) }}
+            <span *ngIf="showsDiscountedPrice()" class="original-price">${{ formatPrice(getOriginalPrice()) }}</span>
+            <span class="current-price" [ngClass]="{ discounted: showsDiscountedPrice() }">
+                <ng-container *ngIf="showsFromPrice()">Desde </ng-container>${{ formatPrice(getCurrentPrice()) }}
             </span>
         </div>
 

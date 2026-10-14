@@ -1162,8 +1162,21 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   }
 
   // Utility methods
+  // Price of what the card currently shows: the selected variant (color/size), else the product.
+  private shownPrice(product: Product) {
+    return resolveEffectivePrice(product, (product as ProductWithSelectedVariant).selectedVariant);
+  }
+
   hasDiscount(product: Product): boolean {
-    return (product.discountPercentage || 0) > 0;
+    return this.shownPrice(product).hasDiscount;
+  }
+
+  getDiscountPct(product: Product): number {
+    return this.shownPrice(product).discountPercentage;
+  }
+
+  getOriginalPrice(product: Product): number {
+    return this.shownPrice(product).originalUnitPrice;
   }
 
   formatPrice(price: number): string {
@@ -1219,7 +1232,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   }
 
   getUnitPrice(product: Product): number {
-    return resolveEffectivePrice(product).unitPrice;
+    return this.shownPrice(product).unitPrice;
   }
 
   getStockText(stock: number): string {

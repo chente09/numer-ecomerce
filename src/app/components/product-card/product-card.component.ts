@@ -170,6 +170,7 @@ export class ProductCardComponent implements AfterViewInit {
     return this.product?.displayImageUrl || this.product?.imageUrl || '';
   }
 
+  /** Whole-product discount (every variant is cheaper). */
   hasDiscount(): boolean {
     return resolveEffectivePrice(this.product).hasDiscount;
   }
@@ -178,12 +179,62 @@ export class ProductCardComponent implements AfterViewInit {
     return resolveEffectivePrice(this.product).discountPercentage;
   }
 
+  // ── Variant-level offers: only some color/size combinations are discounted ──
+
+  private discountedVariants(colorName?: string) {
+    if (!this.product || this.hasDiscount()) return [];
+    return (this.product.variants ?? [])
+      .map(variant => ({ variant, price: resolveEffectivePrice(this.product, variant) }))
+      .filter(x => x.price.hasDiscount && (!colorName || x.variant.colorName === colorName));
+  }
+
+  private selectedColorName(): string | undefined {
+    const index = this.product?.selectedColorIndex;
+    return index === undefined ? undefined : this.product.colors?.[index]?.name;
+  }
+
+  /** True when this color has at least one discounted size (shown as a dot on the swatch). */
+  colorHasOffer(color: Color): boolean {
+    return this.discountedVariants(color.name).length > 0;
+  }
+
+  /** Badge text for variant-level offers, e.g. "-10% en Negro · S, M". Empty when there is none. */
+  variantOfferLabel(): string {
+    const offers = this.discountedVariants();
+    if (offers.length === 0) return '';
+    const percent = Math.max(...offers.map(o => o.price.discountPercentage));
+    const colors = [...new Set(offers.map(o => o.variant.colorName).filter(Boolean))];
+    const sizes = [...new Set(offers.map(o => o.variant.sizeName).filter(Boolean))];
+    if (colors.length === 1) {
+      return `-${percent}% en ${colors[0]}${sizes.length > 0 && sizes.length <= 3 ? ' · ' + sizes.join(', ') : ''}`;
+    }
+    return `-${percent}% en ${offers.length} variantes`;
+  }
+
+  /** Price block: product discount, else the selected color's discounted variant, else regular price. */
+  private displayPrice() {
+    const whole = resolveEffectivePrice(this.product);
+    if (whole.hasDiscount) return whole;
+    const offers = this.discountedVariants(this.selectedColorName());
+    if (offers.length === 0) return whole;
+    return offers.reduce((best, o) => (o.price.unitPrice < best.unitPrice ? o.price : best), offers[0].price);
+  }
+
+  showsDiscountedPrice(): boolean {
+    return this.displayPrice().hasDiscount;
+  }
+
+  /** The discounted price only holds for some sizes of this color. */
+  showsFromPrice(): boolean {
+    return !this.hasDiscount() && this.showsDiscountedPrice();
+  }
+
   getCurrentPrice(): number {
-    return resolveEffectivePrice(this.product).unitPrice;
+    return this.displayPrice().unitPrice;
   }
 
   getOriginalPrice(): number {
-    return resolveEffectivePrice(this.product).originalUnitPrice;
+    return this.displayPrice().originalUnitPrice;
   }
 
   formatPrice(price: number): string {
