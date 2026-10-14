@@ -11,7 +11,7 @@ import { UsersService } from '../../services/users/users.service';
 
 // Routes where the gate must not interrupt (the payment flow, the legal pages themselves,
 // the profile form that already asks for consent, and the admin panel)
-const GATE_EXCLUDED_PREFIXES = ['/pago', '/respuesta-pago', '/terms', '/privacy', '/deslinde', '/completar-perfil', '/admin'];
+const GATE_EXCLUDED_PREFIXES = ['/respuesta-pago', '/terms', '/privacy', '/deslinde', '/completar-perfil', '/admin'];
 
 /**
  * Global consent gate: whatever sign-in entry point a person used (navbar, reviews, Instagram, cart...),

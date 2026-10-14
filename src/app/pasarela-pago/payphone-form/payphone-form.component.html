@@ -191,17 +191,7 @@
             <p>Selecciona tu método de pago preferido</p>
           </div>
 
-          <label class="terms-check">
-            <input type="checkbox" [(ngModel)]="acceptedTerms" (ngModelChange)="onTermsChange($event)" />
-            <span>
-              He leído y acepto los
-              <a routerLink="/terms" target="_blank" rel="noopener">Términos y Condiciones</a>,
-              incluida la política de cambios y devoluciones ({{ returnDays }} días; en devoluciones por cambio de opinión se descuenta la comisión de la pasarela de pago).
-            </span>
-          </label>
-          <p class="terms-hint" *ngIf="!acceptedTerms">Acepta los términos para habilitar el pago.</p>
-
-          <div id="pp-button" class="payphone-widget" [class.locked]="!acceptedTerms">
+          <div id="pp-button" class="payphone-widget">
             <!-- Payphone button renders here -->
           </div>
 

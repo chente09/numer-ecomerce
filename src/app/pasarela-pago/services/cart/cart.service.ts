@@ -189,6 +189,53 @@ export class CartService implements OnDestroy {
     };
   }
 
+  /**
+   * Re-prices every line against the current catalog (promotions started, ended or edited since the
+   * item was added). Returns the lines whose unit price changed; the server always charges its own
+   * recalculation, so this keeps what the customer sees equal to what will be charged.
+   */
+  public async refreshPrices(): Promise<{ name: string; from: number; to: number }[]> {
+    const items = this.getCart().items;
+    if (items.length === 0) return [];
+
+    const changes: { name: string; from: number; to: number }[] = [];
+    const refreshed: CartItem[] = await Promise.all(items.map(async (item) => {
+      try {
+        const [productSnap, variantSnap] = await Promise.all([
+          getDoc(doc(this.firestore, 'products', item.productId)),
+          getDoc(doc(this.firestore, 'productVariants', item.variantId))
+        ]);
+        if (!productSnap.exists() || !variantSnap.exists()) return item;
+
+        const product = { id: productSnap.id, ...productSnap.data() } as Product;
+        const variant = { id: variantSnap.id, ...variantSnap.data() } as ProductVariant;
+        const pricing = await this.resolveItemPricing(product, variant);
+        const round = (n: number) => Math.round(n * 100) / 100;
+
+        if (round(pricing.unitPrice) === round(item.unitPrice)
+          && (pricing.appliedPromotionId ?? null) === (item.appliedPromotionId ?? null)) {
+          return item;
+        }
+
+        changes.push({ name: item.product?.name || product.name, from: item.unitPrice, to: pricing.unitPrice });
+        return {
+          ...item,
+          unitPrice: pricing.unitPrice,
+          originalUnitPrice: pricing.originalUnitPrice,
+          appliedPromotionTitle: pricing.appliedPromotionTitle,
+          appliedPromotionId: pricing.appliedPromotionId,
+          totalPrice: pricing.unitPrice * item.quantity
+        };
+      } catch {
+        return item; // a transient read error must never break the cart
+      }
+    }));
+
+    const anyChange = refreshed.some((item, i) => item !== items[i]);
+    if (anyChange) this.updateAndSync(refreshed);
+    return changes;
+  }
+
   /** Variantes (color/talla/stock) de un producto, siempre frescas, para elegir en el carrito. */
   public getProductVariants(productId: string): Observable<ProductVariant[]> {
     return this.inventoryService.getVariantsByProductId(productId);

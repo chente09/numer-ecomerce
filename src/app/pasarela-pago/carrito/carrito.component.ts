@@ -106,6 +106,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
     this.cartService.waitUntilReady().then(() => {
       this.cartReady = true;
       this.loading = false;
+      this.refreshPricesOnce(this.cart);
     });
 
     // ✅ CORRECCIÓN: Usar takeUntil para la suscripción del carrito
@@ -117,6 +118,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
         // El primer valor del carrito suele ser el vacío inicial: no mostrar "Carrito vacío" antes de tiempo
         if (this.cartReady) this.loading = false;
         this.ensureVariantOptions(cart);
+        if (this.cartReady) this.refreshPricesOnce(cart);
       },
       error: (error) => {
         console.error('❌ Error al cargar el carrito:', error);
@@ -443,6 +445,19 @@ export class CarritoComponent implements OnInit, OnDestroy {
     });
   }
 
+  private pricesChecked = false;
+
+  /** Promotions may have started/ended since the items were added: re-price once per visit. */
+  private refreshPricesOnce(cart: Cart | null | undefined): void {
+    if (this.pricesChecked || !cart || cart.items.length === 0) return;
+    this.pricesChecked = true;
+    this.cartService.refreshPrices().then(changes => {
+      if (changes.length > 0) {
+        this.message.info('Actualizamos los precios de tu carrito según las promociones vigentes.');
+      }
+    });
+  }
+
   // ✅ NUEVA IMPLEMENTACIÓN: Checkout completo con descuento de inventario
   async proceedToCheckout(): Promise<void> {
     // 1. Validaciones iniciales (sin cambios)
@@ -457,6 +472,22 @@ export class CarritoComponent implements OnInit, OnDestroy {
     this.message.loading('Verificando disponibilidad de productos y cupones...', { nzDuration: 0 });
 
     try {
+      // 1b. Precios al día: si cambió alguno, se muestra el total nuevo antes de pagar
+      const priceChanges = await this.cartService.refreshPrices();
+      if (priceChanges.length > 0) {
+        this.message.remove();
+        const detail = priceChanges
+          .map(c => `${c.name}: $${c.from.toFixed(2)} → $${c.to.toFixed(2)}`)
+          .join('; ');
+        this.modal.info({
+          nzTitle: 'Actualizamos los precios de tu carrito',
+          nzContent: `Cambió el precio de: ${detail}. Revisa el total y continúa cuando quieras.`,
+          nzOkText: 'Entendido'
+        });
+        this.processingCheckout = false;
+        return;
+      }
+
       // 2. ✅ REVALIDACIÓN COMPLETA: Stock + Cupones con manejo estricto
       const validation = await this.cartService.validateCartForCheckout();
 
