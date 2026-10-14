@@ -337,7 +337,8 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         discountedPrice: deleteField(),
         originalPrice: deleteField(),
         promotionStartDate: deleteField(),
-        promotionEndDate: deleteField()
+        promotionEndDate: deleteField(),
+        promotionPaused: deleteField()
       });
 
       // 2. Preparar la eliminación del registro en appliedPromotions
@@ -392,7 +393,8 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
           originalPrice: currentProductData.price,
           promotionId: deleteField(),
           promotionStartDate: deleteField(),
-          promotionEndDate: deleteField()
+          promotionEndDate: deleteField(),
+          promotionPaused: deleteField()
         };
         transaction.update(productRef, productUpdatePayload);
 

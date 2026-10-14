@@ -92,6 +92,7 @@ export interface ProductVariant {
     promotionId?: string;
     promotionStartDate?: Date | null;
     promotionEndDate?: Date | null;
+    promotionPaused?: boolean;
     discountType?: 'percentage' | 'fixed' | 'shipping';
     discountValue?: number;
     discountedPrice?: number;
@@ -118,6 +119,7 @@ export interface Product {
     promotionId?: string;
     promotionStartDate?: Date | null;
     promotionEndDate?: Date | null;
+    promotionPaused?: boolean;
     currentPrice?: number;
     discountPercentage?: number;
     imageUrl: string;

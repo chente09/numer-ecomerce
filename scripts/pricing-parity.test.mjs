@@ -36,6 +36,10 @@ const cases = {
   'zero currentPrice is ignored': [
     { price: 40, currentPrice: 0, originalPrice: 40 }, { price: 40 }],
   'variant without price falls back to product': [{ price: 40 }, {}],
+  'variant discount, promotion paused': [
+    { price: 40 }, { price: 40, originalPrice: 40, discountedPrice: 32, promotionId: 'V', promotionPaused: true }],
+  'product discount, promotion paused': [
+    { price: 40, currentPrice: 30, originalPrice: 40, promotionId: 'P', promotionPaused: true }, { price: 40 }],
   'variant discount, window closed': [
     { price: 40 }, { price: 40, originalPrice: 40, discountedPrice: 32, promotionId: 'V', promotionEndDate: new Date(Date.now() - 1000) }],
   'variant discount, window not started': [

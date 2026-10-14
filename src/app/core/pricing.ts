@@ -17,6 +17,8 @@ export interface PriceSource {
   /** Validity window of the stored discount (Firestore Timestamp, Date or ISO string). Missing = no bound. */
   promotionStartDate?: unknown;
   promotionEndDate?: unknown;
+  /** Promotion switched off in the admin: the discount stays stored but does not apply. */
+  promotionPaused?: boolean;
 }
 
 export interface EffectivePrice {
@@ -42,6 +44,7 @@ function toMillis(value: unknown): number | null {
 
 /** A stored discount only applies inside its validity window (no window = always, legacy data). */
 function isInsideWindow(source: PriceSource, now: number): boolean {
+  if (source.promotionPaused === true) return false;
   const start = toMillis(source.promotionStartDate);
   const end = toMillis(source.promotionEndDate);
   if (start !== null && now < start) return false;

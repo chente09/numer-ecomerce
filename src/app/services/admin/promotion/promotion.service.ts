@@ -177,7 +177,8 @@ export class PromotionService {
 
   /**
    * Re-aligns the discounts stored in products/variants with the promotion's current state:
-   *  - inactive or ended  -> clear them (customers pay the regular price right away)
+   *  - ended              -> clear them (customers pay the regular price right away)
+   *  - inactive (paused)  -> keep them flagged as paused; they come back when it is reactivated
    *  - active             -> recompute price and validity window from its current values
    */
   private async syncStoredDiscounts(promotionId: string): Promise<void> {
@@ -186,7 +187,12 @@ export class PromotionService {
     const data = snap.data();
     const toDate = (v: any): Date | null => (v?.toDate ? v.toDate() : v ? new Date(v) : null);
     const promotion = { id: snap.id, ...data, startDate: toDate(data['startDate']), endDate: toDate(data['endDate']) } as unknown as Promotion;
-    const live = promotion.isActive !== false && (!promotion.endDate || promotion.endDate.getTime() >= Date.now());
+    const ended = !!promotion.endDate && promotion.endDate.getTime() < Date.now();
+    const paused = !ended && promotion.isActive === false;
+    // ended   -> clear the stored discounts (customers pay the regular price)
+    // paused  -> keep them but flagged: shop and checkout ignore them, and they come back on reactivation
+    // live    -> recompute price and window from the promotion's current values
+    const live = !ended && !paused;
 
     const [variantsSnap, productsSnap] = await Promise.all([
       getDocs(query(collection(this.firestore, 'productVariants'), where('promotionId', '==', promotionId))),
@@ -200,18 +206,21 @@ export class PromotionService {
       const v = d.data();
       const base = v['price'] ?? v['originalPrice'];
       const calc = this.priceService.calculatePriceWithPromotion({ price: base } as Product, promotion);
-      if (!live || !(calc.currentPrice > 0)) {
+      if (paused) {
+        batch.update(d.ref, { promotionPaused: true });
+      } else if (!live || !(calc.currentPrice > 0)) {
         batch.update(d.ref, {
           promotionId: deleteField(), discountType: deleteField(), discountValue: deleteField(),
           discountedPrice: deleteField(), originalPrice: deleteField(),
-          promotionStartDate: deleteField(), promotionEndDate: deleteField()
+          promotionStartDate: deleteField(), promotionEndDate: deleteField(), promotionPaused: deleteField()
         });
         batch.delete(doc(this.firestore, 'appliedPromotions', `${d.id}_${promotionId}`));
       } else {
         batch.update(d.ref, {
           discountType: promotion.discountType, discountValue: promotion.discountValue,
           discountedPrice: calc.currentPrice, originalPrice: base,
-          promotionStartDate: promotion.startDate ?? null, promotionEndDate: promotion.endDate ?? null
+          promotionStartDate: promotion.startDate ?? null, promotionEndDate: promotion.endDate ?? null,
+          promotionPaused: deleteField()
         });
       }
     });
@@ -219,16 +228,20 @@ export class PromotionService {
     productsSnap.forEach(d => {
       const p = d.data();
       const calc = this.priceService.calculatePriceWithPromotion({ price: p['price'] } as Product, promotion);
-      if (!live || !(calc.currentPrice > 0)) {
+      if (paused) {
+        batch.update(d.ref, { promotionPaused: true });
+      } else if (!live || !(calc.currentPrice > 0)) {
         batch.update(d.ref, {
           currentPrice: p['price'], originalPrice: p['price'], discountPercentage: 0,
-          promotionId: deleteField(), promotionStartDate: deleteField(), promotionEndDate: deleteField()
+          promotionId: deleteField(), promotionStartDate: deleteField(), promotionEndDate: deleteField(),
+          promotionPaused: deleteField()
         });
         batch.delete(doc(this.firestore, 'appliedPromotions', `${d.id}_${promotionId}`));
       } else {
         batch.update(d.ref, {
           currentPrice: calc.currentPrice, discountPercentage: calc.discountPercentage, originalPrice: p['price'],
-          promotionStartDate: promotion.startDate ?? null, promotionEndDate: promotion.endDate ?? null
+          promotionStartDate: promotion.startDate ?? null, promotionEndDate: promotion.endDate ?? null,
+          promotionPaused: deleteField()
         });
       }
     });
@@ -282,7 +295,8 @@ export class PromotionService {
               originalPrice: deleteField(),
               currentPrice: deleteField(),
               promotionStartDate: deleteField(),
-              promotionEndDate: deleteField()
+              promotionEndDate: deleteField(),
+              promotionPaused: deleteField()
             });
             batch.delete(doc(this.firestore, 'appliedPromotions', `${productDoc.id}_${id}`));
           });
@@ -311,7 +325,8 @@ export class PromotionService {
               discountedPrice: deleteField(),
               originalPrice: deleteField(),
               promotionStartDate: deleteField(),
-              promotionEndDate: deleteField()
+              promotionEndDate: deleteField(),
+              promotionPaused: deleteField()
             });
 
             const appliedPromoRef = doc(this.firestore, 'appliedPromotions', `${variantDoc.id}_${id}`);

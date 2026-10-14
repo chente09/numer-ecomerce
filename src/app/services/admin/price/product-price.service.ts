@@ -107,7 +107,7 @@ export class ProductPriceService {
     const productRef = doc(this.firestore, this.productsCollection, productId);
     // Back to the regular price: the product no longer belongs to any promotion
     const clearPromotion = pricing.discountPercentage === 0
-      ? { promotionId: deleteField(), promotionStartDate: deleteField(), promotionEndDate: deleteField() }
+      ? { promotionId: deleteField(), promotionStartDate: deleteField(), promotionEndDate: deleteField(), promotionPaused: deleteField() }
       : {};
     return from(updateDoc(productRef, { ...pricing, ...clearPromotion, updatedAt: new Date() })).pipe(
       tap(() => {
@@ -169,6 +169,7 @@ export class ProductPriceService {
         originalPrice: deleteField(),
         promotionStartDate: deleteField(),
         promotionEndDate: deleteField(),
+        promotionPaused: deleteField(),
         updatedAt: new Date()
       });
       
