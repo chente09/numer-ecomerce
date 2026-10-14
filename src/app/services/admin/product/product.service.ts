@@ -24,6 +24,7 @@ import { CacheService } from '../cache/cache.service';
 // Modelos
 import { Product, ProductVariant, Color, Size, Review, Promotion, SaleItem } from '../../../models/models'; // Importar SaleItem
 import { Auth, signInAnonymously } from '@angular/fire/auth';
+import { hasEffectiveDiscount, maxEffectiveDiscountPercentage } from '../../../core/pricing';
 
 // Interfaces para estrategias de invalidación
 interface CacheInvalidationStrategy {
@@ -699,29 +700,11 @@ export class ProductService {
         }),
         map(products => {
           const discounted = products.filter(product => {
-            const hasDirectDiscount = product.discountPercentage && product.discountPercentage > 0;
-            const hasPriceReduction = product.currentPrice &&
-              product.originalPrice &&
-              product.currentPrice < product.originalPrice;
-            const hasVariantPromotion = product.variants && product.variants.some(variant =>
-              variant.promotionId ||
-              (variant.discountedPrice && variant.originalPrice &&
-                variant.discountedPrice < variant.originalPrice)
-            );
-
-            return hasDirectDiscount || hasPriceReduction || hasVariantPromotion;
+            return hasEffectiveDiscount(product);
           });
 
           const sorted = discounted.sort((a, b) => {
-            const getDiscountPercent = (product: Product) => {
-              if (product.discountPercentage) return product.discountPercentage;
-              if (product.originalPrice && product.currentPrice) {
-                return ((product.originalPrice - product.currentPrice) / product.originalPrice) * 100;
-              }
-              return 0;
-            };
-
-            return getDiscountPercent(b) - getDiscountPercent(a);
+            return maxEffectiveDiscountPercentage(b) - maxEffectiveDiscountPercentage(a);
           });
 
           return sorted.slice(0, limit);
@@ -737,29 +720,11 @@ export class ProductService {
         switchMap(products => this.priceService.calculateDiscountedPrices(products).pipe(take(1))),
         map(products => {
           const discounted = products.filter(product => {
-            const hasDirectDiscount = product.discountPercentage && product.discountPercentage > 0;
-            const hasPriceReduction = product.currentPrice &&
-              product.originalPrice &&
-              product.currentPrice < product.originalPrice;
-            const hasVariantPromotion = product.variants && product.variants.some(variant =>
-              variant.promotionId ||
-              (variant.discountedPrice && variant.originalPrice &&
-                variant.discountedPrice < variant.originalPrice)
-            );
-
-            return hasDirectDiscount || hasPriceReduction || hasVariantPromotion;
+            return hasEffectiveDiscount(product);
           });
 
           const sorted = discounted.sort((a, b) => {
-            const getDiscountPercent = (product: Product) => {
-              if (product.discountPercentage) return product.discountPercentage;
-              if (product.originalPrice && product.currentPrice) {
-                return ((product.originalPrice - product.currentPrice) / product.originalPrice) * 100;
-              }
-              return 0;
-            };
-
-            return getDiscountPercent(b) - getDiscountPercent(a);
+            return maxEffectiveDiscountPercentage(b) - maxEffectiveDiscountPercentage(a);
           });
 
           return sorted.slice(0, limit);
@@ -784,19 +749,7 @@ export class ProductService {
       }),
       map(products => {
         const discounted = products.filter(product => {
-          const hasDirectDiscount = product.discountPercentage && product.discountPercentage > 0;
-          const hasPriceReduction = product.currentPrice &&
-            product.originalPrice &&
-            product.currentPrice < product.originalPrice;
-          const hasVariantPromotion = product.variants && product.variants.some(variant =>
-            variant.promotionId ||
-            (variant.discountedPrice && variant.originalPrice &&
-              variant.discountedPrice < variant.originalPrice)
-          );
-
-          const includeProduct = hasDirectDiscount || hasPriceReduction || hasVariantPromotion;
-
-          return includeProduct;
+          return hasEffectiveDiscount(product);
         });
 
         return discounted.slice(0, limit);

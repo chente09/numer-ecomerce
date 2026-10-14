@@ -22,6 +22,7 @@ import { ProductCardComponent } from "../../../components/product-card/product-c
 import { PromotionStateService } from '../../../services/admin/promotionState/promotion-state.service';
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { ChangeDetectorRef } from '@angular/core';
+import { resolveEffectivePrice } from '../../../core/pricing';
 
 // 🆕 Interfaces para las nuevas funcionalidades
 interface TechnicalSpec {
@@ -450,52 +451,17 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     discountPercentage?: number;
     savings?: number;
   } {
-    if (!this.selectedVariant || !this.product) {
-      return {
-        originalPrice: this.product?.price || 0,
-        currentPrice: this.product?.price || 0,
-        hasDiscount: false
-      };
+    if (!this.product) {
+      return { originalPrice: 0, currentPrice: 0, hasDiscount: false };
     }
 
-    // 🔥 PRIORIDAD 1: Precio específico de variante con promoción
-    if (this.hasVariantPromotion()) {
-      const originalPrice = this.selectedVariant.originalPrice ||
-        this.selectedVariant.price ||
-        this.product.price;
-
-      const currentPrice = this.selectedVariant.discountedPrice || originalPrice;
-      const savings = Math.max(0, originalPrice - currentPrice);
-      const discountPercentage = originalPrice > 0 ? (savings / originalPrice) * 100 : 0;
-
-      return {
-        originalPrice,
-        currentPrice,
-        hasDiscount: savings > 0,
-        discountPercentage: Math.round(discountPercentage),
-        savings
-      };
-    }
-
-    // 🔥 PRIORIDAD 2: Precio específico de variante sin promoción
-    if (this.selectedVariant.price && this.selectedVariant.price > 0) {
-      return {
-        originalPrice: this.selectedVariant.price,
-        currentPrice: this.selectedVariant.price,
-        hasDiscount: false
-      };
-    }
-
-    // 🔥 PRIORIDAD 3: Precio del producto (con promoción del producto si aplica)
-    const productPrice = this.product.currentPrice || this.product.price;
-    const hasProductDiscount = this.hasActivePromotions(this.product);
-
+    const price = resolveEffectivePrice(this.product, this.selectedVariant);
     return {
-      originalPrice: this.product.originalPrice || this.product.price,
-      currentPrice: productPrice,
-      hasDiscount: hasProductDiscount,
-      discountPercentage: this.product.discountPercentage,
-      savings: hasProductDiscount ? (this.product.originalPrice || this.product.price) - productPrice : 0
+      originalPrice: price.originalUnitPrice,
+      currentPrice: price.unitPrice,
+      hasDiscount: price.hasDiscount,
+      discountPercentage: price.discountPercentage,
+      savings: price.savings
     };
   }
 
@@ -935,33 +901,19 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   private async updateDisplayedPrice(): Promise<void> {
     if (!this.product) return;
 
-    // Por defecto, mostramos el precio base sin descuento.
-    let finalPriceInfo = {
-      originalPrice: this.product.price,
-      currentPrice: this.product.price,
-      hasDiscount: false,
-      discountPercentage: 0,
-      savings: 0,
-      promotionName: ''
+    // Same rules the server uses to charge (core/pricing.ts), including the selected variant.
+    const price = resolveEffectivePrice(this.product, this.selectedVariant);
+    const finalPriceInfo = {
+      originalPrice: price.originalUnitPrice,
+      currentPrice: price.unitPrice,
+      hasDiscount: price.hasDiscount,
+      discountPercentage: price.discountPercentage,
+      savings: price.savings,
+      promotionName: price.hasDiscount ? 'OFERTA ESPECIAL' : ''
     };
 
-    // Verificamos si el producto tiene un descuento aplicado directamente en sus propiedades.
-    const hasProductDiscount = this.product.currentPrice && this.product.currentPrice < this.product.price;
-
-    if (hasProductDiscount) {
-      finalPriceInfo = {
-        originalPrice: this.product.originalPrice || this.product.price,
-        currentPrice: this.product.currentPrice!,
-        hasDiscount: true,
-        discountPercentage: this.product.discountPercentage || 0,
-        savings: (this.product.originalPrice || this.product.price) - this.product.currentPrice!,
-        promotionName: 'OFERTA ESPECIAL' // Valor por defecto mientras se carga el nombre real
-      };
-
-      // Si el producto tiene un promotionId, buscamos su nombre.
-      if (this.product.promotionId) {
-        finalPriceInfo.promotionName = await this.getPromotionName(this.product.promotionId);
-      }
+    if (price.hasDiscount && price.promotionId) {
+      finalPriceInfo.promotionName = await this.getPromotionName(price.promotionId);
     }
 
     this.displayedPriceInfo = finalPriceInfo;

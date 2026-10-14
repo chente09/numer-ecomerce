@@ -237,7 +237,7 @@
                             ${{ formatPrice(product.price) }}
                         </span>
                         <span class="current-price" [ngClass]="{'discounted': hasDiscount(product)}">
-                            ${{ formatPrice(product.currentPrice || product.price) }}
+                            ${{ formatPrice(getUnitPrice(product)) }}
                         </span>
                     </div>
 

@@ -6,6 +6,7 @@ import { Color, Product } from '../../models/models';
 import { FormsModule } from '@angular/forms';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
+import { resolveEffectivePrice } from '../../core/pricing';
 
 interface ProductWithSelectedColor extends Product {
   selectedColorIndex?: number;
@@ -170,19 +171,19 @@ export class ProductCardComponent implements AfterViewInit {
   }
 
   hasDiscount(): boolean {
-    return !!(this.product?.discountPercentage && this.product.discountPercentage > 0);
+    return resolveEffectivePrice(this.product).hasDiscount;
   }
 
   getDiscountPercentage(): number {
-    return Math.round(this.product?.discountPercentage || 0);
+    return resolveEffectivePrice(this.product).discountPercentage;
   }
 
   getCurrentPrice(): number {
-    return this.product?.currentPrice || this.product?.price || 0;
+    return resolveEffectivePrice(this.product).unitPrice;
   }
 
   getOriginalPrice(): number {
-    return this.product?.originalPrice || this.product?.price || 0;
+    return resolveEffectivePrice(this.product).originalUnitPrice;
   }
 
   formatPrice(price: number): string {

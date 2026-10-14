@@ -13,6 +13,7 @@ import { ProductCardComponent } from '../product-card/product-card.component';
 import { PromotionStateService } from '../../services/admin/promotionState/promotion-state.service';
 import { CacheService } from '../../services/admin/cache/cache.service';
 import { ActionButtonComponent } from "../action-button/action-button.component";
+import { resolveEffectivePrice } from '../../core/pricing';
 
 interface ProductWithSelectedColor extends Product {
   selectedColorIndex?: number;
@@ -148,39 +149,8 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
       map(products => {
         if (!products?.length) return [];
 
-        return products.map(product => {
-          if (product.currentPrice !== undefined) {
-            return product;
-          }
-
-          if (product.originalPrice && product.originalPrice > product.price) {
-            const discountPercentage = Math.round(
-              ((product.originalPrice - product.price) / product.originalPrice) * 100
-            );
-
-            return {
-              ...product,
-              currentPrice: product.price,
-              discountPercentage: discountPercentage
-            };
-          }
-
-          if (product.discountPercentage && product.discountPercentage > 0) {
-            const discountedPrice = product.price * (1 - (product.discountPercentage / 100));
-
-            return {
-              ...product,
-              originalPrice: product.price,
-              currentPrice: discountedPrice
-            };
-          }
-
-          return {
-            ...product,
-            currentPrice: product.price,
-            discountPercentage: 0
-          };
-        });
+        // Prices are resolved at display time by resolveEffectivePrice (single source of truth)
+        return products;
       }),
     )
     .subscribe({
@@ -316,26 +286,7 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
   }
 
   private hasRealDiscount(product: Product): boolean {
-    if (!product) return false;
-
-    // Verificar descuento por porcentaje
-    if (product.discountPercentage && product.discountPercentage > 0) {
-      return true;
-    }
-
-    // Verificar si currentPrice < originalPrice
-    if (product.currentPrice !== undefined && product.originalPrice &&
-      product.currentPrice < product.originalPrice) {
-      return true;
-    }
-
-    // Verificar si currentPrice < price (precio base)
-    if (product.currentPrice !== undefined && product.price &&
-      product.currentPrice < product.price) {
-      return true;
-    }
-
-    return false;
+    return !!product && resolveEffectivePrice(product).hasDiscount;
   }
 
   /**
@@ -408,23 +359,7 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
    * 💸 CORREGIDO: Lógica basada en tu ProductPriceService
    */
   hasDiscount(product: Product): boolean {
-    if (!product) return false;
-
-    if (product.discountPercentage && product.discountPercentage > 0) {
-      return true;
-    }
-
-    if (product.currentPrice !== undefined && product.originalPrice &&
-      product.currentPrice < product.originalPrice) {
-      return true;
-    }
-
-    if (product.currentPrice !== undefined && product.price &&
-      product.currentPrice < product.price) {
-      return true;
-    }
-
-    return false;
+    return !!product && resolveEffectivePrice(product).hasDiscount;
   }
 
   // ✅ AGREGAR: Método para verificar promociones activas (opcional)
@@ -451,54 +386,17 @@ export class ProductosSectionComponent implements OnInit, OnDestroy {
    * 📊 CORREGIDO: Cálculo basado en tu ProductPriceService
    */
   getDiscountPercentage(product: Product): number {
-    if (!product || !this.hasDiscount(product)) return 0;
-
-    if (product.discountPercentage && product.discountPercentage > 0) {
-      return Math.round(product.discountPercentage);
-    }
-
-    if (product.currentPrice !== undefined && product.originalPrice &&
-      product.currentPrice < product.originalPrice) {
-      return Math.round(((product.originalPrice - product.currentPrice) / product.originalPrice) * 100);
-    }
-
-    if (product.currentPrice !== undefined && product.price &&
-      product.currentPrice < product.price) {
-      return Math.round(((product.price - product.currentPrice) / product.price) * 100);
-    }
-
-    return 0;
+    return product ? resolveEffectivePrice(product).discountPercentage : 0;
   }
 
-  /**
-   * 🔄 CORREGIDO: Basado en la lógica de tu ProductPriceService
-   */
   getCurrentPrice(product: Product): number {
-    if (!product) return 0;
-
-    if (product.currentPrice !== undefined && product.currentPrice >= 0) {
-      return product.currentPrice;
-    }
-
-    return product.price || 0;
+    return product ? resolveEffectivePrice(product).unitPrice : 0;
   }
 
-  /**
-   * 🔄 CORREGIDO: Basado en tu ProductPriceService
-   */
   getOriginalPrice(product: Product): number | null {
-    if (!product || !this.hasDiscount(product)) return null;
-
-    if (product.originalPrice && product.originalPrice > 0) {
-      return product.originalPrice;
-    }
-
-    if (product.currentPrice !== undefined && product.price &&
-      product.currentPrice < product.price) {
-      return product.price;
-    }
-
-    return null;
+    if (!product) return null;
+    const price = resolveEffectivePrice(product);
+    return price.hasDiscount ? price.originalUnitPrice : null;
   }
 
   /**

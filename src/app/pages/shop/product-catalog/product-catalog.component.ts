@@ -39,6 +39,7 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { FormsModule } from '@angular/forms';
+import { resolveEffectivePrice } from '../../../core/pricing';
 
 interface ProductWithSelectedVariant extends Product {
   selectedVariant?: ProductVariant;
@@ -466,7 +467,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   private updatePriceRange(): void {
     if (this.products.length === 0) return;
 
-    const prices = this.products.map(p => p.currentPrice || p.price);
+    const prices = this.products.map(p => resolveEffectivePrice(p).unitPrice);
     const minPrice = Math.floor(Math.min(...prices));
     const maxPrice = Math.ceil(Math.max(...prices));
 
@@ -567,14 +568,14 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     if (filters.priceRange) {
       const [minPrice, maxPrice] = filters.priceRange;
       filtered = filtered.filter(p => {
-        const price = p.currentPrice || p.price;
+        const price = resolveEffectivePrice(p).unitPrice;
         return price >= minPrice && price <= maxPrice;
       });
     }
 
     if (filters.priceRanges?.length) {
       filtered = filtered.filter(p => {
-        const price = p.currentPrice || p.price;
+        const price = resolveEffectivePrice(p).unitPrice;
         return filters.priceRanges.some((range: string) => {
           if (range.includes('+')) {
             const min = parseInt(range.replace('+', ''));
@@ -669,7 +670,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     if (filters.priceRange) {
       const [minPrice, maxPrice] = filters.priceRange;
       filtered = filtered.filter(p => {
-        const price = p.currentPrice || p.price;
+        const price = resolveEffectivePrice(p).unitPrice;
         return price >= minPrice && price <= maxPrice;
       });
     }
@@ -814,9 +815,9 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     return products.sort((a, b) => {
       switch (sortBy) {
         case 'price_asc':
-          return (a.currentPrice || a.price) - (b.currentPrice || b.price);
+          return resolveEffectivePrice(a).unitPrice - resolveEffectivePrice(b).unitPrice;
         case 'price_desc':
-          return (b.currentPrice || b.price) - (a.currentPrice || a.price);
+          return resolveEffectivePrice(b).unitPrice - resolveEffectivePrice(a).unitPrice;
         case 'name_asc':
           return a.name.localeCompare(b.name);
         case 'name_desc':
@@ -1215,6 +1216,10 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
   // Utility method for safe type casting in templates
   $any(value: any): any {
     return value;
+  }
+
+  getUnitPrice(product: Product): number {
+    return resolveEffectivePrice(product).unitPrice;
   }
 
   getStockText(stock: number): string {

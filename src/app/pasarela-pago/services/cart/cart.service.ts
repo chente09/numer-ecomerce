@@ -11,6 +11,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ShippingInfo } from '../../shipping-info-modal/shipping-info-modal.component';
 import { CouponUsageService } from '../../../services/admin/coupon-usage/coupon-usage.service';
+import { resolveEffectivePrice } from '../../../core/pricing';
 
 
 @Injectable({
@@ -170,30 +171,22 @@ export class CartService implements OnDestroy {
     appliedPromotionTitle?: string;
     appliedPromotionId?: string;
   }> {
-    // Prioridad 1: la VARIANTE tiene un descuento específico.
-    if (variant.discountedPrice && variant.originalPrice && variant.discountedPrice < variant.originalPrice) {
-      let appliedPromotionTitle: string | undefined;
-      let appliedPromotionId: string | undefined;
-      if (variant.promotionId) {
-        const promo = await firstValueFrom(this.promotionService.getPromotionById(variant.promotionId));
-        appliedPromotionTitle = promo?.name;
-        appliedPromotionId = variant.promotionId;
-      }
-      return { unitPrice: variant.discountedPrice, originalUnitPrice: variant.originalPrice, appliedPromotionTitle, appliedPromotionId };
+    // Same rules as the server (core/pricing.ts): variant discount > product discount > base price.
+    const price = resolveEffectivePrice(product, variant);
+    if (!price.hasDiscount) {
+      return { unitPrice: price.unitPrice };
     }
-    // Prioridad 2: el PRODUCTO tiene un descuento general.
-    if (product.currentPrice && product.originalPrice && product.currentPrice < product.originalPrice) {
-      let appliedPromotionTitle: string | undefined;
-      let appliedPromotionId: string | undefined;
-      if (product.promotionId) {
-        const promo = await firstValueFrom(this.promotionService.getPromotionById(product.promotionId));
-        appliedPromotionTitle = promo?.name;
-        appliedPromotionId = product.promotionId;
-      }
-      return { unitPrice: product.currentPrice, originalUnitPrice: product.originalPrice, appliedPromotionTitle, appliedPromotionId };
+    let appliedPromotionTitle: string | undefined;
+    if (price.promotionId) {
+      const promo = await firstValueFrom(this.promotionService.getPromotionById(price.promotionId));
+      appliedPromotionTitle = promo?.name;
     }
-    // Prioridad 3: precio base.
-    return { unitPrice: variant.price !== undefined ? variant.price : product.price };
+    return {
+      unitPrice: price.unitPrice,
+      originalUnitPrice: price.originalUnitPrice,
+      appliedPromotionTitle,
+      appliedPromotionId: price.promotionId ?? undefined
+    };
   }
 
   /** Variantes (color/talla/stock) de un producto, siempre frescas, para elegir en el carrito. */

@@ -8,6 +8,7 @@ import { CacheService } from '../cache/cache.service';
 
 // Importar modelos
 import { Product, Promotion } from '../../../models/models';
+import { resolveEffectivePrice } from '../../../core/pricing';
 
 @Injectable({
   providedIn: 'root'
@@ -36,18 +37,13 @@ export class ProductPriceService {
    * Calcula el precio con descuento de un producto
    */
   calculateDiscountedPrice(product: Product): Product {
-    if (product.currentPrice !== undefined && product.discountPercentage !== undefined) {
-      return product;
-    }
-    if (product.originalPrice && product.originalPrice > product.price) {
-      const discountPercentage = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
-      return { ...product, currentPrice: product.price, discountPercentage };
-    }
-    if (product.discountPercentage && product.discountPercentage > 0) {
-      const discountedPrice = product.price * (1 - (product.discountPercentage / 100));
-      return { ...product, originalPrice: product.price, currentPrice: discountedPrice };
-    }
-    return { ...product, currentPrice: product.price, originalPrice: product.price, discountPercentage: 0 };
+    const price = resolveEffectivePrice(product);
+    return {
+      ...product,
+      currentPrice: price.unitPrice,
+      originalPrice: price.originalUnitPrice,
+      discountPercentage: price.discountPercentage
+    };
   }
 
 
