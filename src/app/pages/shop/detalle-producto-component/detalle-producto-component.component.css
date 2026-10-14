@@ -817,6 +817,9 @@ html {
 }
 
 .size-image {
+    /* Anchor for the absolutely positioned zoom overlay: without it the overlay stretched over the
+       whole modal and every click (even on links) opened the size chart image */
+    position: relative;
     margin-bottom: 12px;
     border: 1px solid #f0f0f0;
     cursor: pointer;
@@ -2031,4 +2034,14 @@ html {
     flex-basis: 100%;
     color: #777;
     font-size: 12px;
+}
+
+.tip-item a {
+    color: #000;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.tip-item a:hover {
+    color: #555;
 }
