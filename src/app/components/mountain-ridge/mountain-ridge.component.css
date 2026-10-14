@@ -1,5 +1,5 @@
 /* Reset básico */
-Add commentMore actions:host *,
+:host *,
 :host *::before,
 :host *::after {
     margin: 0;
@@ -123,7 +123,7 @@ Add commentMore actions:host *,
 /* Responsive */
 @media (max-width: 768px) {
     :host {
-        height: 10px;
+        height: 140px;
     }
 
     .mountain-container {
