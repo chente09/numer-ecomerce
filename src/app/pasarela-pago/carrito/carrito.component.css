@@ -831,6 +831,11 @@
     .mobile-actions {
         display: block;
     }
+
+    /* The fixed bottom bar takes over: avoid two payment buttons on screen */
+    .checkout-actions {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {

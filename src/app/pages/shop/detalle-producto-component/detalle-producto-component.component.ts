@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ProductGalleryComponent } from '../../../components/product-gallery/product-gallery.component';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { CategoryService } from '../../../services/admin/category/category.service';
 import { SeoService } from '../../../services/seo/seo.service';
@@ -58,6 +59,7 @@ interface ExtendedProduct extends Product {
   selector: 'app-detalle-producto',
   standalone: true,
   imports: [
+    ProductGalleryComponent,
     CommonModule,
     RouterModule,
     NzRateModule,
@@ -767,6 +769,25 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   getMaxQuantityAvailable(): number {
     return this.selectedVariant?.stock || 0;
   }
+
+  /** Images shown in the gallery (stable order; see below). */
+  get galleryImages(): string[] {
+    if (!this.product) return [];
+    // Order must not depend on the image being viewed (that would reshuffle thumbnails on every click):
+    // the selected color's photo first, then the product's own and the extras.
+    const urls = [this.selectedColor?.imageUrl, this.product.imageUrl, ...(this.product.additionalImages || [])];
+    const unique = [...new Set(urls.filter((u): u is string => !!u))];
+    // Same array instance while the list is unchanged (a new one every check would re-render the gallery)
+    const key = unique.join('|');
+    if (key !== this.galleryKey) {
+      this.galleryKey = key;
+      this.galleryCache = unique;
+    }
+    return this.galleryCache;
+  }
+
+  private galleryKey = '';
+  private galleryCache: string[] = [];
 
   showImagePreview(imageUrl: string): void {
     this.previewImageUrl = imageUrl;

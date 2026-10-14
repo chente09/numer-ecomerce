@@ -131,3 +131,14 @@
 .admin-layout .ant-spin {
   color: var(--admin-ink);
 }
+
+/* Cart page on tablet/mobile has a fixed bottom bar: keep the floating buttons clear of it */
+@media (max-width: 1024px) {
+  body.has-bottom-bar .whatsapp-button {
+    bottom: 92px !important;
+  }
+
+  body.has-bottom-bar .cart-button {
+    display: none !important;
+  }
+}

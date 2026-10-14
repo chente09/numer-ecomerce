@@ -14,22 +14,8 @@
             </span>
         </div>
 
-        <div class="main-image-container">
-            <img [src]="currentImageUrl" alt="{{ product.name }}" class="main-product-image"
-                (click)="showImagePreview(currentImageUrl)">
-        </div>
-
-        <!-- Miniaturas mejoradas para aventura -->
-        <div class="gallery-section">
-            <div class="thumbnail-images" *ngIf="product.additionalImages && product.additionalImages.length > 0">
-                <h5 class="gallery-subtitle">Otras vistas</h5>
-                <div class="thumbnails-grid">
-                    <img loading="lazy" decoding="async" *ngFor="let image of product.additionalImages; let i = index" [src]="image"
-                        [alt]="product.name + ' - Vista ' + (i + 1)" [class.active]="currentImageUrl === image"
-                        (click)="showImagePreview(image)">
-                </div>
-            </div>
-        </div>
+        <app-product-gallery [images]="galleryImages" [alt]="product.name" [activeUrl]="currentImageUrl"
+            (activeUrlChange)="currentImageUrl = $event"></app-product-gallery>
 
         <!-- Tecnologías y características ampliadas -->
         <div class="product-features">

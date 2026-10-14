@@ -1,0 +1,59 @@
+<div class="gallery" [class.has-thumbs]="hasMany">
+    <!-- Thumbnails: vertical strip on desktop, horizontal row on mobile -->
+    <div class="thumbs" *ngIf="hasMany" role="tablist" aria-label="Vistas del producto">
+        <button type="button" class="thumb" *ngFor="let image of images; let i = index; trackBy: trackByUrl"
+            [class.active]="i === index" (click)="select(i)" role="tab" [attr.aria-selected]="i === index"
+            [attr.aria-label]="'Ver imagen ' + (i + 1) + ' de ' + images.length">
+            <img [src]="image" [alt]="alt + ' - vista ' + (i + 1)" decoding="async" />
+        </button>
+    </div>
+
+    <!-- Main stage: hover lens (desktop), swipe (touch), click opens the viewer -->
+    <div class="stage" [class.lens]="lensActive" (pointermove)="onPointerMove($event)"
+        (pointerleave)="onPointerLeave()" (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)"
+        (click)="openLightbox()" role="button" tabindex="0" (keydown.enter)="openLightbox()"
+        aria-label="Ampliar imagen">
+        <img class="stage-image" [src]="current" [alt]="alt" [style.transform-origin]="originX + '% ' + originY + '%'"
+            [style.transform]="lensActive ? 'scale(' + ZOOM + ')' : 'scale(1)'" draggable="false" />
+
+        <button type="button" class="nav nav-prev" *ngIf="hasMany" (click)="prev($event)"
+            aria-label="Imagen anterior">
+            <i nz-icon nzType="left" nzTheme="outline"></i>
+        </button>
+        <button type="button" class="nav nav-next" *ngIf="hasMany" (click)="next($event)"
+            aria-label="Imagen siguiente">
+            <i nz-icon nzType="right" nzTheme="outline"></i>
+        </button>
+
+        <span class="counter" *ngIf="hasMany">{{ index + 1 }} / {{ images.length }}</span>
+        <span class="zoom-hint" aria-hidden="true"><i nz-icon nzType="zoom-in" nzTheme="outline"></i></span>
+    </div>
+</div>
+
+<!-- Full-screen viewer -->
+<div class="lightbox" #lightbox *ngIf="lightboxOpen" (click)="closeLightbox()" role="dialog" aria-modal="true"
+    [attr.aria-label]="'Imagen ampliada de ' + alt">
+    <button type="button" class="lb-close" (click)="closeLightbox()" aria-label="Cerrar">
+        <i nz-icon nzType="close" nzTheme="outline"></i>
+    </button>
+
+    <div class="lb-viewer" #viewer [class.zoomed]="lightboxZoomed" (pointermove)="onViewerPointerMove($event)">
+        <img [src]="current" [alt]="alt" class="lb-image" [class.zoomed]="lightboxZoomed"
+            (click)="toggleLightboxZoom($event)" draggable="false" />
+    </div>
+
+    <button type="button" class="lb-nav lb-prev" *ngIf="hasMany" (click)="prev($event)" aria-label="Imagen anterior">
+        <i nz-icon nzType="left" nzTheme="outline"></i>
+    </button>
+    <button type="button" class="lb-nav lb-next" *ngIf="hasMany" (click)="next($event)" aria-label="Imagen siguiente">
+        <i nz-icon nzType="right" nzTheme="outline"></i>
+    </button>
+
+    <div class="lb-footer" (click)="$event.stopPropagation()">
+        <span *ngIf="hasMany">{{ index + 1 }} / {{ images.length }}</span>
+        <button type="button" class="lb-zoom" (click)="toggleLightboxZoom($event)">
+            <i nz-icon [nzType]="lightboxZoomed ? 'zoom-out' : 'zoom-in'" nzTheme="outline"></i>
+            {{ lightboxZoomed ? 'Reducir' : 'Ampliar' }}
+        </button>
+    </div>
+</div>

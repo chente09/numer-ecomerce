@@ -1,0 +1,323 @@
+:host {
+  display: block;
+}
+
+.gallery {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* ───────── Thumbnails: vertical strip (desktop) ───────── */
+.thumbs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 64px;
+  flex-shrink: 0;
+  max-height: 560px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.thumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.thumb {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid #e5e5e5;
+  background: #f8f8f8;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.65;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumb:hover {
+  opacity: 1;
+  border-color: #999;
+}
+
+.thumb.active {
+  opacity: 1;
+  border-color: #000;
+}
+
+.thumb:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+/* ───────── Main stage ───────── */
+.stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  background: #f8f8f8;
+  overflow: hidden;
+  cursor: zoom-in;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.stage-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Fast and smooth: the lens only changes the transform */
+  transition: transform 0.18s ease-out;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.stage.lens .stage-image {
+  transition: transform 0.08s linear;
+}
+
+.nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.nav:hover {
+  background: #000;
+}
+
+.nav-prev {
+  left: 10px;
+}
+
+.nav-next {
+  right: 10px;
+}
+
+.stage:hover .nav,
+.nav:focus-visible {
+  opacity: 1;
+}
+
+.counter {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 3px 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.zoom-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #000;
+  border: 1px solid #e5e5e5;
+  transition: opacity 0.2s ease;
+}
+
+.stage.lens .zoom-hint,
+.stage.lens .counter {
+  opacity: 0;
+}
+
+/* ───────── Full-screen viewer ───────── */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lb-viewer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 72px 64px;
+  box-sizing: border-box;
+}
+
+.lb-viewer.zoomed {
+  overflow: auto;
+  display: block;
+  padding: 0;
+  scrollbar-width: none;
+  /* Touch: drag to pan, pinch to zoom natively */
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+.lb-viewer.zoomed::-webkit-scrollbar {
+  display: none;
+}
+
+.lb-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: zoom-in;
+  background: #fff;
+}
+
+.lb-image.zoomed {
+  max-width: none;
+  max-height: none;
+  width: 250%;
+  cursor: zoom-out;
+}
+
+.lb-close,
+.lb-nav {
+  position: absolute;
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  z-index: 1;
+}
+
+.lb-close {
+  top: 14px;
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+}
+
+.lb-nav {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  font-size: 22px;
+}
+
+.lb-prev {
+  left: 12px;
+}
+
+.lb-next {
+  right: 12px;
+}
+
+.lb-close:hover,
+.lb-nav:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.lb-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  z-index: 1;
+}
+
+.lb-zoom {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  color: #fff;
+  padding: 6px 14px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lb-zoom:hover {
+  background: #fff;
+  color: #000;
+}
+
+/* ───────── Mobile: thumbnails go below as a horizontal row ───────── */
+@media (max-width: 768px) {
+  .gallery {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .thumbs {
+    flex-direction: row;
+    width: 100%;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .stage {
+    width: 100%;
+    flex: none;
+  }
+
+  /* Arrows are always visible on touch screens, but smaller */
+  .nav {
+    opacity: 1;
+    width: 32px;
+    height: 32px;
+  }
+
+  .lb-viewer {
+    padding: 56px 0 64px;
+  }
+
+  .lb-nav {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-image {
+    transition: none;
+  }
+}

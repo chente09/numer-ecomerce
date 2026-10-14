@@ -83,6 +83,8 @@ export class CarritoComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
+    // Lets global floating buttons (WhatsApp, cart) move out of the way of the fixed bottom bar
+    document.body.classList.add('has-bottom-bar');
     // El cliente probablemente irá a pagar: adelantar la descarga del botón de Payphone
     this.payphoneAssets.ensureLoaded().catch(() => { /* se reintenta en la página de pago */ });
 
@@ -237,6 +239,7 @@ export class CarritoComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.body.classList.remove('has-bottom-bar');
     // ✅ CORRECCIÓN: Limpiar todas las suscripciones
     this.destroy$.next();
     this.destroy$.complete();

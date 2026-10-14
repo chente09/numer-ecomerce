@@ -235,7 +235,7 @@
               <button class="checkout-btn" [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout"
                 (click)="proceedToCheckout()">
                 <span *ngIf="!processingCheckout">
-                  <ng-container *ngIf="!isDistributor; else distributorText">Botón de pago</ng-container>
+                  <ng-container *ngIf="!isDistributor; else distributorText">Pagar ${{ cart?.total | number:'1.2-2' }}</ng-container>
                   <ng-template #distributorText>Registrar Pedido</ng-template>
                 </span>
                 <span *ngIf="processingCheckout">Procesando...</span>
@@ -247,20 +247,12 @@
           </div>
         </div>
 
-        <div *ngIf="cart && cart.items.length > 0" class="mobile-actions">
-          <button class="mobile-checkout" (click)="proceedToCheckout()"
-            [disabled]="!cart || cart.items.length === 0 || updating || !canCheckout">
-            <ng-container *ngIf="!isDistributor; else mobileDistributorText">Pagar ${{ cart.total |
-              number:'1.2-2'}}</ng-container>
-            <ng-template #mobileDistributorText>Registrar Pedido</ng-template>
-          </button>
-        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Botones móviles MUY accesibles -->
+<!-- Barra fija inferior (tablet y móvil); en escritorio el pago está en el resumen -->
 <div *ngIf="cart && cart.items.length > 0" class="mobile-actions">
   <div class="mobile-actions-grid">
     <button class="mobile-clear" (click)="clearCart()" [disabled]="updating">
