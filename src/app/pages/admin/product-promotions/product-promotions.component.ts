@@ -248,10 +248,15 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         const pricing = this.productPriceService.calculatePriceWithPromotion(currentProductData, promotion);
 
         // 3. Preparar la actualización del producto
+        this.productPriceService.assertPromotionApplicable(promotion, pricing.currentPrice);
         const productUpdatePayload = {
           currentPrice: pricing.currentPrice,
           discountPercentage: pricing.discountPercentage,
-          originalPrice: currentProductData.price
+          originalPrice: currentProductData.price,
+          // Saved so the shop/server know which promotion produced the price and when it stops applying
+          promotionId,
+          promotionStartDate: promotion.startDate ?? null,
+          promotionEndDate: promotion.endDate ?? null
         };
         transaction.update(productRef, productUpdatePayload);
 
@@ -277,7 +282,9 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
     } catch (error) {
       // ❌ FALLO: Si algo falla, la transacción se revierte automáticamente
       console.error('❌ La transacción para aplicar la promoción falló:', error);
-      this.message.error('No se pudo aplicar la promoción. La base de datos está segura.');
+      this.message.error(error instanceof Error && error.message
+        ? error.message
+        : 'No se pudo aplicar la promoción. La base de datos está segura.');
     } finally {
       // Siempre se ejecuta, para detener el spinner
       this.applying = false;
@@ -328,7 +335,9 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         discountType: deleteField(),
         discountValue: deleteField(),
         discountedPrice: deleteField(),
-        originalPrice: deleteField()
+        originalPrice: deleteField(),
+        promotionStartDate: deleteField(),
+        promotionEndDate: deleteField()
       });
 
       // 2. Preparar la eliminación del registro en appliedPromotions
@@ -380,7 +389,10 @@ export class ProductPromotionsComponent implements OnInit, OnChanges {
         const productUpdatePayload = {
           currentPrice: currentProductData.price, // Revertir al precio original
           discountPercentage: 0,
-          originalPrice: currentProductData.price
+          originalPrice: currentProductData.price,
+          promotionId: deleteField(),
+          promotionStartDate: deleteField(),
+          promotionEndDate: deleteField()
         };
         transaction.update(productRef, productUpdatePayload);
 

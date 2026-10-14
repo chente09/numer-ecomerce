@@ -10,9 +10,14 @@ import { resolveEffectivePrice, hasEffectiveDiscount } from '../src/app/core/pri
 const here = path.dirname(fileURLToPath(import.meta.url));
 const backendFile = path.resolve(here, '../../PayphoneBackenNetlify/netlify/functions/payphone.js');
 const src = readFileSync(backendFile, 'utf8');
-const match = src.match(/function resolvePricing\([^)]*\) \{[\s\S]*?\r?\n\}\r?\n/);
-assert.ok(match, 'resolvePricing not found in backend payphone.js');
-const backendResolve = new Function(`${match[0]}; return resolvePricing;`)();
+const grab = (name) => {
+  const m = src.match(new RegExp('function ' + name + '\\([^{]*\\) \\{[\\s\\S]*?\\r?\\n\\}\\r?\\n'));
+  assert.ok(m, name + ' not found in backend payphone.js');
+  return m[0];
+};
+const backendResolve = new Function(
+  `${grab('toMillis')}\n${grab('isInsideWindow')}\n${grab('resolvePricing')}\nreturn resolvePricing;`
+)();
 
 const cases = {
   'no promotion': [{ price: 40 }, { price: 40 }],
@@ -30,7 +35,19 @@ const cases = {
     { price: 40 }, { price: 40, originalPrice: 40, discountedPrice: 45, promotionId: 'V' }],
   'zero currentPrice is ignored': [
     { price: 40, currentPrice: 0, originalPrice: 40 }, { price: 40 }],
-  'variant without price falls back to product': [{ price: 40 }, {}]
+  'variant without price falls back to product': [{ price: 40 }, {}],
+  'variant discount, window closed': [
+    { price: 40 }, { price: 40, originalPrice: 40, discountedPrice: 32, promotionId: 'V', promotionEndDate: new Date(Date.now() - 1000) }],
+  'variant discount, window not started': [
+    { price: 40 }, { price: 40, originalPrice: 40, discountedPrice: 32, promotionId: 'V', promotionStartDate: new Date(Date.now() + 86400000) }],
+  'variant discount, window open': [
+    { price: 40 }, { price: 40, originalPrice: 40, discountedPrice: 32, promotionId: 'V',
+      promotionStartDate: new Date(Date.now() - 86400000), promotionEndDate: new Date(Date.now() + 86400000) }],
+  'product discount, window closed': [
+    { price: 40, currentPrice: 30, originalPrice: 40, promotionId: 'P', promotionEndDate: new Date(Date.now() - 1000) }, { price: 40 }],
+  'window stored as Firestore-like timestamp': [
+    { price: 40 }, { price: 40, originalPrice: 40, discountedPrice: 32, promotionId: 'V',
+      promotionEndDate: { toMillis: () => Date.now() - 1000, toDate: () => new Date(Date.now() - 1000) } }]
 };
 
 for (const [name, [product, variant]] of Object.entries(cases)) {

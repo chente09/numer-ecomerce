@@ -14,6 +14,9 @@ export interface PriceSource {
   currentPrice?: number;
   discountedPrice?: number;
   promotionId?: string;
+  /** Validity window of the stored discount (Firestore Timestamp, Date or ISO string). Missing = no bound. */
+  promotionStartDate?: unknown;
+  promotionEndDate?: unknown;
 }
 
 export interface EffectivePrice {
@@ -28,18 +31,38 @@ export interface EffectivePrice {
 
 const isPositive = (n: unknown): n is number => typeof n === 'number' && n > 0;
 
+function toMillis(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  const v = value as { toMillis?: () => number; toDate?: () => Date };
+  if (typeof v.toMillis === 'function') return v.toMillis();
+  if (typeof v.toDate === 'function') return v.toDate().getTime();
+  const ms = new Date(value as string | number | Date).getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/** A stored discount only applies inside its validity window (no window = always, legacy data). */
+function isInsideWindow(source: PriceSource, now: number): boolean {
+  const start = toMillis(source.promotionStartDate);
+  const end = toMillis(source.promotionEndDate);
+  if (start !== null && now < start) return false;
+  if (end !== null && now > end) return false;
+  return true;
+}
+
 export function resolveEffectivePrice(
   product: PriceSource | null | undefined,
-  variant?: PriceSource | null
+  variant?: PriceSource | null,
+  now: number = Date.now()
 ): EffectivePrice {
   const p = product ?? {};
 
   if (variant && isPositive(variant.discountedPrice) && isPositive(variant.originalPrice)
-    && variant.discountedPrice < variant.originalPrice) {
+    && variant.discountedPrice < variant.originalPrice && isInsideWindow(variant, now)) {
     return build(variant.discountedPrice, variant.originalPrice, variant.promotionId);
   }
 
-  if (isPositive(p.currentPrice) && isPositive(p.originalPrice) && p.currentPrice < p.originalPrice) {
+  if (isPositive(p.currentPrice) && isPositive(p.originalPrice) && p.currentPrice < p.originalPrice
+    && isInsideWindow(p, now)) {
     return build(p.currentPrice, p.originalPrice, p.promotionId);
   }
 

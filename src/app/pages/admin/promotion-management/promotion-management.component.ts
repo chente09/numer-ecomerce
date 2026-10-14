@@ -252,9 +252,25 @@ export class PromotionManagementComponent implements OnInit {
       return;
     }
 
-    this.submitting = true;
     const formValue = this.promotionForm.getRawValue();
     const type = formValue.promotionType;
+
+    if (formValue.discountType === 'percentage' && Number(formValue.discountValue) > 100) {
+      this.message.error('Un descuento porcentual no puede superar el 100 %.');
+      return;
+    }
+
+    if (type === 'coupon') {
+      const code = String(formValue.couponCode || '').toUpperCase();
+      const duplicate = this.promotions.find(p =>
+        p.id !== this.selectedPromotionId && (p.couponCode || '').toUpperCase() === code);
+      if (duplicate) {
+        this.message.error(`El código ${code} ya lo usa la promoción "${duplicate.name}". Elige otro código.`);
+        return;
+      }
+    }
+
+    this.submitting = true;
 
     // 1. Objeto base con los datos comunes
     const promotionData: Partial<Promotion> = {

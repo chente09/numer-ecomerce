@@ -3,6 +3,7 @@ import { addDoc, collection, collectionData, deleteDoc, deleteField, doc, Firest
 import { CacheService } from '../cache/cache.service';
 import { catchError, from, map, Observable, of, throwError, take } from 'rxjs';
 import { Promotion, Product } from '../../../models/models';
+import { ProductPriceService } from '../price/product-price.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +12,7 @@ export class PromotionService {
   // 🔧 CORRECCIÓN: Usar inject() para Firestore
   private firestore = inject(Firestore);
   private collectionName = 'promotions';
+  private priceService = inject(ProductPriceService);
 
 
   constructor(
@@ -159,13 +161,81 @@ export class PromotionService {
    */
   updatePromotion(id: string, promotion: Partial<Promotion>): Observable<void> {
     const docRef = doc(this.firestore, this.collectionName, id);
-    return from(updateDoc(docRef, { ...promotion, updatedAt: new Date() })).pipe(
-      map(() => { }), // ✅ No se necesita invalidar caché
+    return from((async () => {
+      await updateDoc(docRef, { ...promotion, updatedAt: new Date() });
+      // Prices of products/variants already carrying this promotion must follow the change
+      // (deactivated, shorter dates, different discount), otherwise the old price stays forever.
+      await this.syncStoredDiscounts(id);
+    })()).pipe(
+      map(() => { }),
       catchError(error => {
         console.error(`❌ PromotionService: Error al actualizar promoción ${id}:`, error);
         return throwError(() => error);
       }),
     );
+  }
+
+  /**
+   * Re-aligns the discounts stored in products/variants with the promotion's current state:
+   *  - inactive or ended  -> clear them (customers pay the regular price right away)
+   *  - active             -> recompute price and validity window from its current values
+   */
+  private async syncStoredDiscounts(promotionId: string): Promise<void> {
+    const snap = await getDoc(doc(this.firestore, this.collectionName, promotionId));
+    if (!snap.exists()) return;
+    const data = snap.data();
+    const toDate = (v: any): Date | null => (v?.toDate ? v.toDate() : v ? new Date(v) : null);
+    const promotion = { id: snap.id, ...data, startDate: toDate(data['startDate']), endDate: toDate(data['endDate']) } as unknown as Promotion;
+    const live = promotion.isActive !== false && (!promotion.endDate || promotion.endDate.getTime() >= Date.now());
+
+    const [variantsSnap, productsSnap] = await Promise.all([
+      getDocs(query(collection(this.firestore, 'productVariants'), where('promotionId', '==', promotionId))),
+      getDocs(query(collection(this.firestore, 'products'), where('promotionId', '==', promotionId)))
+    ]);
+    if (variantsSnap.empty && productsSnap.empty) return;
+
+    const batch = writeBatch(this.firestore);
+
+    variantsSnap.forEach(d => {
+      const v = d.data();
+      const base = v['price'] ?? v['originalPrice'];
+      const calc = this.priceService.calculatePriceWithPromotion({ price: base } as Product, promotion);
+      if (!live || !(calc.currentPrice > 0)) {
+        batch.update(d.ref, {
+          promotionId: deleteField(), discountType: deleteField(), discountValue: deleteField(),
+          discountedPrice: deleteField(), originalPrice: deleteField(),
+          promotionStartDate: deleteField(), promotionEndDate: deleteField()
+        });
+        batch.delete(doc(this.firestore, 'appliedPromotions', `${d.id}_${promotionId}`));
+      } else {
+        batch.update(d.ref, {
+          discountType: promotion.discountType, discountValue: promotion.discountValue,
+          discountedPrice: calc.currentPrice, originalPrice: base,
+          promotionStartDate: promotion.startDate ?? null, promotionEndDate: promotion.endDate ?? null
+        });
+      }
+    });
+
+    productsSnap.forEach(d => {
+      const p = d.data();
+      const calc = this.priceService.calculatePriceWithPromotion({ price: p['price'] } as Product, promotion);
+      if (!live || !(calc.currentPrice > 0)) {
+        batch.update(d.ref, {
+          currentPrice: p['price'], originalPrice: p['price'], discountPercentage: 0,
+          promotionId: deleteField(), promotionStartDate: deleteField(), promotionEndDate: deleteField()
+        });
+        batch.delete(doc(this.firestore, 'appliedPromotions', `${d.id}_${promotionId}`));
+      } else {
+        batch.update(d.ref, {
+          currentPrice: calc.currentPrice, discountPercentage: calc.discountPercentage, originalPrice: p['price'],
+          promotionStartDate: promotion.startDate ?? null, promotionEndDate: promotion.endDate ?? null
+        });
+      }
+    });
+
+    await batch.commit();
+    this.cacheService.invalidate('products');
+    this.cacheService.invalidatePattern('product_variants');
   }
 
   /**
@@ -210,8 +280,11 @@ export class PromotionService {
               promotionId: deleteField(),
               discountPercentage: deleteField(),
               originalPrice: deleteField(),
-              currentPrice: deleteField()
+              currentPrice: deleteField(),
+              promotionStartDate: deleteField(),
+              promotionEndDate: deleteField()
             });
+            batch.delete(doc(this.firestore, 'appliedPromotions', `${productDoc.id}_${id}`));
           });
 
           // 4. Ejecutamos todas las actualizaciones en la base de datos
@@ -236,7 +309,9 @@ export class PromotionService {
               discountType: deleteField(),
               discountValue: deleteField(),
               discountedPrice: deleteField(),
-              originalPrice: deleteField()
+              originalPrice: deleteField(),
+              promotionStartDate: deleteField(),
+              promotionEndDate: deleteField()
             });
 
             const appliedPromoRef = doc(this.firestore, 'appliedPromotions', `${variantDoc.id}_${id}`);
@@ -246,6 +321,26 @@ export class PromotionService {
           await variantsBatch.commit();
           console.log(`✅ Variantes limpiadas correctamente.`);
         }
+
+        // 4b. Productos rebajados con la versión anterior del admin: no guardaban promotionId en el
+        //     producto, solo el registro appliedPromotions. Sin esto quedaban rebajados para siempre.
+        const appliedSnap = await getDocs(query(collection(this.firestore, 'appliedPromotions'), where('promotionId', '==', id)));
+        const legacyBatch = writeBatch(this.firestore);
+        let legacyCount = 0;
+        for (const applied of appliedSnap.docs) {
+          const a = applied.data();
+          if (a['target'] === 'product' && a['targetId']) {
+            const productRef = doc(this.firestore, 'products', a['targetId']);
+            const productSnap = await getDoc(productRef);
+            if (productSnap.exists() && !productSnap.data()['promotionId']) {
+              const price = productSnap.data()['price'];
+              legacyBatch.update(productRef, { currentPrice: price, originalPrice: price, discountPercentage: 0 });
+            }
+          }
+          legacyBatch.delete(applied.ref);
+          legacyCount++;
+        }
+        if (legacyCount > 0) await legacyBatch.commit();
 
         // 5. Una vez que los productos están limpios, eliminamos el documento de la promoción
         const promotionDocRef = doc(this.firestore, this.collectionName, id);

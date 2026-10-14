@@ -81,11 +81,35 @@ export class ProductPriceService {
   }
 
   /**
+   * Throws a user-facing error when a promotion must not be applied: inactive, already ended,
+   * or when the resulting price would be zero (a 100 % / oversized fixed discount).
+   */
+  assertPromotionApplicable(promotion: Promotion, resultingPrice: number): void {
+    if (promotion.isActive === false) {
+      throw new Error('La promoción está desactivada. Actívala antes de aplicarla.');
+    }
+    const end = promotion.endDate ? new Date(promotion.endDate).getTime() : null;
+    if (end !== null && end < Date.now()) {
+      throw new Error('La promoción ya terminó. Cambia su fecha de fin antes de aplicarla.');
+    }
+    if (promotion.discountType === 'percentage' && promotion.discountValue > 100) {
+      throw new Error('Un descuento porcentual no puede superar el 100 %.');
+    }
+    if (promotion.discountType !== 'shipping' && !(resultingPrice > 0)) {
+      throw new Error('Con este descuento el producto quedaría gratis ($0). Reduce el descuento.');
+    }
+  }
+
+  /**
    * Actualiza los precios calculados de un producto
    */
   updateProductPricing(productId: string, pricing: { currentPrice: number; discountPercentage: number; originalPrice?: number; }): Observable<void> {
     const productRef = doc(this.firestore, this.productsCollection, productId);
-    return from(updateDoc(productRef, { ...pricing, updatedAt: new Date() })).pipe(
+    // Back to the regular price: the product no longer belongs to any promotion
+    const clearPromotion = pricing.discountPercentage === 0
+      ? { promotionId: deleteField(), promotionStartDate: deleteField(), promotionEndDate: deleteField() }
+      : {};
+    return from(updateDoc(productRef, { ...pricing, ...clearPromotion, updatedAt: new Date() })).pipe(
       tap(() => {
         this.cacheService.invalidate(`products_${productId}`);
       }),
@@ -110,9 +134,13 @@ export class ProductPriceService {
       const variantData = variantSnap.data();
       const originalPrice = variantData['price'] || productPrice;
       const priceCalc = this.calculatePriceWithPromotion({ price: originalPrice } as Product, promotion);
+      this.assertPromotionApplicable(promotion, priceCalc.currentPrice);
 
       const payload = {
         promotionId: promotion.id,
+        // Validity window stored with the price so shop and server stop honouring it exactly at the end
+        promotionStartDate: promotion.startDate ?? null,
+        promotionEndDate: promotion.endDate ?? null,
         discountType: promotion.discountType,
         discountValue: promotion.discountValue,
         discountedPrice: priceCalc.currentPrice,
@@ -139,6 +167,8 @@ export class ProductPriceService {
         discountValue: deleteField(),
         discountedPrice: deleteField(),
         originalPrice: deleteField(),
+        promotionStartDate: deleteField(),
+        promotionEndDate: deleteField(),
         updatedAt: new Date()
       });
       

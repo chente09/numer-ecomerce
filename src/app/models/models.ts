@@ -90,6 +90,8 @@ export interface ProductVariant {
     distributorCost?: number;
     imageUrl?: string;
     promotionId?: string;
+    promotionStartDate?: Date | null;
+    promotionEndDate?: Date | null;
     discountType?: 'percentage' | 'fixed' | 'shipping';
     discountValue?: number;
     discountedPrice?: number;
@@ -114,6 +116,8 @@ export interface Product {
     gender?: 'man' | 'woman' | 'boy' | 'girl' | 'unisex';
     originalPrice?: number;
     promotionId?: string;
+    promotionStartDate?: Date | null;
+    promotionEndDate?: Date | null;
     currentPrice?: number;
     discountPercentage?: number;
     imageUrl: string;

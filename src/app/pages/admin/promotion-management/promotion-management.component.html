@@ -163,6 +163,7 @@
                             <nz-form-control nzErrorTip="El valor es requerido"
                                 nzExtra="Si el tipo es porcentaje, escribe 10 para un 10 %. Si es monto fijo, escribe los dólares (ej. 5 = $5 de descuento).">
                                 <nz-input-number formControlName="discountValue" [nzMin]="0.01"
+                                    [nzMax]="promotionForm.get('discountType')?.value === 'percentage' ? 100 : 100000"
                                     style="width: 100%;"></nz-input-number>
                             </nz-form-control>
                         </nz-form-item>
