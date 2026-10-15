@@ -394,6 +394,12 @@ export class CartService implements OnDestroy {
         return { success: false, message: validation.errorMessage || 'El cupón no es válido.' };
       }
 
+      // 2b. El servidor es quien conoce los usos reales (el cliente no puede leerlos): misma validación del pago
+      const serverCheck = await this.checkCouponWithServer(promotion.id!);
+      if (!serverCheck.valid) {
+        return { success: false, message: serverCheck.message };
+      }
+
       // 3. Si todo es válido, aplicar el cupón
       this.appliedCoupon = promotion;
       sessionStorage.setItem('appliedCoupon', JSON.stringify(promotion));
@@ -411,6 +417,34 @@ export class CartService implements OnDestroy {
         success: false,
         message: 'Error al validar el cupón. Intenta nuevamente.'
       };
+    }
+  }
+
+  /**
+   * Asks the payment backend whether the coupon can still be used by this user.
+   * Only a definitive rejection (409) blocks; if the backend is unreachable the payment step validates again.
+   */
+  private async checkCouponWithServer(couponId: string): Promise<{ valid: boolean; message: string }> {
+    try {
+      const idToken = await this.usersService.getIdToken();
+      if (!idToken) return { valid: true, message: '' };
+      const headers = new HttpHeaders({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      });
+      await firstValueFrom(this.http.post(
+        'https://backend-numer.netlify.app/.netlify/functions/payphone',
+        { action: 'checkCoupon', couponId },
+        { headers }
+      ));
+      return { valid: true, message: '' };
+    } catch (error: any) {
+      if (error?.status === 409 && error.error?.error) {
+        // The backend wording targets the payment step ("Quítalo del carrito..."): trim it for this context
+        const message = String(error.error.error).replace(/\s*Quítalo[^.]*\.?$/, '').trim();
+        return { valid: false, message: message.endsWith('.') ? message : message + '.' };
+      }
+      return { valid: true, message: '' };
     }
   }
 
