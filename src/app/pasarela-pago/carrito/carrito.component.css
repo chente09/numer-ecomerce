@@ -30,7 +30,7 @@
     border-bottom: 2px solid #f8f8f8;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 90; /* below the navbar (100) so the mobile menu is never covered by it */
     backdrop-filter: blur(8px);
 }
 

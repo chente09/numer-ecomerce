@@ -2,8 +2,9 @@
     display: block;
     position: sticky;
     top: 0;
-    /* Above sticky page headers (cart header is 100) but below modals/drawers (1000) */
-    z-index: 500;
+    /* Back to 100: the Payphone payment overlay (third party) must stay above the navbar.
+       Sticky page headers that could cover the mobile menu sit below it (cart header is 90). */
+    z-index: 100;
     width: 100%;
 }
 
