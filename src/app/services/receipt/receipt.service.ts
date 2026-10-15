@@ -9,6 +9,9 @@ export interface ReceiptItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  /** Regular price and promotion name, when the line was sold with a discount. */
+  regularUnitPrice?: number;
+  promotionName?: string | null;
 }
 
 /** Datos para armar un comprobante; salen de un pedido guardado y, si hace falta, de la respuesta de Payphone. */
@@ -25,6 +28,9 @@ export interface ReceiptInput {
   shippingAddress?: string | null;
   items: ReceiptItem[];
   subtotal?: number | null;
+  /** Saved by product promotions (regular price - charged price). */
+  productSavings?: number | null;
+  couponCode?: string | null;
   discount?: number | null;
   tax?: number | null;
   shipping?: number | null;
@@ -34,7 +40,7 @@ export interface ReceiptInput {
 const COMPANY = {
   name: 'NUMER',
   address: 'Iliniza S7 - 90, Quito 170121',
-  phone: '+593 098 712 5801',
+  phone: '+593 98 712 5801',
   email: 'numer.ec21@gmail.com',
   ruc: 'PENDIENTE'
 };
@@ -105,10 +111,14 @@ export class ReceiptService {
           variant: i.variant || undefined,
           quantity: i.quantity,
           unitPrice: Number(i.unitPrice ?? (i.quantity ? totalPrice / i.quantity : 0)),
-          totalPrice
+          totalPrice,
+          regularUnitPrice: i.regularUnitPrice != null ? Number(i.regularUnitPrice) : undefined,
+          promotionName: i.promotionName || null
         };
       }),
       subtotal: order.subtotal ?? null,
+      productSavings: order.productSavings ?? null,
+      couponCode: order.coupon?.code || null,
       discount: order.discountAmount ?? null,
       tax: order.tax ?? null,
       shipping: order.shipping ?? null,
@@ -159,10 +169,10 @@ export class ReceiptService {
 
     // ── Encabezado centrado ──
     if (logo) {
-      const h = 21;
+      const h = 18;
       doc.addImage(logo.dataUrl, 'PNG', CX - (h * logo.ratio) / 2, y, h * logo.ratio, h, undefined, 'FAST');
     }
-    y += 26;
+    y += 23;
     doc.setFont('helvetica', 'bold').setFontSize(17).setTextColor(0, 0, 0);
     doc.text(COMPANY.name, CX, y, { align: 'center' });
     y += 5.5;
@@ -194,6 +204,14 @@ export class ReceiptService {
     doc.text(money(input.total), CX, y + 14, { align: 'center' });
     y += 25;
 
+    const savedTotal = (input.productSavings || 0) + (input.discount || 0);
+    if (savedTotal > 0) {
+      y -= 4;
+      doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(60, 60, 60);
+      doc.text(`Ahorraste ${money(savedTotal)} en esta compra`, CX, y, { align: 'center' });
+      y += 8;
+    }
+
     // ── Filas de detalle: etiqueta a la izquierda, valor a la derecha, separador punteado ──
     const date = input.date
       ? input.date.toLocaleString('es-EC', { timeZone: 'America/Guayaquil', dateStyle: 'short', timeStyle: 'medium' })
@@ -218,9 +236,9 @@ export class ReceiptService {
       ensureSpace(lines.length * 4.6 + 6);
       doc.setFont('helvetica', 'bold').setFontSize(9.5).setTextColor(85, 85, 85).text(label + ':', M, y);
       doc.setFont('helvetica', 'normal').setTextColor(0, 0, 0).text(lines, W - M, y, { align: 'right' });
-      y += (lines.length - 1) * 4.6 + 2.6;
+      y += (lines.length - 1) * 4.6 + 2.2;
       doc.setDrawColor(190, 190, 190).setLineWidth(0.2).line(M, y, W - M, y);
-      y += 5.0;
+      y += 4.4;
     }
     doc.setLineDashPattern([], 0);
     y += 2;
@@ -246,7 +264,8 @@ export class ReceiptService {
       for (const item of input.items) {
         const title = item.variant ? `${item.name} (${item.variant})` : item.name;
         const lines = doc.splitTextToSize(title, colQty - M - 14) as string[];
-        if (y + lines.length * 4.5 > H - 22) {
+        const hasPromo = item.regularUnitPrice != null && item.regularUnitPrice > item.unitPrice;
+        if (y + lines.length * 4.5 + (hasPromo ? 4 : 0) > H - 22) {
           doc.addPage();
           y = M + 4;
           drawTableHeader();
@@ -256,36 +275,48 @@ export class ReceiptService {
         doc.text(String(item.quantity), colQty, y, { align: 'right' });
         doc.text(money(item.unitPrice), colUnit, y, { align: 'right' });
         doc.text(money(item.totalPrice), colTotal - 2, y, { align: 'right' });
-        const lineY = y + (lines.length - 1) * 4.5 + 2.2;
+        let extra = 0;
+        if (hasPromo) {
+          // Regular price struck through and the promotion that produced the discount
+          const regularText = money(item.regularUnitPrice);
+          doc.setFontSize(7.5).setTextColor(130, 130, 130);
+          const promoLabel = item.promotionName ? `Promoción: ${item.promotionName}` : 'Precio promocional';
+          doc.text(`${promoLabel}  |  precio regular ${regularText}`, M + 2, y + (lines.length - 1) * 4.5 + 4);
+          doc.setFontSize(9).setTextColor(0, 0, 0);
+          extra = 4;
+        }
+        const lineY = y + (lines.length - 1) * 4.5 + 2.2 + extra;
         doc.setDrawColor(225, 225, 225).setLineWidth(0.2).line(M, lineY, W - M, lineY);
-        y = lineY + 5.6;
+        y = lineY + 5;
       }
       y += 2;
 
       // ── Desglose ──
+      const savings = input.productSavings || 0;
       const breakdown: [string, number | null | undefined][] = [
+        // The stored subtotal already has promotional prices; show how it was reached
+        ['Precio regular', savings > 0 && input.subtotal != null ? input.subtotal + savings : null],
+        ['Ahorro por promoción', savings > 0 ? -savings : null],
         ['Subtotal', input.subtotal],
-        ['Descuento', input.discount ? -input.discount : null],
+        [input.couponCode ? `Cupón ${input.couponCode}` : 'Descuento', input.discount ? -input.discount : null],
         ['IVA', input.tax],
         ['Envío', input.shipping]
       ];
-      ensureSpace(34);
+      ensureSpace(40);
       for (const [label, value] of breakdown) {
         if (value == null) continue;
         doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(90, 90, 90).text(label, colUnit - 10, y, { align: 'right' });
         doc.setTextColor(0, 0, 0).text(value < 0 ? `-${money(-value)}` : money(value), colTotal - 2, y, { align: 'right' });
-        y += 5;
+        y += 4.6;
       }
-      y += 5; // el total ya está en la caja grande de arriba
+      y += 4; // el total ya está en la caja grande de arriba
     }
 
-    // ── Código de verificación ──
+    // ── Código de verificación (una línea: así el comprobante cabe en una sola página) ──
     if (input.transactionId != null) {
-      ensureSpace(20);
-      doc.setDrawColor(190, 190, 190).setLineWidth(0.3).rect(M, y, W - 2 * M, 14);
-      doc.setFont('courier', 'bold').setFontSize(9).setTextColor(40, 40, 40);
-      doc.text('Código de Verificación:', CX, y + 5.5, { align: 'center' });
-      doc.setFont('courier', 'normal').setFontSize(9.5).text(String(input.transactionId), CX, y + 10.5, { align: 'center' });
+      ensureSpace(10);
+      doc.setFont('courier', 'normal').setFontSize(9).setTextColor(60, 60, 60);
+      doc.text(`Código de Verificación: ${input.transactionId}`, CX, y, { align: 'center' });
     }
 
     // ── Pie ──

@@ -295,6 +295,10 @@ export interface OrderItem {
     quantity: number;
     unitPrice?: number;
     totalPrice?: number;
+    // Detalle del descuento al momento de pagar (pedidos anteriores no lo tienen)
+    regularUnitPrice?: number;
+    promotionId?: string | null;
+    promotionName?: string | null;
 }
 
 export interface Order {
@@ -321,6 +325,8 @@ export interface Order {
     };
     // Solo presente en pedidos de cliente (creados vía confirmacion.js tras el pago)
     subtotal?: number;
+    productSavings?: number;
+    coupon?: { code?: string | null; name?: string | null } | null;
     discountAmount?: number;
     tax?: number;
     shipping?: number;

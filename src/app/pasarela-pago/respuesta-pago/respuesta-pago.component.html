@@ -33,6 +33,52 @@
         </div>
       </div>
 
+      <!-- Detalle de lo cobrado (promociones, cupón, IVA, envío) -->
+      <div class="order-detail" *ngIf="purchaseOrder">
+        <h3 class="order-detail-title">Detalle del pedido</h3>
+
+        <div class="order-line" *ngFor="let item of purchaseOrder.items">
+          <div class="order-line-main">
+            <span class="order-line-name">
+              {{ item.productName }}<span *ngIf="item.variant"> ({{ item.variant }})</span> x{{ item.quantity }}
+            </span>
+            <span class="order-line-total">{{ item.totalPrice | currency:currencyCode:'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="order-line-promo" *ngIf="hasItemDiscount(item)">
+            <s>{{ item.regularUnitPrice | currency:currencyCode:'symbol':'1.2-2' }}</s>
+            {{ item.unitPrice | currency:currencyCode:'symbol':'1.2-2' }} c/u
+            <span *ngIf="item.promotionName">· {{ item.promotionName }}</span>
+          </div>
+        </div>
+
+        <div class="order-totals">
+          <div class="order-total-row" *ngIf="purchaseOrder.productSavings">
+            <span>Ahorro por promoción</span>
+            <span>-{{ purchaseOrder.productSavings | currency:currencyCode:'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="order-total-row" *ngIf="purchaseOrder.subtotal != null">
+            <span>Subtotal</span>
+            <span>{{ purchaseOrder.subtotal | currency:currencyCode:'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="order-total-row" *ngIf="purchaseOrder.discountAmount">
+            <span>Cupón<span *ngIf="purchaseOrder.coupon?.code"> {{ purchaseOrder.coupon?.code }}</span></span>
+            <span>-{{ purchaseOrder.discountAmount | currency:currencyCode:'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="order-total-row" *ngIf="purchaseOrder.tax != null">
+            <span>IVA</span>
+            <span>{{ purchaseOrder.tax | currency:currencyCode:'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="order-total-row" *ngIf="purchaseOrder.shipping != null">
+            <span>Envío</span>
+            <span>{{ purchaseOrder.shipping | currency:currencyCode:'symbol':'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <p class="order-saved" *ngIf="orderSavings > 0">
+          Ahorraste {{ orderSavings | currency:currencyCode:'symbol':'1.2-2' }} en esta compra
+        </p>
+      </div>
+
       <!-- ID de transacción destacado -->
       <div class="transaction-highlight">
         <div class="transaction-label">ID de transacción</div>

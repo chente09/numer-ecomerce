@@ -1,4 +1,6 @@
 import { ReceiptService } from '../../services/receipt/receipt.service';
+import { OrderService } from '../../services/order/order.service';
+import { Order, OrderItem } from '../../models/models';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
@@ -77,7 +79,8 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     private activityLogService: ActivityLogService,
     private usersService: UsersService,  // ✅ AGREGAR
     private modalService: NzModalService,
-    private receiptService: ReceiptService
+    private receiptService: ReceiptService,
+    private orderService: OrderService
   ) { }
 
   ngOnInit(): void {
@@ -146,6 +149,7 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
       this.currencyCode = res.currency || this.currencyCode;
       this.loading = false;
       this.checkAndClearCart(res);
+      this.loadPurchaseOrder(res.clientTransactionId || clientTxId);
     } catch (err: any) {
       console.error('❌ Error en confirmación de pago:', err);
       // El backend envía un código y un mensaje pensado para el cliente (sin stock, otra cuenta,
@@ -217,6 +221,34 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
     } else {
       console.warn('Pago no confirmado');
     }
+  }
+
+  /** Order saved by the backend: lets the page show what was charged (discounts, taxes, shipping). */
+  purchaseOrder: Order | null = null;
+
+  private async loadPurchaseOrder(clientTxId: string): Promise<void> {
+    if (!clientTxId) return;
+    // The order is written in the same transaction as the payment confirmation; retry briefly just in case
+    for (let attempt = 0; attempt < 3 && !this.purchaseOrder; attempt++) {
+      try {
+        const order = await firstValueFrom(this.orderService.getOrderById(clientTxId).pipe(take(1)));
+        if (order) {
+          this.purchaseOrder = order;
+          return;
+        }
+      } catch {
+        /* the summary is optional: the payment result above is what matters */
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  hasItemDiscount(item: OrderItem): boolean {
+    return item.regularUnitPrice != null && item.unitPrice != null && item.regularUnitPrice > item.unitPrice;
+  }
+
+  get orderSavings(): number {
+    return (this.purchaseOrder?.productSavings || 0) + (this.purchaseOrder?.discountAmount || 0);
   }
 
   goToMainFlow(): void {

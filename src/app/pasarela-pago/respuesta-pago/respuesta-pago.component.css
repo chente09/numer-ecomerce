@@ -344,3 +344,68 @@
     width: 100%;
   }
 }
+
+/* Detalle del pedido (qué se cobró) */
+.order-detail {
+  margin: 20px 0 8px;
+  padding: 16px 0 0;
+  border-top: 1px solid #e5e5e5;
+}
+
+.order-detail-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #222;
+}
+
+.order-line {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+.order-line-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #222;
+}
+
+.order-line-total {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.order-line-promo {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #777;
+}
+
+.order-line-promo s {
+  margin-right: 4px;
+}
+
+.order-totals {
+  margin-top: 10px;
+}
+
+.order-total-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+  color: #555;
+}
+
+.order-saved {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  background: #f7f7f7;
+  border-left: 3px solid #000;
+  font-size: 13px;
+  color: #222;
+}
