@@ -140,7 +140,9 @@ export class PromotionManagementComponent implements OnInit {
       }
     } else { // Es un cupón
       // Hacemos el campo couponCode requerido
-      couponCodeCtrl?.setValidators(Validators.required);
+      // Same rules as toggleCouponValidators: this one used to override them with only "required",
+      // which let codes with symbols (e.g. "SOYEL1RO!") be saved
+      couponCodeCtrl?.setValidators([Validators.required, Validators.minLength(4), this.couponCodeValidator]);
     }
     couponCodeCtrl?.updateValueAndValidity();
   }
