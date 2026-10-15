@@ -510,11 +510,13 @@ export class CartService implements OnDestroy {
     const newCart: Cart = { ...this.initialCartState, items };
     newCart.totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
+    // Same arithmetic as the server (payphone.js) so the total shown here is the amount that gets charged:
+    // subtotal and coupon discount rounded to cents, VAT on the discounted base, total rounded to cents.
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+
     // 1. Calcular subtotal y ahorros de productos
-    newCart.subtotal = items.reduce((sum, item) => {
-      item.totalPrice = item.unitPrice * item.quantity;
-      return sum + item.totalPrice;
-    }, 0);
+    items.forEach(item => { item.totalPrice = item.unitPrice * item.quantity; });
+    newCart.subtotal = round2(items.reduce((sum, item) => sum + item.totalPrice, 0));
     newCart.totalSavings = items.reduce((sum, item) => {
       const saving = (item.originalUnitPrice || item.unitPrice) - item.unitPrice;
       return sum + (saving * item.quantity);
@@ -522,6 +524,7 @@ export class CartService implements OnDestroy {
 
     // 2. ✅ APLICAR DESCUENTO DEL CUPÓN (si existe)
     newCart.discount = 0;
+    newCart.couponCode = undefined;
     if (this.appliedCoupon) {
       let discountAmount = 0;
       if (this.appliedCoupon.discountType === 'percentage') {
@@ -529,18 +532,25 @@ export class CartService implements OnDestroy {
       } else if (this.appliedCoupon.discountType === 'fixed') {
         discountAmount = this.appliedCoupon.discountValue;
       }
+      // El tope del cupón y el subtotal limitan el descuento (igual que en el servidor)
+      if (this.appliedCoupon.maxDiscountAmount && discountAmount > this.appliedCoupon.maxDiscountAmount) {
+        discountAmount = this.appliedCoupon.maxDiscountAmount;
+      }
+      discountAmount = round2(Math.min(discountAmount, newCart.subtotal));
       // No manejamos 'shipping' aquí, eso se hace en el checkout
 
       newCart.discount = discountAmount;
+      newCart.couponCode = this.appliedCoupon.couponCode || undefined;
       newCart.totalSavings += discountAmount; // Sumar al ahorro total
     }
 
     // 3. Calcular impuestos y total final
     // IVA suspendido para distribuidores (algunos facturan, otros no — se maneja individualmente)
     const baseForTax = newCart.subtotal - newCart.discount;
-    newCart.tax = this.isDistributor ? 0 : baseForTax * 0.15;
+    const rawTax = this.isDistributor ? 0 : baseForTax * 0.15;
     newCart.shipping = this.appliedCoupon?.discountType === 'shipping' ? 0 : 5;
-    newCart.total = baseForTax + newCart.tax + newCart.shipping;
+    newCart.total = round2(baseForTax + rawTax + newCart.shipping);
+    newCart.tax = round2(rawTax);
 
     return newCart;
   }

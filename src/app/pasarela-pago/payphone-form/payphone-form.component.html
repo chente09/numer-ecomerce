@@ -36,7 +36,7 @@
           <span>${{ cart.subtotal.toFixed(2) }}</span>
         </div>
         <div class="total-line" *ngIf="cart.discount > 0">
-          <span>Descuento</span>
+          <span>{{ cart.couponCode ? 'Cupón ' + cart.couponCode : 'Descuento' }}</span>
           <span class="discount-amount">-${{ cart.discount.toFixed(2) }}</span>
         </div>
         <div class="total-line">

@@ -168,7 +168,7 @@ export class CouponUsageService {
       
       return totalUsage;
     } catch (error) {
-      console.error('❌ Error obteniendo uso global del cupón:', error);
+      // Clients cannot read usage documents (Firestore rules); the payment server enforces the limits
       return 0;
     }
   }
@@ -189,7 +189,7 @@ export class CouponUsageService {
       
       return 0;
     } catch (error) {
-      console.error('❌ Error obteniendo uso del cupón por usuario:', error);
+      // Same as above: the server validates per-user limits at payment time
       return 0;
     }
   }

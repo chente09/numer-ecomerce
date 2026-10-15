@@ -426,6 +426,11 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           this.friendlyApiError = error.error.error;
         }
 
+        // The server is the authority on coupon limits: drop the rejected coupon so the customer can pay without it
+        if (['COUPON_INVALID', 'COUPON_LIMIT'].includes(error?.error?.code)) {
+          this.cartService.removeDiscountCode();
+        }
+
         // Mejorar mensajes de error
         if (error.message.includes('autenticación')) {
           this.modalService.error({

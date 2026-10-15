@@ -278,6 +278,7 @@ export interface Cart {
     tax: number;
     shipping: number;
     discount: number; // Para descuentos manuales por código
+    couponCode?: string; // Código del cupón aplicado (para mostrarlo junto al descuento)
     totalSavings: number; // Para ahorros por promociones automáticas
     total: number;
 }

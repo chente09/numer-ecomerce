@@ -190,7 +190,7 @@
           <span class="total-value">${{ cart.subtotal | number:'1.2-2' }}</span>
         </div>
         <div class="total-row" *ngIf="cart.discount > 0">
-          <span class="total-label">Descuento</span>
+          <span class="total-label">{{ cart.couponCode ? 'Cupón ' + cart.couponCode : 'Descuento' }}</span>
           <span class="total-value">-${{ cart.discount | number:'1.2-2' }}</span>
         </div>
         <div class="total-row">
