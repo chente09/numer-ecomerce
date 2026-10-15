@@ -29,6 +29,7 @@ import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzResultModule } from 'ng-zorro-antd/result';
+import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { from, Observable } from 'rxjs';
 
 @Component({
@@ -39,7 +40,7 @@ import { from, Observable } from 'rxjs';
     NzFormModule, NzInputModule, NzInputNumberModule, NzSelectModule,
     NzDatePickerModule, NzSwitchModule, NzCardModule, NzModalModule, NzTagModule,
     NzIconModule, NzToolTipModule, NzPopconfirmModule, NzSpinModule, NzEmptyModule,
-    NzDividerModule, NzRadioModule, NzAlertModule, NzResultModule
+    NzDividerModule, NzRadioModule, NzAlertModule, NzResultModule, NzCollapseModule
   ],
   templateUrl: './promotion-management.component.html',
   styleUrls: ['./promotion-management.component.css']
@@ -197,7 +198,16 @@ export class PromotionManagementComponent implements OnInit {
     });
   }
 
+  /** Optional coupon conditions panel: opens by itself when the coupon already uses any of them. */
+  optionalPanelOpen = false;
+
+  hasOptionalConditions(): boolean {
+    const v = this.promotionForm.getRawValue();
+    return !!(v.minPurchaseAmount || v.maxDiscountAmount || v.usageLimits?.global || v.usageLimits?.perUser);
+  }
+
   openCreatePromotionModal(): void {
+    this.optionalPanelOpen = false;
     this.isEditMode = false;
     this.selectedPromotionId = null;
     this.currentStep = 0;
@@ -235,6 +245,8 @@ export class PromotionManagementComponent implements OnInit {
       dates: [new Date(promotion.startDate), new Date(promotion.endDate)],
       isActive: promotion.isActive,
       minPurchaseAmount: promotion.minPurchaseAmount || null,
+      // Was missing: editing a coupon silently dropped its maximum discount
+      maxDiscountAmount: promotion.maxDiscountAmount || null,
       couponCode: promotion.couponCode || null,
       usageLimits: {
         global: promotion.usageLimits?.global || null,
@@ -242,6 +254,7 @@ export class PromotionManagementComponent implements OnInit {
       }
     });
     this.toggleCouponValidators(promotion.promotionType === 'coupon');
+    this.optionalPanelOpen = this.hasOptionalConditions();
     this.formModalVisible = true;
   }
 

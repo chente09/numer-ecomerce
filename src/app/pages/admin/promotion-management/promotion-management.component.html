@@ -182,66 +182,73 @@
                 </div>
 
                 <div *ngIf="promotionForm.get('promotionType')?.value === 'coupon'">
-                    <nz-divider nzText="Condiciones del Código" nzOrientation="left"></nz-divider>
+                    <nz-divider nzText="Código" nzOrientation="left"></nz-divider>
                     <div nz-row [nzGutter]="16">
                         <div nz-col [nzSpan]="16">
                             <nz-form-item>
                                 <nz-form-label nzRequired>Código de Cupón</nz-form-label>
-                                <nz-form-control nzErrorTip="El código es requerido"
+                                <nz-form-control nzErrorTip="El código es requerido (mínimo 4 caracteres, solo MAYÚSCULAS y números)"
                                     nzExtra="Es lo que el cliente escribe en el carrito. Solo letras MAYÚSCULAS y números, sin espacios, mínimo 4 caracteres (ej. VERANO25). Usa un código distinto para cada cupón.">
                                     <input nz-input formControlName="couponCode" placeholder="VERANO25" />
                                 </nz-form-control>
                             </nz-form-item>
                         </div>
                     </div>
-                    <div nz-row [nzGutter]="24">
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label>Monto Mínimo de Compra</nz-form-label>
-                                <nz-form-control
-                                    nzExtra="Subtotal mínimo del carrito (antes de IVA y envío) para poder usar el cupón. Vacío = sin mínimo.">
 
-                                    <nz-input-number formControlName="minPurchaseAmount" [nzMin]="0"
-                                        style="width: 100%;" placeholder="Opcional"></nz-input-number>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label>Descuento Máximo ($)</nz-form-label>
-                                <nz-form-control
-                                    nzExtra="Tope en dólares del descuento (ej. 20 % pero nunca más de $8). Vacío = sin tope.">
-
-                                    <nz-input-number formControlName="maxDiscountAmount" [nzMin]="0"
-                                        style="width: 100%;" placeholder="Opcional"></nz-input-number>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                    </div>
-                    <div nz-row [nzGutter]="24" formGroupName="usageLimits">
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label>Límite de Usos por Usuario</nz-form-label>
-                                <nz-form-control
-                                    nzExtra="Cuántas veces puede usarlo cada cliente. 1 = una sola vez por persona (ej. bienvenida).">
-
-                                    <nz-input-number formControlName="perUser" [nzMin]="1" style="width: 100%;"
-                                        placeholder="Opcional, ej: 1"></nz-input-number>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                        <div nz-col [nzSpan]="12">
-                            <nz-form-item>
-                                <nz-form-label>Límite de Usos Global</nz-form-label>
-                                <nz-form-control
-                                    nzExtra="Total de usos entre todos los clientes. Al llegar a ese número el cupón deja de funcionar.">
-
-                                    <nz-input-number formControlName="global" [nzMin]="1" style="width: 100%;"
-                                        placeholder="Opcional, ej: 100"></nz-input-number>
-                                </nz-form-control>
-                            </nz-form-item>
-                        </div>
-                    </div>
+                    <!-- Optional restrictions, collapsed so a simple coupon only needs the fields above -->
+                    <nz-collapse nzGhost class="optional-conditions">
+                        <nz-collapse-panel [nzHeader]="optionalHeader" [(nzActive)]="optionalPanelOpen">
+                            <div nz-row [nzGutter]="24">
+                                <div nz-col [nzSpan]="12">
+                                    <nz-form-item>
+                                        <nz-form-label>Monto Mínimo de Compra</nz-form-label>
+                                        <nz-form-control
+                                            nzExtra="Subtotal mínimo del carrito (antes de IVA y envío) para poder usar el cupón. Vacío = sin mínimo.">
+                                            <nz-input-number formControlName="minPurchaseAmount" [nzMin]="0"
+                                                style="width: 100%;" placeholder="Opcional"></nz-input-number>
+                                        </nz-form-control>
+                                    </nz-form-item>
+                                </div>
+                                <div nz-col [nzSpan]="12">
+                                    <nz-form-item>
+                                        <nz-form-label>Descuento Máximo ($)</nz-form-label>
+                                        <nz-form-control
+                                            nzExtra="Tope en dólares del descuento (ej. 20 % pero nunca más de $8). Vacío = sin tope.">
+                                            <nz-input-number formControlName="maxDiscountAmount" [nzMin]="0"
+                                                style="width: 100%;" placeholder="Opcional"></nz-input-number>
+                                        </nz-form-control>
+                                    </nz-form-item>
+                                </div>
+                            </div>
+                            <div nz-row [nzGutter]="24" formGroupName="usageLimits">
+                                <div nz-col [nzSpan]="12">
+                                    <nz-form-item>
+                                        <nz-form-label>Límite de Usos por Usuario</nz-form-label>
+                                        <nz-form-control
+                                            nzExtra="Cuántas veces puede usarlo cada cliente. 1 = una sola vez por persona (ej. bienvenida).">
+                                            <nz-input-number formControlName="perUser" [nzMin]="1" style="width: 100%;"
+                                                placeholder="Opcional, ej: 1"></nz-input-number>
+                                        </nz-form-control>
+                                    </nz-form-item>
+                                </div>
+                                <div nz-col [nzSpan]="12">
+                                    <nz-form-item>
+                                        <nz-form-label>Límite de Usos Global</nz-form-label>
+                                        <nz-form-control
+                                            nzExtra="Total de usos entre todos los clientes. Al llegar a ese número el cupón deja de funcionar.">
+                                            <nz-input-number formControlName="global" [nzMin]="1" style="width: 100%;"
+                                                placeholder="Opcional, ej: 100"></nz-input-number>
+                                        </nz-form-control>
+                                    </nz-form-item>
+                                </div>
+                            </div>
+                        </nz-collapse-panel>
+                    </nz-collapse>
+                    <ng-template #optionalHeader>
+                        Condiciones opcionales
+                        <span class="optional-hint">compra mínima, descuento máximo y límites de uso</span>
+                        <span *ngIf="hasOptionalConditions()" class="optional-count">en uso</span>
+                    </ng-template>
                 </div>
             </div>
         </form>
