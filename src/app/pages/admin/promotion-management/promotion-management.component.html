@@ -82,10 +82,12 @@
 <nz-modal [(nzVisible)]="formModalVisible" [nzTitle]="isEditMode ? 'Editar Plantilla' : 'Crear Nueva Plantilla'"
     [nzWidth]="800" (nzOnCancel)="closeFormModal()" [nzFooter]="modalFooter">
     <ng-container *nzModalContent>
-        <nz-steps *ngIf="currentStep > 0" [nzCurrent]="0" nzSize="small" class="mb-4">
-            <nz-step nzTitle="Tipo de Plantilla"></nz-step>
-            <nz-step nzTitle="Configuración"></nz-step>
-        </nz-steps>
+        <!-- Chosen type, instead of a stepper: there is only one real step after choosing it -->
+        <div *ngIf="currentStep > 0" class="type-indicator">
+            <span nz-icon [nzType]="promotionForm.get('promotionType')?.value === 'coupon' ? 'gift' : 'tags'"
+                nzTheme="outline"></span>
+            {{ promotionForm.get('promotionType')?.value === 'coupon' ? 'Código de descuento' : 'Promoción para productos' }}
+        </div>
 
         <form [formGroup]="promotionForm" nz-form>
             <div *ngIf="currentStep === 0" class="step-container">
@@ -118,9 +120,9 @@
                 <div nz-row [nzGutter]="16">
                     <div nz-col [nzSpan]="12">
                         <nz-form-item>
-                            <nz-form-label nzRequired>Nombre (Uso interno)</nz-form-label>
+                            <nz-form-label nzRequired>Nombre (lo ve el cliente)</nz-form-label>
                             <nz-form-control nzErrorTip="El nombre es requerido"
-                                nzExtra="Es una etiqueta para ti: el cliente no la ve. Ej.: «Lanzamiento octubre».">
+                                nzExtra="El cliente lo ve en el producto, en su carrito y en el comprobante. Usa un nombre claro, por ejemplo «Descuento de lanzamiento».">
                                 <input nz-input formControlName="name" />
                             </nz-form-control>
                         </nz-form-item>

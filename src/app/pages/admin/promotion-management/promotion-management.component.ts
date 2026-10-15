@@ -30,7 +30,6 @@ import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzResultModule } from 'ng-zorro-antd/result';
 import { from, Observable } from 'rxjs';
-import { NzStepsModule } from 'ng-zorro-antd/steps';
 
 @Component({
   selector: 'app-promotion-management',
@@ -40,7 +39,7 @@ import { NzStepsModule } from 'ng-zorro-antd/steps';
     NzFormModule, NzInputModule, NzInputNumberModule, NzSelectModule,
     NzDatePickerModule, NzSwitchModule, NzCardModule, NzModalModule, NzTagModule,
     NzIconModule, NzToolTipModule, NzPopconfirmModule, NzSpinModule, NzEmptyModule,
-    NzDividerModule, NzRadioModule, NzAlertModule, NzResultModule, NzStepsModule
+    NzDividerModule, NzRadioModule, NzAlertModule, NzResultModule
   ],
   templateUrl: './promotion-management.component.html',
   styleUrls: ['./promotion-management.component.css']
