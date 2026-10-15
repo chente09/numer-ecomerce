@@ -55,6 +55,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
       label: 'Ventas',
       icon: 'shopping-cart',
       items: [
+        { title: 'Resumen de ventas', icon: 'bar-chart', path: '/admin/ventas' },
         { title: 'Pedidos', icon: 'file-done', path: '/admin/orders' },
       ]
     },

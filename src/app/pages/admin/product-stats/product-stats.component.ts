@@ -249,15 +249,16 @@ export class ProductStatsComponent implements OnInit, OnChanges, OnDestroy {
 
   // Agregar método fallback
   private loadFallbackData(): void {
+    // No invented numbers: if the stats cannot be loaded, show zeros instead of random values
     this.salesHistory = Array.from({ length: 7 }, (_, i) => ({
       date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000),
-      sales: Math.floor(Math.random() * 10)
+      sales: 0
     }));
     this.viewsData = [
-      { period: 'Hoy', count: Math.floor(Math.random() * 20) + 5 },
-      { period: 'Ayer', count: Math.floor(Math.random() * 15) + 3 },
-      { period: 'Última semana', count: Math.floor(Math.random() * 100) + 20 },
-      { period: 'Último mes', count: Math.floor(Math.random() * 400) + 100 }
+      { period: 'Hoy', count: 0 },
+      { period: 'Ayer', count: 0 },
+      { period: 'Última semana', count: 0 },
+      { period: 'Último mes', count: 0 }
     ];
     if (this.product) {
       this.stockData = {

@@ -1,0 +1,149 @@
+<div class="sales-container">
+    <header class="sales-header">
+        <div>
+            <h2 class="sales-title">Ventas</h2>
+            <p class="sales-subtitle">Pedidos de clientes cobrados con Payphone. Las fechas usan la hora de Ecuador.</p>
+        </div>
+        <div class="period-bar">
+            <button *ngFor="let p of presets" type="button" class="period-btn" [class.active]="preset === p.id"
+                (click)="selectPreset(p.id)">{{ p.label }}</button>
+        </div>
+    </header>
+
+    <div class="custom-range" *ngIf="preset === 'custom'">
+        <label>Desde <input type="date" [(ngModel)]="customFrom" (change)="recalculate()" /></label>
+        <label>Hasta <input type="date" [(ngModel)]="customTo" (change)="recalculate()" /></label>
+    </div>
+
+    <nz-spin [nzSpinning]="loading">
+        <ng-container *ngIf="summary as s">
+            <!-- Cards -->
+            <section class="cards">
+                <div class="card">
+                    <span class="card-label">Ingresos cobrados</span>
+                    <strong class="card-value">{{ s.revenue | currency:'USD':'symbol':'1.2-2' }}</strong>
+                    <span class="card-change" *ngIf="change(s.revenue, previous?.revenue) as c"
+                        [class.down]="c < 0">{{ c > 0 ? '+' : '' }}{{ c }}% vs periodo anterior</span>
+                </div>
+                <div class="card">
+                    <span class="card-label">Pedidos</span>
+                    <strong class="card-value">{{ s.orders }}</strong>
+                    <span class="card-change" *ngIf="change(s.orders, previous?.orders) as c"
+                        [class.down]="c < 0">{{ c > 0 ? '+' : '' }}{{ c }}% vs periodo anterior</span>
+                </div>
+                <div class="card">
+                    <span class="card-label">Ticket promedio</span>
+                    <strong class="card-value">{{ s.averageTicket | currency:'USD':'symbol':'1.2-2' }}</strong>
+                </div>
+                <div class="card">
+                    <span class="card-label">Ahorro entregado</span>
+                    <strong class="card-value">{{ s.savings | currency:'USD':'symbol':'1.2-2' }}</strong>
+                    <span class="card-note">Promociones {{ s.productSavings | currency:'USD':'symbol':'1.2-2' }} · Cupones
+                        {{ s.couponDiscount | currency:'USD':'symbol':'1.2-2' }}</span>
+                </div>
+                <div class="card">
+                    <span class="card-label">IVA cobrado</span>
+                    <strong class="card-value">{{ s.tax | currency:'USD':'symbol':'1.2-2' }}</strong>
+                </div>
+                <div class="card">
+                    <span class="card-label">Envíos cobrados</span>
+                    <strong class="card-value">{{ s.shipping | currency:'USD':'symbol':'1.2-2' }}</strong>
+                </div>
+            </section>
+
+            <p class="cancelled-note" *ngIf="s.cancelledOrders">
+                {{ s.cancelledOrders }} pedido(s) cancelado(s) por {{ s.cancelledAmount | currency:'USD':'symbol':'1.2-2' }},
+                no incluidos en los ingresos.
+            </p>
+
+            <!-- Chart -->
+            <section class="panel">
+                <h3 class="panel-title">Ventas por día</h3>
+                <div class="chart" *ngIf="s.byDay.length">
+                    <div class="bar-col" *ngFor="let d of s.byDay; let i = index"
+                        [title]="d.key + ': ' + (d.revenue | currency:'USD':'symbol':'1.2-2') + ' en ' + d.orders + ' pedido(s)'">
+                        <div class="bar-track">
+                            <div class="bar" [style.height.%]="barHeight(d.revenue)"></div>
+                        </div>
+                        <span class="bar-label">{{ showLabel(i, s.byDay.length) ? d.label : '' }}</span>
+                    </div>
+                </div>
+                <p class="empty" *ngIf="!s.orders">No hay ventas en este periodo.</p>
+            </section>
+
+            <div class="grid-2">
+                <!-- By status -->
+                <section class="panel">
+                    <h3 class="panel-title">Pedidos por estado</h3>
+                    <table class="table" *ngIf="s.byStatus.length; else noStatus">
+                        <tbody>
+                            <tr *ngFor="let st of s.byStatus">
+                                <td>{{ st.label }}</td>
+                                <td class="num">{{ st.count }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <ng-template #noStatus><p class="empty">Sin pedidos.</p></ng-template>
+                </section>
+
+                <!-- Coupons -->
+                <section class="panel">
+                    <h3 class="panel-title">Uso de cupones</h3>
+                    <table class="table" *ngIf="s.coupons.length; else noCoupons">
+                        <thead>
+                            <tr><th>Código</th><th class="num">Usos</th><th class="num">Descuento</th><th class="num">Ingreso</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let c of s.coupons">
+                                <td>{{ c.code }}</td>
+                                <td class="num">{{ c.uses }}</td>
+                                <td class="num">{{ c.discount | currency:'USD':'symbol':'1.2-2' }}</td>
+                                <td class="num">{{ c.revenue | currency:'USD':'symbol':'1.2-2' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <ng-template #noCoupons><p class="empty">Ningún cupón usado en este periodo.</p></ng-template>
+                </section>
+            </div>
+
+            <div class="grid-2">
+                <!-- Top products -->
+                <section class="panel">
+                    <h3 class="panel-title">Productos más vendidos</h3>
+                    <table class="table" *ngIf="s.topProducts.length; else noProducts">
+                        <thead>
+                            <tr><th>Producto</th><th class="num">Unid.</th><th class="num">Con promo</th><th class="num">Ingreso</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let p of s.topProducts">
+                                <td>{{ p.name }}</td>
+                                <td class="num">{{ p.units }}</td>
+                                <td class="num">{{ p.promoUnits }}</td>
+                                <td class="num">{{ p.revenue | currency:'USD':'symbol':'1.2-2' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <ng-template #noProducts><p class="empty">Sin ventas en este periodo.</p></ng-template>
+                </section>
+
+                <!-- Promotions -->
+                <section class="panel">
+                    <h3 class="panel-title">Promociones de producto</h3>
+                    <table class="table" *ngIf="s.promotions.length; else noPromos">
+                        <thead>
+                            <tr><th>Promoción</th><th class="num">Unid.</th><th class="num">Ahorro</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let p of s.promotions">
+                                <td>{{ p.name }}</td>
+                                <td class="num">{{ p.units }}</td>
+                                <td class="num">{{ p.savings | currency:'USD':'symbol':'1.2-2' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <ng-template #noPromos><p class="empty">Ninguna venta con promoción en este periodo.</p></ng-template>
+                </section>
+            </div>
+        </ng-container>
+    </nz-spin>
+</div>

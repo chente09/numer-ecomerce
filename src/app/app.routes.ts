@@ -47,6 +47,7 @@ export const routes: Routes = [
             { path: 'heroes', loadComponent: () => import('./pages/admin/heroes/heroes.component').then(m => m.HeroesComponent), canActivate: [adminOnlyGuard] },
             { path: 'reviews', loadComponent: () => import('./pages/admin/review-management/review-management.component').then(m => m.ReviewManagementComponent), canActivate: [adminOnlyGuard] },
             { path: 'clientes', loadComponent: () => import('./pages/admin/clientes/clientes.component').then(m => m.ClientesComponent), canActivate: [adminOnlyGuard] },
+            { path: 'ventas', loadComponent: () => import('./pages/admin/sales/admin-sales.component').then(m => m.AdminSalesComponent), canActivate: [adminOnlyGuard] },
             { path: 'orders', loadComponent: () => import('./pages/admin/orders/admin-orders.component').then(m => m.AdminOrdersComponent), canActivate: [adminOnlyGuard] },
             { path: 'sitemap', loadComponent: () => import('./pages/admin/sitemap-admin/sitemap-admin.component').then(m => m.SitemapAdminComponent), canActivate: [adminOnlyGuard] },
             { path: 'user-roles', loadComponent: () => import('./pages/admin/user-roles-management/user-roles-management.component').then(m => m.UserRolesManagementComponent), canActivate: [adminOnlyGuard] },
