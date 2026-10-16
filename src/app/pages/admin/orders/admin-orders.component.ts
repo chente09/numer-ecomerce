@@ -176,6 +176,27 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** The guide is already saved: an email problem must not look like a failure to save it. */
+  private async notifyCustomerOfShipping(orderId: string, resend: boolean): Promise<void> {
+    try {
+      const result = await this.orderService.sendShippingEmail(orderId, resend);
+      if (result.sent) {
+        this.message.success('Se envió el aviso con la guía al cliente');
+      } else if (result.skipped === 'ALREADY_SENT') {
+        this.message.info('El cliente ya había recibido el aviso de envío');
+      } else if (result.reason === 'NOT_CONFIGURED') {
+        this.message.warning('Correo no configurado: el cliente no fue avisado por email');
+      } else if (result.reason === 'NO_RECIPIENT') {
+        this.message.warning('El pedido no tiene correo del cliente: avísale por WhatsApp');
+      } else {
+        this.message.warning('No se pudo enviar el correo al cliente; avísale por WhatsApp');
+      }
+    } catch (error) {
+      console.error('Error enviando el aviso de envío:', error);
+      this.message.warning('No se pudo enviar el correo al cliente; avísale por WhatsApp');
+    }
+  }
+
   async saveTracking(): Promise<void> {
     const order = this.selectedOrder;
     const number = this.trackingNumber.trim();
@@ -188,6 +209,7 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
 
     this.savingTracking = true;
     try {
+      const guideChanged = !!order.trackingNumber && order.trackingNumber !== number;
       await this.orderService.setTracking(order.id, number, carrier, this.trackingUrl.trim() || undefined);
       if (order.status === 'processing') {
         await this.orderService.updateOrderStatus(order.id, 'shipped', `Enviado con ${carrier}. Guía: ${number}`);
@@ -196,6 +218,7 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
       } else {
         this.message.success('Guía guardada');
       }
+      await this.notifyCustomerOfShipping(order.id, guideChanged);
     } catch (error) {
       console.error('Error guardando la guía:', error);
       this.message.error('No se pudo guardar la guía de envío');

@@ -13,9 +13,13 @@ import {
   arrayUnion,
   Timestamp
 } from '@angular/fire/firestore';
-import { Observable, of } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, of, firstValueFrom } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { Order } from '../../models/models';
+import { UsersService } from '../users/users.service';
+
+const SHIPPING_EMAIL_URL = 'https://backend-numer.netlify.app/.netlify/functions/send-shipping-email';
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente',
@@ -50,6 +54,8 @@ export function getOrderStatusColor(status: string): string {
 })
 export class OrderService {
   private firestore = inject(Firestore);
+  private http = inject(HttpClient);
+  private usersService = inject(UsersService);
   private collectionName = 'orders';
 
   /** Pedidos de un cliente, más recientes primero */
@@ -121,5 +127,18 @@ export class OrderService {
       trackingUrl: trackingUrl || null,
       updatedAt: Timestamp.now()
     });
+  }
+
+  /**
+   * Admin: emails the customer the tracking number (server side, Gmail). `resend` forces a new email even if
+   * one was already sent (e.g. the guide number changed).
+   */
+  async sendShippingEmail(orderId: string, resend = false): Promise<{ sent: boolean; skipped?: string; reason?: string }> {
+    const token = await this.usersService.getIdToken();
+    if (!token) throw new Error('No se pudo verificar la sesión');
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` });
+    return firstValueFrom(this.http.post<{ sent: boolean; skipped?: string; reason?: string }>(
+      SHIPPING_EMAIL_URL, { orderId, resend }, { headers }
+    ));
   }
 }
