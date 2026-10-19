@@ -324,6 +324,43 @@
                     </div>
                 </nz-tab>
 
+                <!-- Tab de Favoritos -->
+                <nz-tab nzTitle="Favoritos">
+                    <div class="tab-content">
+                        <h3>Mis favoritos</h3>
+                        <p class="favorites-help">Productos que guardaste para después. Se sincronizan con tu cuenta en todos tus dispositivos.</p>
+
+                        <div *ngIf="loadingFavorites" class="loading-container">
+                            <nz-spin nzSize="small"></nz-spin>
+                        </div>
+
+                        <div *ngIf="!loadingFavorites && favorites.length === 0" class="empty-state">
+                            <nz-empty nzNotFoundContent="Aún no guardas productos. Toca el corazón en un producto para guardarlo aquí."></nz-empty>
+                            <a routerLink="/shop" nz-button nzType="primary">Ver productos</a>
+                        </div>
+
+                        <div class="favorites-grid" *ngIf="!loadingFavorites && favorites.length > 0">
+                            <div class="favorite-card" *ngFor="let fav of favorites">
+                                <a [routerLink]="['/products', fav.product.id]" class="favorite-image">
+                                    <img [src]="fav.product.imageUrl" [alt]="fav.product.name" loading="lazy" />
+                                </a>
+                                <div class="favorite-info">
+                                    <a [routerLink]="['/products', fav.product.id]" class="favorite-name">{{ fav.product.name }}</a>
+                                    <div class="favorite-price">
+                                        <s *ngIf="fav.hasDiscount">{{ fav.originalPrice | currency:'USD' }}</s>
+                                        <strong>{{ fav.price | currency:'USD' }}</strong>
+                                    </div>
+                                    <div class="favorite-actions">
+                                        <a [routerLink]="['/products', fav.product.id]" class="favorite-view">Ver producto</a>
+                                        <button type="button" class="favorite-remove" (click)="removeFavorite(fav.product.id)"
+                                            aria-label="Quitar de favoritos">Quitar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nz-tab>
+
                 <!-- Tab de Pedidos -->
                 <nz-tab nzTitle="Mis Pedidos">
                     <div class="tab-content">

@@ -603,3 +603,88 @@ button.ant-btn-primary:hover {
   color: #666;
   margin-bottom: 16px;
 }
+
+/* Favoritos */
+.favorites-help {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #777;
+}
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.favorite-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  min-width: 0;
+}
+
+.favorite-image {
+  display: block;
+  aspect-ratio: 1 / 1;
+  background: #f7f7f7;
+}
+
+.favorite-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.favorite-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 12px;
+}
+
+.favorite-name {
+  color: #000;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.favorite-price s {
+  margin-right: 6px;
+  color: #888;
+  font-size: 13px;
+}
+
+.favorite-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.favorite-view {
+  color: #000;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-decoration: underline;
+}
+
+.favorite-remove {
+  border: 0;
+  background: none;
+  color: #777;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (max-width: 576px) {
+  .favorites-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}

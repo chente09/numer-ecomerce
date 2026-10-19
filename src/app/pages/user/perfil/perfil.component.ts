@@ -28,6 +28,11 @@ import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 
 import { UsersService } from '../../../services/users/users.service';
 import { OrderService, getOrderStatusLabel, getOrderStatusColor } from '../../../services/order/order.service';
+import { WishlistService } from '../../../services/wishlist/wishlist.service';
+import { ProductService } from '../../../services/admin/product/product.service';
+import { resolveEffectivePrice } from '../../../core/pricing';
+import { Product } from '../../../models/models';
+import { forkJoin, of, switchMap, catchError, map } from 'rxjs';
 
 @Component({
   selector: 'app-perfil',
@@ -68,6 +73,11 @@ export class PerfilComponent implements OnInit, OnDestroy {
 
   // Para mostrar pedidos recientes
   recentOrders: any[] = [];
+
+  /** Saved products ("Favoritos" tab), resolved with their current price */
+  favorites: { product: Product; price: number; originalPrice: number; hasDiscount: boolean }[] = [];
+  loadingFavorites = true;
+  private favoritesSubscription: Subscription | null = null;
   loadingOrders = true;
 
   // Para direcciones
@@ -89,7 +99,9 @@ export class PerfilComponent implements OnInit, OnDestroy {
     private router: Router,
     private message: NzMessageService,
     private modal: NzModalService,
-    private orderService: OrderService
+    private orderService: OrderService,
+    private wishlistService: WishlistService,
+    private productService: ProductService
   ) {
     // Inicializa formularios vacíos
     this.profileForm = this.fb.group({
@@ -117,7 +129,30 @@ export class PerfilComponent implements OnInit, OnDestroy {
     });
   }
 
+  private loadFavorites(): void {
+    this.favoritesSubscription?.unsubscribe();
+    this.favoritesSubscription = this.wishlistService.entries$.pipe(
+      switchMap(entries => entries.length === 0
+        ? of([])
+        : forkJoin(entries.map(e => this.productService.getProductById(e.productId).pipe(catchError(() => of(null)))))),
+      map(products => (products as (Product | null | undefined)[])
+        .filter((p): p is Product => !!p)
+        .map(product => {
+          const effective = resolveEffectivePrice(product);
+          return { product, price: effective.unitPrice, originalPrice: effective.originalUnitPrice, hasDiscount: effective.hasDiscount };
+        }))
+    ).subscribe({
+      next: favorites => { this.favorites = favorites; this.loadingFavorites = false; },
+      error: () => { this.loadingFavorites = false; }
+    });
+  }
+
+  removeFavorite(productId: string): void {
+    this.wishlistService.remove(productId).catch(() => this.message.error('No se pudo quitar de tus favoritos'));
+  }
+
   ngOnInit() {
+    this.loadFavorites();
     this.userSubscription = this.usersService.user$.subscribe(user => {
       this.currentUser = user;
 
@@ -456,6 +491,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.ordersSubscription?.unsubscribe();
+    this.favoritesSubscription?.unsubscribe();
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }

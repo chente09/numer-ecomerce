@@ -7,6 +7,7 @@ import { FLAT_SHIPPING_USD, RETURN_DAYS } from '../../../core/legal';
 import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
 import { Product, Color, Size, ProductVariant } from '../../../models/models';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
+import { WishlistService } from '../../../services/wishlist/wishlist.service';
 import { CommonModule } from '@angular/common';
 import { NzRateModule } from 'ng-zorro-antd/rate';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
@@ -15,7 +16,7 @@ import { FormsModule } from '@angular/forms';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { ProductInventoryService } from '../../../services/admin/inventario/product-inventory.service';
-import { Observable, Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, firstValueFrom, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
+import { Observable, Subject, Subscription, catchError, debounceTime, distinctUntilChanged, filter, finalize, firstValueFrom, forkJoin, map, of, switchMap, take, takeUntil } from 'rxjs';
 import { CacheService } from '../../../services/admin/cache/cache.service';
 import { StockUpdate, StockUpdateService } from '../../../services/admin/stockUpdate/stock-update.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -105,6 +106,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   // Estado adicional
   activeTab: string = 'description';
   isInWishlist: boolean = false;
+  private wishlistSub: Subscription | null = null;
   currentImageUrl: string = '';
 
   // 🆕 Nuevas propiedades para funcionalidades ecuatorianas
@@ -127,6 +129,8 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     private message: NzMessageService,
     private seoService: SeoService,
     private cdr: ChangeDetectorRef,
+    private wishlistService: WishlistService,
+    private router: Router,
   ) { }
 
   // ✅ AGREGAR este método al ngOnInit (después de la línea que llama loadProduct):
@@ -1014,51 +1018,32 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     });
   }
 
-  toggleWishlist(): void {
-    this.isInWishlist = !this.isInWishlist;
-    this.saveToWishlist();
-
-    if (this.isInWishlist) {
-      this.message.success('Guardado en favoritos');
-    } else {
-      this.message.info('Eliminado de favoritos');
+  async toggleWishlist(): Promise<void> {
+    if (!this.product) return;
+    try {
+      const result = await this.wishlistService.toggle(this.product.id);
+      if (result === 'login') {
+        this.message.info('Inicia sesión para guardar tus favoritos');
+        this.router.navigate(['/welcome'], { queryParams: { returnUrl: this.router.url } });
+      } else if (result === 'added') {
+        this.message.success('Guardado en tus favoritos');
+      } else {
+        this.message.info('Eliminado de tus favoritos');
+      }
+    } catch (error) {
+      console.error('Error actualizando favoritos:', error);
+      this.message.error('No se pudo actualizar tus favoritos');
     }
   }
 
+  /** The heart follows the account's favorites in real time (also when changed from another device). */
   private checkIfInWishlist(): void {
     if (!this.product) return;
-
-    const wishlist = this.getWishlistFromStorage();
-    this.isInWishlist = wishlist.includes(this.product.id);
-  }
-
-  private saveToWishlist(): void {
-    if (!this.product) return;
-
-    let wishlist = this.getWishlistFromStorage();
-
-    if (this.isInWishlist) {
-      // Agregar a favoritos
-      if (!wishlist.includes(this.product.id)) {
-        wishlist.push(this.product.id);
-      }
-    } else {
-      // Quitar de favoritos
-      if (this.product) {
-        wishlist = wishlist.filter(id => id !== this.product!.id);
-      }
-    }
-
-    localStorage.setItem('wishlist', JSON.stringify(wishlist));
-  }
-
-  private getWishlistFromStorage(): string[] {
-    try {
-      const wishlist = localStorage.getItem('wishlist');
-      return wishlist ? JSON.parse(wishlist) : [];
-    } catch {
-      return [];
-    }
+    this.wishlistSub?.unsubscribe();
+    this.wishlistSub = this.wishlistService.isFavorite$(this.product.id).pipe(takeUntil(this.destroy$)).subscribe(isFavorite => {
+      this.isInWishlist = isFavorite;
+      this.cdr.markForCheck();
+    });
   }
 
   getColorsList(): string {
