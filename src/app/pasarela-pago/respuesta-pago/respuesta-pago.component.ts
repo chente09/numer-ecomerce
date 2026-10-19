@@ -207,10 +207,18 @@ export class RespuestaPagoComponent implements OnInit, OnDestroy {
         // No afectar el flujo principal por error de cupón
       }
 
-      // Registrar compra (solo si hay items en el carrito)
-      if (currentCart && currentCart.items.length > 0) {
+      // Registrar compra. El servidor ya vació el carrito guardado al confirmar el pago, así que los
+      // productos salen del pedido guardado (el carrito local solo sirve si la carga fue más rápida).
+      let purchasedItems: any[] = currentCart?.items || [];
+      let purchasedTotal = currentCart?.total || 0;
+      if (purchasedItems.length === 0) {
+        const savedOrder = await this.orderService.waitForOrder(confirmationResponse.orderId || confirmationResponse.clientTransactionId);
+        purchasedItems = savedOrder?.items || [];
+        purchasedTotal = savedOrder?.total || 0;
+      }
+      if (purchasedItems.length > 0) {
         try {
-          await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
+          await this.activityLogService.logPurchase(transactionId, purchasedItems, purchasedTotal);
           console.log('Compra registrada exitosamente desde respuesta-pago');
         } catch (error) {
           console.warn('Error registrando compra:', error);

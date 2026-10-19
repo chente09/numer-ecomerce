@@ -1,4 +1,5 @@
 import { PayphoneAssetsService } from '../services/payphone-assets.service';
+import { OrderService } from '../../services/order/order.service';
 import { ReceiptService } from '../../services/receipt/receipt.service';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -129,7 +130,8 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
     private usersService: UsersService,
     private activityLogService: ActivityLogService,
     private receiptService: ReceiptService,
-    private payphoneAssets: PayphoneAssetsService
+    private payphoneAssets: PayphoneAssetsService,
+    private orderService: OrderService
   ) {
     this.cartSummary$ = this.cartService.cart$;
   }
@@ -377,6 +379,9 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
           variantName: `${item.variant?.colorName}-${item.variant?.sizeName}`
         }));
 
+        // Every cart change must have reached the cloud before the server checks it
+        await this.cartService.flushPendingSync();
+
         // ✅ Obtener el token con manejo de errores mejorado
         let idToken: string | null = null;
         try {
@@ -421,9 +426,14 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
         // Rechazos con explicación (antes de que el cliente ingrese su tarjeta): sin stock, cupón no
         // válido o ya usado, promoción de uso limitado agotada
-        const explainedCodes = ['OUT_OF_STOCK', 'COUPON_INVALID', 'COUPON_LIMIT', 'PROMOTION_LIMIT'];
+        const explainedCodes = ['OUT_OF_STOCK', 'COUPON_INVALID', 'COUPON_LIMIT', 'PROMOTION_LIMIT', 'CART_STALE'];
         if (explainedCodes.includes(error?.error?.code) && error.error.error) {
           this.friendlyApiError = error.error.error;
+        }
+
+        // The cart on this device is outdated (paid or changed from another device): show the current one
+        if (error?.error?.code === 'CART_STALE') {
+          void this.cartService.reloadFromServer();
         }
 
         // The server is the authority on coupon limits: drop the rejected coupon so the customer can pay without it
@@ -634,8 +644,17 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
         const currentCart = await firstValueFrom(this.cartService.cart$.pipe(take(1)));
         const transactionId = response['id'] || response.transactionId || this.transactionId;
 
+        // The server already emptied the saved cart when it confirmed the payment: take the products from the order
+        let purchasedItems: any[] = currentCart.items;
+        let purchasedTotal = currentCart.total;
+        if (purchasedItems.length === 0) {
+          const savedOrder = await this.orderService.waitForOrder(confirmationResponse['orderId'] || confirmationResponse['clientTransactionId']);
+          purchasedItems = savedOrder?.items || [];
+          purchasedTotal = savedOrder?.total || 0;
+        }
+
         try {
-          await this.activityLogService.logPurchase(transactionId, currentCart.items, currentCart.total);
+          await this.activityLogService.logPurchase(transactionId, purchasedItems, purchasedTotal);
         } catch (error) {
           console.warn('Error registrando compra:', error);
         }

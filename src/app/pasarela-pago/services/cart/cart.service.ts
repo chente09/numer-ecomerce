@@ -5,7 +5,7 @@ import { Promotion, Product, ProductVariant, Cart, CartItem } from '../../../mod
 import { PromotionService } from '../../../services/admin/promotion/promotion.service';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { UsersService } from '../../../services/users/users.service';
-import { deleteDoc, doc, Firestore, getDoc, setDoc, serverTimestamp } from '@angular/fire/firestore';
+import { deleteDoc, doc, Firestore, getDoc, setDoc, serverTimestamp, onSnapshot } from '@angular/fire/firestore';
 import { User } from '@angular/fire/auth';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -46,6 +46,10 @@ export class CartService implements OnDestroy {
   public cartReady$: Observable<boolean> = this.cartReadySubject.asObservable();
   private destroy$ = new Subject<void>();
   private appliedCoupon: Promotion | null = null;
+  /** Listener on users/{uid}/cart/current: another device paying or editing the cart is reflected here at once */
+  private remoteCartUnsub: (() => void) | null = null;
+  /** Saves to Firestore run one after another; payment waits for the last one (flushPendingSync) */
+  private pendingSave: Promise<void> = Promise.resolve();
 
   constructor() {
     // Suscripción única para manejar el estado del usuario
@@ -55,6 +59,7 @@ export class CartService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopRemoteCartSync();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -75,12 +80,15 @@ export class CartService implements OnDestroy {
     if (this.currentUserId && !wasLoggedIn) {
       // Caso 1: Un invitado acaba de iniciar sesión -> Fusionar carritos
       await this.mergeLocalWithFirestore();
+      this.startRemoteCartSync();
     } else if (this.currentUserId) {
       // Caso 2: Un usuario ya logueado recarga la página -> Cargar desde Firestore
       const firestoreItems = await this.loadFirestoreCartItems();
       this.updateCartState(firestoreItems);
+      this.startRemoteCartSync();
     } else {
       // Caso 3: Es un invitado o un usuario acaba de cerrar sesión -> Cargar desde localStorage
+      this.stopRemoteCartSync();
       const guestItems = this.getGuestCartItems();
       this.updateCartState(guestItems);
     }
@@ -673,7 +681,17 @@ export class CartService implements OnDestroy {
     return Array.from(merged.values());
   }
 
-  private async saveCartToFirestore(items: CartItem[]): Promise<void> {
+  private saveCartToFirestore(items: CartItem[]): Promise<void> {
+    this.pendingSave = this.pendingSave.then(() => this.writeCartToFirestore(items));
+    return this.pendingSave;
+  }
+
+  /** Resolves when every cart change made so far has reached Firestore (call it before starting a payment). */
+  public flushPendingSync(): Promise<void> {
+    return this.pendingSave.catch(() => undefined);
+  }
+
+  private async writeCartToFirestore(items: CartItem[]): Promise<void> {
     if (!this.currentUserId) return;
     const cartRef = doc(this.firestore, `users/${this.currentUserId}/cart`, 'current');
     try {
@@ -705,6 +723,45 @@ export class CartService implements OnDestroy {
     appliedPromotionId: item.appliedPromotionId ?? null,
     totalPrice: item.totalPrice || item.unitPrice * item.quantity
   });
+
+  private sameCartContents(a: { variantId: string; quantity: number }[], b: { variantId: string; quantity: number }[]): boolean {
+    const total = (items: { variantId: string; quantity: number }[]) => {
+      const map = new Map<string, number>();
+      items.forEach(i => map.set(i.variantId, (map.get(i.variantId) || 0) + (Number(i.quantity) || 0)));
+      return map;
+    };
+    const x = total(a);
+    const y = total(b);
+    return x.size === y.size && [...x].every(([id, q]) => y.get(id) === q);
+  }
+
+  /**
+   * Follows the saved cart in real time. Writes made by this device (pending) are ignored; a change that
+   * comes from elsewhere (another device edits the cart, or the server empties it after a payment) replaces
+   * the local cart without writing it back.
+   */
+  private startRemoteCartSync(): void {
+    this.stopRemoteCartSync();
+    if (!this.currentUserId) return;
+    const cartRef = doc(this.firestore, `users/${this.currentUserId}/cart`, 'current');
+    this.remoteCartUnsub = onSnapshot(cartRef, snap => {
+      if (snap.metadata.hasPendingWrites) return;
+      const remote: CartItem[] = snap.exists() ? (snap.data()['items'] || []) : [];
+      if (this.sameCartContents(remote, this.getCart().items)) return;
+      this.updateCartState(remote);
+    }, error => console.error('Error siguiendo el carrito en la nube:', error));
+  }
+
+  private stopRemoteCartSync(): void {
+    this.remoteCartUnsub?.();
+    this.remoteCartUnsub = null;
+  }
+
+  /** Reloads the cart from the cloud (used when the server says this device's cart is outdated). */
+  public async reloadFromServer(): Promise<void> {
+    await this.flushPendingSync();
+    this.updateCartState(await this.loadFirestoreCartItems());
+  }
 
   private async loadFirestoreCartItems(): Promise<CartItem[]> {
     if (!this.currentUserId) return [];

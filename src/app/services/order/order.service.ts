@@ -141,4 +141,22 @@ export class OrderService {
       SHIPPING_EMAIL_URL, { orderId, resend }, { headers }
     ));
   }
+
+  /**
+   * The saved order of a payment that was just confirmed. The server writes it in the same transaction as the
+   * confirmation, so it is normally there at once; retry briefly just in case.
+   */
+  async waitForOrder(orderId: string, attempts = 3, delayMs = 1000): Promise<Order | undefined> {
+    if (!orderId) return undefined;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        const order = await firstValueFrom(this.getOrderById(orderId));
+        if (order) return order;
+      } catch {
+        /* optional data: callers continue without it */
+      }
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    return undefined;
+  }
 }
