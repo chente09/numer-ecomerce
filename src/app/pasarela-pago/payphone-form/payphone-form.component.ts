@@ -121,6 +121,9 @@ export class PayphoneFormComponent implements OnInit, AfterViewInit, OnDestroy {
   transactionId = '';
   currencyCode = 'USD';
 
+  /** Phone layout: order summary collapsed by default */
+  summaryOpen = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,

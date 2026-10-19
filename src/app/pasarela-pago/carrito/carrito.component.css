@@ -1172,3 +1172,19 @@
     outline: 2px solid #000000;
     outline-offset: 2px;
 }
+
+/* Phone: the product column can shrink and the price row wraps instead of pushing past the card */
+.cart-item > *,
+.item-details {
+  min-width: 0;
+}
+
+.price-section {
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.stock-status {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

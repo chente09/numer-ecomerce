@@ -84,13 +84,14 @@ export class CartService implements OnDestroy {
     } else if (this.currentUserId) {
       // Caso 2: Un usuario ya logueado recarga la página -> Cargar desde Firestore
       const firestoreItems = await this.loadFirestoreCartItems();
-      this.updateCartState(firestoreItems);
+      // "Listo" solo cuando el carrito ya tiene el detalle de sus productos: /pago lo lee justo después
+      await this.updateCartState(firestoreItems);
       this.startRemoteCartSync();
     } else {
       // Caso 3: Es un invitado o un usuario acaba de cerrar sesión -> Cargar desde localStorage
       this.stopRemoteCartSync();
       const guestItems = this.getGuestCartItems();
-      this.updateCartState(guestItems);
+      await this.updateCartState(guestItems);
     }
 
     this.cartReadySubject.next(true);
@@ -103,7 +104,7 @@ export class CartService implements OnDestroy {
     // Lógica de fusión que suma cantidades si el item ya existía
     const mergedItems = this.mergeItems(guestItems, firestoreItems);
 
-    this.updateCartState(mergedItems);
+    await this.updateCartState(mergedItems);
     await this.saveCartToFirestore(mergedItems);
     localStorage.removeItem(this.GUEST_CART_KEY);
   }
@@ -539,9 +540,9 @@ export class CartService implements OnDestroy {
   // orden (la del carrito viejo tarda más que la del vacío). Solo la última solicitud se aplica.
   private cartUpdateSeq = 0;
 
-  private updateCartState(items: CartItem[]): void {
+  private updateCartState(items: CartItem[]): Promise<void> {
     const seq = ++this.cartUpdateSeq;
-    this.loadItemDetails(items).then(enrichedItems => {
+    return this.loadItemDetails(items).then(enrichedItems => {
       if (seq !== this.cartUpdateSeq) return;
       const newCart = this.recalculateCart(enrichedItems);
       this.cartSubject.next(newCart);

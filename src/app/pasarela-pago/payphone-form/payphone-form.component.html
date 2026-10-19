@@ -1,8 +1,14 @@
 <div class="payment-layout">
   <!-- Sidebar: Resumen del carrito (solo en pasos 0 y 1) -->
-  <aside class="cart-sidebar" *ngIf="(currentStep$ | async)! <= 1 && (cartSummary$ | async) as cart">
+  <aside class="cart-sidebar" [class.open]="summaryOpen" *ngIf="(currentStep$ | async)! <= 1 && (cartSummary$ | async) as cart">
     <div class="sidebar-header">
-      <h2>Resumen de compra</h2>
+      <!-- Phones: the summary is collapsed (title + total) so the payment form is the first thing seen -->
+      <div class="summary-head" role="button" tabindex="0" [attr.aria-expanded]="summaryOpen"
+        (click)="summaryOpen = !summaryOpen" (keydown.enter)="summaryOpen = !summaryOpen">
+        <h2>Resumen de compra</h2>
+        <span class="summary-total">${{ cart.total.toFixed(2) }}</span>
+        <span class="summary-chevron" aria-hidden="true">▾</span>
+      </div>
       <button nz-button nzType="text" nzSize="small" (click)="volverAlCarrito()" class="edit-btn">
         <span nz-icon nzType="edit"></span>
         Editar

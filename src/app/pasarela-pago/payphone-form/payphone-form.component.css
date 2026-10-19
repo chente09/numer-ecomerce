@@ -757,3 +757,42 @@
     width: 100%;
   }
 }
+
+/* Order summary: always open on desktop; on phones it is a collapsible row (title + total) */
+.summary-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-total,
+.summary-chevron {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .summary-head {
+    cursor: pointer;
+  }
+
+  .summary-total {
+    display: inline;
+    margin-left: auto;
+    font-weight: 600;
+  }
+
+  .summary-chevron {
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+
+  .cart-sidebar.open .summary-chevron {
+    transform: rotate(180deg);
+  }
+
+  .cart-sidebar:not(.open) .cart-content {
+    display: none;
+  }
+}

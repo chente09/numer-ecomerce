@@ -1229,6 +1229,11 @@ html {
 
 /* Indicador de scroll en móviles */
 @media (max-width: 1023px) {
+    /* The badges are absolutely positioned: without this they anchored to the page top, behind the navbar */
+    .product-gallery {
+        position: relative;
+    }
+
     .related-products-container::after {
         content: "← Desliza para ver más →";
         position: absolute;
