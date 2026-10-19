@@ -180,3 +180,24 @@
     padding: 10px 8px;
   }
 }
+
+/* Admin forms and cards use fixed column spans (nzSpan 6/8/12/16): on a phone they would stay side by side
+   and squeeze fields and text into ~110px columns. Stack them. Columns of 4 or less (icons, tiny controls)
+   and full rows (24) are left alone. */
+@media (max-width: 576px) {
+  .ant-modal .ant-row > .ant-col-6,
+  .ant-modal .ant-row > .ant-col-8,
+  .ant-modal .ant-row > .ant-col-12,
+  .ant-modal .ant-row > .ant-col-16,
+  .ant-drawer .ant-row > .ant-col-6,
+  .ant-drawer .ant-row > .ant-col-8,
+  .ant-drawer .ant-row > .ant-col-12,
+  .ant-drawer .ant-row > .ant-col-16,
+  .admin-layout .ant-row > .ant-col-6,
+  .admin-layout .ant-row > .ant-col-8,
+  .admin-layout .ant-row > .ant-col-12,
+  .admin-layout .ant-row > .ant-col-16 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
