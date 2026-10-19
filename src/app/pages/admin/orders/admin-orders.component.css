@@ -109,3 +109,28 @@
     margin: 0;
     line-height: 1.5;
 }
+
+.nowrap {
+    white-space: nowrap;
+}
+
+/* Phone: the detail drawer takes the whole width and the item grid stops overflowing */
+@media (max-width: 576px) {
+    .orders-container {
+        padding: 8px;
+    }
+
+    .orders-help {
+        font-size: 12.5px;
+    }
+
+    .info-grid {
+        grid-template-columns: 84px 1fr;
+        word-break: break-word;
+    }
+
+    .item-row {
+        grid-template-columns: 1fr auto 72px;
+        gap: 8px;
+    }
+}

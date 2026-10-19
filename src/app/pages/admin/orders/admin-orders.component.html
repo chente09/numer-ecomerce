@@ -48,19 +48,19 @@
             <tbody>
                 <tr *ngFor="let order of ordersTable.data" class="order-row" (click)="openOrder(order)">
                     <td><code>{{ order.orderId }}</code></td>
-                    <td>{{ formatDate(order.createdAt) }}</td>
+                    <td class="nowrap">{{ formatDate(order.createdAt) }}</td>
                     <td>
                         <div>{{ order.customerInfo?.name || 'Sin datos' }}</div>
                         <small class="muted">{{ order.customerInfo?.email || '' }}</small>
                     </td>
-                    <td>{{ order.total | currency:'USD' }}</td>
+                    <td class="nowrap">{{ order.total | currency:'USD' }}</td>
                     <td>
                         <nz-tag [nzColor]="getOrderStatusColor(order.status)">
                             {{ getOrderStatusLabel(order.status) }}
                         </nz-tag>
                     </td>
-                    <td>{{ order.trackingNumber || '—' }}</td>
-                    <td><a>Gestionar</a></td>
+                    <td class="nowrap">{{ order.trackingNumber || '—' }}</td>
+                    <td class="nowrap"><a>Gestionar</a></td>
                 </tr>
             </tbody>
         </nz-table>

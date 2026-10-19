@@ -142,3 +142,41 @@
     display: none !important;
   }
 }
+
+/* ── Admin responsive foundations ──────────────────────────────────────────────
+   A table wider than the screen used to push the WHOLE page sideways and cut the rest of the
+   content. Now the page keeps its width and the table scrolls inside its own card. */
+.admin-layout .main-content-layout,
+.admin-layout nz-content,
+.admin-layout .inner-content {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-layout .ant-table-content,
+.admin-layout .ant-table-body {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Drawers and modals are rendered outside .admin-layout (overlay container): cap them to the screen */
+.ant-drawer-content-wrapper {
+  max-width: 100vw;
+}
+
+.ant-modal {
+  max-width: calc(100vw - 16px);
+}
+
+@media (max-width: 576px) {
+  .ant-modal-wrap .ant-modal {
+    margin: 8px auto;
+    top: 8px;
+  }
+
+  /* Phone: tighter cells so more of the table fits before scrolling */
+  .admin-layout .ant-table-thead > tr > th,
+  .admin-layout .ant-table-tbody > tr > td {
+    padding: 10px 8px;
+  }
+}
