@@ -40,6 +40,7 @@ import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { FormsModule } from '@angular/forms';
 import { resolveEffectivePrice } from '../../../core/pricing';
+import { buildIndex, normalize, searchProducts } from '../../../core/search-engine';
 
 interface ProductWithSelectedVariant extends Product {
   selectedVariant?: ProductVariant;
@@ -509,14 +510,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
     // Búsqueda por texto
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(query) ||
-        p.description?.toLowerCase().includes(query) ||
-        p.tags?.some(tag => tag.toLowerCase().includes(query)) ||
-        p.sku.toLowerCase().includes(query) ||
-        p.colors?.some(color => color.name.toLowerCase().includes(query))
-      );
+      filtered = this.filterBySearch(filtered, searchQuery);
     }
 
     // Filtro de categorías
@@ -640,6 +634,16 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
     return normalized;
   }
 
+  /**
+   * Text search shared with the header search panel, so "see all results" shows exactly those products:
+   * no accents or capitals, plurals, small typos, categories and tags; best match first.
+   */
+  private filterBySearch<T extends Product>(products: T[], query: string): T[] {
+    if (normalize(query).length < 2) return products;
+    const index = buildIndex(products, this.filterOptions.categories ?? []);
+    return searchProducts(index, query, products.length).map(hit => hit.product);
+  }
+
   private applyBasicFiltersOnly(): void {
     console.log('🔧 Aplicando solo filtros básicos...');
 
@@ -650,14 +654,7 @@ export class ProductCatalogComponent implements OnInit, OnDestroy {
 
     // Solo filtros que no dependen de filterOptions
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(query) ||
-        p.description?.toLowerCase().includes(query) ||
-        p.tags?.some(tag => tag.toLowerCase().includes(query)) ||
-        p.sku.toLowerCase().includes(query) ||
-        p.colors?.some(color => color.name.toLowerCase().includes(query))
-      );
+      filtered = this.filterBySearch(filtered, searchQuery);
     }
 
     if (filters.gender) {

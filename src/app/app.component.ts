@@ -12,6 +12,7 @@ import { CommonModule } from '@angular/common';
 import { ScrollService } from './services/scroll/scroll.service';
 import { CartButtonComponent } from './components/cart-button/cart-button.component';
 import { ConsentGateComponent } from './components/consent-gate/consent-gate.component';
+import { SearchOverlayComponent } from './components/search-overlay/search-overlay.component';
 
 @Component({
   selector: 'app-root',
@@ -25,7 +26,8 @@ import { ConsentGateComponent } from './components/consent-gate/consent-gate.com
     FooterComponent,
     WppComponent,
     CartButtonComponent,
-    ConsentGateComponent
+    ConsentGateComponent,
+    SearchOverlayComponent
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'

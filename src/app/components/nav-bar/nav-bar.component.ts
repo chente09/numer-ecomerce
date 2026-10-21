@@ -11,6 +11,7 @@ import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { CartService } from '../../pasarela-pago/services/cart/cart.service';
 import { UsersService } from '../../services/users/users.service';
+import { SearchService } from '../../services/search/search.service';
 import { Subscription } from 'rxjs';
 import { User } from '@angular/fire/auth';
 
@@ -59,8 +60,13 @@ export class NavBarComponent implements OnInit, OnDestroy {
     private cartService: CartService,
     private usersService: UsersService,
     private router: Router,
-    private message: NzMessageService
+    private message: NzMessageService,
+    private searchService: SearchService
   ) { }
+
+  openSearch(event: Event) {
+    this.searchService.open(event.currentTarget as HTMLElement);
+  }
 
   ngOnInit() {
     this.cartSubscription = this.cartService.getCartItemCount().subscribe(count => {

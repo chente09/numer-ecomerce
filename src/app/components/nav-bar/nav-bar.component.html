@@ -58,9 +58,10 @@
                 <!-- Icons -->
                 <div nz-col class="header-icons-container">
                     <div class="header-icons">
-                        <a class="icon-link">
+                        <button type="button" class="icon-link search-trigger" aria-label="Buscar productos"
+                            aria-haspopup="dialog" (click)="openSearch($event)">
                             <i class="bi bi-search"></i>
-                        </a>
+                        </button>
                         <a class="icon-link" routerLink="/carrito">
                             <nz-badge [nzCount]="cartCount">
                                 <i class="bi bi-cart2" style="font-size: 18px; color: aliceblue;"></i>

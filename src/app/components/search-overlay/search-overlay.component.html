@@ -1,0 +1,131 @@
+@if (search.isOpen()) {
+<div class="so-backdrop" (click)="close()"></div>
+
+<div class="so-panel" #panel role="dialog" aria-modal="true" aria-label="Buscar productos"
+    (keydown)="onPanelKeydown($event)">
+    <div class="so-inner">
+
+        <form class="so-bar" role="search" (submit)="$event.preventDefault(); submit()">
+            <i class="bi bi-search so-bar-icon" aria-hidden="true"></i>
+            <input #input class="so-input" type="search" name="q" [value]="query()" (input)="onInput($event)"
+                (keydown)="onKeydown($event)" placeholder="Buscar productos" autocomplete="off" autocorrect="off"
+                autocapitalize="off" spellcheck="false" enterkeyhint="search" role="combobox" aria-autocomplete="list"
+                aria-controls="search-listbox" [attr.aria-expanded]="items().length > 0"
+                [attr.aria-activedescendant]="activeDescendant" aria-label="Buscar productos">
+            @if (query()) {
+            <button type="button" class="so-icon-btn" aria-label="Borrar búsqueda" (click)="clear()">
+                <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+            </button>
+            }
+            <button type="button" class="so-close" (click)="close()">Cerrar</button>
+        </form>
+
+        <p class="so-sr" aria-live="polite" role="status">{{ statusText() }}</p>
+
+        <div class="so-body">
+            @let r = result();
+
+            @if (search.status() === 'loading') {
+            <div class="so-skeletons" aria-hidden="true">
+                @for (n of [1, 2, 3, 4]; track n) {
+                <div class="so-skeleton">
+                    <span class="so-skel-img"></span>
+                    <span class="so-skel-lines"><i></i><i></i></span>
+                </div>
+                }
+            </div>
+            } @else if (search.status() === 'error') {
+            <div class="so-message">
+                <p class="so-message-title">No pudimos cargar los productos</p>
+                <p class="so-message-text">Revisa tu conexión e inténtalo de nuevo.</p>
+                <button type="button" class="so-outline-btn" (click)="search.retry()">Reintentar</button>
+            </div>
+            } @else if (!canSearch()) {
+            <div class="so-section">
+                <p class="so-label">Explora por categoría</p>
+                <div class="so-chips">
+                    @for (c of search.categories(); track c.id) {
+                    <a class="so-chip" routerLink="/shop" [queryParams]="{ category: c.id }">{{ c.name }}</a>
+                    }
+                    <a class="so-chip so-chip-strong" routerLink="/shop">Ver toda la tienda</a>
+                </div>
+                <p class="so-hint">Busca por nombre, categoría o color.</p>
+            </div>
+            } @else if (r) {
+            @if (r.products.length === 0 && r.categories.length === 0) {
+            <div class="so-message">
+                <p class="so-message-title">No encontramos resultados para “{{ query().trim() }}”</p>
+                <p class="so-message-text">Revisa la ortografía o prueba con una palabra más general.</p>
+                <div class="so-chips">
+                    @for (c of search.categories(); track c.id) {
+                    <a class="so-chip" routerLink="/shop" [queryParams]="{ category: c.id }">{{ c.name }}</a>
+                    }
+                    <a class="so-chip so-chip-strong" routerLink="/shop">Ver toda la tienda</a>
+                </div>
+            </div>
+            } @else {
+            <div id="search-listbox" role="listbox" aria-label="Resultados">
+
+                @if (r.categories.length) {
+                <p class="so-label">Categorías</p>
+                @for (c of r.categories; track c.category.id; let i = $index) {
+                <a class="so-item so-item-category" role="option" [id]="optionId(i)" [class.active]="activeIndex() === i"
+                    [attr.aria-selected]="activeIndex() === i" routerLink="/shop"
+                    [queryParams]="{ category: c.category.id }" (mouseenter)="activeIndex.set(i)">
+                    <span class="so-cat-icon" aria-hidden="true"><i class="bi bi-grid"></i></span>
+                    <span class="so-main">
+                        <span class="so-name">
+                            @for (s of segments(c.category.name); track $index) {<span [class.so-mark]="s.match">{{ s.text }}</span>}
+                        </span>
+                        <span class="so-meta">Ver categoría</span>
+                    </span>
+                    <i class="bi bi-chevron-right so-go" aria-hidden="true"></i>
+                </a>
+                }
+                }
+
+                @if (r.products.length) {
+                <p class="so-label">Productos</p>
+                @for (h of r.products; track h.product.id; let i = $index) {
+                @let idx = r.categories.length + i;
+                @let p = price(h.product);
+                <a class="so-item" role="option" [id]="optionId(idx)" [class.active]="activeIndex() === idx"
+                    [attr.aria-selected]="activeIndex() === idx" [routerLink]="['/products', h.product.id]"
+                    (mouseenter)="activeIndex.set(idx)">
+                    <span class="so-thumb">
+                        @if (image(h.product)) {
+                        <img [src]="image(h.product)" alt="" loading="lazy" decoding="async">
+                        }
+                    </span>
+                    <span class="so-main">
+                        <span class="so-name">
+                            @for (s of segments(h.product.name); track $index) {<span [class.so-mark]="s.match">{{ s.text }}</span>}
+                        </span>
+                        <span class="so-meta">
+                            @if (search.categoryLabel(h.product)) { {{ search.categoryLabel(h.product) }} }
+                            @if ((h.product.totalStock || 0) <= 0) { <span class="so-soldout">Agotado</span> }
+                        </span>
+                    </span>
+                    <span class="so-price">
+                        <span class="so-price-now">${{ p.unitPrice | number: '1.2-2' }}</span>
+                        @if (p.hasDiscount) {
+                        <span class="so-price-old">${{ p.originalUnitPrice | number: '1.2-2' }}</span>
+                        }
+                    </span>
+                </a>
+                }
+                }
+            </div>
+
+            @if (r.total > 0) {
+            <button type="button" class="so-all" (click)="activeIndex.set(-1); submit()">
+                Ver {{ r.total === 1 ? 'el resultado' : 'los ' + r.total + ' resultados' }}
+                <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </button>
+            }
+            }
+            }
+        </div>
+    </div>
+</div>
+}
