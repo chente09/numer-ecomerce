@@ -458,3 +458,30 @@ a.active, a.router-link-active, a[routerLinkActive="active"] {
     opacity: 0.7;
     pointer-events: none;
 }
+
+/* Touch targets on phones and tablets: the hit area grows with an invisible pseudo-element, the look does not change */
+@media (max-width: 768px) {
+    .header-icons .icon-link,
+    .top-links a,
+    .language-selector {
+        position: relative;
+    }
+
+    .header-icons .icon-link::after {
+        content: '';
+        position: absolute;
+        inset: -12px -6px;
+    }
+
+    .top-links a::after,
+    .language-selector::after {
+        content: '';
+        position: absolute;
+        inset: -10px -6px;
+    }
+
+    .mobile-menu-toggle {
+        width: 44px;
+        height: 44px;
+    }
+}
