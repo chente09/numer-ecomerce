@@ -1,7 +1,8 @@
 import { Component, ElementRef, HostListener, OnDestroy, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationStart, Params, Router, RouterLink } from '@angular/router';
-import { Subscription, filter } from 'rxjs';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { Subscription, debounceTime, distinctUntilChanged, filter, map } from 'rxjs';
 import { Product } from '../../models/models';
 import { resolveEffectivePrice } from '../../core/pricing';
 import { Segment, highlight, normalize } from '../../core/search-engine';
@@ -65,6 +66,19 @@ export class SearchOverlayComponent implements OnDestroy {
       document.body.style.overflow = open ? 'hidden' : '';
       if (open) setTimeout(() => this.inputRef?.nativeElement.focus(), 30);
       else this.reset();
+    });
+    // Count a search once the customer stops typing, not on every keystroke
+    toObservable(this.query).pipe(
+      debounceTime(1200),
+      map(term => term.trim()),
+      distinctUntilChanged(),
+      filter(term => normalize(term).length >= 2),
+      takeUntilDestroyed()
+    ).subscribe(term => {
+      // Without the product index every query looks empty: do not report a false "no results"
+      if (this.search.status() !== 'ready') return;
+      const found = this.search.run(term);
+      this.search.track(term, found.total + found.categories.length);
     });
     this.routerSub = this.router.events
       .pipe(filter(e => e instanceof NavigationStart))

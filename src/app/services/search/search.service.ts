@@ -1,10 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { Analytics, logEvent } from '@angular/fire/analytics';
 import { firstValueFrom } from 'rxjs';
 import { Product } from '../../models/models';
 import { Category, CategoryService } from '../admin/category/category.service';
 import { ProductService } from '../admin/product/product.service';
 import {
-  CategoryHit, IndexedProduct, SearchHit, buildIndex, countMatches, searchCategories, searchProducts
+  CategoryHit, IndexedProduct, SearchHit, buildIndex, countMatches, normalize, searchCategories, searchProducts
 } from '../../core/search-engine';
 
 export interface SearchResult {
@@ -28,6 +29,7 @@ const STALE_AFTER_MS = 10 * 60 * 1000;
 export class SearchService {
   private productService = inject(ProductService);
   private categoryService = inject(CategoryService);
+  private analytics = inject(Analytics, { optional: true });
 
   readonly isOpen = signal(false);
   readonly status = signal<SearchStatus>('idle');
@@ -87,6 +89,18 @@ export class SearchService {
     const categories = searchCategories(this.categories(), query);
     if (products.length === 0 && categories.length === 0) return EMPTY;
     return { products, categories, total: countMatches(this.index, query) };
+  }
+
+  /** Reports what customers look for (GA4 "search") and what they do not find ("search_no_results"). */
+  track(term: string, resultCount: number): void {
+    const searchTerm = normalize(term).slice(0, 80);
+    if (!searchTerm || !this.analytics) return;
+    try {
+      logEvent(this.analytics, 'search', { search_term: searchTerm, result_count: resultCount });
+      if (resultCount === 0) logEvent(this.analytics, 'search_no_results', { search_term: searchTerm });
+    } catch {
+      // Analytics must never get in the way of searching
+    }
   }
 
   categoryLabel(product: Product): string {
