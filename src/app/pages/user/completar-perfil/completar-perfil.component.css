@@ -1,9 +1,9 @@
 .complete-profile-container {
     min-height: 100vh;
-    background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
-    padding: 20px;
+    background: #fafafa;
+    padding: 32px 20px 48px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
 }
 
@@ -99,22 +99,22 @@
 /* Formulario principal */
 .form-container {
     width: 100%;
-    max-width: 800px;
+    max-width: 760px;
 }
 
 .profile-card {
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 1px solid #f0f0f0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    border: 1px solid #ececec;
     background: #ffffff;
-    padding: 40px;
+}
+
+:host ::ng-deep .profile-card > .ant-card-body {
+    padding: 40px 44px 36px;
 }
 
 .header-section {
-    text-align: center;
-    margin-bottom: 40px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 36px;
 }
 
 .header-section h1 {
@@ -122,53 +122,81 @@
     margin-bottom: 8px;
     font-size: 28px;
     font-weight: 700;
+    letter-spacing: -0.02em;
     line-height: 1.2;
 }
 
 .header-section p {
     color: #666666;
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.5;
+    margin: 0;
 }
 
-/* Secciones del formulario */
-h3 {
-    color: #000000;
-    margin: 32px 0 20px 0;
-    font-size: 18px;
-    font-weight: 600;
+/* Secciones numeradas */
+.section-head {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #f0f0f0;
+    gap: 12px;
+    margin: 0 0 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #ececec;
 }
 
-h3:first-of-type {
-    margin-top: 0;
+.section-head:not(:first-of-type) {
+    margin-top: 40px;
 }
 
-h3 i {
+.section-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #000000;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.section-head h3 {
+    margin: 0;
     color: #000000;
-    font-size: 18px;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
 }
 
-h3 small {
-    font-weight: 400;
-    color: #8c8c8c;
-    font-size: 14px;
-    margin-left: 8px;
+/* Cuadrículas de campos: una columna en teléfono */
+.field-grid {
+    display: grid;
+    column-gap: 16px;
 }
 
-/* Campos del formulario */
+.field-grid.cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-grid.cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Campos del formulario: etiqueta siempre arriba */
 :host ::ng-deep .ant-form-item {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+}
+
+:host ::ng-deep .ant-form-item-label {
+    padding: 0 0 6px;
 }
 
 :host ::ng-deep .ant-form-item-label > label {
-    font-weight: 500;
-    color: #000000;
     height: auto;
+    color: #111111;
+    font-size: 13px;
+    font-weight: 600;
     line-height: 1.4;
 }
 
@@ -176,335 +204,140 @@ h3 small {
     color: #ff4d4f;
 }
 
-:host ::ng-deep .ant-input {
-    height: 44px;
-    border-radius: 6px;
+:host ::ng-deep .ant-input,
+:host ::ng-deep .ant-picker,
+:host ::ng-deep .ant-select .ant-select-selector {
+    height: 48px;
+    border-radius: 8px;
     border: 1px solid #d9d9d9;
-    font-size: 14px;
-    transition: all 0.3s ease;
+    font-size: 16px;
+    box-shadow: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-:host ::ng-deep .ant-input:focus {
-    border-color: #000000;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+:host ::ng-deep textarea.ant-input {
+    height: auto;
+    padding-top: 12px;
+    padding-bottom: 12px;
 }
 
-:host ::ng-deep .ant-input:hover {
-    border-color: #666666;
+:host ::ng-deep .ant-input,
+:host ::ng-deep .ant-picker-input > input {
+    padding-left: 14px;
+    padding-right: 14px;
 }
 
-:host ::ng-deep .ant-input::placeholder {
+:host ::ng-deep .ant-picker {
+    width: 100%;
+    padding: 0 14px;
+}
+
+:host ::ng-deep .ant-picker-input > input {
+    padding: 0;
+    font-size: 16px;
+}
+
+:host ::ng-deep .ant-input:hover,
+:host ::ng-deep .ant-picker:hover,
+:host ::ng-deep .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+    border-color: #8c8c8c;
+}
+
+:host ::ng-deep .ant-input:focus,
+:host ::ng-deep .ant-picker-focused,
+:host ::ng-deep .ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+    border-color: #000000 !important;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+:host ::ng-deep .ant-input::placeholder,
+:host ::ng-deep .ant-picker-input > input::placeholder,
+:host ::ng-deep .ant-select-selection-placeholder {
     color: #bfbfbf;
 }
 
-/* Estilos para select */
+/* Select: texto centrado verticalmente dentro de la caja */
 :host ::ng-deep .ant-select {
-    height: 44px;
+    width: 100%;
 }
 
 :host ::ng-deep .ant-select .ant-select-selector {
-    height: 44px;
-    border-radius: 6px;
-    border: 1px solid #d9d9d9;
-    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
 }
 
-:host ::ng-deep .ant-select-focused .ant-select-selector {
-    border-color: #000000;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+:host ::ng-deep .ant-select-single .ant-select-selector .ant-select-selection-item,
+:host ::ng-deep .ant-select-single .ant-select-selector .ant-select-selection-placeholder {
+    line-height: normal;
+    font-size: 16px;
 }
 
-:host ::ng-deep .ant-select:hover .ant-select-selector {
-    border-color: #666666;
+:host ::ng-deep .ant-select-single .ant-select-selector .ant-select-selection-search {
+    left: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
 }
 
-:host ::ng-deep .ant-select-selection-item {
-    line-height: 42px;
-    font-size: 14px;
+:host ::ng-deep .ant-select-single .ant-select-selector .ant-select-selection-search-input {
+    height: 100%;
 }
 
-/* Estilos para date picker */
-:host ::ng-deep .ant-picker {
-    height: 44px;
-    border-radius: 6px;
-    border: 1px solid #d9d9d9;
-    width: 100%;
-    transition: all 0.3s ease;
-}
-
-:host ::ng-deep .ant-picker:hover {
-    border-color: #666666;
-}
-
-:host ::ng-deep .ant-picker-focused {
-    border-color: #000000;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Estilos para textarea */
-:host ::ng-deep .ant-input {
-    border-radius: 6px;
-    border: 1px solid #d9d9d9;
-    transition: all 0.3s ease;
-    font-size: 14px;
-}
-
-:host ::ng-deep .ant-input:focus {
-    border-color: #000000;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+:host ::ng-deep .ant-select-arrow {
+    right: 14px;
 }
 
 /* Texto de ayuda */
 .form-help {
     color: #8c8c8c;
     font-size: 12px;
-    margin-top: 4px;
+    margin-top: 6px;
     display: block;
-    font-style: italic;
 }
 
-/* Botones de acción */
-.form-actions {
+/* Aviso de dirección */
+.address-note {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 40px;
-    gap: 16px;
-    padding-top: 24px;
-    border-top: 2px solid #f0f0f0;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 20px;
+    padding: 12px 14px;
+    background: #fafafa;
+    border-left: 3px solid #000000;
+    border-radius: 0 8px 8px 0;
+    color: #595959;
+    font-size: 13px;
+    line-height: 1.55;
 }
 
-.submit-btn {
-    min-width: 200px;
-    height: 48px;
-    background-color: #000000;
-    border-color: #000000;
-    color: #ffffff;
-    font-weight: 600;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-}
-
-.submit-btn:hover:not([disabled]) {
-    background-color: #333333;
-    border-color: #333333;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.submit-btn[disabled] {
-    background-color: #f5f5f5;
-    border-color: #d9d9d9;
-    color: #bfbfbf;
-    cursor: not-allowed;
-}
-
-/* Botón secundario */
-.cancel-btn {
-    background-color: #ffffff;
-    border-color: #d9d9d9;
+.address-note i {
+    margin-top: 3px;
     color: #000000;
-    height: 48px;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    flex-shrink: 0;
 }
 
-.cancel-btn:hover:not([disabled]) {
-    background-color: #f5f5f5;
-    border-color: #000000;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.address-note strong {
+    color: #111111;
 }
 
-/* Estilos para errores */
-:host ::ng-deep .ant-form-item-explain-error {
-    color: #ff4d4f;
-    font-size: 12px;
-    margin-top: 4px;
-}
-
-:host ::ng-deep .ant-form-item-has-error .ant-input {
-    border-color: #ff4d4f;
-}
-
-:host ::ng-deep .ant-form-item-has-error .ant-input:focus {
-    border-color: #ff4d4f;
-    box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2);
-}
-
-:host ::ng-deep .ant-form-item-has-error .ant-select .ant-select-selector {
-    border-color: #ff4d4f;
-}
-
-/* Divisores */
-:host ::ng-deep .ant-divider {
-    margin: 32px 0;
-    border-color: #f0f0f0;
-}
-
-/* Estados adicionales para coherencia */
-:host ::ng-deep .ant-alert-info {
-    border: 1px solid #d9d9d9;
-    background-color: #fafafa;
-    border-radius: 6px;
-}
-
-:host ::ng-deep .ant-alert-info .ant-alert-icon {
-    color: #666666;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .complete-profile-container {
-        padding: 16px;
-        align-items: flex-start;
-        min-height: auto;
-    }
-
-    .profile-card {
-        margin: 0;
-        padding: 24px;
-        border-radius: 8px;
-    }
-
-    .registration-content {
-        padding: 30px 20px;
-    }
-
-    .header-section {
-        margin-bottom: 32px;
-    }
-
-    .header-section h1 {
-        font-size: 24px;
-    }
-
-    .form-actions {
-        flex-direction: column-reverse;
-        gap: 12px;
-    }
-
-    .form-actions button {
-        width: 100%;
-        min-width: unset;
-    }
-
-    h3 {
-        margin: 24px 0 16px 0;
-        font-size: 16px;
-    }
-
-    h3 i {
-        font-size: 16px;
-    }
-
-    :host ::ng-deep .ant-form-item {
-        margin-bottom: 20px;
-    }
-
-    /* Hacer que los campos de fecha y select se vean mejor en móvil */
-    :host ::ng-deep .ant-picker,
-    :host ::ng-deep .ant-select .ant-select-selector,
-    :host ::ng-deep .ant-input {
-        height: 48px;
-        font-size: 16px; /* Evita zoom en iOS */
-    }
-
-    :host ::ng-deep .ant-select-selection-item {
-        line-height: 46px;
-    }
-}
-
-@media (max-width: 480px) {
-    .complete-profile-container {
-        padding: 12px;
-    }
-
-    .profile-card {
-        padding: 20px;
-    }
-
-    .registration-content {
-        padding: 24px 16px;
-    }
-
-    .header-section h1 {
-        font-size: 22px;
-    }
-
-    .registration-icon {
-        font-size: 48px;
-    }
-
-    .registration-content h2 {
-        font-size: 20px;
-    }
-
-    /* Ajustar grid para móviles muy pequeños */
-    :host ::ng-deep .ant-col-xs-24 {
-        width: 100% !important;
-    }
-}
-
-/* Animaciones y transiciones */
-.profile-card,
-.registration-card {
-    animation: slideUp 0.6s ease-out;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Mejoras de accesibilidad */
-:focus-visible {
-    outline: 2px solid #000000;
-    outline-offset: 2px;
-}
-
-/* Loading states */
-:host ::ng-deep .ant-btn-loading {
-    cursor: wait;
-}
-
-:host ::ng-deep .ant-spin-container {
-    transition: opacity 0.3s;
-}
-
-/* Mejoras para campos requeridos */
-:host ::ng-deep .ant-form-item-required .ant-form-item-label > label::after {
-    content: "";
-}
-
-:host ::ng-deep .ant-form-item-required .ant-form-item-label > label::before {
-    content: "*";
-    color: #ff4d4f;
-    margin-right: 4px;
-}
-.address-alert {
+.international-alert {
     margin-bottom: 20px;
 }
 
+/* Consentimientos */
 .consent-section {
-    margin: 8px 0 20px;
-    padding: 14px;
+    margin: 12px 0 8px;
+    padding: 16px;
     background: #fafafa;
-    border: 1px solid #eeeeee;
-    border-radius: 8px;
+    border: 1px solid #ececec;
+    border-radius: 10px;
 }
 
 .consent-item {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
     font-size: 14px;
     line-height: 1.5;
     color: #262626;
@@ -518,7 +351,7 @@ h3 small {
 }
 
 .consent-item input {
-    margin-top: 4px;
+    margin-top: 3px;
     width: 18px;
     height: 18px;
     accent-color: #000;
@@ -533,4 +366,191 @@ h3 small {
 .required-mark {
     color: #ff4d4f;
     margin-left: 2px;
+}
+
+/* Botones de acción */
+.form-hint {
+    margin: 20px 0 0;
+    color: #8c8c8c;
+    font-size: 13px;
+    text-align: right;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    gap: 16px;
+}
+
+.submit-btn {
+    min-width: 220px;
+    height: 48px;
+    background-color: #000000;
+    border-color: #000000;
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.submit-btn:hover:not([disabled]) {
+    background-color: #333333;
+    border-color: #333333;
+}
+
+.submit-btn:active:not([disabled]) {
+    transform: scale(0.98);
+}
+
+.submit-btn[disabled] {
+    background-color: #f5f5f5;
+    border-color: #d9d9d9;
+    color: #bfbfbf;
+    cursor: not-allowed;
+}
+
+.cancel-btn {
+    background-color: #ffffff;
+    border-color: #d9d9d9;
+    color: #000000;
+    height: 48px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: border-color 0.2s ease;
+}
+
+.cancel-btn:hover:not([disabled]) {
+    background-color: #ffffff;
+    border-color: #000000;
+}
+
+/* Errores */
+:host ::ng-deep .ant-form-item-explain-error {
+    color: #ff4d4f;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+:host ::ng-deep .ant-form-item-has-error .ant-input,
+:host ::ng-deep .ant-form-item-has-error .ant-picker,
+:host ::ng-deep .ant-form-item-has-error .ant-select .ant-select-selector {
+    border-color: #ff4d4f;
+}
+
+:host ::ng-deep .ant-form-item-has-error .ant-input:focus,
+:host ::ng-deep .ant-form-item-has-error .ant-picker-focused {
+    border-color: #ff4d4f !important;
+    box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.15) !important;
+}
+
+:host ::ng-deep .ant-alert-info {
+    border: 1px solid #d9d9d9;
+    background-color: #fafafa;
+    border-radius: 6px;
+}
+
+:host ::ng-deep .ant-alert-info .ant-alert-icon {
+    color: #666666;
+}
+
+/* Tablet y teléfono */
+@media (max-width: 768px) {
+    .complete-profile-container {
+        padding: 16px 12px 32px;
+    }
+
+    :host ::ng-deep .profile-card > .ant-card-body {
+        padding: 24px 20px 24px;
+    }
+
+    .registration-content {
+        padding: 30px 20px;
+    }
+
+    .header-section {
+        margin-bottom: 28px;
+    }
+
+    .header-section h1 {
+        font-size: 24px;
+    }
+
+    .section-head:not(:first-of-type) {
+        margin-top: 32px;
+    }
+}
+
+@media (max-width: 576px) {
+    .field-grid.cols-2,
+    .field-grid.cols-3 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .form-hint {
+        text-align: left;
+    }
+
+    .form-actions {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 12px;
+    }
+
+    .form-actions button {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .header-section h1 {
+        font-size: 22px;
+    }
+
+    .registration-content {
+        padding: 24px 16px;
+    }
+
+    .registration-icon {
+        font-size: 48px;
+    }
+
+    .registration-content h2 {
+        font-size: 20px;
+    }
+}
+
+/* Animaciones */
+.profile-card,
+.registration-card {
+    animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-card,
+    .registration-card,
+    .registration-icon {
+        animation: none;
+    }
+}
+
+/* Accesibilidad */
+:focus-visible {
+    outline: 2px solid #000000;
+    outline-offset: 2px;
+}
+
+:host ::ng-deep .ant-btn-loading {
+    cursor: wait;
 }
