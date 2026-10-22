@@ -13,13 +13,28 @@ import {
   arrayUnion,
   Timestamp
 } from '@angular/fire/firestore';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, of, firstValueFrom } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { Order } from '../../models/models';
+import { Order, OrderCancellation } from '../../models/models';
 import { UsersService } from '../users/users.service';
 
 const SHIPPING_EMAIL_URL = 'https://backend-numer.netlify.app/.netlify/functions/send-shipping-email';
+const CANCEL_ORDER_URL = 'https://backend-numer.netlify.app/.netlify/functions/cancel-order';
+
+/** Reasons the admin can pick when cancelling; the keys are validated by the backend. */
+export const CANCEL_REASONS: { value: string; label: string }[] = [
+  { value: 'out_of_stock', label: 'Sin stock' },
+  { value: 'customer_request', label: 'Lo pidió el cliente' },
+  { value: 'undeliverable', label: 'Dirección imposible de entregar' },
+  { value: 'other', label: 'Otro motivo' }
+];
+
+export interface CancelOrderResult {
+  alreadyCancelled: boolean;
+  cancellation: OrderCancellation | null;
+  emailSent?: boolean;
+}
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   pending_payment: 'Pago pendiente',
@@ -140,6 +155,32 @@ export class OrderService {
     return firstValueFrom(this.http.post<{ sent: boolean; skipped?: string; reason?: string }>(
       SHIPPING_EMAIL_URL, { orderId, resend }, { headers }
     ));
+  }
+
+  /**
+   * Admin: cancels a paid order on the server (reverses the Payphone charge when it is still possible, puts the
+   * stock back, releases the coupon and notifies the customer). Never write the cancelled status from the browser.
+   */
+  async cancelOrder(orderId: string, options: { reason: string; note?: string; restock?: boolean }): Promise<CancelOrderResult> {
+    return this.postToCancelFunction<CancelOrderResult>({ action: 'cancel', orderId, ...options });
+  }
+
+  /** Admin: the money was returned by hand from the Payphone panel. */
+  async markRefundDone(orderId: string, note?: string): Promise<{ alreadyDone: boolean }> {
+    return this.postToCancelFunction<{ alreadyDone: boolean }>({ action: 'markRefundDone', orderId, note });
+  }
+
+  private async postToCancelFunction<T>(body: object): Promise<T> {
+    const token = await this.usersService.getIdToken();
+    if (!token) throw new Error('No se pudo verificar la sesión');
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` });
+    try {
+      return await firstValueFrom(this.http.post<T>(CANCEL_ORDER_URL, body, { headers }));
+    } catch (error) {
+      // The backend answers with { error: '<readable message>' }: show that instead of a generic HTTP error
+      const message = error instanceof HttpErrorResponse ? error.error?.error : null;
+      throw new Error(message || 'No se pudo completar la operación. Revisa el pedido antes de reintentar.');
+    }
   }
 
   /**

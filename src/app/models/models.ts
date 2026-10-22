@@ -302,6 +302,30 @@ export interface OrderItem {
     promotionName?: string | null;
 }
 
+/** What happened with the money of a cancelled order. `manual_pending`: the admin still has to refund from Payphone. */
+export interface OrderRefund {
+    status: 'reversed' | 'manual_pending' | 'manual_done';
+    reason?: 'no_transaction' | 'next_day' | 'reverse_failed' | null;
+    detail?: string | null;
+    transactionId?: string | number | null;
+    attemptedAt?: Timestamp;
+    doneAt?: Timestamp;
+    doneBy?: string | null;
+    doneNote?: string | null;
+}
+
+export interface OrderCancellation {
+    at: Timestamp;
+    by?: string | null;
+    reason: string;
+    reasonLabel: string;
+    note?: string | null;
+    restocked: boolean;
+    restockedUnits?: number;
+    couponsReleased?: string[];
+    refund: OrderRefund;
+}
+
 export interface Order {
     id: string;
     orderId: string;
@@ -335,6 +359,8 @@ export interface Order {
     trackingNumber?: string | null;
     trackingCarrier?: string | null;
     trackingUrl?: string | null;
+    // Solo en pedidos cancelados desde el admin (función cancel-order del backend)
+    cancellation?: OrderCancellation | null;
     // Copia del contacto y la dirección al momento de pagar (pedidos anteriores no la tienen)
     customerInfo?: {
         name?: string | null;

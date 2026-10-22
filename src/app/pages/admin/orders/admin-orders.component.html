@@ -4,8 +4,8 @@
             <span nz-icon nzType="info-circle"></span>
             Compras hechas en la tienda y pagadas con Payphone. Abre un pedido para ver la dirección de envío,
             cambiar su estado o registrar la guía de Servientrega; el cliente ve esos cambios en
-            <strong>Mis Pedidos</strong>. Cancelar un pedido no devuelve el stock ni reembolsa el pago: ambos pasos
-            son manuales.
+            <strong>Mis Pedidos</strong>. Para cancelar usa <strong>Cancelar pedido</strong> dentro del detalle: repone
+            el stock, libera el cupón, avisa al cliente e intenta reversar el cobro (solo es posible el mismo día).
         </p>
         <div class="status-summary">
             <button type="button" class="summary-chip" [class.active]="statusFilter === null"
@@ -15,6 +15,10 @@
             <button type="button" class="summary-chip" *ngFor="let s of statusOptions"
                 [class.active]="statusFilter === s" (click)="statusFilter = s">
                 {{ getOrderStatusLabel(s) }} <strong>{{ countByStatus(s) }}</strong>
+            </button>
+            <button type="button" class="summary-chip warn" *ngIf="countRefundPending() > 0"
+                [class.active]="statusFilter === refundFilter" (click)="statusFilter = refundFilter">
+                Reembolsos pendientes <strong>{{ countRefundPending() }}</strong>
             </button>
         </div>
     </nz-card>
@@ -40,8 +44,8 @@
                     <th>Pedido</th>
                     <th class="col-extra">Fecha</th>
                     <th class="col-extra">Cliente</th>
-                    <th>Total</th>
-                    <th>Estado</th>
+                    <th class="col-total">Total</th>
+                    <th class="col-status">Estado</th>
                     <th class="col-extra">Guía</th>
                     <th class="col-extra"></th>
                 </tr>
@@ -61,11 +65,12 @@
                             <div>{{ order.customerInfo?.name || 'Sin datos' }}</div>
                             <small class="muted">{{ order.customerInfo?.email || '' }}</small>
                         </td>
-                        <td class="nowrap">{{ order.total | currency:'USD' }}</td>
-                        <td>
+                        <td class="nowrap col-total">{{ order.total | currency:'USD' }}</td>
+                        <td class="col-status">
                             <nz-tag [nzColor]="getOrderStatusColor(order.status)">
                                 {{ getOrderStatusLabel(order.status) }}
                             </nz-tag>
+                            <nz-tag *ngIf="isRefundPending(order)" nzColor="orange" class="refund-tag">Reembolso pendiente</nz-tag>
                         </td>
                         <td class="nowrap col-extra">{{ order.trackingNumber || '—' }}</td>
                         <td class="nowrap col-extra"><a>Gestionar</a></td>
@@ -85,6 +90,10 @@
                                 </span>
                                 <span class="label">Guía</span>
                                 <span>{{ order.trackingNumber || '—' }}</span>
+                                <ng-container *ngIf="order.status === 'cancelled'">
+                                    <span class="label">Reembolso</span>
+                                    <span [class.refund-alert]="isRefundPending(order)">{{ refundText(order) }}</span>
+                                </ng-container>
                             </div>
                             <button nz-button nzType="primary" nzBlock class="expand-action"
                                 (click)="openOrder(order)">Gestionar pedido</button>
@@ -111,6 +120,39 @@
             <button nz-button nzSize="small" style="margin-top:8px" (click)="downloadReceipt(order)">
                 <span nz-icon nzType="download"></span> Descargar comprobante
             </button>
+
+            <ng-container *ngIf="order.status === 'cancelled'">
+                <nz-divider nzText="Cancelación"></nz-divider>
+                <ng-container *ngIf="order.cancellation as c; else legacyCancelled">
+                    <div class="info-grid">
+                        <span class="label">Fecha</span><span>{{ formatDate(c.at) }}</span>
+                        <span class="label">Motivo</span><span>{{ c.reasonLabel }}</span>
+                        <ng-container *ngIf="c.note"><span class="label">Nota</span><span>{{ c.note }}</span></ng-container>
+                        <span class="label">Stock</span>
+                        <span>{{ c.restocked ? 'Repuesto (' + (c.restockedUnits || 0) + ' u.)' : 'No repuesto' }}</span>
+                        <span class="label">Cupón</span>
+                        <span>{{ c.couponsReleased?.length ? 'Uso liberado' : 'Sin cupón que liberar' }}</span>
+                    </div>
+                    <div class="refund-box ok" *ngIf="c.refund.status === 'reversed'">
+                        <strong>Cobro reversado.</strong> Payphone devolvió el dinero a la tarjeta del cliente automáticamente.
+                    </div>
+                    <div class="refund-box pending" *ngIf="c.refund.status === 'manual_pending'">
+                        <strong>Falta devolver {{ order.total | currency:'USD' }}.</strong>
+                        {{ c.refund.reason === 'next_day' ? 'Ya pasó el día del cobro y Payphone no permite reversarlo.' : 'No se pudo reversar automáticamente.' }}
+                        Reembolsa la transacción <code>{{ c.refund.transactionId || 'sin número' }}</code> desde el panel de Payphone y
+                        luego márcalo aquí.
+                        <button nz-button nzType="primary" class="refund-action" (click)="confirmRefundDone(order)">
+                            Marcar reembolso realizado
+                        </button>
+                    </div>
+                    <div class="refund-box" *ngIf="c.refund.status === 'manual_done'">
+                        <strong>Devuelto manualmente</strong> el {{ formatDate(c.refund.doneAt) }}
+                    </div>
+                </ng-container>
+                <ng-template #legacyCancelled>
+                    <p class="muted">Este pedido se canceló antes del flujo automático: el reembolso y el stock se gestionaron a mano.</p>
+                </ng-template>
+            </ng-container>
 
             <nz-divider nzText="Cliente y envío"></nz-divider>
             <ng-container *ngIf="order.customerInfo || order.shippingAddress; else noContact">
@@ -162,6 +204,7 @@
             <div class="item-row sub" *ngIf="order.shipping != null"><span>Envío</span><span></span><span>{{ order.shipping | currency:'USD' }}</span></div>
             <div class="item-row total"><span>Total</span><span></span><span>{{ order.total | currency:'USD' }}</span></div>
 
+            <ng-container *ngIf="order.status !== 'cancelled'">
             <nz-divider nzText="Guía de envío"></nz-divider>
             <div class="form-stack">
                 <input nz-input [(ngModel)]="trackingCarrier" placeholder="Transportadora (ej. Servientrega)" />
@@ -175,13 +218,11 @@
             <nz-divider nzText="Estado del pedido"></nz-divider>
             <div class="form-stack">
                 <nz-select [(ngModel)]="newStatus" nzPlaceHolder="Nuevo estado">
-                    <nz-option *ngFor="let s of statusOptions" [nzValue]="s"
-                        [nzLabel]="s === 'cancelled' ? 'Cancelado (requiere reembolso)' : getOrderStatusLabel(s)"></nz-option>
+                    <nz-option *ngFor="let s of changeableStatuses" [nzValue]="s"
+                        [nzLabel]="getOrderStatusLabel(s)"></nz-option>
                 </nz-select>
                 <p class="muted status-help">
                     El pago ya se cobró al comprar. El pedido avanza así: <strong>En proceso → Enviado → Entregado</strong>.
-                    <strong>Cancelado</strong> es solo para pedidos que NO se van a enviar (sin stock, el cliente lo pide,
-                    dirección imposible de entregar): después debes devolver el dinero desde Payphone y reponer el stock a mano.
                 </p>
                 <input nz-input [(ngModel)]="statusNote" placeholder="Nota para el historial (opcional)" />
                 <button nz-button nzType="primary" [nzLoading]="savingStatus"
@@ -189,6 +230,16 @@
                     Actualizar estado
                 </button>
             </div>
+
+            <ng-container *ngIf="canCancel(order)">
+                <nz-divider nzText="Cancelar pedido"></nz-divider>
+                <p class="muted status-help">
+                    Para pedidos que no se van a entregar (sin stock, lo pide el cliente, dirección imposible). Repone el stock,
+                    libera el cupón, avisa al cliente e intenta reversar el cobro en Payphone.
+                </p>
+                <button nz-button nzDanger (click)="openCancelModal(order)">Cancelar pedido…</button>
+            </ng-container>
+            </ng-container>
 
             <nz-divider nzText="Historial"></nz-divider>
             <nz-timeline *ngIf="order.statusHistory?.length; else noHistory">
@@ -202,3 +253,43 @@
         </ng-container>
     </ng-container>
 </nz-drawer>
+
+<nz-modal [(nzVisible)]="cancelModalVisible" nzTitle="Cancelar pedido" nzOkText="Cancelar pedido" nzOkDanger
+    nzClassName="cancel-order-modal"
+    nzCancelText="Volver" [nzOkLoading]="cancelling" [nzOkDisabled]="!cancelReason" [nzClosable]="!cancelling"
+    [nzMaskClosable]="!cancelling" (nzOnOk)="confirmCancel()" (nzOnCancel)="cancelModalVisible = false">
+    <ng-container *nzModalContent>
+        <ng-container *ngIf="selectedOrder as order">
+            <p class="cancel-order-id"><code>{{ order.orderId }}</code> · {{ order.total | currency:'USD' }}</p>
+
+            <label class="field-label" for="cancel-reason">Motivo (obligatorio)</label>
+            <nz-select id="cancel-reason" [(ngModel)]="cancelReason" nzPlaceHolder="Elige un motivo" style="width:100%">
+                <nz-option *ngFor="let r of cancelReasons" [nzValue]="r.value" [nzLabel]="r.label"></nz-option>
+            </nz-select>
+
+            <label class="field-label" for="cancel-note">Nota interna (opcional, el cliente no la ve)</label>
+            <textarea id="cancel-note" nz-input rows="2" [(ngModel)]="cancelNote" maxlength="500"></textarea>
+
+            <label class="check-row">
+                <input type="checkbox" [(ngModel)]="cancelRestock">
+                <span>Reponer el stock de los productos
+                    <small class="muted block" *ngIf="order.status === 'shipped'">
+                        El pedido ya salió: marca esto solo si el paquete volverá a bodega.
+                    </small>
+                </span>
+            </label>
+
+            <div class="refund-box" [class.ok]="chargedToday(order)" [class.pending]="!chargedToday(order)">
+                <ng-container *ngIf="chargedToday(order); else nextDay">
+                    <strong>Reembolso automático.</strong> El cobro es de hoy: se intentará reversar en Payphone
+                    ahora mismo. Si no se logra, quedará como reembolso pendiente.
+                </ng-container>
+                <ng-template #nextDay>
+                    <strong>Reembolso manual.</strong> El cobro es de otro día y Payphone ya no permite reversarlo.
+                    El pedido quedará como «Reembolso pendiente» hasta que devuelvas el dinero desde el panel de Payphone.
+                </ng-template>
+            </div>
+            <p class="muted status-help">Además se libera el cupón usado y se avisa al cliente por correo.</p>
+        </ng-container>
+    </ng-container>
+</nz-modal>

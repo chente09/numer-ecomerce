@@ -285,3 +285,33 @@ body.admin-mode .ant-select-item-option-selected:not(.ant-select-item-option-dis
     padding: 4px 0 8px;
   }
 }
+
+/* Cancel-order modal: it handles money and stock, so on a phone its controls get comfortable touch sizes.
+   The modal lives in the overlay, outside the page component, hence the global rule. */
+@media (max-width: 576px) {
+  .cancel-order-modal .ant-modal-footer {
+    display: flex;
+    gap: 8px;
+  }
+  .cancel-order-modal .ant-modal-footer .ant-btn {
+    flex: 1;
+    height: 44px;
+    margin: 0;
+  }
+  .cancel-order-modal .ant-select-single .ant-select-selector {
+    height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .cancel-order-modal .ant-select-single .ant-select-selector .ant-select-selection-item,
+  .cancel-order-modal .ant-select-single .ant-select-selector .ant-select-selection-placeholder {
+    line-height: normal;
+  }
+  .cancel-order-modal .ant-select-single .ant-select-selector .ant-select-selection-search {
+    display: flex;
+    align-items: center;
+  }
+  .cancel-order-modal textarea.ant-input {
+    font-size: 16px;
+  }
+}
