@@ -265,3 +265,23 @@ body.admin-mode .ant-select-item-option-selected:not(.ant-select-item-option-dis
     max-width: 100%;
   }
 }
+
+/* Admin on a phone: every layer (page margin, content padding, card header and body) used to take its own
+   share of the width, leaving about 74% of the screen for a table. Tighter layers, and cards that hold a
+   table let it use the full card width. */
+@media (max-width: 576px) {
+  .admin-layout .ant-card-head {
+    padding: 0 12px;
+    min-height: 44px;
+  }
+  .admin-layout .ant-card-head-title {
+    padding: 10px 0;
+  }
+  .admin-layout .ant-card-body {
+    padding: 12px;
+  }
+  .admin-layout .ant-card-body:has(> nz-table),
+  .admin-layout .ant-card-body:has(> .ant-table-wrapper) {
+    padding: 4px 0 8px;
+  }
+}

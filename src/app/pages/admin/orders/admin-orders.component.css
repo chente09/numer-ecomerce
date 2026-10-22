@@ -117,7 +117,7 @@
 /* Phone: the detail drawer takes the whole width and the item grid stops overflowing */
 @media (max-width: 576px) {
     .orders-container {
-        padding: 8px;
+        padding: 0;
     }
 
     .orders-help {

@@ -295,3 +295,14 @@ nz-footer {
 .mobile-menu-trigger {
     transition: all 0.3s;
 }
+
+/* Phone: leave the width to the content */
+@media (max-width: 576px) {
+    nz-content {
+        margin: 4px;
+    }
+
+    .inner-content {
+        padding: 4px;
+    }
+}
