@@ -1,0 +1,236 @@
+<div class="dp" [class.open]="open" role="region" [attr.aria-label]="'Detalle de ' + product.name">
+    <div class="dp-inner">
+
+        <!-- Phone: one block at a time -->
+        <div class="dp-tabs" role="tablist" aria-label="Secciones del producto">
+            <button *ngFor="let t of tabs" type="button" role="tab" class="dp-tab" [class.active]="tab === t.id"
+                [attr.aria-selected]="tab === t.id" (click)="setTab(t.id)">{{ t.label }}</button>
+        </div>
+
+        <div class="dp-grid">
+
+            <!-- ───────── Resumen: imágenes, identidad y salud ───────── -->
+            <div class="dp-col dp-col-a">
+                <section class="dp-block" [class.active]="tab === 'summary'">
+                    <h4 class="dp-title">Resumen</h4>
+
+                    <div class="dp-media">
+                        <img *ngIf="gallery[0]" class="dp-main-image" [src]="gallery[0]" [alt]="product.name"
+                            loading="lazy" decoding="async">
+                        <div class="dp-thumbs" *ngIf="gallery.length > 1">
+                            <img *ngFor="let url of gallery.slice(1)" [src]="url" alt="" loading="lazy"
+                                decoding="async">
+                            <span class="dp-more" *ngIf="extraImages > 0">+{{ extraImages }}</span>
+                        </div>
+                    </div>
+
+                    <div class="dp-flags" *ngIf="product.isNew || product.isBestSeller">
+                        <span class="dp-flag" *ngIf="product.isNew">Nuevo</span>
+                        <span class="dp-flag" *ngIf="product.isBestSeller">Bestseller</span>
+                    </div>
+
+                    <dl class="dp-facts">
+                        <dt>Modelo</dt><dd>{{ product.model || '—' }}</dd>
+                        <dt>SKU</dt><dd>{{ product.sku || '—' }}</dd>
+                        <dt>Código de barras</dt><dd>{{ product.barcode || '—' }}</dd>
+                        <dt>Género</dt><dd>{{ gender }}</dd>
+                        <dt>Temporada</dt><dd>{{ product.season || '—' }}</dd>
+                        <dt>Colección</dt><dd>{{ product.collection || '—' }}</dd>
+                        <dt>Lanzamiento</dt><dd>{{ product.releaseDate ? shortDate(product.releaseDate) : '—' }}</dd>
+                    </dl>
+
+                    <div class="dp-health" [class.complete]="health.issues.length === 0">
+                        <div class="dp-health-head">
+                            <span class="dp-label">Datos completos</span>
+                            <strong>{{ health.passed }} de {{ health.total }}</strong>
+                        </div>
+                        <div class="dp-meter" role="progressbar" [attr.aria-valuenow]="health.passed" aria-valuemin="0"
+                            [attr.aria-valuemax]="health.total" aria-label="Datos completos del producto">
+                            <span [style.width.%]="healthPercent"></span>
+                        </div>
+                        <ul class="dp-issues" *ngIf="health.issues.length">
+                            <li *ngFor="let issue of visibleIssues">{{ issue }}</li>
+                            <li *ngIf="hiddenIssues > 0" class="dp-muted">y {{ hiddenIssues }} más</li>
+                        </ul>
+                        <p class="dp-muted" *ngIf="!health.issues.length">Nada por corregir.</p>
+                        <button type="button" class="dp-link" *ngIf="health.issues.length" (click)="edit.emit()">
+                            Corregir en el editor
+                        </button>
+                    </div>
+                </section>
+
+                <section class="dp-block" [class.active]="tab === 'summary'">
+                    <h4 class="dp-title">Rendimiento</h4>
+                    <dl class="dp-facts">
+                        <dt>Vistas</dt><dd>{{ product.views || 0 }}</dd>
+                        <dt>Ventas</dt><dd>{{ product.sales || 0 }}</dd>
+                        <dt>Calificación</dt><dd>{{ product.rating ? (product.rating | number:'1.1-1') + ' de 5' : 'Sin calificar' }}</dd>
+                        <dt>Última venta</dt><dd>{{ lastSale ? shortDate(lastSale) : 'Sin ventas' }}</dd>
+                        <dt>Creado</dt><dd>{{ shortDate(product.createdAt) }}</dd>
+                        <dt>Actualizado</dt><dd>{{ shortDate(product.updatedAt) }}</dd>
+                    </dl>
+                </section>
+            </div>
+
+            <!-- ───────── Stock y precio ───────── -->
+            <div class="dp-col dp-col-b">
+                <section class="dp-block" [class.active]="tab === 'stock'">
+                    <h4 class="dp-title">Stock por variante</h4>
+
+                    <ng-container *ngIf="matrix.rows.length; else noVariants">
+                        <div class="dp-matrix-wrap">
+                            <table class="dp-matrix">
+                                <caption class="dp-sr">Unidades disponibles por color y talla</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col" class="dp-corner">Color</th>
+                                        <th scope="col" *ngFor="let size of matrix.sizes">{{ size }}</th>
+                                        <th scope="col" class="dp-total-col">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let row of matrix.rows">
+                                        <th scope="row" class="dp-color">
+                                            <span class="dp-swatch" [style.background]="row.colorCode"></span>
+                                            <span>{{ row.colorName }}</span>
+                                        </th>
+                                        <td *ngFor="let cell of row.cells; trackBy: trackByIndex">
+                                            <span *ngIf="cell; else absent" class="dp-cell" [ngClass]="'is-' + cell.level"
+                                                [class.on-offer]="cell.onOffer"
+                                                [attr.title]="cell.sku + (cell.onOffer ? ' · en oferta' : '')">{{ cell.stock }}</span>
+                                            <ng-template #absent><span class="dp-cell is-none" aria-label="No existe">—</span></ng-template>
+                                        </td>
+                                        <td class="dp-total-col"><strong>{{ row.total }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="dp-summary-line">
+                            <strong>{{ matrix.totalUnits }}</strong> unidades en {{ matrix.variantCount }} variantes
+                            <span *ngIf="matrix.outOfStock" class="dp-bad"> · {{ matrix.outOfStock }} sin stock</span>
+                            <span *ngIf="matrix.lowStock" class="dp-warn"> · {{ matrix.lowStock }} con pocas unidades</span>
+                        </p>
+                        <p class="dp-legend" aria-hidden="true">
+                            <span><i class="is-out"></i> Sin stock</span>
+                            <span><i class="is-low"></i> 5 o menos</span>
+                            <span><i class="is-ok"></i> Disponible</span>
+                            <span><i class="dp-offer-dot"></i> En oferta</span>
+                        </p>
+                    </ng-container>
+                    <ng-template #noVariants>
+                        <p class="dp-empty dp-alert">{{ noVariantsMessage }}</p>
+                    </ng-template>
+                </section>
+
+                <section class="dp-block" [class.active]="tab === 'price'">
+                    <h4 class="dp-title">Precio en la tienda</h4>
+                    <div class="dp-price">
+                        <span class="dp-price-now">${{ price.unitPrice | number:'1.2-2' }}</span>
+                        <span class="dp-price-old" *ngIf="price.hasDiscount">${{ price.originalUnitPrice | number:'1.2-2' }}</span>
+                        <span class="dp-percent" *ngIf="price.hasDiscount">-{{ price.discountPercentage }}%</span>
+                    </div>
+
+                    <div class="dp-promo">
+                        <span class="dp-state" [ngClass]="'state-' + promo.state">{{ promoLabel }}</span>
+                        <span class="dp-muted" *ngIf="promoDates">{{ promoDates }}</span>
+                    </div>
+                    <p class="dp-note" *ngIf="priceExplanation">{{ priceExplanation }}</p>
+
+                    <ng-container *ngIf="promo.variantOffers.length">
+                        <p class="dp-label dp-spaced">Ofertas solo en algunas variantes</p>
+                        <ul class="dp-offers">
+                            <li *ngFor="let offer of promo.variantOffers">
+                                <span>{{ offer.label }}</span>
+                                <span>
+                                    <s class="dp-muted">${{ offer.price.originalUnitPrice | number:'1.2-2' }}</s>
+                                    <strong>${{ offer.price.unitPrice | number:'1.2-2' }}</strong>
+                                    <span class="dp-percent">-{{ offer.price.discountPercentage }}%</span>
+                                </span>
+                            </li>
+                        </ul>
+                    </ng-container>
+                </section>
+
+                <section class="dp-block" [class.active]="tab === 'catalog'">
+                    <h4 class="dp-title">Para Google</h4>
+                    <div class="dp-seo">
+                        <div class="dp-seo-head">
+                            <span class="dp-label">Título</span>
+                            <span class="dp-seo-state" [ngClass]="'seo-' + seoTitle.state">
+                                {{ seoLabel(seoTitle.state) }} · {{ seoTitle.text.length }}/{{ seoTitleRange[1] }}
+                            </span>
+                        </div>
+                        <p class="dp-seo-text">{{ seoTitle.text || 'Sin título SEO' }}</p>
+                        <div class="dp-seo-head">
+                            <span class="dp-label">Descripción</span>
+                            <span class="dp-seo-state" [ngClass]="'seo-' + seoDescription.state">
+                                {{ seoLabel(seoDescription.state) }} · {{ seoDescription.text.length }}/{{ seoDescriptionRange[1] }}
+                            </span>
+                        </div>
+                        <p class="dp-seo-text">{{ seoDescription.text || 'Sin descripción SEO' }}</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ───────── Catálogo ───────── -->
+            <div class="dp-col dp-col-c">
+                <section class="dp-block" [class.active]="tab === 'catalog'">
+                    <h4 class="dp-title">Catálogo</h4>
+
+                    <p class="dp-label">Categorías</p>
+                    <div class="dp-chips">
+                        <span class="dp-chip" *ngFor="let name of categoryNames">{{ name }}</span>
+                        <span class="dp-muted" *ngIf="!categoryNames.length">Sin categorías</span>
+                    </div>
+
+                    <p class="dp-label dp-spaced">Tecnologías</p>
+                    <div class="dp-chips">
+                        <span class="dp-chip" *ngFor="let name of technologyNames">{{ name }}</span>
+                        <span class="dp-muted" *ngIf="!technologyNames.length">Sin tecnologías</span>
+                    </div>
+
+                    <p class="dp-label dp-spaced">Etiquetas</p>
+                    <div class="dp-chips">
+                        <span class="dp-chip subtle" *ngFor="let tag of product.tags">{{ tag }}</span>
+                        <span class="dp-muted" *ngIf="!product.tags?.length">Sin etiquetas</span>
+                    </div>
+
+                    <ng-container *ngIf="product.searchKeywords?.length">
+                        <p class="dp-label dp-spaced">Palabras clave de búsqueda ({{ product.searchKeywords!.length }})</p>
+                        <div class="dp-chips">
+                            <span class="dp-chip subtle" *ngFor="let word of product.searchKeywords">{{ word }}</span>
+                        </div>
+                    </ng-container>
+
+                    <ng-container *ngIf="product.features?.length">
+                        <p class="dp-label dp-spaced">Características</p>
+                        <ul class="dp-list">
+                            <li *ngFor="let feature of product.features">{{ feature }}</li>
+                        </ul>
+                    </ng-container>
+
+                    <ng-container *ngIf="product.description">
+                        <p class="dp-label dp-spaced">Descripción</p>
+                        <p class="dp-description" [class.clamped]="!descriptionExpanded">{{ product.description }}</p>
+                        <button type="button" class="dp-link" (click)="descriptionExpanded = !descriptionExpanded">
+                            {{ descriptionExpanded ? 'Ver menos' : 'Ver todo' }}
+                        </button>
+                    </ng-container>
+                </section>
+            </div>
+        </div>
+
+        <!-- Acciones: antes vivían en el menú de tres puntos -->
+        <div class="dp-actions">
+            <button nz-button nzType="primary" (click)="edit.emit()"><span nz-icon nzType="edit"></span> Editar</button>
+            <a nz-button [href]="shopLink" target="_blank" rel="noopener"><span nz-icon nzType="eye"></span> Ver en tienda</a>
+            <button nz-button (click)="inventory.emit()"><span nz-icon nzType="database"></span> Inventario</button>
+            <button nz-button (click)="promotions.emit()"><span nz-icon nzType="tags"></span> Promociones</button>
+            <button nz-button (click)="stats.emit()"><span nz-icon nzType="bar-chart"></span> Estadísticas</button>
+            <button nz-button nzDanger nz-popconfirm nzPopconfirmTitle="¿Eliminar este producto? No se puede deshacer."
+                nzPopconfirmPlacement="top" nzOkText="Eliminar" nzCancelText="Cancelar" (nzOnConfirm)="remove.emit()">
+                <span nz-icon nzType="delete"></span> Eliminar
+            </button>
+        </div>
+    </div>
+</div>

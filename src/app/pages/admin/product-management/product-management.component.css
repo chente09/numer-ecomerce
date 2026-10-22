@@ -76,7 +76,8 @@
 .current-price {
     font-weight: 600;
     font-size: 13px;
-    color: #1890ff;
+    font-variant-numeric: tabular-nums;
+    color: #111111;
 }
 
 /* ==================== 4️⃣ ACCIONES RESPONSIVAS ==================== */
@@ -184,24 +185,6 @@
 }
 
 /* Indicador de scroll en móvil */
-@media (max-width: 767px) {
-    .table-responsive::after {
-        content: "➡️ Desliza para ver más";
-        display: block;
-        text-align: center;
-        font-size: 11px;
-        color: #1890ff;
-        padding: 4px;
-        background: #e6f7ff;
-        border-radius: 4px;
-        margin-top: 4px;
-    }
-
-    .table-responsive:not(:hover)::after {
-        animation: pulse 2s infinite;
-    }
-}
-
 @keyframes pulse {
     0% {
         opacity: 0.6;
@@ -273,68 +256,77 @@
     z-index: 1000;
 }
 
-/* Estilos específicos para el modal de detalles */
-.categories-section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 8px 0;
+/* ───────── Unfoldable rows ───────── */
+.product-row {
+    cursor: pointer;
 }
 
-.categories-section strong {
-    color: #262626;
-    font-size: 14px;
+.product-row:hover > td {
+    background: #fafaf7;
 }
 
-.categories-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
+.product-row:focus-visible {
+    outline: 2px solid #111;
+    outline-offset: -2px;
 }
 
-.category-tag-detail {
-    font-size: 12px;
-    margin: 0;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: 500;
+.product-row.expanded > td {
+    background: #fafaf7;
 }
 
-.no-categories-detail {
-    color: #999;
-    font-style: italic;
-    font-size: 13px;
-    padding: 4px 0;
+.col-toggle {
+    width: 36px;
+    padding-right: 0 !important;
+    text-align: center;
+    color: #8b8f85;
 }
 
-/* Responsive para el modal */
-@media (max-width: 576px) {
-    .categories-section {
-        gap: 6px;
+.row-chevron {
+    transition: transform 0.2s ease;
+}
+
+.product-row.expanded .row-chevron {
+    transform: rotate(180deg);
+}
+
+.product-expand > td {
+    padding: 0 !important;
+    background: #fafaf7;
+}
+
+/* Column widths live here (not in nzWidth): a width set on the column group keeps counting after the column is hidden */
+.col-image { width: 70px; }
+.col-price { width: 100px; }
+.col-stock { width: 80px; }
+.col-sku { width: 100px; }
+.col-actions { width: 100px; }
+
+/* Phone: the row keeps what matters at a glance (name, price, stock); everything else lives in the panel */
+@media (max-width: 768px) {
+    .col-sku,
+    .col-actions {
+        display: none;
     }
-    
-    .category-tag-detail {
-        font-size: 11px;
-        padding: 3px 6px;
+
+    .col-image {
+        width: 56px;
     }
-    
-    .categories-section strong {
-        font-size: 13px;
+
+    .col-price {
+        width: 84px;
+    }
+
+    .col-stock {
+        width: 56px;
+    }
+
+    .product-name nz-tag {
+        margin-top: 4px;
     }
 }
 
-.categories-tags-container {
-  display: flex;
-  flex-wrap: wrap; /* Permite que las etiquetas pasen a la siguiente línea si no caben */
-  gap: 4px;      /* Espacio entre etiquetas */
-}
-
-.category-tag {
-  margin: 0 !important; /* Resetea el margen por defecto de nz-tag */
-}
-
-.no-categories-text {
-  color: #999;
-  font-style: italic;
+@media (prefers-reduced-motion: reduce) {
+    .row-chevron {
+        transition: none;
+    }
 }

@@ -21,6 +21,8 @@ import { Product, Color, Size, Promotion } from '../../../models/models';
 
 // Componentes
 import { ProductFormComponent } from '../product-form/product-form.component';
+import { ProductDetailPanelComponent } from './product-detail-panel/product-detail-panel.component';
+import { resolveEffectivePrice } from '../../../core/pricing';
 import { ProductStatsComponent } from '../product-stats/product-stats.component';
 import { ProductInventoryComponent } from '../product-inventory/product-inventory.component';
 import { ProductPromotionsComponent } from '../product-promotions/product-promotions.component';
@@ -79,6 +81,7 @@ interface OptimisticProductOperation {
     NzIconModule,
     NzSpinModule,
     NzPopconfirmModule,
+    ProductDetailPanelComponent,
     NzModalModule,
     NzAvatarModule,
     NzEmptyModule,
@@ -103,7 +106,8 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   allSizes: Size[] = [];
   loading = false;
   formModalVisible = false;
-  detailsModalVisible = false;
+  /** The product whose row is unfolded (one at a time). */
+  expandedId: string | null = null;
 
   // Producto seleccionado
   selectedProduct: Product | null = null;
@@ -1216,14 +1220,17 @@ export class ProductManagementComponent implements OnInit, OnDestroy {
   }
 
 
-  openDetailsModal(product: Product): void {
-    this.selectedProduct = product;
-    this.detailsModalVisible = true;
+  toggleExpand(product: Product): void {
+    this.expandedId = this.expandedId === product.id ? null : product.id;
+  }
+
+  /** Price the shop charges: the same rule as the storefront and the server (promotion window and pause included). */
+  priceOf(product: Product) {
+    return resolveEffectivePrice(product);
   }
 
   closeModals(): void {
     this.formModalVisible = false;
-    this.detailsModalVisible = false;
     this.selectedProduct = null;
     this.isEditMode = false;
     this.cdr.detectChanges();
