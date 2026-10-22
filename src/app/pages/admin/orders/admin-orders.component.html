@@ -36,32 +36,61 @@
             [nzShowPagination]="true">
             <thead>
                 <tr>
+                    <th class="col-toggle"></th>
                     <th>Pedido</th>
-                    <th>Fecha</th>
-                    <th>Cliente</th>
+                    <th class="col-extra">Fecha</th>
+                    <th class="col-extra">Cliente</th>
                     <th>Total</th>
                     <th>Estado</th>
-                    <th>Guía</th>
-                    <th></th>
+                    <th class="col-extra">Guía</th>
+                    <th class="col-extra"></th>
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let order of ordersTable.data" class="order-row" (click)="openOrder(order)">
-                    <td><code>{{ order.orderId }}</code></td>
-                    <td class="nowrap">{{ formatDate(order.createdAt) }}</td>
-                    <td>
-                        <div>{{ order.customerInfo?.name || 'Sin datos' }}</div>
-                        <small class="muted">{{ order.customerInfo?.email || '' }}</small>
-                    </td>
-                    <td class="nowrap">{{ order.total | currency:'USD' }}</td>
-                    <td>
-                        <nz-tag [nzColor]="getOrderStatusColor(order.status)">
-                            {{ getOrderStatusLabel(order.status) }}
-                        </nz-tag>
-                    </td>
-                    <td class="nowrap">{{ order.trackingNumber || '—' }}</td>
-                    <td class="nowrap"><a>Gestionar</a></td>
-                </tr>
+                <ng-container *ngFor="let order of ordersTable.data">
+                    <tr class="order-row" [class.expanded]="expandedId === order.id" tabindex="0"
+                        [attr.aria-expanded]="expandedId === order.id" (click)="onRowClick(order)"
+                        (keydown.enter)="onRowClick(order)">
+                        <td class="col-toggle"><span nz-icon nzType="down" class="row-chevron"></span></td>
+                        <td>
+                            <code class="id-full">{{ order.orderId }}</code>
+                            <code class="id-short">…{{ order.orderId.slice(-6) }}</code>
+                        </td>
+                        <td class="nowrap col-extra">{{ formatDate(order.createdAt) }}</td>
+                        <td class="col-extra">
+                            <div>{{ order.customerInfo?.name || 'Sin datos' }}</div>
+                            <small class="muted">{{ order.customerInfo?.email || '' }}</small>
+                        </td>
+                        <td class="nowrap">{{ order.total | currency:'USD' }}</td>
+                        <td>
+                            <nz-tag [nzColor]="getOrderStatusColor(order.status)">
+                                {{ getOrderStatusLabel(order.status) }}
+                            </nz-tag>
+                        </td>
+                        <td class="nowrap col-extra">{{ order.trackingNumber || '—' }}</td>
+                        <td class="nowrap col-extra"><a>Gestionar</a></td>
+                    </tr>
+                    <!-- Phone only: the summary that the narrow table has no room for -->
+                    <tr class="order-expand" *ngIf="expandedId === order.id">
+                        <td colspan="8">
+                            <div class="expand-grid">
+                                <span class="label">Pedido</span>
+                                <span class="wrap-any">{{ order.orderId }}</span>
+                                <span class="label">Fecha</span>
+                                <span>{{ formatDate(order.createdAt) }}</span>
+                                <span class="label">Cliente</span>
+                                <span class="wrap-any">
+                                    {{ order.customerInfo?.name || 'Sin datos' }}
+                                    <small class="muted block">{{ order.customerInfo?.email || '' }}</small>
+                                </span>
+                                <span class="label">Guía</span>
+                                <span>{{ order.trackingNumber || '—' }}</span>
+                            </div>
+                            <button nz-button nzType="primary" nzBlock class="expand-action"
+                                (click)="openOrder(order)">Gestionar pedido</button>
+                        </td>
+                    </tr>
+                </ng-container>
             </tbody>
         </nz-table>
         <nz-empty *ngIf="!loading && filteredOrders.length === 0"

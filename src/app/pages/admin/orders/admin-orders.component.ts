@@ -55,6 +55,9 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
   selectedOrderId: string | null = null;
   drawerVisible = false;
 
+  /** Phone only: the order whose row is unfolded (one at a time, to keep the list short). */
+  expandedId: string | null = null;
+
   newStatus: string | null = null;
   statusNote = '';
   savingStatus = false;
@@ -117,6 +120,15 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
 
   countByStatus(status: string): number {
     return this.orders.filter(o => o.status === status).length;
+  }
+
+  /** On a phone a tap on the row unfolds its summary; on larger screens it opens the detail as before. */
+  onRowClick(order: Order): void {
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      this.expandedId = this.expandedId === order.id ? null : order.id;
+    } else {
+      this.openOrder(order);
+    }
   }
 
   openOrder(order: Order): void {

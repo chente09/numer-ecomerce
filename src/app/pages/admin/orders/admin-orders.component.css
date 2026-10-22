@@ -134,3 +134,112 @@
         gap: 8px;
     }
 }
+
+/* Unfoldable rows: the table is the same on every screen; what changes is which columns fit.
+   Desktop shows every column and opens the detail on click; a phone keeps Pedido, Total and Estado
+   and unfolds the rest under the row. */
+.col-toggle,
+.id-short,
+.order-expand {
+    display: none;
+}
+
+.order-row:focus-visible {
+    outline: 2px solid #111;
+    outline-offset: -2px;
+}
+
+.row-chevron {
+    transition: transform 0.2s ease;
+}
+
+.expand-grid {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 8px 12px;
+    margin-bottom: 14px;
+    font-size: 14px;
+}
+
+.expand-grid .label {
+    color: #8b8f85;
+}
+
+.wrap-any {
+    word-break: break-word;
+}
+
+.muted.block {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .col-extra,
+    .id-full {
+        display: none;
+    }
+
+    .col-toggle,
+    .id-short {
+        display: table-cell;
+    }
+
+    .id-short {
+        display: inline;
+    }
+
+    .col-toggle {
+        width: 28px;
+        padding-right: 0 !important;
+        text-align: center;
+        color: #8b8f85;
+    }
+
+    .order-expand {
+        display: table-row;
+    }
+
+    .order-expand > td {
+        background: #fafaf7;
+        padding: 14px !important;
+    }
+
+    .order-row.expanded > td {
+        background: #fafaf7;
+        border-bottom-color: transparent;
+    }
+
+    .order-row.expanded .row-chevron {
+        transform: rotate(180deg);
+    }
+
+    .expand-action {
+        height: 44px;
+    }
+}
+
+/* Phone: filters in one scrollable row and comfortable touch sizes */
+@media (max-width: 576px) {
+    .status-summary {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin: 0 -4px;
+        padding: 0 4px 4px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .status-summary::-webkit-scrollbar {
+        display: none;
+    }
+
+    .summary-chip {
+        flex: 0 0 auto;
+        min-height: 40px;
+        padding: 0 16px;
+    }
+
+    :host ::ng-deep .ant-input-affix-wrapper {
+        min-height: 40px;
+    }
+}
