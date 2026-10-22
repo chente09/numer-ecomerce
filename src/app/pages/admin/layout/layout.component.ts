@@ -122,6 +122,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
+    // Drawers, modals and dropdowns are rendered outside the layout: this class lets the admin theme reach them
+    document.body.classList.add('admin-mode');
     this.userSubscription = this.usersService.user$.subscribe(user => {
       this.currentUser = user;
       if (user) {
@@ -190,6 +192,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.body.classList.remove('admin-mode');
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }
