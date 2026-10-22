@@ -2,8 +2,13 @@
 import { Injectable } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { catchError, filter, take } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { buildBreadcrumbJsonLd, buildProductSeo } from '../../core/product-seo';
+import { buildTechnologyResolver } from '../../core/technology-labels';
+import { CategoryService } from '../admin/category/category.service';
+import { TechnologyService } from '../admin/technology/technology.service';
 
 export interface SEOData {
   title?: string;
@@ -33,16 +38,26 @@ export class SeoService {
     type: 'website'
   };
 
+  /** Product whose SEO is being resolved (names of categories and technologies load asynchronously). */
+  private currentProductId: string | null = null;
+
   constructor(
     private meta: Meta,
     private title: Title,
-    private router: Router
+    private router: Router,
+    private categoryService: CategoryService,
+    private technologyService: TechnologyService
   ) {
     // Escuchar cambios de ruta para actualizar breadcrumbs
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: NavigationEnd) => {
-        this.updateBreadcrumbSchema(event.url);
+        this.updateBreadcrumbSchema(event.urlAfterRedirects || event.url);
+        // Product data must not outlive its page (a page that never calls updateSEO would keep it)
+        if (!(event.urlAfterRedirects || event.url).startsWith('/products/')) {
+          this.currentProductId = null;
+          this.clearProductData();
+        }
       });
   }
 
@@ -83,6 +98,8 @@ export class SeoService {
     // Datos específicos de productos
     if (data.type === 'product') {
       this.updateProductMetaTags(data); // ✅ RENOMBRADO para evitar duplicación
+    } else {
+      this.clearProductData();
     }
   }
 
@@ -97,44 +114,6 @@ export class SeoService {
     this.updateTag('property', 'product:brand', data.brand || 'NUMER');
     this.updateTag('property', 'product:category', data.category || '');
     
-    // Structured Data para productos
-    this.updateProductStructuredData(data);
-  }
-
-  /**
-   * Generar JSON-LD para productos
-   */
-  private updateProductStructuredData(data: SEOData): void {
-    const productSchema = {
-      "@context": "https://schema.org",
-      "@type": "Product",
-      "name": data.title,
-      "description": data.description,
-      "image": data.image,
-      "brand": {
-        "@type": "Brand",
-        "name": data.brand || "NUMER"
-      },
-      "category": data.category,
-      "sku": data.sku,
-      "offers": {
-        "@type": "Offer",
-        "price": data.price,
-        "priceCurrency": data.currency || "USD",
-        "availability": `https://schema.org/${data.availability || 'InStock'}`,
-        "seller": {
-          "@type": "Organization",
-          "name": "NUMER"
-        }
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "reviewCount": "127"
-      }
-    };
-
-    this.updateStructuredData('product-schema', productSchema);
   }
 
   /**
@@ -160,7 +139,7 @@ export class SeoService {
    */
   private updateBreadcrumbSchema(url: string): void {
     const siteUrl = environment.siteUrl || 'https://numer.store';
-    const pathSegments = url.split('/').filter(segment => segment);
+    const pathSegments = url.split(/[?#]/)[0].split('/').filter(segment => segment);
     const breadcrumbItems: any[] = [
       {
         "@type": "ListItem",
@@ -183,7 +162,8 @@ export class SeoService {
 
     pathSegments.forEach((segment, index) => {
       const position = index + 2;
-      const name = routeNames[segment] || this.capitalizeFirst(segment);
+      // The segment after /products is an id: the product page replaces this crumb with the real names
+      const name = routeNames[segment] || (pathSegments[index - 1] === 'products' ? 'Producto' : this.capitalizeFirst(segment));
       const item = `${siteUrl}/${pathSegments.slice(0, index + 1).join('/')}`;
       
       breadcrumbItems.push({
@@ -258,26 +238,58 @@ export class SeoService {
   }
 
   /**
-   * SEO específico para productos individuales (método público)
+   * SEO específico para productos individuales (método público).
+   * Se aplica de inmediato con lo que ya se sabe y se completa con los nombres de categorías y tecnologías
+   * cuando cargan. Si el cliente ya salió de la página, no se aplica.
    */
   updateProductSEO(product: any): void {
-    const siteUrl = environment.siteUrl || 'https://numer.store';
-    const seoData: SEOData = {
-      title: `${product.name} - ${product.category} | NUMER Ecuador`,
-      description: `${product.description || ''} Ropa técnica de alta calidad para deportes outdoor. Disponible en NUMER Ecuador.`.substring(0, 160),
-      keywords: `${product.name}, ${product.category}, ropa outdoor, NUMER, ${product.tags?.join(', ') || ''}`,
-      image: product.imageUrl || product.colors?.[0]?.imageUrl,
-      url: `${siteUrl}/products/${product.id}`,
-      type: 'product',
-      price: product.price,
-      currency: 'USD',
-      availability: product.totalStock > 0 ? 'InStock' : 'OutOfStock',
-      brand: 'NUMER',
-      category: product.category,
-      sku: product.sku
-    };
+    if (!product?.id) return;
+    this.currentProductId = product.id;
+    this.applyProductSEO(product, [], [], null);
 
-    this.updateSEO(seoData);
+    forkJoin([
+      this.categoryService.getCategories().pipe(take(1)),
+      this.technologyService.getTechnologies().pipe(take(1))
+    ]).pipe(catchError(() => of(null))).subscribe(result => {
+      if (!result || this.currentProductId !== product.id) return;
+      const [categories, technologies] = result;
+      // Names only: an id never reaches the title, the description or the structured data
+      const ids: string[] = [...new Set<string>([product.category, ...(product.categories ?? [])].filter(Boolean))];
+      const categoryNames = ids
+        .map(id => categories.find(c => c.id === id)?.name)
+        .filter((name): name is string => !!name);
+      const technologyNames = buildTechnologyResolver(technologies).labels(product.technologies);
+      this.applyProductSEO(product, categoryNames, technologyNames, ids.find(id => categories.some(c => c.id === id)) ?? null);
+    });
+  }
+
+  private applyProductSEO(product: any, categoryNames: string[], technologyNames: string[], categoryId: string | null): void {
+    const siteUrl = environment.siteUrl || 'https://numer.store';
+    const seo = buildProductSeo(product, { siteUrl, categoryNames, categoryId, technologyNames });
+
+    this.updateSEO({
+      title: seo.title,
+      description: seo.description,
+      keywords: seo.keywords,
+      image: seo.image,
+      url: seo.url,
+      type: 'product',
+      price: seo.price,
+      currency: seo.currency,
+      availability: seo.availability,
+      brand: 'NUMER',
+      category: seo.category,
+      sku: seo.sku
+    });
+    this.updateStructuredData('product-schema', seo.jsonLd);
+    this.updateStructuredData('breadcrumb-schema', buildBreadcrumbJsonLd(seo.breadcrumb));
+  }
+
+  /** Removes what only makes sense on a product page. */
+  private clearProductData(): void {
+    document.getElementById('product-schema')?.remove();
+    ['product:price:amount', 'product:price:currency', 'product:availability', 'product:brand', 'product:category']
+      .forEach(property => this.meta.removeTag(`property='${property}'`));
   }
 
   /**

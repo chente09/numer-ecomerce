@@ -12,6 +12,8 @@ import {
 } from '../../../../core/product-insights';
 import { Category } from '../../../../services/admin/category/category.service';
 import { TechnologyService } from '../../../../services/admin/technology/technology.service';
+import { buildTechnologyResolver } from '../../../../core/technology-labels';
+import { buildDescription, buildTitle } from '../../../../core/product-seo';
 
 export type PanelTab = 'summary' | 'stock' | 'price' | 'catalog';
 
@@ -23,15 +25,7 @@ const PROMOTION_LABELS = {
   scheduled: 'Programada'
 } as const;
 
-const slugOf = (text: string): string =>
-  text.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').trim().replace(/[\s_-]+/g, '_');
-
-const readable = (value: string): string => {
-  const text = value.replace(/[_-]+/g, ' ').trim();
-  return text.charAt(0).toUpperCase() + text.slice(1);
-};
-
-const SEO_LABELS: Record<SeoState, string> = { empty: 'Falta', short: 'Corto', ok: 'Bien', long: 'Largo' };
+const SEO_LABELS: Record<SeoState, string> = { empty: 'Automático', short: 'Corto', ok: 'Bien', long: 'Largo' };
 
 /**
  * Everything about one product in the admin list, unfolded under its row. Desktop shows every block at once;
@@ -76,18 +70,17 @@ export class ProductDetailPanelComponent implements OnInit, OnChanges {
   technologyNames: string[] = [];
   gallery: string[] = [];
   extraImages = 0;
-  seoTitle: { text: string; state: SeoState } = { text: '', state: 'empty' };
-  seoDescription: { text: string; state: SeoState } = { text: '', state: 'empty' };
+  /** `text` is what the admin wrote; `shown` is what Google receives (the text, or the generated one when empty). */
+  seoTitle: { text: string; shown: string; state: SeoState } = { text: '', shown: '', state: 'empty' };
+  seoDescription: { text: string; shown: string; state: SeoState } = { text: '', shown: '', state: 'empty' };
   readonly seoTitleRange = SEO_TITLE_RANGE;
   readonly seoDescriptionRange = SEO_DESCRIPTION_RANGE;
 
-  private technologyById = new Map<string, string>();
-  private technologyBySlug = new Map<string, string>();
+  private technologyResolver = buildTechnologyResolver([]);
 
   constructor() {
     this.technologyService.getTechnologies().pipe(takeUntilDestroyed()).subscribe(list => {
-      this.technologyById = new Map(list.map(t => [t.id, t.name]));
-      this.technologyBySlug = new Map(list.map(t => [slugOf(t.name), t.name]));
+      this.technologyResolver = buildTechnologyResolver(list);
       this.resolveTechnologies();
       this.cdr.markForCheck();
     });
@@ -115,16 +108,23 @@ export class ProductDetailPanelComponent implements OnInit, OnChanges {
     this.gallery = unique.slice(0, 5);
     this.extraImages = Math.max(0, unique.length - this.gallery.length);
 
-    this.seoTitle = { text: (p.metaTitle ?? '').trim(), state: seoLengthState(p.metaTitle, ...SEO_TITLE_RANGE) };
-    this.seoDescription = { text: (p.metaDescription ?? '').trim(), state: seoLengthState(p.metaDescription, ...SEO_DESCRIPTION_RANGE) };
+    const title = (p.metaTitle ?? '').trim();
+    const description = (p.metaDescription ?? '').trim();
+    this.seoTitle = {
+      text: title,
+      shown: title || buildTitle(p, this.categoryNames[0]),
+      state: seoLengthState(title, ...SEO_TITLE_RANGE)
+    };
+    this.seoDescription = {
+      text: description,
+      shown: description || buildDescription(p, this.technologyNames),
+      state: seoLengthState(description, ...SEO_DESCRIPTION_RANGE)
+    };
   }
 
   private resolveTechnologies(): void {
-    // Older products store a slug ("secado_rapido") instead of the id of the technology: match it by name, and
-    // when nothing matches show the slug as readable text instead of a code
-    const names = (this.product?.technologies ?? []).map(value =>
-      this.technologyById.get(value) || this.technologyBySlug.get(slugOf(value)) || readable(value));
-    this.technologyNames = [...new Set(names)];
+    // Same resolution as the shop: ids of the collection and old slugs both become the readable name, once each
+    this.technologyNames = this.technologyResolver.labels(this.product?.technologies);
   }
 
   setTab(tab: PanelTab): void {

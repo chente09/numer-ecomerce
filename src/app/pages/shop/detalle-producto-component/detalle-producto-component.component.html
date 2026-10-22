@@ -23,7 +23,7 @@
             <div class="product-technologies" *ngIf="product.technologies && product.technologies.length > 0">
                 <h4 class="features-title">Tecnologías</h4>
                 <div class="technologies-list">
-                    <span *ngFor="let tech of product.technologies" class="technology-badge"
+                    <span *ngFor="let tech of uniqueTechnologies()" class="technology-badge"
                         [attr.title]="getTechnologyDescription(tech)">
                         {{ getTechnologyLabel(tech) }}
                     </span>

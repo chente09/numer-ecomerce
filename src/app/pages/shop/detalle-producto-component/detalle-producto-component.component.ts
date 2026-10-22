@@ -2,6 +2,8 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ProductGalleryComponent } from '../../../components/product-gallery/product-gallery.component';
 import { ProductService } from '../../../services/admin/product/product.service';
 import { CategoryService } from '../../../services/admin/category/category.service';
+import { TechnologyService } from '../../../services/admin/technology/technology.service';
+import { buildTechnologyResolver } from '../../../core/technology-labels';
 import { SeoService } from '../../../services/seo/seo.service';
 import { FLAT_SHIPPING_USD, RETURN_DAYS } from '../../../core/legal';
 import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
@@ -94,6 +96,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
 
   // Categoría
   categoryName: string = '';
+  private technologyResolver = buildTechnologyResolver([]);
   categoryDescription: string = '';
 
   // Tallas
@@ -120,6 +123,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private productService: ProductService,
     private categoryService: CategoryService,
+    private technologyService: TechnologyService,
     private stockUpdateService: StockUpdateService,
     private inventoryService: ProductInventoryService,
     private promotionStateService: PromotionStateService,
@@ -137,6 +141,12 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
     this.detectUserLocation();
+
+    // A product stores its technologies as ids of the collection or as old slugs: resolve both to the name
+    this.technologyService.getTechnologies().pipe(takeUntil(this.destroy$)).subscribe(list => {
+      this.technologyResolver = buildTechnologyResolver(list);
+      this.cdr.markForCheck();
+    });
 
     // 🔄 Si venimos de un flujo de pago, forzar recarga sin caché para no
     // mostrar stock/precio desatualizados (el descuento de stock ocurre en el backend).
@@ -549,23 +559,18 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   // 🆕 NUEVOS MÉTODOS para las funcionalidades de aventura
 
   getTechnologyLabel(value: string): string {
-    const technologiesMap: { [key: string]: string } = {
-      'secado_rapido': 'Secado Rápido',
-      'proteccion_uv': 'Protección UV',
-      'anti_transpirante': 'Anti-transpirante',
-      'impermeable': 'Impermeable',
-      'transpirable': 'Transpirable',
-      'anti_bacterial': 'Anti-bacterial',
-      'termico': 'Térmico',
-      'elastico': 'Elástico',
-      'resistente_viento': 'Resistente al viento',
-      'sin_costuras': 'Sin costuras',
-      'repelente_agua': 'Repelente al agua',
-      'anti_olor': 'Anti-olor',
-      'reflectivo': 'Reflectivo'
-    };
+    return this.technologyResolver.label(value);
+  }
 
-    return technologiesMap[value] || value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  /** Technologies to show, once each (an old slug and its id can both be stored on the same product). */
+  uniqueTechnologies(): string[] {
+    const seen = new Set<string>();
+    return (this.product?.technologies ?? []).filter(value => {
+      const label = this.technologyResolver.label(value);
+      if (!label || seen.has(label)) return false;
+      seen.add(label);
+      return true;
+    });
   }
 
   getTechnologyDescription(tech: string): string {
@@ -578,7 +583,7 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
       'termico': 'Te mantiene calentito en el páramo',
       'resistente_viento': 'El viento de la cordillera no te afecta'
     };
-    return descriptions[tech] || 'Tecnología avanzada para tu aventura';
+    return descriptions[this.technologyResolver.slug(tech)] || 'Tecnología avanzada para tu aventura';
   }
 
   getDurabilityIcon(feature: string): string {

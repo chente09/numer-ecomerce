@@ -157,17 +157,20 @@
                         <div class="dp-seo-head">
                             <span class="dp-label">Título</span>
                             <span class="dp-seo-state" [ngClass]="'seo-' + seoTitle.state">
-                                {{ seoLabel(seoTitle.state) }} · {{ seoTitle.text.length }}/{{ seoTitleRange[1] }}
+                                {{ seoLabel(seoTitle.state) }}<ng-container *ngIf="seoTitle.text"> · {{ seoTitle.text.length }}/{{ seoTitleRange[1] }}</ng-container>
                             </span>
                         </div>
-                        <p class="dp-seo-text">{{ seoTitle.text || 'Sin título SEO' }}</p>
+                        <p class="dp-seo-text" [class.is-auto]="!seoTitle.text">{{ seoTitle.shown }}</p>
                         <div class="dp-seo-head">
                             <span class="dp-label">Descripción</span>
                             <span class="dp-seo-state" [ngClass]="'seo-' + seoDescription.state">
-                                {{ seoLabel(seoDescription.state) }} · {{ seoDescription.text.length }}/{{ seoDescriptionRange[1] }}
+                                {{ seoLabel(seoDescription.state) }}<ng-container *ngIf="seoDescription.text"> · {{ seoDescription.text.length }}/{{ seoDescriptionRange[1] }}</ng-container>
                             </span>
                         </div>
-                        <p class="dp-seo-text">{{ seoDescription.text || 'Sin descripción SEO' }}</p>
+                        <p class="dp-seo-text" [class.is-auto]="!seoDescription.text">{{ seoDescription.shown }}</p>
+                        <p class="dp-muted dp-seo-hint" *ngIf="!seoTitle.text || !seoDescription.text">
+                            Lo que no escribas aquí se genera solo con el nombre y la descripción del producto. Escribirlo tú da mejor control sobre cómo aparece en Google.
+                        </p>
                     </div>
                 </section>
             </div>

@@ -563,7 +563,16 @@
 }
 
 .dp-seo-state.seo-empty {
-    color: var(--dp-bad);
+    color: var(--dp-muted);
+}
+
+.dp-seo-text.is-auto {
+    color: var(--dp-muted);
+}
+
+.dp-seo-hint {
+    margin: 10px 0 0;
+    line-height: 1.5;
 }
 
 .dp-seo-text {
