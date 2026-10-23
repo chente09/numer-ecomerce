@@ -34,6 +34,11 @@ export function upsertMeta(html: string, attr: 'name' | 'property', key: string,
   return replaced ? out : out.replace(/<\/head>/i, () => `  ${tag}\n</head>`);
 }
 
+export function removeMeta(html: string, attr: 'name' | 'property', key: string): string {
+  const re = new RegExp(`\\s*<meta\\s[^>]*?${attr}\\s*=\\s*["']${escapeRegex(key)}["'][^>]*>`, 'gi');
+  return html.replace(re, '');
+}
+
 export function setCanonical(html: string, href: string): string {
   const tag = `<link rel="canonical" href="${escapeHtml(href)}">`;
   const re = /<link\s[^>]*rel\s*=\s*["']canonical["'][^>]*>/gi;
@@ -88,7 +93,16 @@ export function renderSnapshot(ctx: SnapshotContext): string {
   const { product, seo, siteUrl, categoryNames, technologyNames, now } = ctx;
   const price = resolveEffectivePrice(product, undefined, now);
   const inStock = seo.availability === 'InStock';
-  const description = truncateAtWord(cleanText(product.description), 1200);
+  // Keep the author's paragraphs: one long run-on block is hard to read for people and for AI assistants
+  let budget = 1200;
+  const paragraphs: string[] = [];
+  for (const line of String(product.description ?? '').split(/\n+/)) {
+    const text = cleanText(line);
+    if (!text || budget <= 0) continue;
+    const kept = truncateAtWord(text, budget);
+    paragraphs.push(kept);
+    budget -= text.length;
+  }
   const colors = (product.colors ?? []).map(c => cleanText(c.name)).filter(Boolean);
   const sizes = (product.sizes ?? []).map(s => cleanText(s.name)).filter(Boolean);
   const features = (product.features ?? []).map(cleanText).filter(Boolean);
@@ -106,7 +120,7 @@ export function renderSnapshot(ctx: SnapshotContext): string {
       ? ` (precio regular ${money(price.originalUnitPrice)}, ${price.discountPercentage}% de descuento)` : ''} · ${inStock ? 'Disponible' : 'Agotado por ahora'}</p>`
   ];
   if (categoryNames.length) parts.push(`<p>Categoría: ${escapeHtml(categoryNames.join(', '))}</p>`);
-  if (description) parts.push(`<p>${escapeHtml(description)}</p>`);
+  for (const paragraph of paragraphs) parts.push(`<p>${escapeHtml(paragraph)}</p>`);
   if (features.length) parts.push(`<h2>Características</h2>${listOf(features)}`);
   if (technologyNames.length) parts.push(`<h2>Tecnologías</h2>${listOf(technologyNames)}`);
   if (colors.length) parts.push(`<p>Colores: ${escapeHtml(colors.join(', '))}</p>`);
@@ -134,6 +148,11 @@ export function renderProductPage(template: string, ctx: SnapshotContext): strin
   if (seo.image) {
     html = upsertMeta(html, 'property', 'og:image', seo.image);
     html = upsertMeta(html, 'name', 'twitter:image', seo.image);
+    const alt = cleanText(ctx.product.name);
+    html = upsertMeta(html, 'property', 'og:image:alt', alt);
+    html = upsertMeta(html, 'name', 'twitter:image:alt', alt);
+    html = removeMeta(html, 'property', 'og:image:width');
+    html = removeMeta(html, 'property', 'og:image:height');
   }
   html = upsertMeta(html, 'name', 'twitter:title', seo.title);
   html = upsertMeta(html, 'name', 'twitter:description', seo.description);

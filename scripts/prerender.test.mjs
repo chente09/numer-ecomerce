@@ -10,6 +10,7 @@ const {
   renderSnapshot, renderProductPage, extractStaticBlocks, buildSitemapXml,
   renderStaticPage, renderHomePage, renderProductList, renderMainNav
 } = await import('./lib/prerender-html.ts');
+import { readFileSync } from 'node:fs';
 const { STATIC_PAGES, staticPageByKey, staticPageByPath } = await import('../src/app/core/static-pages.ts');
 const { buildProductSeo } = await import('../src/app/core/product-seo.ts');
 
@@ -194,7 +195,7 @@ test('the visible content is the product, and the app still boots on it', () => 
   assert.match(body, /<strong>\$34\.37<\/strong> \(precio regular \$41\.73, 18% de descuento\)/);
   assert.match(body, /Disponible/);
   assert.match(body, /Categoría: MTB/);
-  assert.match(body, /Chompa impermeable 15000mm\. Para la lluvia de la sierra\./);
+  assert.match(body, /<p>Chompa impermeable 15000mm\.<\/p><p>Para la lluvia de la sierra\.<\/p>/, 'the author paragraphs are kept');
   assert.match(body, /<li>Capucha compatible con casco<\/li>/);
   assert.match(body, /<li>Impermeable<\/li>/);
   assert.match(body, /Colores: Negro, Azul Marino/);
@@ -345,4 +346,38 @@ test('the sitemap drops query-string urls, which are only filtered views of the 
   const blocks = extractStaticBlocks(xml);
   assert.equal(blocks.length, 2);
   assert.ok(blocks.every(b => !b.includes('?') && !b.includes('/products/')));
+});
+
+test('a product page describes its own photo, not the generic home one', () => {
+  const generic = [
+    '<meta property="og:image:alt" content="NUMER - generico">',
+    '<meta property="og:image:width" content="1200">',
+    '<meta property="og:image:height" content="630">',
+    '<meta name="twitter:image:alt" content="generico">'
+  ].join(' ');
+  const tpl = template.replace('<meta property="og:type"', `${generic} <meta property="og:type"`);
+  const html = renderProductPage(tpl, ctx());
+  assert.match(html, /<meta property="og:image:alt" content="AGUACERO II">/);
+  assert.match(html, /<meta name="twitter:image:alt" content="AGUACERO II">/);
+  assert.equal(count(html, /og:image:width/g), 0);
+  assert.equal(count(html, /og:image:height/g), 0);
+  assert.ok(!html.includes('generico'));
+});
+
+test('index.html carries no placeholder products: every Product in its structured data must be real', () => {
+  const source = readFileSync(new URL('../src/index.html', import.meta.url), 'utf8');
+  const blocks = [...source.matchAll(/<script type="application\/ld\+json">\s*([\s\S]*?)\s*<\/script>/g)].map(m => JSON.parse(m[1]));
+  const products = [];
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (node && typeof node === 'object') {
+      if (node['@type'] === 'Product') products.push(node);
+      Object.values(node).forEach(walk);
+    }
+  };
+  blocks.forEach(walk);
+  assert.deepEqual(products, [], 'Product data belongs to each product page, with its price and image');
+  const types = blocks.flatMap(b => (b['@graph'] || [b]).map(n => n['@type']));
+  assert.ok(types.includes('Organization') && types.includes('WebSite') && types.includes('LocalBusiness'));
+  assert.ok(!types.includes('Store'));
 });
