@@ -140,8 +140,6 @@ export class UbicacionesComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.seoService.updatePageSEO('ubicaciones', {
-      title: 'Ubicaciones y Distribuidores - NUMER Ecuador | Tiendas Físicas',
-      description: 'Encuentra nuestra tienda física en Quito y distribuidores autorizados de NUMER en todo Ecuador. Ubicaciones, horarios, contacto y mapa. Pantalón Extraligero, Chompa AGUACERO.',
       keywords: 'NUMER tienda física Quito, distribuidores NUMER Ecuador, ubicaciones tienda outdoor, mapa NUMER store, horarios atención, contacto directo',
       image: 'https://firebasestorage.googleapis.com/v0/b/numer-16f35.firebasestorage.app/o/products%2F27d9425a-2698-452d-8b93-4962772f11b7%2Fcolors%2Fverde%20olivo.webp?alt=media&token=9aaea191-a3c5-47ef-ab6f-c59e0b8226c0'
     });

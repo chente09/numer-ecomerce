@@ -5,8 +5,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { buildProductSeo } from '../src/app/core/product-seo';
 import { buildTechnologyResolver } from '../src/app/core/technology-labels';
+import { STATIC_PAGES } from '../src/app/core/static-pages';
 import { fetchCollection } from './lib/firestore-rest';
-import { buildSitemapXml, extractStaticBlocks, renderProductPage } from './lib/prerender-html';
+import type { ProductLink } from './lib/prerender-html';
+import { buildSitemapXml, extractStaticBlocks, renderHomePage, renderProductPage, renderStaticPage } from './lib/prerender-html';
 
 const SITE_URL = 'https://numer.store';
 const DIST = resolve(process.env['PRERENDER_DIST'] || 'dist/numer-ecomerce/browser');
@@ -57,6 +59,7 @@ async function main(): Promise<void> {
 
   mkdirSync(join(DIST, 'products'), { recursive: true });
   const sitemapProducts: { id: string; lastmod: string; image?: string }[] = [];
+  const productLinks: ProductLink[] = [];
   let written = 0;
 
   for (const raw of products) {
@@ -81,12 +84,22 @@ async function main(): Promise<void> {
     writeFileSync(join(DIST, 'products', `${raw['id']}.html`), html, 'utf8');
     written++;
     sitemapProducts.push({ id: raw['id'], lastmod: toIsoDay(product.updatedAt ?? raw['_updateTime'], now), image: seo.image });
+    productLinks.push({ id: raw['id'], name: String(raw['name']), price: seo.price, inStock: seo.availability === 'InStock' });
   }
+  productLinks.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+  // Fixed pages: their own title, description and canonical, plus the links a crawler follows
+  for (const page of STATIC_PAGES) {
+    const html = renderStaticPage(template, page, { siteUrl: SITE_URL, products: productLinks, listProducts: page.key === 'shop' });
+    writeFileSync(join(DIST, `${page.path.replace(/^\//, '')}.html`), html, 'utf8');
+  }
+  // The home page is index.html itself: it keeps its own tags and gains the links to every product
+  writeFileSync(indexPath, renderHomePage(template, { siteUrl: SITE_URL, products: productLinks }), 'utf8');
 
   const staticBlocks = existsSync(SOURCE_SITEMAP) ? extractStaticBlocks(readFileSync(SOURCE_SITEMAP, 'utf8')) : [];
   writeFileSync(join(DIST, 'sitemap.xml'), buildSitemapXml(SITE_URL, staticBlocks, sitemapProducts), 'utf8');
 
-  console.log(`[prerender] ${written} páginas de producto y sitemap con ${staticBlocks.length + sitemapProducts.length} URLs (${staticBlocks.length} fijas).`);
+  console.log(`[prerender] ${written} páginas de producto, ${STATIC_PAGES.length} páginas fijas, portada con enlaces y sitemap con ${staticBlocks.length + sitemapProducts.length} URLs (${staticBlocks.length} fijas).`);
 }
 
 main().catch(error => {

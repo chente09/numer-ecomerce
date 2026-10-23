@@ -7,8 +7,10 @@ register('./ts-resolve-hooks.mjs', import.meta.url);
 const { decodeValue, decodeDocument, fetchCollection } = await import('./lib/firestore-rest.ts');
 const {
   escapeHtml, jsonForScript, upsertMeta, setCanonical, setTitle, setJsonLd, removeStaticBreadcrumb,
-  renderSnapshot, renderProductPage, extractStaticBlocks, buildSitemapXml
+  renderSnapshot, renderProductPage, extractStaticBlocks, buildSitemapXml,
+  renderStaticPage, renderHomePage, renderProductList, renderMainNav
 } = await import('./lib/prerender-html.ts');
+const { STATIC_PAGES, staticPageByKey, staticPageByPath } = await import('../src/app/core/static-pages.ts');
 const { buildProductSeo } = await import('../src/app/core/product-seo.ts');
 
 // ───────────────────────── Firestore REST ─────────────────────────
@@ -254,4 +256,93 @@ test('the sitemap lists the fixed pages and every current product with its image
   assert.ok(!xml.includes('old-product-id'));
   assert.ok(xml.startsWith('<?xml'));
   assert.equal(count(xml, /<loc>https:\/\/numer\.store\/products\/def-456<\/loc>/g), 1);
+});
+
+// ───────────────────────── Fixed pages, home and links ─────────────────────────
+
+const links = [
+  { id: 'b-2', name: 'BOXER MUJER', price: 20.86, inStock: true },
+  { id: 'a-1', name: 'AGUACERO II', price: 34.37, inStock: false }
+];
+
+test('the fixed pages are well defined: unique paths, titles and descriptions', () => {
+  assert.ok(STATIC_PAGES.length >= 6);
+  for (const key of ['paths', 'titles', 'descriptions', 'keys']) {
+    const field = { paths: 'path', titles: 'title', descriptions: 'description', keys: 'key' }[key];
+    const values = STATIC_PAGES.map(p => p[field]);
+    assert.equal(new Set(values).size, values.length, `${key} are unique`);
+  }
+  for (const page of STATIC_PAGES) {
+    assert.ok(page.path.startsWith('/') && !page.path.includes('?'), page.path);
+    assert.ok(page.title.length <= 75, `${page.key} title length ${page.title.length}`);
+    assert.ok(page.description.length >= 60 && page.description.length <= 200, `${page.key} description length`);
+    assert.ok(page.h1.length > 3);
+  }
+  assert.equal(staticPageByKey('nosotros').path, '/nosotros');
+  assert.equal(staticPageByPath('/nosotros/?x=1').key, 'nosotros');
+  assert.equal(staticPageByPath('/shop#top').key, 'shop');
+  assert.equal(staticPageByPath('/no-existe'), undefined);
+});
+
+test('a fixed page has its own title, description and canonical, not the home ones', () => {
+  const page = staticPageByKey('nosotros');
+  const html = renderStaticPage(template, page, { siteUrl: 'https://numer.store' });
+  assert.match(html, new RegExp(`<title>${escapeHtml(page.title)}</title>`));
+  assert.match(html, /<link rel="canonical" href="https:\/\/numer\.store\/nosotros">/);
+  assert.equal(count(html, /name="description"/g), 1);
+  assert.equal(count(html, /rel="canonical"/g), 1);
+  assert.ok(!html.includes('Descripción general'));
+  assert.equal(count(html, /"BreadcrumbList"/g), 1, 'only the page breadcrumb');
+  const body = html.slice(html.indexOf('<app-root>'), html.indexOf('</app-root>'));
+  assert.match(body, /<h1>Nosotros: historia y misión de NUMER<\/h1>/);
+  assert.match(body, /href="\/shop">Tienda<\/a>/);
+  assert.match(body, /href="\/servicio-cliente">Servicio al cliente<\/a>/);
+  assert.ok(!body.includes('<h2>Productos</h2>'), 'only the shop lists products');
+  assert.ok(html.includes('<script src="main.js"></script>'));
+});
+
+test('the shop page lists every product as a link with its price', () => {
+  const html = renderStaticPage(template, staticPageByKey('shop'), { siteUrl: 'https://numer.store', products: links, listProducts: true });
+  const body = html.slice(html.indexOf('<app-root>'), html.indexOf('</app-root>'));
+  assert.match(body, /<a href="\/products\/b-2">BOXER MUJER<\/a> — \$20\.86/);
+  assert.match(body, /<a href="\/products\/a-1">AGUACERO II<\/a> — \$34\.37 \(agotado por ahora\)/);
+  assert.equal(count(body, /<li>/g), 2);
+});
+
+test('the home keeps its own tags and gains the links to sections and products', () => {
+  const html = renderHomePage(template, { siteUrl: 'https://numer.store', products: links });
+  assert.ok(html.includes('<title>NUMER - Ropa Técnica</title>'), 'home title untouched');
+  assert.match(html, /<link rel="canonical" href="https:\/\/numer\.store\/">/);
+  const body = html.slice(html.indexOf('<app-root>'), html.indexOf('</app-root>'));
+  assert.ok(body.includes('NUMER general'), 'its own text stays');
+  assert.match(body, /href="\/products\/a-1"/);
+  assert.match(body, /href="\/nosotros"/);
+  assert.ok(!html.includes('"BreadcrumbList"'));
+});
+
+test('generating the home twice does not duplicate the links', () => {
+  const once = renderHomePage(template, { siteUrl: 'https://numer.store', products: links });
+  const twice = renderHomePage(once, { siteUrl: 'https://numer.store', products: links });
+  assert.equal(count(twice, /href="\/products\/a-1"/g), 1);
+  assert.equal(count(twice, /Secciones de la tienda/g), 1);
+  assert.equal(twice, once);
+});
+
+test('links are escaped and an empty catalog renders nothing', () => {
+  assert.equal(renderProductList([]), '');
+  const html = renderProductList([{ id: 'x"><script>', name: 'A <b>&</b>', price: 1, inStock: true }]);
+  assert.ok(!html.includes('<script>') && !html.includes('<b>'));
+  assert.ok(renderMainNav().includes('aria-label="Secciones de la tienda"'));
+});
+
+test('the sitemap drops query-string urls, which are only filtered views of the shop', () => {
+  const xml = `<urlset>
+  <url><loc>https://numer.store</loc></url>
+  <url><loc>https://numer.store/shop</loc></url>
+  <url><loc>https://numer.store/shop?category=abc</loc></url>
+  <url><loc>https://numer.store/products/old</loc></url>
+</urlset>`;
+  const blocks = extractStaticBlocks(xml);
+  assert.equal(blocks.length, 2);
+  assert.ok(blocks.every(b => !b.includes('?') && !b.includes('/products/')));
 });

@@ -4,6 +4,8 @@
 import type { ProductSeo, ProductSeoSource } from '../../src/app/core/product-seo';
 import { cleanText, truncateAtWord } from '../../src/app/core/product-seo';
 import { resolveEffectivePrice } from '../../src/app/core/pricing';
+import type { StaticPage } from '../../src/app/core/static-pages';
+import { MAIN_LINKS } from '../../src/app/core/static-pages';
 
 export function escapeHtml(text: string): string {
   return String(text ?? '')
@@ -162,9 +164,14 @@ export interface SitemapProduct {
   image?: string;
 }
 
-/** The <url> blocks that are not products (home, shop, about...), kept exactly as they are in the source sitemap. */
+/**
+ * The <url> blocks that are not products (home, shop, about...), kept as they are in the source sitemap.
+ * URLs with a query string (/shop?category=...) are filtered views whose canonical is /shop: they do not belong here.
+ */
 export function extractStaticBlocks(xml: string): string[] {
-  return (xml.match(/<url>[\s\S]*?<\/url>/g) ?? []).filter(block => !/<loc>[^<]*\/products\//.test(block));
+  return (xml.match(/<url>[\s\S]*?<\/url>/g) ?? [])
+    .filter(block => !/<loc>[^<]*\/products\//.test(block))
+    .filter(block => !/<loc>[^<]*\?/.test(block));
 }
 
 export function buildSitemapXml(siteUrl: string, staticBlocks: string[], products: SitemapProduct[]): string {
@@ -182,4 +189,72 @@ export function buildSitemapXml(siteUrl: string, staticBlocks: string[], product
 ${[...statics, ...productBlocks].join('\n')}
 </urlset>
 `;
+}
+
+// ───────────────────────── Fixed pages and home ─────────────────────────
+
+export interface ProductLink {
+  id: string;
+  name: string;
+  price: number;
+  inStock: boolean;
+}
+
+/** Links to every section: a crawler that does not run JavaScript follows these to discover the pages. */
+export function renderMainNav(): string {
+  const links = MAIN_LINKS.map(link => `<a href="${escapeHtml(link.path)}">${escapeHtml(link.label)}</a>`).join(' · ');
+  return `<nav aria-label="Secciones de la tienda">${links}</nav>`;
+}
+
+/** Every product as a plain link with its price: the way into the catalog for crawlers. */
+export function renderProductList(products: ProductLink[]): string {
+  if (products.length === 0) return '';
+  const items = products.map(p =>
+    `<li><a href="/products/${escapeHtml(p.id)}">${escapeHtml(cleanText(p.name))}</a> — ${money(p.price)}${p.inStock ? '' : ' (agotado por ahora)'}</li>`
+  ).join('');
+  return `<h2>Productos</h2><ul>${items}</ul>`;
+}
+
+export interface StaticPageContext {
+  siteUrl: string;
+  products?: ProductLink[];
+  /** The shop lists the catalog; the other pages only carry their own text and the navigation. */
+  listProducts?: boolean;
+}
+
+/** A fixed page (nosotros, ubicaciones, tienda...) with its own title, description, canonical and content. */
+export function renderStaticPage(template: string, page: StaticPage, ctx: StaticPageContext): string {
+  const url = `${ctx.siteUrl.replace(/\/$/, '')}${page.path}`;
+  let html = removeStaticBreadcrumb(template);
+  html = setTitle(html, page.title);
+  html = setCanonical(html, url);
+  html = upsertMeta(html, 'name', 'description', page.description);
+  html = upsertMeta(html, 'property', 'og:title', page.title);
+  html = upsertMeta(html, 'property', 'og:description', page.description);
+  html = upsertMeta(html, 'property', 'og:url', url);
+  html = upsertMeta(html, 'name', 'twitter:title', page.title);
+  html = upsertMeta(html, 'name', 'twitter:description', page.description);
+  html = setJsonLd(html, 'breadcrumb-schema', {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: ctx.siteUrl.replace(/\/$/, '') },
+      { '@type': 'ListItem', position: 2, name: page.h1.split(':')[0], item: url }
+    ]
+  });
+  const body = `<div class="loading-content"><h1>${escapeHtml(page.h1)}</h1><p>${escapeHtml(page.description)}</p>`
+    + `${renderMainNav()}${ctx.listProducts ? renderProductList(ctx.products ?? []) : ''}</div>`;
+  return html.replace(/<app-root[^>]*>[\s\S]*?<\/app-root>/i, () => `<app-root>${body}</app-root>`);
+}
+
+/**
+ * The home page keeps its title, description and canonical (they are already the home's); it only gains the
+ * links a crawler needs: the sections and every product.
+ */
+export function renderHomePage(template: string, ctx: StaticPageContext): string {
+  // Running it again on an already generated page must not add the links twice
+  const html = removeStaticBreadcrumb(template)
+    .replace(/<div class="loading-content"><nav aria-label="Secciones de la tienda">[\s\S]*?<\/ul><\/div>/i, '');
+  const links = `<div class="loading-content">${renderMainNav()}${renderProductList(ctx.products ?? [])}</div>`;
+  return html.replace(/(<app-root[^>]*>)([\s\S]*?)(<\/app-root>)/i, (_m, open, inner, close) => `${open}${inner.trim()}${links}${close}`);
 }

@@ -65,8 +65,6 @@ export class NosotrosComponent implements OnInit {
   ngOnInit(): void {
     // ✅ CONFIGURAR SEO PARA NOSOTROS
     this.seoService.updatePageSEO('nosotros', {
-      title: 'Nosotros - Historia y Misión de NUMER | Ropa Outdoor Ecuador',
-      description: 'Conoce la historia de NUMER, marca ecuatoriana de ropa técnica para deportes outdoor. Desde 2021 creando Pantalón Extraligero, Chompa AGUACERO y prendas de calidad para aventureros.',
       keywords: 'NUMER historia, marca ecuatoriana outdoor, misión visión NUMER, ropa técnica Ecuador, aventureros ciclismo montaña, calidad innovación sostenibilidad',
       image: 'https://firebasestorage.googleapis.com/v0/b/numer-16f35.firebasestorage.app/o/products%2F27d9425a-2698-452d-8b93-4962772f11b7%2Fcolors%2Fverde%20olivo.webp?alt=media&token=9aaea191-a3c5-47ef-ab6f-c59e0b8226c0'
     });

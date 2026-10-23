@@ -7,6 +7,7 @@ import { forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { buildBreadcrumbJsonLd, buildProductSeo } from '../../core/product-seo';
 import { buildTechnologyResolver } from '../../core/technology-labels';
+import { staticPageByKey, staticPageByPath } from '../../core/static-pages';
 import { CategoryService } from '../admin/category/category.service';
 import { TechnologyService } from '../admin/technology/technology.service';
 
@@ -53,11 +54,15 @@ export class SeoService {
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: NavigationEnd) => {
         this.updateBreadcrumbSchema(event.urlAfterRedirects || event.url);
+        const current = event.urlAfterRedirects || event.url;
         // Product data must not outlive its page (a page that never calls updateSEO would keep it)
-        if (!(event.urlAfterRedirects || event.url).startsWith('/products/')) {
+        if (!current.startsWith('/products/')) {
           this.currentProductId = null;
           this.clearProductData();
         }
+        // Pages whose component sets no SEO of its own would keep the previous page's title
+        const fixedPage = staticPageByPath(current);
+        if (fixedPage?.autoSeo) this.updatePageSEO(fixedPage.key);
       });
   }
 
@@ -199,37 +204,13 @@ export class SeoService {
         };
         break;
 
-      case 'shop':
-        seoData = {
-          title: 'Tienda Online - Ropa Técnica Outdoor | NUMER Ecuador',
-          description: 'Compra ropa técnica de alta calidad para deportes outdoor. Pantalones trail, chompas impermeables, ropa de montaña y más. Envíos a todo Ecuador.',
-          url: `${siteUrl}/shop`
-        };
-        break;
-
-      case 'nosotros':
-        seoData = {
-          title: 'Nosotros - Historia y Misión de NUMER | Ropa Outdoor Ecuador',
-          description: 'Conoce la historia de NUMER, marca ecuatoriana de ropa técnica para deportes outdoor. Desde 2021 creando prendas de calidad para aventureros.',
-          url: `${siteUrl}/nosotros`
-        };
-        break;
-
-      case 'ubicaciones':
-        seoData = {
-          title: 'Ubicaciones y Distribuidores - NUMER Ecuador | Tiendas Físicas',
-          description: 'Encuentra nuestra tienda física en Quito y distribuidores autorizados de NUMER en todo Ecuador. Ubicaciones, horarios y contacto.',
-          url: `${siteUrl}/ubicaciones`
-        };
-        break;
-
-      case 'servicio-cliente':
-        seoData = {
-          title: 'Servicio al Cliente - Soporte y Ayuda | NUMER Ecuador',
-          description: 'Centro de ayuda NUMER. Preguntas frecuentes, garantías, devoluciones, seguimiento de pedidos y contacto directo.',
-          url: `${siteUrl}/servicio-cliente`
-        };
-        break;
+      default: {
+        // Fixed pages share their title and description with the static HTML generated after the build
+        const fixedPage = staticPageByKey(page);
+        if (fixedPage) {
+          seoData = { title: fixedPage.title, description: fixedPage.description, url: `${siteUrl}${fixedPage.path}` };
+        }
+      }
     }
 
     // Combinar con datos personalizados
