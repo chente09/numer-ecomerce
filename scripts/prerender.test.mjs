@@ -209,7 +209,7 @@ test('the visible content is the product, and the app still boots on it', () => 
 test('out of stock and no discount read honestly', () => {
   const plain = { ...product, totalStock: 0, originalPrice: undefined, currentPrice: undefined, promotionId: undefined };
   const html = renderSnapshot(ctx({ product: plain }));
-  assert.match(html, /<strong>\$41\.73<\/strong> · Agotado por ahora/);
+  assert.match(html, /<strong>\$41\.73<\/strong> · Disponible por encargo/);
   assert.ok(!html.includes('descuento'));
 });
 
@@ -306,7 +306,7 @@ test('the shop page lists every product as a link with its price', () => {
   const html = renderStaticPage(template, staticPageByKey('shop'), { siteUrl: 'https://numer.store', products: links, listProducts: true });
   const body = html.slice(html.indexOf('<app-root>'), html.indexOf('</app-root>'));
   assert.match(body, /<a href="\/products\/b-2">BOXER MUJER<\/a> — \$20\.86/);
-  assert.match(body, /<a href="\/products\/a-1">AGUACERO II<\/a> — \$34\.37 \(agotado por ahora\)/);
+  assert.match(body, /<a href="\/products\/a-1">AGUACERO II<\/a> — \$34\.37 \(por encargo\)/);
   assert.equal(count(body, /<li>/g), 2);
 });
 

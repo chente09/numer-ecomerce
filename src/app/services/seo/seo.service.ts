@@ -21,7 +21,7 @@ export interface SEOData {
   type?: 'website' | 'product' | 'article';
   price?: number;
   currency?: string;
-  availability?: 'InStock' | 'OutOfStock' | 'PreOrder';
+  availability?: 'InStock' | 'BackOrder' | 'PreOrder';
   brand?: string;
   category?: string;
   sku?: string;

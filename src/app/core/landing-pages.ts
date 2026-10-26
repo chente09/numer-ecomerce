@@ -127,7 +127,7 @@ export function buildLanding(def: LandingDefinition, candidates: LandingCandidat
     'NUMER es una marca ecuatoriana de ropa técnica con tienda en Quito. Diseñamos nuestras chompas impermeables para la lluvia fría del páramo, el viento de la cordillera y los días de ciclismo y trekking que empiezan despejados y terminan mojados.',
     main
       ? `Hoy tenemos disponible ${featured.length > 1 ? 'estas chompas' : `la chompa ${main.name}`}${main.sizes.length ? `, en tallas ${main.sizes[0]} a ${main.sizes[main.sizes.length - 1]}` : ''}${main.colors.length ? ` y ${main.colors.length} colores` : ''}, desde ${money(Math.min(...featured.map(f => f.price)))}.`
-      : 'Por ahora nuestras chompas impermeables están agotadas; escríbenos y te avisamos cuando vuelvan.'
+      : 'Por ahora no tenemos chompas impermeables en stock; las fabricamos por encargo, escríbenos por WhatsApp y coordinamos talla y color.'
   ];
 
   const guide = [

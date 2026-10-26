@@ -286,7 +286,7 @@
                     </span>
                     <span *ngIf="selectedVariant.stock === 0" class="out-of-stock">
                         <i nz-icon nzType="close-circle" nzTheme="fill"></i>
-                        Se nos acabó, pero pronto llega más
+                        Sin stock por ahora: la hacemos por encargo
                     </span>
                 </div>
             </div>
@@ -295,8 +295,11 @@
             <div class="actions">
                 <button class="add-to-cart-btn" [disabled]="!selectedVariant || selectedVariant.stock === 0"
                     (click)="addToCart()">
-                    {{ selectedVariant && selectedVariant.stock > 0 ? '¡AÑADIR AL CARRITO!' : 'AGOTADO' }}
+                    {{ selectedVariant && selectedVariant.stock > 0 ? '¡AÑADIR AL CARRITO!' : 'SIN STOCK' }}
                 </button>
+                <a *ngIf="selectedVariant && selectedVariant.stock === 0" class="add-to-cart-btn" [href]="orderByWhatsappLink" target="_blank" rel="noopener">
+                    PEDIR POR ENCARGO
+                </a>
 
                 <button class="wishlist-btn" (click)="toggleWishlist()"
                     [attr.aria-label]="isInWishlist ? 'Quitar de favoritos' : 'Agregar a favoritos'"

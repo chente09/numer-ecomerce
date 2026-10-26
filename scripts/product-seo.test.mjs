@@ -167,9 +167,9 @@ test('offer: uses the effective promotional price and its end date only while it
 });
 
 test('offer: out of stock when there are no units, counting variants when the total is missing', () => {
-  assert.equal(buildProductSeo({ ...product, totalStock: 0 }, { siteUrl: SITE, now: NOW }).jsonLd.offers.availability, 'https://schema.org/OutOfStock');
+  assert.equal(buildProductSeo({ ...product, totalStock: 0 }, { siteUrl: SITE, now: NOW }).jsonLd.offers.availability, 'https://schema.org/BackOrder');
   assert.equal(buildProductSeo({ ...product, totalStock: undefined, variants: [{ stock: 0 }, { stock: 3 }] }, { siteUrl: SITE, now: NOW }).availability, 'InStock');
-  assert.equal(buildProductSeo({ ...product, totalStock: undefined, variants: [] }, { siteUrl: SITE, now: NOW }).availability, 'OutOfStock');
+  assert.equal(buildProductSeo({ ...product, totalStock: undefined, variants: [] }, { siteUrl: SITE, now: NOW }).availability, 'BackOrder');
 });
 
 test('breadcrumb names the category and the product, never an id', () => {
@@ -202,7 +202,7 @@ test('a minimal product still produces valid output', () => {
   assert.equal(minimal.url, 'https://numer.store/products/x');
   assert.equal(minimal.title, 'Gorra | NUMER Ecuador');
   assert.equal(minimal.jsonLd.offers.price, '10.00');
-  assert.equal(minimal.availability, 'OutOfStock');
+  assert.equal(minimal.availability, 'BackOrder');
 });
 
 // ───────────────────────── Technology names ─────────────────────────

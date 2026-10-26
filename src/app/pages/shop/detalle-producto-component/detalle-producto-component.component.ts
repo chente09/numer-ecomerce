@@ -5,7 +5,7 @@ import { CategoryService } from '../../../services/admin/category/category.servi
 import { TechnologyService } from '../../../services/admin/technology/technology.service';
 import { buildTechnologyResolver } from '../../../core/technology-labels';
 import { SeoService } from '../../../services/seo/seo.service';
-import { FLAT_SHIPPING_USD, RETURN_DAYS } from '../../../core/legal';
+import { FLAT_SHIPPING_USD, RETURN_DAYS, SUPPORT_WHATSAPP } from '../../../core/legal';
 import { CartService } from '../../../pasarela-pago/services/cart/cart.service';
 import { Product, Color, Size, ProductVariant } from '../../../models/models';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
@@ -419,6 +419,13 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   /**
  * 🏷️ Verifica si el producto tiene descuento
  */
+  /** WhatsApp chat prefilled with the product and the size and color the customer picked. */
+  get orderByWhatsappLink(): string {
+    const options = [this.selectedColor?.name, this.selectedSize?.name].filter(Boolean).join(', ');
+    const text = `Hola, quiero pedir por encargo ${this.product?.name ?? 'un producto'}${options ? ` (${options})` : ''}. ${typeof location !== 'undefined' ? location.href : ''}`;
+    return `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(text.trim())}`;
+  }
+
   hasDiscount(product: ExtendedProduct): boolean {
     return !!(product.discountPercentage && product.discountPercentage > 0);
   }

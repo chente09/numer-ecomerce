@@ -118,7 +118,7 @@ export function renderSnapshot(ctx: SnapshotContext): string {
     `<nav aria-label="Ruta de navegación">${crumbs}</nav>`,
     `<h1>${escapeHtml(cleanText(product.name))}</h1>`,
     `<p><strong>${money(price.unitPrice)}</strong>${price.hasDiscount
-      ? ` (precio regular ${money(price.originalUnitPrice)}, ${price.discountPercentage}% de descuento)` : ''} · ${inStock ? 'Disponible' : 'Agotado por ahora'}</p>`
+      ? ` (precio regular ${money(price.originalUnitPrice)}, ${price.discountPercentage}% de descuento)` : ''} · ${inStock ? 'Disponible' : 'Disponible por encargo'}</p>`
   ];
   if (categoryNames.length) parts.push(`<p>Categoría: ${escapeHtml(categoryNames.join(', '))}</p>`);
   for (const paragraph of paragraphs) parts.push(`<p>${escapeHtml(paragraph)}</p>`);
@@ -126,6 +126,7 @@ export function renderSnapshot(ctx: SnapshotContext): string {
   if (technologyNames.length) parts.push(`<h2>Tecnologías</h2>${listOf(technologyNames)}`);
   if (colors.length) parts.push(`<p>Colores: ${escapeHtml(colors.join(', '))}</p>`);
   if (sizes.length) parts.push(`<p>Tallas: ${escapeHtml(sizes.join(', '))}</p>`);
+  if (!inStock) parts.push('<p>Sin stock por ahora: se fabrica por encargo. Escríbenos por WhatsApp para coordinar talla y color.</p>');
   parts.push('<p>Envíos a todo Ecuador: $5,00, entrega en 2 a 5 días hábiles.</p>');
   if (seo.image) parts.push(`<img src="${escapeHtml(seo.image)}" alt="${escapeHtml(cleanText(product.name))}" width="480">`);
   parts.push('<p><a href="/shop">Ver toda la tienda NUMER</a></p>');
@@ -230,7 +231,7 @@ export function renderMainNav(): string {
 export function renderProductList(products: ProductLink[]): string {
   if (products.length === 0) return '';
   const items = products.map(p =>
-    `<li><a href="/products/${escapeHtml(p.id)}">${escapeHtml(cleanText(p.name))}</a> — ${money(p.price)}${p.inStock ? '' : ' (agotado por ahora)'}</li>`
+    `<li><a href="/products/${escapeHtml(p.id)}">${escapeHtml(cleanText(p.name))}</a> — ${money(p.price)}${p.inStock ? '' : ' (por encargo)'}</li>`
   ).join('');
   return `<h2>Productos</h2><ul>${items}</ul>`;
 }

@@ -49,7 +49,7 @@ export interface ProductSeo {
   url: string;
   price: number;
   currency: 'USD';
-  availability: 'InStock' | 'OutOfStock';
+  availability: 'InStock' | 'BackOrder';
   category?: string;
   sku?: string;
   breadcrumb: { name: string; url: string }[];
@@ -187,7 +187,7 @@ export function buildProductSeo(product: ProductSeoSource, options: ProductSeoOp
   const technologyNames = options.technologyNames ?? [];
   const url = `${siteUrl}/products/${product.id}`;
   const price = resolveEffectivePrice(product, undefined, options.now ?? Date.now());
-  const availability = stockOf(product) > 0 ? 'InStock' : 'OutOfStock';
+  const availability = stockOf(product) > 0 ? 'InStock' : 'BackOrder';
   const name = cleanText(product.name);
 
   const title = buildTitle(product, categoryNames[0]);
