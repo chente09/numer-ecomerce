@@ -10,17 +10,13 @@ import type { LandingCandidate } from '../src/app/core/landing-pages';
 import { LANDING_PAGES, buildLanding } from '../src/app/core/landing-pages';
 import { fetchCollection } from './lib/firestore-rest';
 import type { ProductLink } from './lib/prerender-html';
+import { toIsoDay } from './lib/sitemap-live';
 import { buildSitemapXml, extractStaticBlocks, renderHomePage, renderLandingPage, renderProductPage, renderStaticPage } from './lib/prerender-html';
 
 const SITE_URL = 'https://numer.store';
 const DIST = resolve(process.env['PRERENDER_DIST'] || 'dist/numer-ecomerce/browser');
 const SOURCE_SITEMAP = resolve('src/sitemap.xml');
 const ENVIRONMENT_FILE = resolve('src/environments/environment.ts');
-
-const toIsoDay = (value: unknown, fallback: Date): string => {
-  const date = value instanceof Date && !Number.isNaN(value.getTime()) ? value : fallback;
-  return date.toISOString().slice(0, 10);
-};
 
 /** The Firebase web key is public (it ships inside the app bundle); it is read from the same environment file. */
 function readFirebaseConfig(): { project: string; apiKey: string } {
@@ -106,7 +102,10 @@ async function main(): Promise<void> {
   writeFileSync(indexPath, renderHomePage(template, { siteUrl: SITE_URL, products: productLinks }), 'utf8');
 
   const staticBlocks = existsSync(SOURCE_SITEMAP) ? extractStaticBlocks(readFileSync(SOURCE_SITEMAP, 'utf8')) : [];
-  writeFileSync(join(DIST, 'sitemap.xml'), buildSitemapXml(SITE_URL, staticBlocks, sitemapProducts), 'utf8');
+  // sitemap.xml is served live by the Netlify function; this copy is its fallback and a reference of the build
+  const sitemapXml = buildSitemapXml(SITE_URL, staticBlocks, sitemapProducts);
+  writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml, 'utf8');
+  writeFileSync(join(DIST, 'sitemap-build.xml'), sitemapXml, 'utf8');
 
   console.log(`[prerender] ${written} páginas de producto, ${STATIC_PAGES.length} páginas fijas, ${LANDING_PAGES.length} landing, portada con enlaces y sitemap con ${staticBlocks.length + sitemapProducts.length} URLs (${staticBlocks.length} fijas).`);
 }
