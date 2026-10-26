@@ -73,7 +73,6 @@ export class LayoutComponent implements OnInit, OnDestroy {
       items: [
         { title: 'Banners', icon: 'picture', path: '/admin/heroes' },
         { title: 'Reseñas', icon: 'star', path: '/admin/reviews' },
-        { title: 'Sitemap & SEO', icon: 'global', path: '/admin/sitemap' },
       ]
     },
     {

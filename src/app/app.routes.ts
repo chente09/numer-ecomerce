@@ -50,7 +50,6 @@ export const routes: Routes = [
             { path: 'clientes', loadComponent: () => import('./pages/admin/clientes/clientes.component').then(m => m.ClientesComponent), canActivate: [adminOnlyGuard] },
             { path: 'ventas', loadComponent: () => import('./pages/admin/sales/admin-sales.component').then(m => m.AdminSalesComponent), canActivate: [adminOnlyGuard] },
             { path: 'orders', loadComponent: () => import('./pages/admin/orders/admin-orders.component').then(m => m.AdminOrdersComponent), canActivate: [adminOnlyGuard] },
-            { path: 'sitemap', loadComponent: () => import('./pages/admin/sitemap-admin/sitemap-admin.component').then(m => m.SitemapAdminComponent), canActivate: [adminOnlyGuard] },
             { path: 'user-roles', loadComponent: () => import('./pages/admin/user-roles-management/user-roles-management.component').then(m => m.UserRolesManagementComponent), canActivate: [adminOnlyGuard] },
             { path: 'distribuidores', loadComponent: () => import('./pages/admin/distributors/my-inventory/my-inventory.component').then(m => m.MyInventoryComponent) },
             { path: 'shipments', loadComponent: () => import('./pages/admin/shipments/admin-shipments.component').then(m => m.AdminShipmentsComponent), canActivate: [adminOnlyGuard] },
