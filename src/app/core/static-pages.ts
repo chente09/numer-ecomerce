@@ -76,5 +76,6 @@ export const MAIN_LINKS: { path: string; label: string }[] = [
   { path: '/nosotros', label: 'Nosotros' },
   { path: '/ubicaciones', label: 'Ubicaciones' },
   { path: '/servicio-cliente', label: 'Servicio al cliente' },
+  { path: '/chompas-impermeables', label: 'Chompas impermeables' },
   { path: '/cuidado-producto', label: 'Cuidado del producto' }
 ];

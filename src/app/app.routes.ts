@@ -20,6 +20,7 @@ export const routes: Routes = [
     { path: 'nosotros', loadComponent: () => import('./pages/nosotros/nosotros.component').then(m => m.NosotrosComponent), pathMatch: 'full' },
     { path: 'products/:id', loadComponent: () => import('./pages/shop/detalle-producto-component/detalle-producto-component.component').then(m => m.DetalleProductoComponent), data: { preload: true } },
     { path: 'shop', loadComponent: () => import('./pages/shop/product-catalog/product-catalog.component').then(m => m.ProductCatalogComponent), data: { preload: true } },
+    { path: 'chompas-impermeables', loadComponent: () => import('./pages/landing/landing-page.component').then(m => m.LandingPageComponent), data: { landing: 'chompas-impermeables' } },
     { path: 'cuidado-producto', loadComponent: () => import('./pages/cuidado-producto/cuidado-producto.component').then(m => m.CuidadoProductoComponent) },
     { path: 'review-form', loadComponent: () => import('./pages/review-form/review-form.component').then(m => m.ReviewFormComponent) },
     { path: 'ubicaciones', loadComponent: () => import('./pages/ubicaciones/ubicaciones.component').then(m => m.UbicacionesComponent) },

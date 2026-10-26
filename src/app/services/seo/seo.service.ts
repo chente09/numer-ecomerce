@@ -6,6 +6,7 @@ import { catchError, filter, take } from 'rxjs/operators';
 import { forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { buildBreadcrumbJsonLd, buildProductSeo } from '../../core/product-seo';
+import type { LandingContent } from '../../core/landing-pages';
 import { buildTechnologyResolver } from '../../core/technology-labels';
 import { staticPageByKey, staticPageByPath } from '../../core/static-pages';
 import { CategoryService } from '../admin/category/category.service';
@@ -60,6 +61,7 @@ export class SeoService {
           this.currentProductId = null;
           this.clearProductData();
         }
+        if (!current.startsWith('/chompas-impermeables')) this.clearLandingData();
         // Pages whose component sets no SEO of its own would keep the previous page's title
         const fixedPage = staticPageByPath(current);
         if (fixedPage?.autoSeo) this.updatePageSEO(fixedPage.key);
@@ -162,7 +164,8 @@ export class SeoService {
       'servicio-cliente': 'Servicio al Cliente',
       'ubicaciones': 'Ubicaciones',
       'review-form': 'Reseñas',
-      'cuidado-producto': 'Cuidado del Producto'
+      'cuidado-producto': 'Cuidado del Producto',
+      'chompas-impermeables': 'Chompas impermeables'
     };
 
     pathSegments.forEach((segment, index) => {
@@ -264,6 +267,18 @@ export class SeoService {
     });
     this.updateStructuredData('product-schema', seo.jsonLd);
     this.updateStructuredData('breadcrumb-schema', buildBreadcrumbJsonLd(seo.breadcrumb));
+  }
+
+  /** Title, description and structured data of a landing page (see core/landing-pages). */
+  applyLandingSEO(content: LandingContent): void {
+    this.updateSEO({ title: content.title, description: content.description, url: content.url });
+    this.updateStructuredData('landing-schema', content.collectionJsonLd);
+    this.updateStructuredData('faq-schema', content.faqJsonLd);
+  }
+
+  private clearLandingData(): void {
+    document.getElementById('landing-schema')?.remove();
+    document.getElementById('faq-schema')?.remove();
   }
 
   /** Removes what only makes sense on a product page. */

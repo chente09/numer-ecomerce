@@ -1,0 +1,44 @@
+<main class="landing" *ngIf="content as page; else loadingTpl">
+  <header class="landing-hero">
+    <div class="landing-container">
+      <h1>{{ page.h1 }}</h1>
+      <p *ngFor="let paragraph of page.intro">{{ paragraph }}</p>
+    </div>
+  </header>
+
+  <section class="landing-container" *ngIf="products.length">
+    <h2>Chompas disponibles</h2>
+    <div class="landing-grid">
+      <app-product-card *ngFor="let product of products" [product]="product" [showColorOptions]="true" [cardSize]="'medium'"></app-product-card>
+    </div>
+    <ul class="landing-highlights" *ngIf="page.featured[0]?.highlights?.length">
+      <li *ngFor="let item of page.featured[0].highlights">{{ item }}</li>
+    </ul>
+  </section>
+
+  <section class="landing-container">
+    <h2>Cómo elegir una chompa impermeable</h2>
+    <div class="landing-guide">
+      <article *ngFor="let item of page.guide">
+        <h3>{{ item.heading }}</h3>
+        <p>{{ item.text }}</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="landing-container">
+    <h2>Preguntas frecuentes</h2>
+    <details *ngFor="let faq of page.faqs" class="landing-faq">
+      <summary>{{ faq.question }}</summary>
+      <p>{{ faq.answer }}</p>
+    </details>
+  </section>
+
+  <nav class="landing-container landing-links" aria-label="Más información">
+    <a *ngFor="let link of page.links" [routerLink]="link.path">{{ link.label }}</a>
+  </nav>
+</main>
+
+<ng-template #loadingTpl>
+  <div class="landing-loading"><nz-spin nzSimple></nz-spin></div>
+</ng-template>

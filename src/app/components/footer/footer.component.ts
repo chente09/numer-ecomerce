@@ -87,6 +87,7 @@ export class FooterComponent implements OnInit, OnDestroy {
   shopLinks = [
     { label: 'Encuentranos', link: '/ubicaciones' },
     { label: 'Distribuidores', link: '/ubicaciones' },
+    { label: 'Chompas Impermeables', link: '/chompas-impermeables' },
     { label: 'Nuevas Llegadas', link: '/shop' },
     { label: 'Más Vendidos', link: '/shop' },
   ];

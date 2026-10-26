@@ -4,6 +4,7 @@
 import type { ProductSeo, ProductSeoSource } from '../../src/app/core/product-seo';
 import { cleanText, truncateAtWord } from '../../src/app/core/product-seo';
 import { resolveEffectivePrice } from '../../src/app/core/pricing';
+import type { LandingContent } from '../../src/app/core/landing-pages';
 import type { StaticPage } from '../../src/app/core/static-pages';
 import { MAIN_LINKS } from '../../src/app/core/static-pages';
 
@@ -276,4 +277,46 @@ export function renderHomePage(template: string, ctx: StaticPageContext): string
     .replace(/<div class="loading-content"><nav aria-label="Secciones de la tienda">[\s\S]*?<\/ul><\/div>/i, '');
   const links = `<div class="loading-content">${renderMainNav()}${renderProductList(ctx.products ?? [])}</div>`;
   return html.replace(/(<app-root[^>]*>)([\s\S]*?)(<\/app-root>)/i, (_m, open, inner, close) => `${open}${inner.trim()}${links}${close}`);
+}
+
+/** A landing page: its own tags, readable text, featured products, FAQ and structured data. */
+export function renderLandingPage(template: string, content: LandingContent, ctx: { siteUrl: string }): string {
+  const siteUrl = ctx.siteUrl.replace(/\/$/, '');
+  let html = removeStaticBreadcrumb(template);
+  html = setTitle(html, content.title);
+  html = setCanonical(html, content.url);
+  html = upsertMeta(html, 'name', 'description', content.description);
+  html = upsertMeta(html, 'property', 'og:title', content.title);
+  html = upsertMeta(html, 'property', 'og:description', content.description);
+  html = upsertMeta(html, 'property', 'og:url', content.url);
+  html = upsertMeta(html, 'name', 'twitter:title', content.title);
+  html = upsertMeta(html, 'name', 'twitter:description', content.description);
+  html = setJsonLd(html, 'breadcrumb-schema', {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: siteUrl },
+      { '@type': 'ListItem', position: 2, name: 'Tienda', item: `${siteUrl}/shop` },
+      { '@type': 'ListItem', position: 3, name: 'Chompas impermeables', item: content.url }
+    ]
+  });
+  html = setJsonLd(html, 'landing-schema', content.collectionJsonLd);
+  html = setJsonLd(html, 'faq-schema', content.faqJsonLd);
+
+  const featured = content.featured.map(f =>
+    `<li><a href="/products/${escapeHtml(f.id)}">${escapeHtml(f.name)}</a> — ${money(f.price)}`
+    + `${f.sizes.length ? `. Tallas: ${escapeHtml(f.sizes.join(', '))}` : ''}`
+    + `${f.colors.length ? `. Colores: ${escapeHtml(f.colors.join(', '))}` : ''}`
+    + `${f.highlights.length ? `<ul>${f.highlights.map(h => `<li>${escapeHtml(h)}</li>`).join('')}</ul>` : ''}</li>`
+  ).join('');
+  const body = `<div class="loading-content"><h1>${escapeHtml(content.h1)}</h1>`
+    + content.intro.map(p => `<p>${escapeHtml(p)}</p>`).join('')
+    + (featured ? `<h2>Chompas disponibles</h2><ul>${featured}</ul>` : '')
+    + `<h2>Cómo elegir una chompa impermeable</h2>`
+    + content.guide.map(g => `<h3>${escapeHtml(g.heading)}</h3><p>${escapeHtml(g.text)}</p>`).join('')
+    + `<h2>Preguntas frecuentes</h2>`
+    + content.faqs.map(f => `<h3>${escapeHtml(f.question)}</h3><p>${escapeHtml(f.answer)}</p>`).join('')
+    + `<nav aria-label="Más información">${content.links.map(l => `<a href="${escapeHtml(l.path)}">${escapeHtml(l.label)}</a>`).join(' · ')}</nav>`
+    + `${renderMainNav()}</div>`;
+  return html.replace(/<app-root[^>]*>[\s\S]*?<\/app-root>/i, () => `<app-root>${body}</app-root>`);
 }
