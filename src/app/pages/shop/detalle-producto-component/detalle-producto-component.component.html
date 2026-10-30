@@ -295,9 +295,9 @@
             <div class="actions">
                 <button class="add-to-cart-btn" [disabled]="!selectedVariant || selectedVariant.stock === 0"
                     (click)="addToCart()">
-                    {{ selectedVariant && selectedVariant.stock > 0 ? '¡AÑADIR AL CARRITO!' : 'SIN STOCK' }}
+                    {{ selectedVariant && selectedVariant.stock > 0 ? '¡AÑADIR AL CARRITO!' : (isMadeToOrder ? 'SIN STOCK' : 'ELIGE TALLA Y COLOR') }}
                 </button>
-                <a *ngIf="!selectedVariant || selectedVariant.stock === 0" class="add-to-cart-btn order-by-whatsapp" [href]="orderByWhatsappLink" target="_blank" rel="noopener">
+                <a *ngIf="isMadeToOrder" class="add-to-cart-btn order-by-whatsapp" [href]="orderByWhatsappLink" target="_blank" rel="noopener">
                     PEDIR POR ENCARGO
                 </a>
 
@@ -325,9 +325,10 @@
                 <div class="product-sku">
                     <span>Código: {{ selectedVariant?.sku || product.sku }}</span>
                 </div>
-                <div class="shipping-estimate" *ngIf="userLocation">
+                <div class="shipping-estimate">
                     <i nz-icon nzType="truck" nzTheme="outline"></i>
-                    <span>Llega en 1-2 días a {{ userLocation }}</span>
+                    <span *ngIf="!isMadeToOrder; else madeToOrder">Envío a todo Ecuador en 2 a 5 días hábiles</span>
+                    <ng-template #madeToOrder><span>Se fabrica por encargo: coordinamos el plazo contigo por WhatsApp</span></ng-template>
                 </div>
             </div>
         </div>
@@ -410,7 +411,7 @@
                             <div class="shipping-options">
                                 <div class="shipping-option">
                                     <strong>Quito</strong>
-                                    <p>1-2 días hábiles - Envío ${{ shippingCost }}</p>
+                                    <p>2-3 días hábiles - Envío ${{ shippingCost }}</p>
                                 </div>
                                 <div class="shipping-option">
                                     <strong>Otras ciudades principales</strong>

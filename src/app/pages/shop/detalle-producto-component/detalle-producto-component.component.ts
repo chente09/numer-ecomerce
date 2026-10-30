@@ -113,7 +113,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   currentImageUrl: string = '';
 
   // 🆕 Nuevas propiedades para funcionalidades ecuatorianas
-  userLocation: string = 'Tu ciudad'; // Detectar o configurar ubicación del usuario
   private readonly COMPONENT_NAME = 'DetalleProductoComponent';
   private _cachedVariantPrice: any = null;
   private _lastVariantId: string | null = null;
@@ -140,7 +139,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   // ✅ AGREGAR este método al ngOnInit (después de la línea que llama loadProduct):
   ngOnInit(): void {
     this.promotionStateService.registerComponent(this.COMPONENT_NAME);
-    this.detectUserLocation();
 
     // A product stores its technologies as ids of the collection or as old slugs: resolve both to the name
     this.technologyService.getTechnologies().pipe(takeUntil(this.destroy$)).subscribe(list => {
@@ -419,6 +417,12 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
   /**
  * 🏷️ Verifica si el producto tiene descuento
  */
+  /** Nothing to buy: the picked variant has no stock, or (before picking one) the whole product has none. */
+  get isMadeToOrder(): boolean {
+    if (this.selectedVariant) return this.selectedVariant.stock === 0;
+    return (this.product?.totalStock ?? 0) === 0;
+  }
+
   /** WhatsApp chat prefilled with the product and the size and color the customer picked. */
   get orderByWhatsappLink(): string {
     const options = [this.selectedColor?.name, this.selectedSize?.name].filter(Boolean).join(', ');
@@ -1092,49 +1096,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     return product?.id || `product-${index}`;
   }
 
-  private detectUserLocation(): void {
-    // Primero intentar geolocalización
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          this.getUserLocationFromCoords(position.coords.latitude, position.coords.longitude);
-        },
-        () => {
-          // Si falla, usar IP detection como fallback
-          this.getUserLocationFromIP();
-        }
-      );
-    } else {
-      this.getUserLocationFromIP();
-    }
-  }
-
-  private getUserLocationFromCoords(lat: number, lng: number): void {
-    // Usar servicio de geocoding reverso (opcional)
-    // Por ahora, detectar si está en Ecuador
-    if (lat >= -5 && lat <= 2 && lng >= -81 && lng <= -75) {
-      this.userLocation = 'Ecuador';
-    } else {
-      this.userLocation = 'Tu ubicación';
-    }
-  }
-
-  private getUserLocationFromIP(): void {
-    // Usar un servicio como ipapi.co (gratis)
-    fetch('https://ipapi.co/json/')
-      .then(response => response.json())
-      .then(data => {
-        if (data.country_code === 'EC') {
-          this.userLocation = data.city || 'Ecuador';
-        } else {
-          this.userLocation = data.country_name || 'Tu ubicación';
-        }
-      })
-      .catch(() => {
-        this.userLocation = 'Tu ciudad';
-      });
-  }
-
   // ✅ 3. VALIDACIÓN DE STOCK EN TIEMPO REAL
   private validateStockBeforeAddToCart(): Observable<boolean> {
     if (!this.selectedVariant) {
@@ -1177,21 +1138,6 @@ export class DetalleProductoComponent implements OnInit, OnDestroy {
     return this.product.colors.filter(color =>
       availableColorNames.includes(color.name)
     );
-  }
-
-  // 🚚 5. CÁLCULO DE ENVÍO
-  calculateShippingEstimate(): string {
-    if (!this.userLocation) return 'Calculando envío...';
-
-    const location = this.userLocation.toLowerCase();
-
-    if (location.includes('quito') || location.includes('ecuador')) {
-      return 'Llega mañana o pasado';
-    } else if (location.includes('guayaquil') || location.includes('cuenca')) {
-      return 'Llega en 2-3 días';
-    } else {
-      return 'Llega en 2-5 días';
-    }
   }
 
   private trackProductView(): void {
