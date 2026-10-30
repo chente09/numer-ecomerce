@@ -1,7 +1,7 @@
 // Runs after `ng build`: writes one static HTML page per product (dist/.../products/<id>.html) and a fresh
 // sitemap.xml from the real catalog. A page that crawlers can read without running JavaScript; the Angular app
 // still boots on it. This step NEVER fails the deploy: if anything is wrong it logs and leaves the build as it was.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { buildProductSeo } from '../src/app/core/product-seo';
 import { buildTechnologyResolver } from '../src/app/core/technology-labels';
@@ -102,10 +102,10 @@ async function main(): Promise<void> {
   writeFileSync(indexPath, renderHomePage(template, { siteUrl: SITE_URL, products: productLinks }), 'utf8');
 
   const staticBlocks = existsSync(SOURCE_SITEMAP) ? extractStaticBlocks(readFileSync(SOURCE_SITEMAP, 'utf8')) : [];
-  // sitemap.xml is served live by the Netlify function; this copy is its fallback and a reference of the build
-  const sitemapXml = buildSitemapXml(SITE_URL, staticBlocks, sitemapProducts);
-  writeFileSync(join(DIST, 'sitemap.xml'), sitemapXml, 'utf8');
-  writeFileSync(join(DIST, 'sitemap-build.xml'), sitemapXml, 'utf8');
+  // /sitemap.xml is answered live by the Netlify function. A real sitemap.xml file here would be served instead
+  // of the function, so the build copy has another name: it is only the function's fallback.
+  rmSync(join(DIST, 'sitemap.xml'), { force: true });
+  writeFileSync(join(DIST, 'sitemap-build.xml'), buildSitemapXml(SITE_URL, staticBlocks, sitemapProducts), 'utf8');
 
   console.log(`[prerender] ${written} páginas de producto, ${STATIC_PAGES.length} páginas fijas, ${LANDING_PAGES.length} landing, portada con enlaces y sitemap con ${staticBlocks.length + sitemapProducts.length} URLs (${staticBlocks.length} fijas).`);
 }
