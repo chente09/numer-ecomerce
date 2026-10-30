@@ -7,13 +7,6 @@
   node_bundler = "esbuild"
   included_files = ["src/sitemap.xml"]
 
-# The real file is the fallback; the function answers first (force) so the sitemap follows the live catalog
-[[redirects]]
-  from = "/sitemap.xml"
-  to = "/.netlify/functions/sitemap"
-  status = 200
-  force = true
-
 [[redirects]]
   from = "/*"
   to = "/index.html"

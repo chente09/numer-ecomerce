@@ -7,6 +7,9 @@ import { buildLiveSitemap } from '../../scripts/lib/sitemap-live';
 
 const SITE_URL = 'https://numer.store';
 
+/** The function itself answers /sitemap.xml (a redirect to it was not applied by Netlify). */
+export const config = { path: '/sitemap.xml' };
+
 const xmlResponse = (body: string, cache: string): Response =>
   new Response(body, {
     headers: {
