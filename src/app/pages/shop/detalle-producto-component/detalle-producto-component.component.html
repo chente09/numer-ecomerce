@@ -297,7 +297,7 @@
                     (click)="addToCart()">
                     {{ selectedVariant && selectedVariant.stock > 0 ? '¡AÑADIR AL CARRITO!' : 'SIN STOCK' }}
                 </button>
-                <a *ngIf="selectedVariant && selectedVariant.stock === 0" class="add-to-cart-btn" [href]="orderByWhatsappLink" target="_blank" rel="noopener">
+                <a *ngIf="!selectedVariant || selectedVariant.stock === 0" class="add-to-cart-btn order-by-whatsapp" [href]="orderByWhatsappLink" target="_blank" rel="noopener">
                     PEDIR POR ENCARGO
                 </a>
 

@@ -587,6 +587,29 @@ html {
     cursor: not-allowed;
 }
 
+.add-to-cart-btn:disabled {
+    white-space: nowrap;
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+/* Out of stock: the product is made to order, the customer writes on WhatsApp */
+a.order-by-whatsapp {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 2;
+    padding: 15px 16px;
+    text-align: center;
+    text-decoration: none;
+    color: #fff;
+}
+
+a.order-by-whatsapp:hover {
+    background-color: #333;
+    color: #fff;
+}
+
 .wishlist-btn {
     width: 50px;
     height: 50px;
