@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { map, catchError, switchMap, startWith } from 'rxjs/operators';
 import { CacheService } from '../cache/cache.service';
 import { ErrorUtil } from '../../../utils/error-util';
+import { SiteRebuildService } from '../../site-rebuild/site-rebuild.service';
 
 export interface Technology {
   id: string;
@@ -16,6 +17,7 @@ export interface Technology {
 export class TechnologyService {
   private firestore = inject(Firestore);
   private cacheService = inject(CacheService);
+  private siteRebuild = inject(SiteRebuildService);
   private collectionName = 'technologies';
   private cacheKey = 'technologies';
 
@@ -43,6 +45,7 @@ export class TechnologyService {
     const ref = collection(this.firestore, this.collectionName);
     const docRef = await addDoc(ref, { name: trimmed });
     this.cacheService.invalidate(this.cacheKey);
+    this.siteRebuild.notify('technology');
     return docRef.id;
   }
 
@@ -50,5 +53,6 @@ export class TechnologyService {
     const ref = doc(this.firestore, this.collectionName, id);
     await deleteDoc(ref);
     this.cacheService.invalidate(this.cacheKey);
+    this.siteRebuild.notify('technology');
   }
 }

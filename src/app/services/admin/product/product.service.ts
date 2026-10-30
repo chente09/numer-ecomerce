@@ -25,6 +25,7 @@ import { CacheService } from '../cache/cache.service';
 import { Product, ProductVariant, Color, Size, Review, Promotion, SaleItem } from '../../../models/models'; // Importar SaleItem
 import { Auth, signInAnonymously } from '@angular/fire/auth';
 import { hasEffectiveDiscount, maxEffectiveDiscountPercentage } from '../../../core/pricing';
+import { SiteRebuildService } from '../../site-rebuild/site-rebuild.service';
 
 // Interfaces para estrategias de invalidación
 interface CacheInvalidationStrategy {
@@ -39,6 +40,7 @@ interface CacheInvalidationStrategy {
 })
 export class ProductService {
   private firestore = inject(Firestore);
+  private siteRebuild = inject(SiteRebuildService);
   private productsCollection = 'products';
   private readonly productsCacheKey = 'products';
   private viewedInSession = new Set<string>();
@@ -948,6 +950,7 @@ export class ProductService {
         // 🧹 INVALIDAR CACHÉ DESPUÉS DE CREAR
         this.cacheService.clearCache(); // Limpieza completa para nuevos productos
       }),
+      this.siteRebuild.after('product'),
       catchError(error => {
         console.error('💥 Error al crear producto:', error);
         // Cleanup asíncrono para no bloquear la respuesta
@@ -1079,6 +1082,7 @@ export class ProductService {
           patterns: ['featured', 'new', 'bestselling', 'discounted']
         });
       }),
+      this.siteRebuild.after('product'),
       catchError(error => ErrorUtil.handleError(error, `updateProduct(${productId})`))
     );
   }
@@ -1485,6 +1489,7 @@ export class ProductService {
       });
 
     })()).pipe(
+      this.siteRebuild.after('product'),
       catchError(error => ErrorUtil.handleError(error, `deleteProduct(${productId})`)),
     );
   }

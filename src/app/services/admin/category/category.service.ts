@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, collectionData, doc, addDoc, updateDoc, deleteDoc, getDoc, query, where } from '@angular/fire/firestore';
 import { Storage, ref, uploadBytes, getDownloadURL, deleteObject } from '@angular/fire/storage';
 import { Observable, of, from } from 'rxjs';
@@ -6,6 +6,7 @@ import { catchError, map, shareReplay, switchMap, startWith } from 'rxjs/operato
 import { v4 as uuidv4 } from 'uuid';
 import { CacheService } from '../cache/cache.service';
 import { ErrorUtil } from '../../../utils/error-util';
+import { SiteRebuildService } from '../../site-rebuild/site-rebuild.service';
 
 export interface Category {
   id: string;
@@ -21,6 +22,7 @@ export interface Category {
 export class CategoryService {
   private collectionName = 'categories';
   private cacheKey = 'categories';
+  private siteRebuild = inject(SiteRebuildService);
   
   constructor(
     private firestore: Firestore,
@@ -75,6 +77,7 @@ export class CategoryService {
         this.invalidateCache();
         return docRef.id;
       }),
+      this.siteRebuild.after('category'),
       catchError(error => ErrorUtil.handleError(error, 'createCategory'))
     );
   }
@@ -103,6 +106,7 @@ export class CategoryService {
         map(() => {
           this.invalidateCache();
         }),
+        this.siteRebuild.after('category'),
         catchError(error => ErrorUtil.handleError(error, `updateCategory(${id})`))
       );
     }
@@ -112,7 +116,8 @@ export class CategoryService {
       map(() => {
         this.invalidateCache();
       }),
-      catchError(error => ErrorUtil.handleError(error, `updateCategory(${id})`))
+      this.siteRebuild.after('category'),
+        catchError(error => ErrorUtil.handleError(error, `updateCategory(${id})`))
     );
   }
 
@@ -142,6 +147,7 @@ export class CategoryService {
       map(() => {
         this.invalidateCache();
       }),
+      this.siteRebuild.after('category'),
       catchError(error => ErrorUtil.handleError(error, `deleteCategory(${id})`))
     );
   }

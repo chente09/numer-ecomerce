@@ -1,7 +1,8 @@
 // src/app/services/admin/promotion/promotion-state.service.ts
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, filter, Observable, Subject } from 'rxjs';
 import { Product, Promotion } from '../../../models/models';
+import { SiteRebuildService } from '../../site-rebuild/site-rebuild.service';
 
 export interface PromotionChangeEvent {
   type: 'created' | 'updated' | 'deleted' | 'applied' | 'removed' | 'activated' | 'deactivated';
@@ -32,6 +33,7 @@ export interface GlobalUpdateEvent {
   providedIn: 'root'
 })
 export class PromotionStateService {
+  private siteRebuild = inject(SiteRebuildService);
   // 📡 EVENTOS DE CAMBIO DE PROMOCIONES (existente)
   private promotionChanges$ = new Subject<PromotionChangeEvent>();
 
@@ -84,6 +86,8 @@ export class PromotionStateService {
    * 📢 BROADCASTING GLOBAL - Notifica a TODOS los componentes
    */
   broadcastGlobalUpdate(event: PromotionChangeEvent): void {
+    // Every promotion change (created, edited, applied, paused...) funnels through here: prices on the storefront change
+    this.siteRebuild.notify('promotion');
 
     // Enriquecer evento con timestamp si no lo tiene
     const enrichedEvent = {
