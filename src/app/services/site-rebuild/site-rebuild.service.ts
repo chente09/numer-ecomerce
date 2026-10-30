@@ -27,9 +27,12 @@ export class SiteRebuildService {
     void this.send(reason);
   }
 
-  /** For service methods that return an Observable: notifies once the save completed without error. */
+  /**
+   * For service methods that return an Observable: notifies once the save succeeded. It reacts to the emitted value,
+   * not to the completion: callers often use take(1), which unsubscribes before a complete notification arrives.
+   */
   after<T>(reason: RebuildReason): MonoTypeOperatorFunction<T> {
-    return tap<T>({ complete: () => this.notify(reason) });
+    return tap<T>({ next: () => this.notify(reason) });
   }
 
   private async send(reason: RebuildReason): Promise<void> {
